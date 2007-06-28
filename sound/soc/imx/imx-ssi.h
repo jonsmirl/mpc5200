@@ -184,9 +184,11 @@
 #define SSI_SACNT_FV          (x << 1)
 #define SSI_SACNT_AC97EN      (x << 0)
 
-/* SDMA watermarks for FIFO's */
+/* SDMA & SSI watermarks for FIFO's */
 #define SDMA_TXFIFO_WATERMARK				0x4
 #define SDMA_RXFIFO_WATERMARK				0x6
+#define SSI_TXFIFO_WATERMARK				0x4
+#define SSI_RXFIFO_WATERMARK				0x6
 
 /* i.MX DAI SSP ID's */
 #define IMX_DAI_SSI0			0 /* SSI1 FIFO 0 */
@@ -210,6 +212,9 @@
 #define IMX_SSI_DIV_2_OFF		~SSI_STCCR_DIV2
 #define IMX_SSI_DIV_2_ON		SSI_STCCR_DIV2
 
-extern struct snd_soc_cpu_dai imx_ssi_pcm_dai[4];
+extern const char imx_ssi_1[SND_SOC_DAI_NAME_SIZE];
+extern const char imx_ssi_2[SND_SOC_DAI_NAME_SIZE];
+extern const char imx_ssi_3[SND_SOC_DAI_NAME_SIZE];
+extern const char imx_ssi_4[SND_SOC_DAI_NAME_SIZE];
 
 #endif

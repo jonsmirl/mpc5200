@@ -43,9 +43,9 @@
 #define WM9713_DAI_AC97_AUX		1
 #define WM9713_DAI_PCM_VOICE	2
 
-extern struct snd_soc_codec_device soc_codec_dev_wm9713;
-extern struct snd_soc_codec_dai wm9713_dai[3];
-
-int wm9713_reset(struct snd_soc_codec *codec,  int try_warm);
+extern const char wm9713_hifi_dai[SND_SOC_DAI_NAME_SIZE];
+extern const char wm9713_aux_dai[SND_SOC_DAI_NAME_SIZE];
+extern const char wm9713_voice_dai[SND_SOC_DAI_NAME_SIZE];
+extern const char wm9713_codec[SND_SOC_CODEC_NAME_SIZE];
 
 #endif

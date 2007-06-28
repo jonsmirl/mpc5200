@@ -203,27 +203,27 @@ int snd_soc_dapm_get_enum_double(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
 int snd_soc_dapm_put_enum_double(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
-int snd_soc_dapm_new_control(struct snd_soc_codec *codec,
-	const struct snd_soc_dapm_widget *widget);
+int snd_soc_dapm_new_control(struct snd_soc_machine *machine,
+	struct snd_soc_codec *codec, const struct snd_soc_dapm_widget *widget);
 
 /* dapm path setup */
-int snd_soc_dapm_connect_input(struct snd_soc_codec *codec,
+int snd_soc_dapm_connect_input(struct snd_soc_machine *machine,
 	const char *sink_name, const char *control_name, const char *src_name);
-int snd_soc_dapm_new_widgets(struct snd_soc_codec *codec);
-void snd_soc_dapm_free(struct snd_soc_device *socdev);
+int snd_soc_dapm_new_widgets(struct snd_soc_machine *machine);
+void snd_soc_dapm_free(struct snd_soc_machine *machine);
 
 /* dapm events */
-int snd_soc_dapm_stream_event(struct snd_soc_codec *codec, char *stream,
+int snd_soc_dapm_stream_event(struct snd_soc_machine *machine, char *stream,
 	int event);
-int snd_soc_dapm_device_event(struct snd_soc_device *socdev, int event);
+int snd_soc_dapm_device_event(struct snd_soc_pcm_link *pcm_link, int event);
 
 /* dapm sys fs - used by the core */
 int snd_soc_dapm_sys_add(struct device *dev);
 
 /* dapm audio endpoint control */
-int snd_soc_dapm_set_endpoint(struct snd_soc_codec *codec,
+int snd_soc_dapm_set_endpoint(struct snd_soc_machine *machine,
 	char *pin, int status);
-int snd_soc_dapm_sync_endpoints(struct snd_soc_codec *codec);
+int snd_soc_dapm_sync_endpoints(struct snd_soc_machine *machine);
 
 /* dapm widget types */
 enum snd_soc_dapm_type {
@@ -270,6 +270,7 @@ struct snd_soc_dapm_widget {
 	char *name;		/* widget name */
 	char *sname;	/* stream name */
 	struct snd_soc_codec *codec;
+	struct snd_soc_machine *machine;
 	struct list_head list;
 
 	/* dapm control */

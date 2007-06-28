@@ -5,7 +5,7 @@
  * Author: Liam Girdwood
  *         liam.girdwood@wolfsonmicro.com or linux@wolfsonmicro.com
  *
- * Based on pxa2xx-pcm.c by	Nicolas Pitre, (C) 2004 MontaVista Software, Inc.
+ * Based on imx31-pcm.c by	Nicolas Pitre, (C) 2004 MontaVista Software, Inc.
  * and on mxc-alsa-mc13783 (C) 2006 Freescale.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -181,7 +181,8 @@ static void audio_dma_irq(void *data)
 	prtd->periods++;
 	prtd->periods %= runtime->periods;
 
-	dbg("irq per %d offset %x\n", prtd->periods, offset);
+	dbg("irq per %d offset %x\n", prtd->periods, 
+		frames_to_bytes(runtime, runtime->period_size) * prtd->periods);
 #if IMX31_DMA_BOUNCE
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		dma_unmap_single(NULL, runtime->dma_addr + offset, dma_size,
@@ -212,8 +213,9 @@ static int imx31_pcm_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct mxc_runtime_data *prtd = runtime->private_data;
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct mxc_pcm_dma_params *dma = rtd->dai->cpu_dai->dma_data;
+	struct snd_soc_pcm_link *pcm_link = substream->private_data;
+	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
+	struct mxc_pcm_dma_params *dma = cpu_dai->dma_data;
 	int ret = 0, channel = 0;
 	
 	/* only allocate the DMA chn once */
@@ -447,7 +449,8 @@ static void imx31_pcm_free_dma_buffers(struct snd_pcm *pcm)
 
 static u64 imx31_pcm_dmamask = 0xffffffff;
 
-int imx31_pcm_new(struct snd_card *card, struct snd_soc_codec_dai *dai,
+static int imx31_pcm_new(struct snd_soc_platform *platform, 
+	struct snd_card *card, int playback, int capture,
 	struct snd_pcm *pcm)
 {
 	int ret = 0;
@@ -467,14 +470,14 @@ int imx31_pcm_new(struct snd_card *card, struct snd_soc_codec_dai *dai,
 		goto out;
 	}	
 #else
-	if (dai->playback.channels_min) {
+	if (playback) {
 		ret = imx31_pcm_preallocate_dma_buffer(pcm,
 			SNDRV_PCM_STREAM_PLAYBACK);
 		if (ret)
 			goto out;
 	}
 
-	if (dai->capture.channels_min) {
+	if (capture) {
 		ret = imx31_pcm_preallocate_dma_buffer(pcm,
 			SNDRV_PCM_STREAM_CAPTURE);
 		if (ret)
@@ -485,9 +488,7 @@ int imx31_pcm_new(struct snd_card *card, struct snd_soc_codec_dai *dai,
 	return ret;
 }
 
-struct snd_soc_platform imx31_soc_platform = {
-	.name		= "imx31-audio",
-	.pcm_ops 	= &imx31_pcm_ops,
+static const struct snd_soc_platform_ops imx31_platform_ops = {
 	.pcm_new	= imx31_pcm_new,
 #if IMX31_DMA_BOUNCE
 	.pcm_free	= NULL,
@@ -495,7 +496,48 @@ struct snd_soc_platform imx31_soc_platform = {
 	.pcm_free	= imx31_pcm_free_dma_buffers,
 #endif
 };
-EXPORT_SYMBOL_GPL(imx31_soc_platform);
+
+static int imx31_pcm_probe(struct device *dev)
+{
+	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	
+	platform->pcm_ops = &imx31_pcm_ops;
+	platform->platform_ops = &imx31_platform_ops;
+	snd_soc_register_platform(platform);
+	return 0;
+}
+
+static int imx31_pcm_remove(struct device *dev)
+{
+	return 0;
+}
+
+const char imx31_pcm[SND_SOC_PLATFORM_NAME_SIZE] = "imx31-pcm";
+EXPORT_SYMBOL_GPL(imx31_pcm);
+
+static struct snd_soc_device_driver imx31_pcm_driver = {
+	.type	= SND_SOC_BUS_TYPE_DMA,
+	.driver	= {
+		.name 		= imx31_pcm,
+		.owner		= THIS_MODULE,
+		.bus 		= &asoc_bus_type,
+		.probe		= imx31_pcm_probe,
+		.remove		= __devexit_p(imx31_pcm_remove),
+	},
+};
+
+static __init int imx31_pcm_init(void)
+{
+	return driver_register(&imx31_pcm_driver.driver);
+}
+
+static __exit void imx31_pcm_exit(void)
+{
+	driver_unregister(&imx31_pcm_driver.driver);
+}
+
+module_init(imx31_pcm_init);
+module_exit(imx31_pcm_exit);
 
 MODULE_AUTHOR("Liam Girdwood");
 MODULE_DESCRIPTION("Freescale i.MX31 PCM DMA module");

@@ -16,17 +16,22 @@
  *  Revision history
  *    30th Oct 2005   Initial version.
  *
+ * 
+ * This is an example machine driver for a wm8753 connected to a
+ * Mainstone II. It is missing logic to detect hp/mic insertions and logic
+ * to re-route the audio in such an event.
  */
 
 #include <linux/module.h>
 #include <linux/moduleparam.h>
-#include <linux/device.h>
+#include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
+#include <sound/initval.h>
 
 #include <asm/hardware.h>
 #include <asm/arch/pxa-regs.h>
@@ -41,14 +46,6 @@
 /*
  * SSP GPIO's
  */
-#define GPIO26_SSP1RX_MD	(26 | GPIO_ALT_FN_1_IN)
-#define GPIO25_SSP1TX_MD	(25 | GPIO_ALT_FN_2_OUT)
-#define GPIO23_SSP1CLKS_MD	(23 | GPIO_ALT_FN_2_IN)
-#define GPIO24_SSP1FRMS_MD	(24 | GPIO_ALT_FN_2_IN)
-#define GPIO23_SSP1CLKM_MD	(23 | GPIO_ALT_FN_2_OUT)
-#define GPIO24_SSP1FRMM_MD	(24 | GPIO_ALT_FN_2_OUT)
-#define GPIO53_SSP1SYSCLK_MD	(53 | GPIO_ALT_FN_2_OUT)
-
 #define GPIO11_SSP2RX_MD	(11 | GPIO_ALT_FN_2_IN)
 #define GPIO13_SSP2TX_MD	(13 | GPIO_ALT_FN_1_OUT)
 #define GPIO22_SSP2CLKS_MD	(22 | GPIO_ALT_FN_3_IN)
@@ -57,111 +54,14 @@
 #define GPIO88_SSP2FRMM_MD	(88 | GPIO_ALT_FN_3_OUT)
 #define GPIO22_SSP2SYSCLK_MD	(22 | GPIO_ALT_FN_2_OUT)
 
-#define GPIO82_SSP3RX_MD	(82 | GPIO_ALT_FN_1_IN)
-#define GPIO81_SSP3TX_MD	(81 | GPIO_ALT_FN_1_OUT)
-#define GPIO84_SSP3CLKS_MD	(84 | GPIO_ALT_FN_1_IN)
-#define GPIO83_SSP3FRMS_MD	(83 | GPIO_ALT_FN_1_IN)
-#define GPIO84_SSP3CLKM_MD	(84 | GPIO_ALT_FN_1_OUT)
-#define GPIO83_SSP3FRMM_MD	(83 | GPIO_ALT_FN_1_OUT)
-#define GPIO45_SSP3SYSCLK_MD	(45 | GPIO_ALT_FN_3_OUT)
-
-#if 0
-static struct pxa2xx_gpio ssp_gpios[3][4] = {
-	{{ /* SSP1 SND_SOC_DAIFMT_CBM_CFM */
-		.rx = GPIO26_SSP1RX_MD,
-		.tx = GPIO25_SSP1TX_MD,
-		.clk = (23 | GPIO_ALT_FN_2_IN),
-		.frm = (24 | GPIO_ALT_FN_2_IN),
-		.sys = GPIO53_SSP1SYSCLK_MD,
-	},
-	{ /* SSP1 SND_SOC_DAIFMT_CBS_CFS */
-		.rx = GPIO26_SSP1RX_MD,
-		.tx = GPIO25_SSP1TX_MD,
-		.clk = (23 | GPIO_ALT_FN_2_OUT),
-		.frm = (24 | GPIO_ALT_FN_2_OUT),
-		.sys = GPIO53_SSP1SYSCLK_MD,
-	},
-	{ /* SSP1 SND_SOC_DAIFMT_CBS_CFM */
-		.rx = GPIO26_SSP1RX_MD,
-		.tx = GPIO25_SSP1TX_MD,
-		.clk = (23 | GPIO_ALT_FN_2_OUT),
-		.frm = (24 | GPIO_ALT_FN_2_IN),
-		.sys = GPIO53_SSP1SYSCLK_MD,
-	},
-	{ /* SSP1 SND_SOC_DAIFMT_CBM_CFS */
-		.rx = GPIO26_SSP1RX_MD,
-		.tx = GPIO25_SSP1TX_MD,
-		.clk = (23 | GPIO_ALT_FN_2_IN),
-		.frm = (24 | GPIO_ALT_FN_2_OUT),
-		.sys = GPIO53_SSP1SYSCLK_MD,
-	}},
-	{{ /* SSP2 SND_SOC_DAIFMT_CBM_CFM */
-		.rx = GPIO11_SSP2RX_MD,
-		.tx = GPIO13_SSP2TX_MD,
-		.clk = (22 | GPIO_ALT_FN_3_IN),
-		.frm = (88 | GPIO_ALT_FN_3_IN),
-		.sys = GPIO22_SSP2SYSCLK_MD,
-	},
-	{ /* SSP2 SND_SOC_DAIFMT_CBS_CFS */
-		.rx = GPIO11_SSP2RX_MD,
-		.tx = GPIO13_SSP2TX_MD,
-		.clk = (22 | GPIO_ALT_FN_3_OUT),
-		.frm = (88 | GPIO_ALT_FN_3_OUT),
-		.sys = GPIO22_SSP2SYSCLK_MD,
-	},
-	{ /* SSP2 SND_SOC_DAIFMT_CBS_CFM */
-		.rx = GPIO11_SSP2RX_MD,
-		.tx = GPIO13_SSP2TX_MD,
-		.clk = (22 | GPIO_ALT_FN_3_OUT),
-		.frm = (88 | GPIO_ALT_FN_3_IN),
-		.sys = GPIO22_SSP2SYSCLK_MD,
-	},
-	{ /* SSP2 SND_SOC_DAIFMT_CBM_CFS */
-		.rx = GPIO11_SSP2RX_MD,
-		.tx = GPIO13_SSP2TX_MD,
-		.clk = (22 | GPIO_ALT_FN_3_IN),
-		.frm = (88 | GPIO_ALT_FN_3_OUT),
-		.sys = GPIO22_SSP2SYSCLK_MD,
-	}},
-	{{ /* SSP3 SND_SOC_DAIFMT_CBM_CFM */
-		.rx = GPIO82_SSP3RX_MD,
-		.tx = GPIO81_SSP3TX_MD,
-		.clk = (84 | GPIO_ALT_FN_3_IN),
-		.frm = (83 | GPIO_ALT_FN_3_IN),
-		.sys = GPIO45_SSP3SYSCLK_MD,
-	},
-	{ /* SSP3 SND_SOC_DAIFMT_CBS_CFS */
-		.rx = GPIO82_SSP3RX_MD,
-		.tx = GPIO81_SSP3TX_MD,
-		.clk = (84 | GPIO_ALT_FN_3_OUT),
-		.frm = (83 | GPIO_ALT_FN_3_OUT),
-		.sys = GPIO45_SSP3SYSCLK_MD,
-	},
-	{ /* SSP3 SND_SOC_DAIFMT_CBS_CFM */
-		.rx = GPIO82_SSP3RX_MD,
-		.tx = GPIO81_SSP3TX_MD,
-		.clk = (84 | GPIO_ALT_FN_3_OUT),
-		.frm = (83 | GPIO_ALT_FN_3_IN),
-		.sys = GPIO45_SSP3SYSCLK_MD,
-	},
-	{ /* SSP3 SND_SOC_DAIFMT_CBM_CFS */
-		.rx = GPIO82_SSP3RX_MD,
-		.tx = GPIO81_SSP3TX_MD,
-		.clk = (84 | GPIO_ALT_FN_3_IN),
-		.frm = (83 | GPIO_ALT_FN_3_OUT),
-		.sys = GPIO45_SSP3SYSCLK_MD,
-	}},
-};
-#endif
-
-static struct snd_soc_machine mainstone;
+static struct snd_soc_machine *mainstone_mach;
 
 static int mainstone_hifi_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec_dai *codec_dai = rtd->dai->codec_dai;
-	struct snd_soc_cpu_dai *cpu_dai = rtd->dai->cpu_dai;
+	struct snd_soc_pcm_link *pcm_link = substream->private_data;
+	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
+	struct snd_soc_dai *codec_dai = pcm_link->codec_dai;
 	unsigned int pll_out = 0, bclk = 0, fmt = 0;
 	int ret = 0;
 
@@ -211,36 +111,36 @@ static int mainstone_hifi_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* set codec DAI configuration */
-	ret = codec_dai->dai_ops.set_fmt(codec_dai,
+	ret = codec_dai->ops->set_fmt(codec_dai,
 		SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | fmt);
 	if (ret < 0)
 		return ret;
 
 	/* set cpu DAI configuration */
-	ret = cpu_dai->dai_ops.set_fmt(cpu_dai,
+	ret = cpu_dai->ops->set_fmt(cpu_dai,
 		SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | fmt);
 	if (ret < 0)
 		return ret;
 
 	/* set the codec system clock for DAC and ADC */
-	ret = codec_dai->dai_ops.set_sysclk(codec_dai, WM8753_MCLK, pll_out,
+	ret = codec_dai->ops->set_sysclk(codec_dai, WM8753_MCLK, pll_out,
 		SND_SOC_CLOCK_IN);
 	if (ret < 0)
 		return ret;
 
 	/* set the I2S system clock as input (unused) */
-	ret = cpu_dai->dai_ops.set_sysclk(cpu_dai, PXA2XX_I2S_SYSCLK, 0,
+	ret = cpu_dai->ops->set_sysclk(cpu_dai, PXA2XX_I2S_SYSCLK, 0,
 		SND_SOC_CLOCK_IN);
 	if (ret < 0)
 		return ret;
 
 	/* set codec BCLK division for sample rate */
-	ret = codec_dai->dai_ops.set_clkdiv(codec_dai, WM8753_BCLKDIV, bclk);
+	ret = codec_dai->ops->set_clkdiv(codec_dai, WM8753_BCLKDIV, bclk);
 	if (ret < 0)
 		return ret;
 
 	/* codec PLL input is 13 MHz */
-	ret = codec_dai->dai_ops.set_pll(codec_dai, WM8753_PLL1, 13000000, pll_out);
+	ret = codec_dai->ops->set_pll(codec_dai, WM8753_PLL1, 13000000, pll_out);
 	if (ret < 0)
 		return ret;
 
@@ -249,19 +149,29 @@ static int mainstone_hifi_hw_params(struct snd_pcm_substream *substream,
 
 static int mainstone_hifi_hw_free(struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec_dai *codec_dai = rtd->dai->codec_dai;
+	struct snd_soc_pcm_link *pcm_link = substream->private_data;
+	struct snd_soc_dai *codec_dai = pcm_link->codec_dai;
 
 	/* disable the PLL */
-	return codec_dai->dai_ops.set_pll(codec_dai, WM8753_PLL1, 0, 0);
+	return codec_dai->ops->set_pll(codec_dai, WM8753_PLL1, 0, 0);
 }
 
 /*
  * Mainstone WM8753 HiFi DAI opserations.
  */
-static struct snd_soc_ops mainstone_hifi_ops = {
+static const struct snd_soc_ops mainstone_hifi_ops = {
 	.hw_params = mainstone_hifi_hw_params,
 	.hw_free = mainstone_hifi_hw_free,
+};
+
+static int hifi_pcm_new(struct snd_soc_pcm_link *pcm_link)
+{
+	pcm_link->audio_ops = &mainstone_hifi_ops;
+	return snd_soc_pcm_new(pcm_link, 1, 1);
+}
+
+struct snd_soc_pcm_link_ops hifi_pcm = {
+	.new	= hifi_pcm_new,
 };
 
 static int mainstone_voice_startup(struct snd_pcm_substream *substream)
@@ -275,21 +185,17 @@ static int mainstone_voice_startup(struct snd_pcm_substream *substream)
 
 static void mainstone_voice_shutdown(struct snd_pcm_substream *substream)
 {
-//	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-
 	/* disable USB on the go MUX so we can use ttyS0 */
 	MST_MSCWR2 &= ~MST_MSCWR2_USB_OTG_SEL;
 	MST_MSCWR2 |= MST_MSCWR2_USB_OTG_RST;
-
-	/* liam may need to tristate DAI */
 }
 
 static int mainstone_voice_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec_dai *codec_dai = rtd->dai->codec_dai;
-	struct snd_soc_cpu_dai *cpu_dai = rtd->dai->cpu_dai;
+	struct snd_soc_pcm_link *pcm_link = substream->private_data;
+	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
+	struct snd_soc_dai *codec_dai = pcm_link->codec_dai;
 	unsigned int pll_out = 0, bclk = 0, pcmdiv = 0;
 	int ret = 0;
 
@@ -331,41 +237,41 @@ static int mainstone_voice_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* set codec DAI configuration */
-	ret = codec_dai->dai_ops.set_fmt(codec_dai, SND_SOC_DAIFMT_DSP_A |
+	ret = codec_dai->ops->set_fmt(codec_dai, SND_SOC_DAIFMT_DSP_A |
 		SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
 	if (ret < 0)
 		return ret;
 
 	/* set cpu DAI configuration */
-	ret = cpu_dai->dai_ops.set_fmt(cpu_dai, SND_SOC_DAIFMT_DSP_A |
+	ret = cpu_dai->ops->set_fmt(cpu_dai, SND_SOC_DAIFMT_DSP_A |
 		SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
 	if (ret < 0)
 		return ret;
 
 	/* set the codec system clock for DAC and ADC */
-	ret = codec_dai->dai_ops.set_sysclk(codec_dai, WM8753_PCMCLK, pll_out,
+	ret = codec_dai->ops->set_sysclk(codec_dai, WM8753_PCMCLK, pll_out,
 		SND_SOC_CLOCK_IN);
 	if (ret < 0)
 		return ret;
 
 	/* set the SSP system clock as input (unused) */
-	ret = cpu_dai->dai_ops.set_sysclk(cpu_dai, PXA2XX_SSP_CLK_PLL, 0,
+	ret = cpu_dai->ops->set_sysclk(cpu_dai, PXA2XX_SSP_CLK_PLL, 0,
 		SND_SOC_CLOCK_IN);
 	if (ret < 0)
 		return ret;
 
 	/* set codec BCLK division for sample rate */
-	ret = codec_dai->dai_ops.set_clkdiv(codec_dai, WM8753_VXCLKDIV, bclk);
+	ret = codec_dai->ops->set_clkdiv(codec_dai, WM8753_VXCLKDIV, bclk);
 	if (ret < 0)
 		return ret;
 
 	/* set codec PCM division for sample rate */
-	ret = codec_dai->dai_ops.set_clkdiv(codec_dai, WM8753_PCMDIV, pcmdiv);
+	ret = codec_dai->ops->set_clkdiv(codec_dai, WM8753_PCMDIV, pcmdiv);
 	if (ret < 0)
 		return ret;
 
 	/* codec PLL input is 13 MHz */
-	ret = codec_dai->dai_ops.set_pll(codec_dai, WM8753_PLL2, 13000000, pll_out);
+	ret = codec_dai->ops->set_pll(codec_dai, WM8753_PLL2, 13000000, pll_out);
 	if (ret < 0)
 		return ret;
 
@@ -374,46 +280,35 @@ static int mainstone_voice_hw_params(struct snd_pcm_substream *substream,
 
 static int mainstone_voice_hw_free(struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec_dai *codec_dai = rtd->dai->codec_dai;
+	struct snd_soc_pcm_link *pcm_link = substream->private_data;
+	struct snd_soc_dai *codec_dai = pcm_link->codec_dai;
 
 	/* disable the PLL */
-	return codec_dai->dai_ops.set_pll(codec_dai, WM8753_PLL2, 0, 0);
+	return codec_dai->ops->set_pll(codec_dai, WM8753_PLL2, 0, 0);
 }
 
-static struct snd_soc_ops mainstone_voice_ops = {
+static const struct snd_soc_ops mainstone_voice_ops = {
 	.startup = mainstone_voice_startup,
 	.shutdown = mainstone_voice_shutdown,
 	.hw_params = mainstone_voice_hw_params,
 	.hw_free = mainstone_voice_hw_free,
 };
 
-static long mst_audio_suspend_mask;
-
-static int mainstone_suspend(struct platform_device *pdev, pm_message_t state)
+static int voice_pcm_new(struct snd_soc_pcm_link *pcm_link)
 {
-	mst_audio_suspend_mask = MST_MSCWR2;
-	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
-	return 0;
+	/* mainstone wm8753 voice interface */
+	pxa_gpio_mode(GPIO11_SSP2RX_MD);
+	pxa_gpio_mode(GPIO13_SSP2TX_MD);
+	pxa_gpio_mode(GPIO22_SSP2CLKS_MD);
+	pxa_gpio_mode(GPIO88_SSP2FRMS_MD);
+	
+	pcm_link->audio_ops = &mainstone_voice_ops;
+	return snd_soc_pcm_new(pcm_link, 1, 1);
 }
 
-static int mainstone_resume(struct platform_device *pdev)
-{
-	MST_MSCWR2 &= mst_audio_suspend_mask | ~MST_MSCWR2_AC97_SPKROFF;
-	return 0;
-}
-
-static int mainstone_probe(struct platform_device *pdev)
-{
-	MST_MSCWR2 &= ~MST_MSCWR2_AC97_SPKROFF;
-	return 0;
-}
-
-static int mainstone_remove(struct platform_device *pdev)
-{
-	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
-	return 0;
-}
+struct snd_soc_pcm_link_ops voice_pcm = {
+	.new	= voice_pcm_new,
+};
 
 /* example machine audio_mapnections */
 static const char* audio_map[][3] = {
@@ -439,107 +334,271 @@ static const struct snd_kcontrol_new wm8753_mainstone_controls[] = {
 };
 
 /*
- * This is an example machine initialisation for a wm8753 connected to a
- * Mainstone II. It is missing logic to detect hp/mic insertions and logic
- * to re-route the audio in such an event.
+ * WM8753 2 wire address is determined by GPIO5
+ * state during powerup.
+ *    low  = 0x1a
+ *    high = 0x1b
  */
-static int mainstone_wm8753_init(struct snd_soc_codec *codec)
-{
-	int i, err;
+#define WM8753_I2C_ADDR	0x1a
+static unsigned short normal_i2c[] = { WM8753_I2C_ADDR, I2C_CLIENT_END };
 
+/* Magic definition of all other variables and things */
+I2C_CLIENT_INSMOD;
+
+static struct i2c_driver wm8753_i2c_driver;
+static struct i2c_client client_template;
+
+static int mainstone_wm8753_write(void *control_data, long data, int size)
+{
+	return i2c_master_send((struct i2c_client*)control_data, 
+		(char*) data, size);
+}
+
+static int mainstone_mach_probe(struct snd_soc_machine *machine)
+{
+	struct snd_soc_codec *codec;
+	struct snd_soc_pcm_link *pcm_link;
+	int i, ret;
+	
+	pcm_link = list_first_entry(&machine->active_list, 
+		struct snd_soc_pcm_link, active_list);
+	codec = pcm_link->codec;
+		
 	/* set up mainstone codec pins */
-	snd_soc_dapm_set_endpoint(codec, "RXP", 0);
-	snd_soc_dapm_set_endpoint(codec, "RXN", 0);
-	snd_soc_dapm_set_endpoint(codec, "MIC2", 0);
+	snd_soc_dapm_set_endpoint(machine, "RXP", 0);
+	snd_soc_dapm_set_endpoint(machine, "RXN", 0);
+	snd_soc_dapm_set_endpoint(machine, "MIC2", 0);
 
 	/* add mainstone specific controls */
 	for (i = 0; i < ARRAY_SIZE(wm8753_mainstone_controls); i++) {
-		if ((err = snd_ctl_add(codec->card,
-				snd_soc_cnew(&wm8753_mainstone_controls[i],codec, NULL))) < 0)
-			return err;
+		if ((ret = snd_ctl_add(machine->card,
+				snd_soc_cnew(&wm8753_mainstone_controls[i],
+					machine, NULL))) < 0)
+			return ret;
 	}
 
 	/* set up mainstone specific audio path audio_mapnects */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(codec, audio_map[i][0], audio_map[i][1], audio_map[i][2]);
+		snd_soc_dapm_connect_input(machine, audio_map[i][0], 
+			audio_map[i][1], audio_map[i][2]);
 	}
-
-	snd_soc_dapm_sync_endpoints(codec);
+	
+	snd_soc_dapm_sync_endpoints(machine);
+	
+	codec->control_data = mainstone_mach->private_data;
+	codec->mach_write = mainstone_wm8753_write;
+	codec->ops->probe_codec(codec, mainstone_mach);
+	
+	/* register card with ALSA upper layers */
+	ret = snd_soc_register_card(mainstone_mach);
+	if (ret < 0) {
+		printk(KERN_ERR "%s: failed to register sound card\n",
+			__FUNCTION__);
+		return ret;
+	}
+	
+	/* enable speaker */
+	MST_MSCWR2 &= ~MST_MSCWR2_AC97_SPKROFF;
 	return 0;
 }
 
-static struct snd_soc_dai_link mainstone_dai[] = {
-{ /* Hifi Playback - for similatious use with voice below */
-	.name = "WM8753",
-	.stream_name = "WM8753 HiFi",
-	.cpu_dai = &pxa_i2s_dai,
-	.codec_dai = &wm8753_dai[WM8753_DAI_HIFI],
-	.init = mainstone_wm8753_init,
-	.ops = &mainstone_hifi_ops,
-},
-{ /* Voice via BT */
-	.name = "Bluetooth",
-	.stream_name = "Voice",
-	.cpu_dai = &pxa_ssp_dai[1],
-	.codec_dai = &wm8753_dai[WM8753_DAI_VOICE],
-	.ops = &mainstone_voice_ops,
-},
+struct snd_soc_machine_ops mainstone_mach_ops = {
+	.mach_probe = mainstone_mach_probe,	
 };
 
-static struct snd_soc_machine mainstone = {
-	.name = "Mainstone",
-	.probe = mainstone_probe,
-	.remove = mainstone_remove,
-	.suspend_pre = mainstone_suspend,
-	.resume_post = mainstone_resume,
-	.dai_link = mainstone_dai,
-	.num_links = ARRAY_SIZE(mainstone_dai),
-};
-
-static struct wm8753_setup_data mainstone_wm8753_setup = {
-	.i2c_address = 0x1a,
-};
-
-static struct snd_soc_device mainstone_snd_devdata = {
-	.machine = &mainstone,
-	.platform = &pxa2xx_soc_platform,
-	.codec_dev = &soc_codec_dev_wm8753,
-	.codec_data = &mainstone_wm8753_setup,
-};
-
-static struct platform_device *mainstone_snd_device;
-
-static int __init mainstone_init(void)
+static int wm8753_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 {
+	struct i2c_client *i2c;
+	struct snd_soc_pcm_link * hifi, *voice;
 	int ret;
 
-	mainstone_snd_device = platform_device_alloc("soc-audio", -1);
-	if (!mainstone_snd_device)
+	if (addr != WM8753_I2C_ADDR)
+		return -ENODEV;
+
+	client_template.adapter = adap;
+	client_template.addr = addr;
+
+	i2c = kmemdup(&client_template, sizeof(client_template), GFP_KERNEL);
+	if (i2c == NULL)
 		return -ENOMEM;
+	i2c_set_clientdata(i2c, mainstone_mach);
+	mainstone_mach->private_data = i2c;
+	
+	ret = i2c_attach_client(i2c);
+	if (ret < 0) {
+		printk("failed to attach codec at addr %x\n", addr);
+		goto attach_err;
+	}
+	
+	/* mainstone wm8753 hifi interface */
+	hifi = snd_soc_pcm_link_new(mainstone_mach, "mainstone-hifi", 
+		&hifi_pcm, pxa2xx_pcm, wm8753_codec, wm8753_hifi_dai, 
+		pxa2xx_i2s);
+	if (hifi == NULL) {
+		printk("failed to create HiFi PCM link\n");
+		goto attach_err;
+	}
+	ret =  snd_soc_pcm_link_attach(hifi);
+	if (ret < 0) 
+		goto link_err;
+		
+	voice = snd_soc_pcm_link_new(mainstone_mach, "mainstone-voice",
+		&voice_pcm, pxa2xx_pcm, wm8753_codec, wm8753_voice_dai, 
+		pxa2xx_ssp_2);
+	if (hifi == NULL) {
+		printk("failed to create HiFi PCM link\n");
+		goto link_err;
+	}
+	ret =  snd_soc_pcm_link_attach(voice);
+	if (ret < 0) 
+		goto link_err;
+	
+	return ret;
 
-	platform_set_drvdata(mainstone_snd_device, &mainstone_snd_devdata);
-	mainstone_snd_devdata.dev = &mainstone_snd_device->dev;
-	ret = platform_device_add(mainstone_snd_device);
-
-	if (ret)
-		platform_device_put(mainstone_snd_device);
-
-	/* SSP port 2 slave */
-	pxa_gpio_mode(GPIO11_SSP2RX_MD);
-	pxa_gpio_mode(GPIO13_SSP2TX_MD);
-	pxa_gpio_mode(GPIO22_SSP2CLKS_MD);
-	pxa_gpio_mode(GPIO88_SSP2FRMS_MD);
-
+link_err:
+	snd_soc_machine_free(mainstone_mach);
+attach_err:
+	i2c_detach_client(i2c);
+	kfree(i2c);
 	return ret;
 }
 
-static void __exit mainstone_exit(void)
+static int wm8753_i2c_detach(struct i2c_client *client)
 {
-	platform_device_unregister(mainstone_snd_device);
+	snd_soc_machine_free(mainstone_mach);
+	i2c_detach_client(client);
+	kfree(client);
+	return 0;
 }
 
-module_init(mainstone_init);
-module_exit(mainstone_exit);
+static int wm8753_i2c_attach(struct i2c_adapter *adap)
+{
+	return i2c_probe(adap, &addr_data, wm8753_i2c_probe);
+}
+
+static struct i2c_driver wm8753_i2c_driver = {
+	.driver = {
+		.name = "WM8753 I2C Codec",
+		.owner = THIS_MODULE,
+	},
+	.id =             I2C_DRIVERID_WM8753,
+	.attach_adapter = wm8753_i2c_attach,
+	.detach_client =  wm8753_i2c_detach,
+	.command =        NULL,
+};
+
+static struct i2c_client client_template = {
+	.name =   "WM8753",
+	.driver = &wm8753_i2c_driver,
+};
+
+/*
+ * This function will register the snd_soc_pcm_link drivers.
+ * It also registers devices for platform DMA, I2S, SSP and registers an 
+ * I2C driver to probe the codec.
+ */
+static int __init mainstone_wm8753_probe(struct platform_device *pdev)
+{
+	struct snd_soc_machine *machine;
+	int ret;
+
+	machine = kzalloc(sizeof(struct snd_soc_machine), GFP_KERNEL);
+	if (machine == NULL)
+		return -ENOMEM;
+
+	machine->owner = THIS_MODULE;
+	machine->pdev = pdev;
+	machine->name = "Mainstone";
+	machine->longname = "WM8753";
+	machine->ops = &mainstone_mach_ops;
+	pdev->dev.driver_data = machine;
+
+	/* register card */
+	mainstone_mach = machine;
+	ret = snd_soc_new_card(machine, 2, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
+	if (ret < 0) {
+		printk(KERN_ERR "%s: failed to create pcms\n", __func__);
+		kfree(machine);
+		return ret;
+	}
+	
+	/* register I2C driver for WM8753 codec control */
+	ret = i2c_add_driver(&wm8753_i2c_driver);
+	if (ret < 0) { 
+		printk (KERN_ERR "%s: failed to add i2c driver\n",
+			__FUNCTION__);
+		goto err;
+	}
+
+	return ret;
+	
+err:
+	kfree(machine);
+	return ret;
+}
+
+static int __exit mainstone_wm8753_remove(struct platform_device *pdev)
+{
+	struct snd_soc_machine *machine = pdev->dev.driver_data;
+	
+	i2c_del_driver(&wm8753_i2c_driver);
+	mainstone_mach = NULL;
+	kfree(machine);
+	
+	/* disable speaker */
+	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
+	return 0;
+}
+
+#ifdef CONFIG_PM
+static long mst_audio_suspend_mask;
+
+static int mainstone_wm8753_suspend(struct platform_device *pdev, 
+	pm_message_t state)
+{
+	struct snd_soc_machine *machine = pdev->dev.driver_data;
+	
+	mst_audio_suspend_mask = MST_MSCWR2;
+	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
+	return snd_soc_suspend(machine, state);
+}
+
+static int mainstone_wm8753_resume(struct platform_device *pdev)
+{
+	struct snd_soc_machine *machine = pdev->dev.driver_data;
+	
+	MST_MSCWR2 &= mst_audio_suspend_mask | ~MST_MSCWR2_AC97_SPKROFF;
+	return snd_soc_resume(machine);
+}
+
+#else
+#define mainstone_machine_suspend NULL
+#define mainstone_machine_resume  NULL
+#endif
+
+static struct platform_driver mainstone_wm8753_driver = {
+	.probe		= mainstone_wm8753_probe,
+	.remove		= __devexit_p(mainstone_wm8753_remove),
+	.suspend	= mainstone_wm8753_suspend,
+	.resume		= mainstone_wm8753_resume,
+	.driver		= {
+		.name 		= "Mainstone-WM8753",
+		.owner		= THIS_MODULE,
+	},
+};
+
+static int __init mainstone_asoc_init(void)
+{
+	return platform_driver_register(&mainstone_wm8753_driver);
+}
+
+static void __exit mainstone_asoc_exit(void)
+{
+	platform_driver_unregister(&mainstone_wm8753_driver);
+}
+
+module_init(mainstone_asoc_init);
+module_exit(mainstone_asoc_exit);
 
 /* Module information */
 MODULE_AUTHOR("Liam Girdwood, liam.girdwood@wolfsonmicro.com, www.wolfsonmicro.com");

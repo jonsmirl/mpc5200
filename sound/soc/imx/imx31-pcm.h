@@ -62,10 +62,7 @@ struct mxc_pcm_dma_params {
 	dma_channel_params params;
 };
 
-extern struct snd_soc_cpu_dai mxc_ssi_dai[3];
-
 /* platform data */
-extern struct snd_soc_platform imx31_soc_platform;
-extern struct snd_ac97_bus_ops imx31_ac97_ops;
+extern const char imx31_pcm[SND_SOC_PLATFORM_NAME_SIZE];
 
 #endif

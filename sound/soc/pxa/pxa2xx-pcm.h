@@ -29,6 +29,6 @@ struct pxa2xx_gpio {
 };
 
 /* platform data */
-extern struct snd_soc_platform pxa2xx_soc_platform;
+extern const char pxa2xx_pcm[SND_SOC_PLATFORM_NAME_SIZE];
 
 #endif

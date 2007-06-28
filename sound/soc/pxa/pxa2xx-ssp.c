@@ -50,13 +50,11 @@
  */
 struct ssp_priv {
 	unsigned int sysclk;
-};
-
-static struct ssp_priv ssp_clk[3];
-static struct ssp_dev ssp[3];
+	struct ssp_dev dev;
 #ifdef CONFIG_PM
-static struct ssp_state ssp_state[3];
+	struct ssp_state state;
 #endif
+};
 
 static struct pxa2xx_pcm_dma_params pxa2xx_ssp1_pcm_mono_out = {
 	.name			= "SSP1 PCM Mono out",
@@ -165,28 +163,29 @@ static struct pxa2xx_pcm_dma_params *ssp_dma_params[3][4] = {
 
 static int pxa2xx_ssp_startup(struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_cpu_dai *cpu_dai = rtd->dai->cpu_dai;
+	struct snd_soc_pcm_link *pcm_link = substream->private_data;
+	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
+	struct ssp_priv *ssp = cpu_dai->private_data;
 	int ret = 0;
 
-	if (!rtd->dai->cpu_dai->active) {
-		ret = ssp_init (&ssp[cpu_dai->id], cpu_dai->id + 1,
-			SSP_NO_IRQ);
+	if (!cpu_dai->active) {
+		ret = ssp_init (&ssp->dev, cpu_dai->id + 1, SSP_NO_IRQ);
 		if (ret < 0)
 			return ret;
-		ssp_disable(&ssp[cpu_dai->id]);
+		ssp_disable(&ssp->dev);
 	}
 	return ret;
 }
 
 static void pxa2xx_ssp_shutdown(struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_cpu_dai *cpu_dai = rtd->dai->cpu_dai;
+	struct snd_soc_pcm_link *pcm_link = substream->private_data;
+	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
+	struct ssp_priv *ssp = cpu_dai->private_data;
 
 	if (!cpu_dai->active) {
-		ssp_disable(&ssp[cpu_dai->id]);
-		ssp_exit(&ssp[cpu_dai->id]);
+		ssp_disable(&ssp->dev);
+		ssp_exit(&ssp->dev);
 	}
 }
 
@@ -198,26 +197,30 @@ static int cken[3] = {CKEN_SSP, CKEN_NSSP, CKEN_ASSP};
 
 #ifdef CONFIG_PM
 
-static int pxa2xx_ssp_suspend(struct platform_device *pdev,
-	struct snd_soc_cpu_dai *dai)
+static int pxa2xx_ssp_suspend(struct device *dev, pm_message_t state)
 {
+	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
+	struct ssp_priv *ssp = dai->private_data;
+	
 	if (!dai->active)
 		return 0;
 
-	ssp_save_state(&ssp[dai->id], &ssp_state[dai->id]);
+	ssp_save_state(&ssp->dev, &ssp->state);
 	pxa_set_cken(cken[dai->id], 0);
 	return 0;
 }
 
-static int pxa2xx_ssp_resume(struct platform_device *pdev,
-	struct snd_soc_cpu_dai *dai)
+static int pxa2xx_ssp_resume(struct device *dev)
 {
+	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
+	struct ssp_priv *ssp = dai->private_data;
+	
 	if (!dai->active)
 		return 0;
 
 	pxa_set_cken(cken[dai->id], 1);
-	ssp_restore_state(&ssp[dai->id], &ssp_state[dai->id]);
-	ssp_enable(&ssp[dai->id]);
+	ssp_restore_state(&ssp->dev, &ssp->state);
+	ssp_enable(&ssp->dev);
 
 	return 0;
 }
@@ -230,10 +233,12 @@ static int pxa2xx_ssp_resume(struct platform_device *pdev,
 /*
  * Set the SSP ports SYSCLK.
  */
-static int pxa2xx_ssp_set_dai_sysclk(struct snd_soc_cpu_dai *cpu_dai,
+static int pxa2xx_ssp_set_dai_sysclk(struct snd_soc_dai *cpu_dai,
 	int clk_id, unsigned int freq, int dir)
 {
+	struct ssp_priv *ssp = cpu_dai->private_data;
 	int port = cpu_dai->id + 1;
+	
 	u32 sscr0 = SSCR0_P(port) &
 		~(SSCR0_ECS |  SSCR0_NCS | SSCR0_MOD | SSCR0_ADC);
 
@@ -246,21 +251,21 @@ static int pxa2xx_ssp_set_dai_sysclk(struct snd_soc_cpu_dai *cpu_dai,
 	case PXA2XX_SSP_CLK_PLL:
 		/* Internal PLL is fixed on pxa25x and pxa27x */
 #ifdef CONFIG_PXA27x
-		ssp_clk[cpu_dai->id].sysclk = 13000000;
+		ssp->sysclk = 13000000;
 #else
-		ssp_clk[cpu_dai->id].sysclk = 1843200;
+		ssp->sysclk = 1843200;
 #endif
 		break;
 	case PXA2XX_SSP_CLK_EXT:
-		ssp_clk[cpu_dai->id].sysclk = freq;
+		ssp->sysclk = freq;
 		sscr0 |= SSCR0_ECS;
 		break;
 	case PXA2XX_SSP_CLK_NET:
-		ssp_clk[cpu_dai->id].sysclk = freq;
+		ssp->sysclk = freq;
 		sscr0 |= SSCR0_NCS | SSCR0_MOD;
 		break;
 	case PXA2XX_SSP_CLK_AUDIO:
-		ssp_clk[cpu_dai->id].sysclk = 0;
+		ssp->sysclk = 0;
 		SSCR0_P(port) |= SSCR0_SerClkDiv(1);
 		sscr0 |= SSCR0_ADC;
 		break;
@@ -278,7 +283,7 @@ static int pxa2xx_ssp_set_dai_sysclk(struct snd_soc_cpu_dai *cpu_dai,
 /*
  * Set the SSP clock dividers.
  */
-static int pxa2xx_ssp_set_dai_clkdiv(struct snd_soc_cpu_dai *cpu_dai,
+static int pxa2xx_ssp_set_dai_clkdiv(struct snd_soc_dai *cpu_dai,
 	int div_id, int div)
 {
 	int port = cpu_dai->id + 1;
@@ -307,7 +312,7 @@ static int pxa2xx_ssp_set_dai_clkdiv(struct snd_soc_cpu_dai *cpu_dai,
 /*
  * Configure the PLL frequency pxa27x and (afaik - pxa320 only)
  */
-static int pxa2xx_ssp_set_dai_pll(struct snd_soc_cpu_dai *cpu_dai,
+static int pxa2xx_ssp_set_dai_pll(struct snd_soc_dai *cpu_dai,
 	int pll_id, unsigned int freq_in, unsigned int freq_out)
 {
 	int port = cpu_dai->id + 1;
@@ -338,7 +343,7 @@ static int pxa2xx_ssp_set_dai_pll(struct snd_soc_cpu_dai *cpu_dai,
 /*
  * Set the active slots in TDM/Network mode
  */
-static int pxa2xx_ssp_set_dai_tdm_slot(struct snd_soc_cpu_dai *cpu_dai,
+static int pxa2xx_ssp_set_dai_tdm_slot(struct snd_soc_dai *cpu_dai,
 	unsigned int mask, int slots)
 {
 	int port = cpu_dai->id + 1;
@@ -357,7 +362,7 @@ static int pxa2xx_ssp_set_dai_tdm_slot(struct snd_soc_cpu_dai *cpu_dai,
 /*
  * Tristate the SSP DAI lines
  */
-static int pxa2xx_ssp_set_dai_tristate(struct snd_soc_cpu_dai *cpu_dai,
+static int pxa2xx_ssp_set_dai_tristate(struct snd_soc_dai *cpu_dai,
 	int tristate)
 {
 	int port = cpu_dai->id + 1;
@@ -375,7 +380,7 @@ static int pxa2xx_ssp_set_dai_tristate(struct snd_soc_cpu_dai *cpu_dai,
  * The SSP Port must be inactive before calling this function as the
  * physical interface format is changed.
  */
-static int pxa2xx_ssp_set_dai_fmt(struct snd_soc_cpu_dai *cpu_dai,
+static int pxa2xx_ssp_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 		unsigned int fmt)
 {
 	int port = cpu_dai->id + 1;
@@ -469,8 +474,8 @@ master:
 static int pxa2xx_ssp_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_cpu_dai *cpu_dai = rtd->dai->cpu_dai;
+	struct snd_soc_pcm_link *pcm_link = substream->private_data;
+	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
 	int dma = 0, chn = params_channels(params);
 	int port = cpu_dai->id + 1;
 
@@ -515,14 +520,15 @@ static int pxa2xx_ssp_hw_params(struct snd_pcm_substream *substream,
 
 static int pxa2xx_ssp_trigger(struct snd_pcm_substream *substream, int cmd)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_cpu_dai *cpu_dai = rtd->dai->cpu_dai;
+	struct snd_soc_pcm_link *pcm_link = substream->private_data;
+	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
+	struct ssp_priv *ssp = cpu_dai->private_data;
 	int ret = 0;
 	int port = cpu_dai->id + 1;
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_RESUME:
-		ssp_enable(&ssp[cpu_dai->id]);
+		ssp_enable(&ssp->dev);
 		break;
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
@@ -536,7 +542,7 @@ static int pxa2xx_ssp_trigger(struct snd_pcm_substream *substream, int cmd)
 			SSCR1_P(port) |= SSCR1_TSRE;
 		else
 			SSCR1_P(port) |= SSCR1_RSRE;
-		ssp_enable(&ssp[cpu_dai->id]);
+		ssp_enable(&ssp->dev);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
@@ -545,7 +551,7 @@ static int pxa2xx_ssp_trigger(struct snd_pcm_substream *substream, int cmd)
 			SSCR1_P(port) &= ~SSCR1_RSRE;
 		break;
 	case SNDRV_PCM_TRIGGER_SUSPEND:
-		ssp_disable(&ssp[cpu_dai->id]);
+		ssp_disable(&ssp->dev);
 		break;
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
@@ -573,96 +579,119 @@ static int pxa2xx_ssp_trigger(struct snd_pcm_substream *substream, int cmd)
 #define PXA2XX_SSP_FORMATS (SNDRV_PCM_FMTBIT_S16_LE |\
 	SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
-struct snd_soc_cpu_dai pxa_ssp_dai[] = {
-	{	.name = "pxa2xx-ssp1",
-		.id = 0,
-		.type = SND_SOC_DAI_PCM,
-		.suspend = pxa2xx_ssp_suspend,
-		.resume = pxa2xx_ssp_resume,
-		.playback = {
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = PXA2XX_SSP_RATES,
-			.formats = PXA2XX_SSP_FORMATS,},
-		.capture = {
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = PXA2XX_SSP_RATES,
-			.formats = PXA2XX_SSP_FORMATS,},
-		.ops = {
-			.startup = pxa2xx_ssp_startup,
-			.shutdown = pxa2xx_ssp_shutdown,
-			.trigger = pxa2xx_ssp_trigger,
-			.hw_params = pxa2xx_ssp_hw_params,},
-		.dai_ops = {
-			.set_sysclk = pxa2xx_ssp_set_dai_sysclk,
-			.set_clkdiv = pxa2xx_ssp_set_dai_clkdiv,
-			.set_pll = pxa2xx_ssp_set_dai_pll,
-			.set_fmt = pxa2xx_ssp_set_dai_fmt,
-			.set_tdm_slot = pxa2xx_ssp_set_dai_tdm_slot,
-			.set_tristate = pxa2xx_ssp_set_dai_tristate,
-		},
-	},
-	{	.name = "pxa2xx-ssp2",
-		.id = 1,
-		.type = SND_SOC_DAI_PCM,
-		.suspend = pxa2xx_ssp_suspend,
-		.resume = pxa2xx_ssp_resume,
-		.playback = {
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = PXA2XX_SSP_RATES,
-			.formats = PXA2XX_SSP_FORMATS,},
-		.capture = {
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = PXA2XX_SSP_RATES,
-			.formats = PXA2XX_SSP_FORMATS,},
-		.ops = {
-			.startup = pxa2xx_ssp_startup,
-			.shutdown = pxa2xx_ssp_shutdown,
-			.trigger = pxa2xx_ssp_trigger,
-			.hw_params = pxa2xx_ssp_hw_params,},
-		.dai_ops = {
-			.set_sysclk = pxa2xx_ssp_set_dai_sysclk,
-			.set_clkdiv = pxa2xx_ssp_set_dai_clkdiv,
-			.set_pll = pxa2xx_ssp_set_dai_pll,
-			.set_fmt = pxa2xx_ssp_set_dai_fmt,
-			.set_tdm_slot = pxa2xx_ssp_set_dai_tdm_slot,
-			.set_tristate = pxa2xx_ssp_set_dai_tristate,
-		},
-	},
-	{	.name = "pxa2xx-ssp3",
-		.id = 2,
-		.type = SND_SOC_DAI_PCM,
-		.suspend = pxa2xx_ssp_suspend,
-		.resume = pxa2xx_ssp_resume,
-		.playback = {
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = PXA2XX_SSP_RATES,
-			.formats = PXA2XX_SSP_FORMATS,},
-		.capture = {
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = PXA2XX_SSP_RATES,
-			.formats = PXA2XX_SSP_FORMATS,},
-		.ops = {
-			.startup = pxa2xx_ssp_startup,
-			.shutdown = pxa2xx_ssp_shutdown,
-			.trigger = pxa2xx_ssp_trigger,
-			.hw_params = pxa2xx_ssp_hw_params,},
-		.dai_ops = {
-			.set_sysclk = pxa2xx_ssp_set_dai_sysclk,
-			.set_clkdiv = pxa2xx_ssp_set_dai_clkdiv,
-			.set_pll = pxa2xx_ssp_set_dai_pll,
-			.set_fmt = pxa2xx_ssp_set_dai_fmt,
-			.set_tdm_slot = pxa2xx_ssp_set_dai_tdm_slot,
-			.set_tristate = pxa2xx_ssp_set_dai_tristate,
-		},
+static const struct snd_soc_pcm_stream pxa2xx_ssp_playback = {
+	.stream_name	= "Playback",
+	.channels_min	= 1,
+	.channels_max	= 2,
+	.rates		= PXA2XX_SSP_RATES,
+	.formats	= PXA2XX_SSP_FORMATS,
+};
+
+static const struct snd_soc_pcm_stream pxa2xx_ssp_capture = {
+	.stream_name	= "Capture",
+	.channels_min	= 1,
+	.channels_max	= 2,
+	.rates		= PXA2XX_SSP_RATES,
+	.formats	= PXA2XX_SSP_FORMATS,
+};
+
+/* dai ops, called by machine drivers */
+static const struct snd_soc_dai_ops pxa2xx_ssp_dai_ops = {
+	.set_sysclk	= pxa2xx_ssp_set_dai_sysclk,
+	.set_clkdiv	= pxa2xx_ssp_set_dai_clkdiv,
+	.set_pll	= pxa2xx_ssp_set_dai_pll,
+	.set_fmt	= pxa2xx_ssp_set_dai_fmt,
+	.set_tdm_slot	= pxa2xx_ssp_set_dai_tdm_slot,
+	.set_tristate	= pxa2xx_ssp_set_dai_tristate,
+};
+
+/* audio ops, called by alsa */
+static const struct snd_soc_ops pxa2xx_ssp_audio_ops = {
+	.startup = pxa2xx_ssp_startup,
+	.shutdown = pxa2xx_ssp_shutdown,
+	.trigger = pxa2xx_ssp_trigger,
+	.hw_params = pxa2xx_ssp_hw_params,
+};
+
+const char pxa2xx_ssp_1[SND_SOC_DAI_NAME_SIZE] = {
+	"pxa2xx-ssp-1"
+};
+EXPORT_SYMBOL_GPL(pxa2xx_ssp_1);
+
+const char pxa2xx_ssp_2[SND_SOC_DAI_NAME_SIZE] = {
+	"pxa2xx-ssp-2"
+};
+EXPORT_SYMBOL_GPL(pxa2xx_ssp_2);
+
+const char pxa2xx_ssp_3[SND_SOC_DAI_NAME_SIZE] = {
+	"pxa2xx-ssp-3"
+};
+EXPORT_SYMBOL_GPL(pxa2xx_ssp_3);
+
+static int pxa2xx_ssp_probe(struct device *dev)
+{
+	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
+	struct ssp_priv *ssp;
+	
+	ssp = kzalloc(sizeof(struct ssp_priv), GFP_KERNEL);
+	if (ssp == NULL)
+		return -ENOMEM;
+	
+	if (!strcmp(pxa2xx_ssp_1, dai->name))
+		dai->id = 0;
+	else if (!strcmp(pxa2xx_ssp_2, dai->name))
+		dai->id = 1;
+	else if (!strcmp(pxa2xx_ssp_3, dai->name))
+		dai->id = 2;
+	else {
+		printk(KERN_ERR "%s: invalid device %s\n", __func__, 
+			dai->name);
+		kfree(ssp);
+		return -ENODEV;
+	}
+	
+	dai->type = SND_SOC_DAI_PCM;
+	dai->ops = &pxa2xx_ssp_dai_ops;
+	dai->audio_ops = &pxa2xx_ssp_audio_ops;
+	dai->capture = &pxa2xx_ssp_capture;
+	dai->playback = &pxa2xx_ssp_playback;
+	dai->private_data = ssp;
+	snd_soc_register_cpu_dai(dai);
+	return 0;
+}
+
+static int pxa2xx_ssp_remove(struct device *dev)
+{
+	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
+	kfree(dai->private_data);
+	return 0;
+}
+
+static struct snd_soc_device_driver pxa2xx_ssp_driver = {
+	.type	= SND_SOC_BUS_TYPE_DAI,
+	.driver	= {
+		.name 		= "pxa2xx-ssp",
+		.owner		= THIS_MODULE,
+		.bus 		= &asoc_bus_type,
+		.probe		= pxa2xx_ssp_probe,
+		.remove		= __devexit_p(pxa2xx_ssp_remove),
+		.suspend	= pxa2xx_ssp_suspend,
+		.resume		= pxa2xx_ssp_resume,
 	},
 };
-EXPORT_SYMBOL_GPL(pxa_ssp_dai);
+
+static int __init pxa2xx_ssp_init(void)
+{
+	return driver_register(&pxa2xx_ssp_driver.driver);
+}
+
+static void __exit pxa2xx_ssp_exit(void)
+{
+	driver_unregister(&pxa2xx_ssp_driver.driver);
+}
+
+module_init(pxa2xx_ssp_init);
+module_exit(pxa2xx_ssp_exit);
 
 /* Module information */
 MODULE_AUTHOR("Liam Girdwood, liam.girdwood@wolfsonmicro.com, www.wolfsonmicro.com");

@@ -9,6 +9,8 @@
 #ifndef _PXA2XX_SSP_H
 #define _PXA2XX_SSP_H
 
+#include <sound/soc.h>
+
 /* pxa2xx DAI SSP ID's */
 #define PXA2XX_DAI_SSP1			0
 #define PXA2XX_DAI_SSP2			1
@@ -38,6 +40,8 @@
 #define PXA2XX_SSP_CLK_SCDB_4		0
 #define PXA2XX_SSP_CLK_SCDB_1		1
 
-extern struct snd_soc_cpu_dai pxa_ssp_dai[3];
+extern const char pxa2xx_ssp_1[SND_SOC_DAI_NAME_SIZE];
+extern const char pxa2xx_ssp_2[SND_SOC_DAI_NAME_SIZE];
+extern const char pxa2xx_ssp_3[SND_SOC_DAI_NAME_SIZE];
 
 #endif
