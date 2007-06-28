@@ -229,7 +229,7 @@ static int mainstone_mach_probe(struct snd_soc_machine *machine)
 	/* set up mainstone codec pins */
 	snd_soc_dapm_set_endpoint(machine, "RXP", 0);
 	snd_soc_dapm_set_endpoint(machine, "RXN", 0);
-
+#if 0
 	/* Add test specific controls */
 	for (i = 0; i < ARRAY_SIZE(mainstone_controls); i++) {
 		if ((ret = snd_ctl_add(machine->card,
@@ -237,7 +237,7 @@ static int mainstone_mach_probe(struct snd_soc_machine *machine)
 					codec, NULL))) < 0)
 			return ret;
 	}
-
+#endif
 	/* Add mainstone specific widgets */
 	for(i = 0; i < ARRAY_SIZE(mainstone_dapm_widgets); i++) {
 		snd_soc_dapm_new_control(machine, codec, 
