@@ -201,7 +201,7 @@ static int mainstone_mach_probe(struct snd_soc_machine *machine)
 	struct snd_soc_pcm_link *pcm_link;
 	struct snd_ac97_bus_ops *ac97_ops;
 	int i, ret;
-	printk("%s %d\n", __func__, __LINE__);	
+
 	pcm_link = list_first_entry(&machine->active_list, 
 		struct snd_soc_pcm_link, active_list);
 	codec = pcm_link->codec;
@@ -341,10 +341,9 @@ static int __exit mainstone_wm9713_remove(struct platform_device *pdev)
 {
 	struct snd_soc_machine *machine = pdev->dev.driver_data;
 
-printk("%s %d\n", __func__, __LINE__);	
 	snd_soc_machine_free(machine);
 	kfree(machine);
-printk("%s %d\n", __func__, __LINE__);	
+
 	/* disable speaker */
 	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
 	return 0;
