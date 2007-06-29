@@ -33,7 +33,7 @@
 
 #include "wm9713.h"
 
-#define WM9713_VERSION "0.12"
+#define WM9713_VERSION "0.20"
 
 struct wm9713_priv {
 	u32 pll_in; /* PLL input frequency */
@@ -976,8 +976,7 @@ static int wm9713_dapm_event(struct snd_soc_codec *codec, int event)
 	return 0;
 }
 
-static int wm9713_codec_suspend(struct device *dev,
-	pm_message_t state)
+static int wm9713_codec_suspend(struct device *dev, pm_message_t state)
 {
 	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 
