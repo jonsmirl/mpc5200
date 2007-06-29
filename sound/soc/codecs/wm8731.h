@@ -34,10 +34,6 @@
 #define WM8731_SYSCLK	0
 #define WM8731_DAI		0
 
-struct wm8731_setup_data {
-	unsigned short i2c_address;
-};
-
 extern const char wm8731_hifi_dai[SND_SOC_DAI_NAME_SIZE];
 extern const char wm8731_codec[SND_SOC_CODEC_NAME_SIZE];
 

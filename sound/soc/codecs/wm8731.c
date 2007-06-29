@@ -29,7 +29,7 @@
 #include "wm8731.h"
 
 #define AUDIO_NAME "wm8731"
-#define WM8731_VERSION "0.13"
+#define WM8731_VERSION "0.20"
 
 /*
  * Debug
@@ -662,7 +662,6 @@ static __exit void wm8731_exit(void)
 	driver_unregister(&wm8731_hifi_dai_driver.driver);
 	driver_unregister(&wm8731_codec_driver.driver);
 }
-
 
 module_init(wm8731_init);
 module_exit(wm8731_exit);
