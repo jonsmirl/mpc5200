@@ -57,8 +57,7 @@
 
 #define WM8750_SYSCLK	0
 
-struct wm8750_setup_data {
-	unsigned short i2c_address;
-};
+extern const char wm8750_hifi_dai[SND_SOC_DAI_NAME_SIZE];
+extern const char wm8750_codec[SND_SOC_CODEC_NAME_SIZE];
 
 #endif
