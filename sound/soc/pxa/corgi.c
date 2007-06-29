@@ -451,6 +451,9 @@ static int __init corgi_wm8731_probe(struct platform_device *pdev)
 	struct snd_soc_machine *machine;
 	int ret;
 
+	if (!(machine_is_corgi() || machine_is_shepherd() || machine_is_husky()))
+		return -ENODEV;
+
 	machine = kzalloc(sizeof(struct snd_soc_machine), GFP_KERNEL);
 	if (machine == NULL)
 		return -ENOMEM;

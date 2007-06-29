@@ -466,6 +466,9 @@ static int __init spitz_wm8750_probe(struct platform_device *pdev)
 	struct snd_soc_machine *machine;
 	int ret;
 
+	if (!(machine_is_spitz() || machine_is_borzoi() || machine_is_akita()))
+		return -ENODEV;
+
 	machine = kzalloc(sizeof(struct snd_soc_machine), GFP_KERNEL);
 	if (machine == NULL)
 		return -ENOMEM;
