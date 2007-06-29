@@ -38,7 +38,7 @@ struct wm8731_setup_data {
 	unsigned short i2c_address;
 };
 
-extern struct snd_soc_codec_dai wm8731_dai;
-extern struct snd_soc_codec_device soc_codec_dev_wm8731;
+extern const char wm8731_hifi_dai[SND_SOC_DAI_NAME_SIZE];
+extern const char wm8731_codec[SND_SOC_CODEC_NAME_SIZE];
 
 #endif
