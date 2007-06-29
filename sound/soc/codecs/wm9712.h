@@ -8,7 +8,8 @@
 #define WM9712_DAI_AC97_HIFI	0
 #define WM9712_DAI_AC97_AUX		1
 
-extern struct snd_soc_codec_dai wm9712_dai[2];
-extern struct snd_soc_codec_device soc_codec_dev_wm9712;
+extern const char wm9712_hifi_dai[SND_SOC_DAI_NAME_SIZE];
+extern const char wm9712_aux_dai[SND_SOC_DAI_NAME_SIZE];
+extern const char wm9712_codec[SND_SOC_CODEC_NAME_SIZE];
 
 #endif
