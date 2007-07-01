@@ -387,7 +387,7 @@ static int mainstone_mach_probe(struct snd_soc_machine *machine)
 	
 	codec->control_data = mainstone_mach->private_data;
 	codec->mach_write = mainstone_wm8753_write;
-	codec->ops->probe_codec(codec, mainstone_mach);
+	codec->ops->io_probe(codec, mainstone_mach);
 	
 	/* register card with ALSA upper layers */
 	ret = snd_soc_register_card(mainstone_mach);

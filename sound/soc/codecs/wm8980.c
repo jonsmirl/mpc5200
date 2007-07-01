@@ -31,7 +31,7 @@
 #include "wm8980.h"
 
 #define AUDIO_NAME "wm8980"
-#define WM8980_VERSION "0.3"
+#define WM8980_VERSION "0.20"
 
 /*
  * Debug
@@ -52,7 +52,6 @@
 #define warn(format, arg...) \
 	printk(KERN_WARNING AUDIO_NAME ": " format "\n" , ## arg)
 
-struct snd_soc_codec_device soc_codec_dev_wm8980;
 
 /*
  * wm8980 register cache
@@ -119,10 +118,10 @@ static int wm8980_write(struct snd_soc_codec  *codec, unsigned int reg,
 	data[1] = value & 0x00ff;
 
 	wm8980_write_reg_cache (codec, reg, value);
-	if (codec->hw_write(codec->control_data, data, 2) == 2)
+	if (codec->mach_write(codec->control_data, (long)data, 2) == 2)
 		return 0;
 	else
-		return -1;
+		return -EIO;
 }
 
 #define wm8980_reset(c)	wm8980_write(c, WM8980_RESET, 0)
@@ -251,13 +250,15 @@ SOC_DOUBLE_R("Capture Boost(+20dB)", WM8980_ADCBOOSTL, WM8980_ADCBOOSTR,
 };
 
 /* add non dapm controls */
-static int wm8980_add_controls(struct snd_soc_codec *codec)
+static int wm8980_add_controls(struct snd_soc_codec *codec, 
+	struct snd_card *card)
 {
 	int err, i;
 
 	for (i = 0; i < ARRAY_SIZE(wm8980_snd_controls); i++) {
-		err = snd_ctl_add(codec->card,
-				snd_soc_cnew(&wm8980_snd_controls[i],codec, NULL));
+		err = snd_ctl_add(card,
+				snd_soc_cnew(&wm8980_snd_controls[i],
+					codec, NULL));
 		if (err < 0)
 			return err;
 	}
@@ -266,7 +267,7 @@ static int wm8980_add_controls(struct snd_soc_codec *codec)
 }
 
 /* Left Output Mixer */
-static const snd_kcontrol_new_t wm8980_left_mixer_controls[] = {
+static const struct snd_kcontrol_new wm8980_left_mixer_controls[] = {
 SOC_DAPM_SINGLE("Right PCM Playback Switch", WM8980_OUTPUT, 6, 1, 1),
 SOC_DAPM_SINGLE("Left PCM Playback Switch", WM8980_MIXL, 0, 1, 1),
 SOC_DAPM_SINGLE("Line Bypass Switch", WM8980_MIXL, 1, 1, 0),
@@ -274,7 +275,7 @@ SOC_DAPM_SINGLE("Aux Playback Switch", WM8980_MIXL, 5, 1, 0),
 };
 
 /* Right Output Mixer */
-static const snd_kcontrol_new_t wm8980_right_mixer_controls[] = {
+static const struct snd_kcontrol_new wm8980_right_mixer_controls[] = {
 SOC_DAPM_SINGLE("Left PCM Playback Switch", WM8980_OUTPUT, 5, 1, 1),
 SOC_DAPM_SINGLE("Right PCM Playback Switch", WM8980_MIXR, 0, 1, 1),
 SOC_DAPM_SINGLE("Line Bypass Switch", WM8980_MIXR, 1, 1, 0),
@@ -282,43 +283,43 @@ SOC_DAPM_SINGLE("Aux Playback Switch", WM8980_MIXR, 5, 1, 0),
 };
 
 /* Left AUX Input boost vol */
-static const snd_kcontrol_new_t wm8980_laux_boost_controls =
+static const struct snd_kcontrol_new wm8980_laux_boost_controls =
 SOC_DAPM_SINGLE("Left Aux Volume", WM8980_ADCBOOSTL, 0, 3, 0);
 
 /* Right AUX Input boost vol */
-static const snd_kcontrol_new_t wm8980_raux_boost_controls =
+static const struct snd_kcontrol_new wm8980_raux_boost_controls =
 SOC_DAPM_SINGLE("Right Aux Volume", WM8980_ADCBOOSTR, 0, 3, 0);
 
 /* Left Input boost vol */
-static const snd_kcontrol_new_t wm8980_lmic_boost_controls =
+static const struct snd_kcontrol_new wm8980_lmic_boost_controls =
 SOC_DAPM_SINGLE("Left Input Volume", WM8980_ADCBOOSTL, 4, 3, 0);
 
 /* Right Input boost vol */
-static const snd_kcontrol_new_t wm8980_rmic_boost_controls =
+static const struct snd_kcontrol_new wm8980_rmic_boost_controls =
 SOC_DAPM_SINGLE("Right Input Volume", WM8980_ADCBOOSTR, 4, 3, 0);
 
 /* Left Aux In to PGA */
-static const snd_kcontrol_new_t wm8980_laux_capture_boost_controls =
+static const struct snd_kcontrol_new wm8980_laux_capture_boost_controls =
 SOC_DAPM_SINGLE("Left Capture Switch", WM8980_ADCBOOSTL,  8, 1, 0);
 
 /* Right  Aux In to PGA */
-static const snd_kcontrol_new_t wm8980_raux_capture_boost_controls =
+static const struct snd_kcontrol_new wm8980_raux_capture_boost_controls =
 SOC_DAPM_SINGLE("Right Capture Switch", WM8980_ADCBOOSTR,  8, 1, 0);
 
 /* Left Input P In to PGA */
-static const snd_kcontrol_new_t wm8980_lmicp_capture_boost_controls =
+static const struct snd_kcontrol_new wm8980_lmicp_capture_boost_controls =
 SOC_DAPM_SINGLE("Left Input P Capture Boost Switch", WM8980_INPUT,  0, 1, 0);
 
 /* Right Input P In to PGA */
-static const snd_kcontrol_new_t wm8980_rmicp_capture_boost_controls =
+static const struct snd_kcontrol_new wm8980_rmicp_capture_boost_controls =
 SOC_DAPM_SINGLE("Right Input P Capture Boost Switch", WM8980_INPUT,  4, 1, 0);
 
 /* Left Input N In to PGA */
-static const snd_kcontrol_new_t wm8980_lmicn_capture_boost_controls =
+static const struct snd_kcontrol_new wm8980_lmicn_capture_boost_controls =
 SOC_DAPM_SINGLE("Left Input N Capture Boost Switch", WM8980_INPUT,  1, 1, 0);
 
 /* Right Input N In to PGA */
-static const snd_kcontrol_new_t wm8980_rmicn_capture_boost_controls =
+static const struct snd_kcontrol_new wm8980_rmicn_capture_boost_controls =
 SOC_DAPM_SINGLE("Right Input N Capture Boost Switch", WM8980_INPUT,  5, 1, 0);
 
 // TODO Widgets
@@ -393,27 +394,29 @@ static const char *audio_map[][3] = {
 	{"Mic PGA", NULL, "Capture Boost"},
 	{"AUX", NULL, "Aux Input"},
 
-    /*  */
+	/*  */
 
 	/* terminator */
 	{NULL, NULL, NULL},
 };
 
-static int wm8980_add_widgets(struct snd_soc_codec *codec)
+static int wm8980_add_widgets(struct snd_soc_codec *codec, 
+	struct snd_soc_machine *machine)
 {
 	int i;
 
 	for(i = 0; i < ARRAY_SIZE(wm8980_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(codec, &wm8980_dapm_widgets[i]);
+		snd_soc_dapm_new_control(machine, codec, 
+			&wm8980_dapm_widgets[i]);
 	}
 
 	/* set up audio path map */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(codec, audio_map[i][0], audio_map[i][1],
-            audio_map[i][2]);
+		snd_soc_dapm_connect_input(machine, 
+			audio_map[i][0], audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_new_widgets(codec);
+	snd_soc_dapm_new_widgets(machine);
 	return 0;
 }
 
@@ -434,7 +437,7 @@ struct pll_ pll[] = {
 	/* TODO: liam - add more entries */
 };
 
-static int wm8980_set_dai_pll(struct snd_soc_codec_dai *codec_dai,
+static int wm8980_set_pll(struct snd_soc_dai *codec_dai,
 		int pll_id, unsigned int freq_in, unsigned int freq_out)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
@@ -461,7 +464,7 @@ static int wm8980_set_dai_pll(struct snd_soc_codec_dai *codec_dai,
 	return -EINVAL;
 }
 
-static int wm8980_set_dai_fmt(struct snd_soc_codec_dai *codec_dai,
+static int wm8980_set_fmt(struct snd_soc_dai *codec_dai,
 		unsigned int fmt)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
@@ -520,9 +523,8 @@ static int wm8980_set_dai_fmt(struct snd_soc_codec_dai *codec_dai,
 static int wm8980_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_device *socdev = rtd->socdev;
-	struct snd_soc_codec *codec = socdev->codec;
+	struct snd_soc_pcm_link *pcm_link = substream->private_data;
+	struct snd_soc_codec *codec = pcm_link->codec;
 	u16 iface = wm8980_read_reg_cache(codec, WM8980_IFACE) & 0xff9f;
 	u16 adn = wm8980_read_reg_cache(codec, WM8980_ADD) & 0x1f1;
 
@@ -563,7 +565,7 @@ static int wm8980_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int wm8980_set_dai_clkdiv(struct snd_soc_codec_dai *codec_dai,
+static int wm8980_set_clkdiv(struct snd_soc_dai *codec_dai,
 		int div_id, int div)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
@@ -601,7 +603,7 @@ static int wm8980_set_dai_clkdiv(struct snd_soc_codec_dai *codec_dai,
 	return 0;
 }
 
-static int wm8980_mute(struct snd_soc_codec_dai *dai, int mute)
+static int wm8980_digital_mute(struct snd_soc_dai *dai, int mute)
 {
 	struct snd_soc_codec *codec = dai->codec;
 	u16 mute_reg = wm8980_read_reg_cache(codec, WM8980_DAC) & 0xffbf;
@@ -643,6 +645,81 @@ static int wm8980_dapm_event(struct snd_soc_codec *codec, int event)
 	return 0;
 }
 
+static int wm8980_suspend(struct device *dev, pm_message_t state)
+{
+	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
+
+	wm8980_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
+	return 0;
+}
+
+static int wm8980_resume(struct device *dev)
+{
+	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
+	int i;
+	u8 data[2];
+	u16 *cache = codec->reg_cache;
+
+	/* Sync reg_cache with the hardware */
+	for (i = 0; i < ARRAY_SIZE(wm8980_reg); i++) {
+		data[0] = (i << 1) | ((cache[i] >> 8) & 0x0001);
+		data[1] = cache[i] & 0x00ff;
+		codec->mach_write(codec->control_data, (long)data, 2);
+	}
+	wm8980_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
+	wm8980_dapm_event(codec, codec->suspend_dapm_state);
+	return 0;
+}
+
+/*
+ * initialise the WM8980 codec
+ */
+static int wm8980_codec_io_probe(struct snd_soc_codec *codec,
+	struct snd_soc_machine *machine)
+{
+	wm8980_reset(codec);
+
+	/* power on device */
+	wm8980_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
+	wm8980_add_controls(codec, machine->card);
+	wm8980_add_widgets(codec, machine);
+
+	return 0;
+}
+
+static struct snd_soc_codec_ops wm8980_codec_ops = {
+	.dapm_event	= wm8980_dapm_event,
+	.read		= wm8980_read_reg_cache,
+	.write		= wm8980_write,
+	.io_probe	= wm8980_codec_io_probe,
+};
+
+static int wm8980_codec_probe(struct device *dev)
+{
+	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
+
+	info("WM8980 Audio Codec %s", WM8980_VERSION);
+
+	codec->reg_cache = kmemdup(wm8980_reg, sizeof(wm8980_reg), GFP_KERNEL);
+	if (codec->reg_cache == NULL)
+		return -ENOMEM;
+	codec->reg_cache_size = sizeof(wm8980_reg);
+	
+	codec->owner = THIS_MODULE;
+	codec->ops = &wm8980_codec_ops;
+	return 0;
+}
+
+static int wm8980_codec_remove(struct device *dev)
+{
+	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
+	
+	if (codec->control_data)
+		wm8980_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
+	kfree(codec->reg_cache);
+	return 0;
+}
+
 #define WM8980_RATES \
 	(SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 | SNDRV_PCM_RATE_16000 | \
 	SNDRV_PCM_RATE_22050 | SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 | \
@@ -652,267 +729,100 @@ static int wm8980_dapm_event(struct snd_soc_codec *codec, int event)
 	(SNDRV_PCM_FORMAT_S16_LE | SNDRV_PCM_FORMAT_S20_3LE | \
 	SNDRV_PCM_FORMAT_S24_3LE | SNDRV_PCM_FORMAT_S24_LE)
 
-struct snd_soc_codec_dai wm8980_dai = {
-	.name = "WM8980 HiFi",
-	.playback = {
-		.stream_name = "Playback",
-		.channels_min = 1,
-		.channels_max = 2,
-		.rates = WM8980_RATES,
-		.formats = WM8980_FORMATS,},
-	.capture = {
-		.stream_name = "Capture",
-		.channels_min = 1,
-		.channels_max = 2,
-		.rates = WM8980_RATES,
-		.formats = WM8980_FORMATS,},
-	.ops = {
-		.hw_params = wm8980_hw_params,
-	},
-	.dai_ops = {
-		.digital_mute = wm8980_mute,
-		.set_fmt = wm8980_set_dai_fmt,
-		.set_clkdiv = wm8980_set_dai_clkdiv,
-		.set_pll = wm8980_set_dai_pll,
+
+static const struct snd_soc_pcm_stream wm8980_dai_playback = {
+	.stream_name	= "Playback",
+	.channels_min	= 1,
+	.channels_max	= 2,
+	.rates		= WM8980_RATES,
+	.formats	= WM8980_FORMATS,
+};
+
+static const struct snd_soc_pcm_stream wm8980_dai_capture = {
+	.stream_name	= "Capture",
+	.channels_min	= 1,
+	.channels_max	= 2,
+	.rates		= WM8980_RATES,
+	.formats	= WM8980_FORMATS,
+};
+
+/* dai ops, called by machine drivers */
+static const struct snd_soc_dai_ops wm8980_dai_ops = {
+	.digital_mute	= wm8980_digital_mute,
+	.set_fmt	= wm8980_set_fmt,
+	.set_clkdiv	= wm8980_set_clkdiv,
+	.set_pll	= wm8980_set_pll,
+};
+
+/* audio ops, called by alsa */
+static const struct snd_soc_ops wm8980_dai_audio_ops = {
+	.hw_params	= wm8980_hw_params,
+};
+
+static int wm8980_dai_probe(struct device *dev)
+{
+	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
+	
+	dai->ops = &wm8980_dai_ops;
+	dai->audio_ops = &wm8980_dai_audio_ops;
+	dai->capture = &wm8980_dai_capture;
+	dai->playback = &wm8980_dai_playback;
+	return 0;
+}
+
+const char wm8980_codec[SND_SOC_CODEC_NAME_SIZE] = "wm8980-codec";
+EXPORT_SYMBOL_GPL(wm8980_codec);
+
+static struct snd_soc_device_driver wm8980_codec_driver = {
+	.type	= SND_SOC_BUS_TYPE_CODEC,
+	.driver	= {
+		.name 		= wm8980_codec,
+		.owner		= THIS_MODULE,
+		.bus 		= &asoc_bus_type,
+		.probe		= wm8980_codec_probe,
+		.remove		= __devexit_p(wm8980_codec_remove),
+		.suspend	= wm8980_suspend,
+		.resume		= wm8980_resume,
 	},
 };
-EXPORT_SYMBOL_GPL(wm8980_dai);
 
-static int wm8980_suspend(struct platform_device *pdev, pm_message_t state)
+const char wm8980_hifi_dai[SND_SOC_CODEC_NAME_SIZE] = "wm8980-hifi-dai";
+EXPORT_SYMBOL_GPL(wm8980_hifi_dai);
+
+static struct snd_soc_device_driver wm8980_hifi_dai_driver = {
+	.type	= SND_SOC_BUS_TYPE_DAI,
+	.driver	= {
+		.name 		= wm8980_hifi_dai,
+		.owner		= THIS_MODULE,
+		.bus 		= &asoc_bus_type,
+		.probe		= wm8980_dai_probe,
+	},
+};
+
+static __init int wm8980_init(void)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->codec;
-
-	wm8980_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
-	return 0;
-}
-
-static int wm8980_resume(struct platform_device *pdev)
-{
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->codec;
-	int i;
-	u8 data[2];
-	u16 *cache = codec->reg_cache;
-
-	/* Sync reg_cache with the hardware */
-	for (i = 0; i < ARRAY_SIZE(wm8980_reg); i++) {
-		data[0] = (i << 1) | ((cache[i] >> 8) & 0x0001);
-		data[1] = cache[i] & 0x00ff;
-		codec->hw_write(codec->control_data, data, 2);
-	}
-	wm8980_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
-	wm8980_dapm_event(codec, codec->suspend_dapm_state);
-	return 0;
-}
-
-/*
- * initialise the WM8980 driver
- * register the mixer and dsp interfaces with the kernel
- */
-static int wm8980_init(struct snd_soc_device* socdev)
-{
-	struct snd_soc_codec *codec = socdev->codec;
 	int ret = 0;
-
-	codec->name = "WM8980";
-	codec->owner = THIS_MODULE;
-	codec->read = wm8980_read_reg_cache;
-	codec->write = wm8980_write;
-	codec->dapm_event = wm8980_dapm_event;
-	codec->dai = &wm8980_dai;
-	codec->num_dai = 1;
-	codec->reg_cache_size = sizeof(wm8980_reg);
-	codec->reg_cache = kmemdup(wm8980_reg, sizeof(wm8980_reg), GFP_KERNEL);
-
-	if (codec->reg_cache == NULL)
-		return -ENOMEM;
-
-	wm8980_reset(codec);
-
-	/* register pcms */
-	ret = snd_soc_new_pcms(socdev, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
-	if(ret < 0) {
-		printk(KERN_ERR "wm8980: failed to create pcms\n");
-		goto pcm_err;
-	}
-
-	/* power on device */
-	wm8980_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
-	wm8980_add_controls(codec);
-	wm8980_add_widgets(codec);
-	ret = snd_soc_register_card(socdev);
+	
+	ret = driver_register(&wm8980_codec_driver.driver);
+	if (ret < 0)
+		return ret;
+	ret = driver_register(&wm8980_hifi_dai_driver.driver);
 	if (ret < 0) {
-      	printk(KERN_ERR "wm8980: failed to register card\n");
-		goto card_err;
-    }
-	return ret;
-
-card_err:
-	snd_soc_free_pcms(socdev);
-	snd_soc_dapm_free(socdev);
-pcm_err:
-	kfree(codec->reg_cache);
-	return ret;
-}
-
-static struct snd_soc_device *wm8980_socdev;
-
-#if defined (CONFIG_I2C) || defined (CONFIG_I2C_MODULE)
-
-/*
- * WM8980 2 wire address is 0x1a
- */
-#define I2C_DRIVERID_WM8980 0xfefe /* liam -  need a proper id */
-
-static unsigned short normal_i2c[] = { 0, I2C_CLIENT_END };
-
-/* Magic definition of all other variables and things */
-I2C_CLIENT_INSMOD;
-
-static struct i2c_driver wm8980_i2c_driver;
-static struct i2c_client client_template;
-
-/* If the i2c layer weren't so broken, we could pass this kind of data
-   around */
-
-static int wm8980_codec_probe(struct i2c_adapter *adap, int addr, int kind)
-{
-	struct snd_soc_device *socdev = wm8980_socdev;
-	struct wm8980_setup_data *setup = socdev->codec_data;
-	struct snd_soc_codec *codec = socdev->codec;
-	struct i2c_client *i2c;
-	int ret;
-
-	if (addr != setup->i2c_address)
-		return -ENODEV;
-
-	client_template.adapter = adap;
-	client_template.addr = addr;
-
-	i2c = kmemdup(&client_template, sizeof(client_template), GFP_KERNEL);
-	if (i2c == NULL){
-		kfree(codec);
-		return -ENOMEM;
-	}
-
-	i2c_set_clientdata(i2c, codec);
-
-	codec->control_data = i2c;
-
-	ret = i2c_attach_client(i2c);
-	if(ret < 0) {
-		err("failed to attach codec at addr %x\n", addr);
-		goto err;
-	}
-
-	ret = wm8980_init(socdev);
-	if(ret < 0) {
-		err("failed to initialise WM8980\n");
-		goto err;
+		driver_unregister(&wm8980_codec_driver.driver);
+		return ret;
 	}
 	return ret;
-
-err:
-	kfree(codec);
-	kfree(i2c);
-	return ret;
-
 }
 
-static int wm8980_i2c_detach(struct i2c_client *client)
+static __exit void wm8980_exit(void)
 {
-	struct snd_soc_codec *codec = i2c_get_clientdata(client);
-	i2c_detach_client(client);
-	kfree(codec->reg_cache);
-	kfree(client);
-	return 0;
+	driver_unregister(&wm8980_hifi_dai_driver.driver);
+	driver_unregister(&wm8980_codec_driver.driver);
 }
 
-static int wm8980_i2c_attach(struct i2c_adapter *adap)
-{
-	return i2c_probe(adap, &addr_data, wm8980_codec_probe);
-}
+module_init(wm8980_init);
+module_exit(wm8980_exit);
 
-/* corgi i2c codec control layer */
-static struct i2c_driver wm8980_i2c_driver = {
-	.driver = {
-		.name = "WM8980 I2C Codec",
-		.owner = THIS_MODULE,
-	},
-	.id =             I2C_DRIVERID_WM8980,
-	.attach_adapter = wm8980_i2c_attach,
-	.detach_client =  wm8980_i2c_detach,
-	.command =        NULL,
-};
-
-static struct i2c_client client_template = {
-	.name =   "WM8980",
-	.driver = &wm8980_i2c_driver,
-};
-#endif
-
-static int wm8980_probe(struct platform_device *pdev)
-{
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct wm8980_setup_data *setup;
-	struct snd_soc_codec *codec;
-	int ret = 0;
-
-	info("WM8980 Audio Codec %s", WM8980_VERSION);
-
-	setup = socdev->codec_data;
-	codec = kzalloc(sizeof(struct snd_soc_codec), GFP_KERNEL);
-	if (codec == NULL)
-		return -ENOMEM;
-
-	socdev->codec = codec;
-	mutex_init(&codec->mutex);
-	INIT_LIST_HEAD(&codec->dapm_widgets);
-	INIT_LIST_HEAD(&codec->dapm_paths);
-
-	wm8980_socdev = socdev;
-#if defined (CONFIG_I2C) || defined (CONFIG_I2C_MODULE)
-	if (setup->i2c_address) {
-		normal_i2c[0] = setup->i2c_address;
-		codec->hw_write = (hw_write_t)i2c_master_send;
-		ret = i2c_add_driver(&wm8980_i2c_driver);
-		if (ret != 0)
-			printk(KERN_ERR "can't add i2c driver");
-	}
-#else
-	/* Add other interfaces here */
-#endif
-	return ret;
-}
-
-/* power down chip */
-static int wm8980_remove(struct platform_device *pdev)
-{
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->codec;
-
-	if (codec->control_data)
-		wm8980_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
-
-	snd_soc_free_pcms(socdev);
-	snd_soc_dapm_free(socdev);
-#if defined (CONFIG_I2C) || defined (CONFIG_I2C_MODULE)
-	i2c_del_driver(&wm8980_i2c_driver);
-#endif
-	kfree(codec);
-
-	return 0;
-}
-
-struct snd_soc_codec_device soc_codec_dev_wm8980 = {
-	.probe = 	wm8980_probe,
-	.remove = 	wm8980_remove,
-	.suspend = 	wm8980_suspend,
-	.resume =	wm8980_resume,
-};
-
-EXPORT_SYMBOL_GPL(soc_codec_dev_wm8980);
 
 MODULE_DESCRIPTION("ASoC WM8980 driver");
 MODULE_AUTHOR("Mike Arthur");

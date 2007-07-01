@@ -224,7 +224,7 @@ static int mainstone_mach_probe(struct snd_soc_machine *machine)
 		printk(KERN_ERR "AC97 link error\n");
 		return ret;
 	}	
-	codec->ops->probe_codec(codec, machine);
+	codec->ops->io_probe(codec, machine);
 
 	/* set up mainstone codec pins */
 	snd_soc_dapm_set_endpoint(machine, "RXP", 0);

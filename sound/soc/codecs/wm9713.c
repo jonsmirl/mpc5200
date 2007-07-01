@@ -1013,7 +1013,7 @@ static int wm9713_codec_resume(struct device *dev)
 	return ret;
 }
 
-static int wm9713_probe_codec(struct snd_soc_codec *codec,
+static int wm9713_codec_io_probe(struct snd_soc_codec *codec,
 	struct snd_soc_machine *machine)
 {
 	int reg;
@@ -1034,7 +1034,7 @@ static const struct snd_soc_codec_ops wm9713_codec_ops = {
 	.dapm_event	= wm9713_dapm_event,
 	.read		= wm9713_ac97_read,
 	.write		= wm9713_ac97_write,
-	.probe_codec	= wm9713_probe_codec,
+	.io_probe	= wm9713_codec_io_probe,
 };
 
 static int wm9713_codec_probe(struct device *dev)

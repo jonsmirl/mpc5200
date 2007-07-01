@@ -357,9 +357,9 @@ struct snd_soc_codec_ops {
 		unsigned int value);
 	
 	/* codec probe/remove - this can perform IO */
-	int (*probe_codec)(struct snd_soc_codec *codec, 
+	int (*io_probe)(struct snd_soc_codec *codec, 
 		struct snd_soc_machine *machine);
-	int (*remove_codec)(struct snd_soc_codec *codec, 
+	int (*io_remove)(struct snd_soc_codec *codec, 
 		struct snd_soc_machine *machine);
 };
 

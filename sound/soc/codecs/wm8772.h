@@ -40,7 +40,4 @@
 #define WM8753_DAI_DAC		0
 #define WM8753_DAI_ADC		1
 
-extern struct snd_soc_codec_dai wm8772_dai[2];
-extern struct snd_soc_codec_device soc_codec_dev_wm8772;
-
 #endif

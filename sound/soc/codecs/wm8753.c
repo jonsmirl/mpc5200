@@ -1349,7 +1349,7 @@ static int wm8753_resume(struct device *dev)
 	return 0;
 }
 
-static int wm8753_probe_codec(struct snd_soc_codec *codec,
+static int wm8753_codec_io_probe(struct snd_soc_codec *codec,
 	struct snd_soc_machine *machine)
 {
 	int reg;
@@ -1412,7 +1412,7 @@ static const struct snd_soc_codec_ops wm8753_codec_ops = {
 	.dapm_event	= wm8753_dapm_event,
 	.read		= wm8753_read_reg_cache,
 	.write		= wm8753_write,
-	.probe_codec	= wm8753_probe_codec,
+	.io_probe	= wm8753_codec_io_probe,
 };
 
 static int wm8753_codec_probe(struct device *dev)
@@ -1434,7 +1434,6 @@ static int wm8753_codec_probe(struct device *dev)
 	}
 
 	INIT_DELAYED_WORK(&codec->delayed_work, wm8753_work);
-	//strncpy(codec->name, "WM8753", SOC_CODEC_DEVICE_NAME_SIZE); lg
 	codec->owner = THIS_MODULE;
 	codec->ops = &wm8753_codec_ops;
 	snd_soc_register_codec(codec);

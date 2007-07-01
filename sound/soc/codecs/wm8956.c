@@ -47,7 +47,6 @@
 #define warn(format, arg...) \
 	printk(KERN_WARNING AUDIO_NAME ": " format "\n" , ## arg)
 
-struct snd_soc_codec_device soc_codec_dev_wm8956;
 
 /*
  * wm8956 register cache
@@ -113,7 +112,7 @@ static int wm8956_write(struct snd_soc_codec *codec, unsigned int reg,
 	data[1] = value & 0x00ff;
 
 	wm8956_write_reg_cache (codec, reg, value);
-	if (codec->hw_write(codec->control_data, data, 2) == 2)
+	if (codec->mach_write(codec->control_data, (long)data, 2) == 2)
 		return 0;
 	else
 		return -EIO;
@@ -142,13 +141,15 @@ SOC_ENUM("Playback De-emphasis", wm8956_enum[0]),
 };
 
 /* add non dapm controls */
-static int wm8956_add_controls(struct snd_soc_codec *codec)
+static int wm8956_add_controls(struct snd_soc_codec *codec, 
+	struct snd_card *card)
 {
 	int err, i;
 
 	for (i = 0; i < ARRAY_SIZE(wm8956_snd_controls); i++) {
-		if ((err = snd_ctl_add(codec->card,
-				snd_soc_cnew(&wm8956_snd_controls[i],codec, NULL))) < 0)
+		if ((err = snd_ctl_add(card,
+				snd_soc_cnew(&wm8956_snd_controls[i],
+					codec, NULL))) < 0)
 			return err;
 	}
 
@@ -180,25 +181,27 @@ static const char *intercon[][3] = {
 	{NULL, NULL, NULL},
 };
 
-static int wm8956_add_widgets(struct snd_soc_codec *codec)
+static int wm8956_add_widgets(struct snd_soc_codec *codec, 
+	struct snd_soc_machine *machine)
 {
 	int i;
 
 	for(i = 0; i < ARRAY_SIZE(wm8956_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(codec, &wm8956_dapm_widgets[i]);
+		snd_soc_dapm_new_control(machine, codec, 
+			&wm8956_dapm_widgets[i]);
 	}
 
 	/* set up audio path interconnects */
 	for(i = 0; intercon[i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(codec, intercon[i][0],
+		snd_soc_dapm_connect_input(machine, intercon[i][0],
 			intercon[i][1], intercon[i][2]);
 	}
 
-	snd_soc_dapm_new_widgets(codec);
+	snd_soc_dapm_new_widgets(machine);
 	return 0;
 }
 
-static int wm8956_set_dai_fmt(struct snd_soc_codec_dai *codec_dai,
+static int wm8956_set_dai_fmt(struct snd_soc_dai *codec_dai,
 		unsigned int fmt)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
@@ -260,9 +263,8 @@ static int wm8956_set_dai_fmt(struct snd_soc_codec_dai *codec_dai,
 static int wm8956_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_device *socdev = rtd->socdev;
-	struct snd_soc_codec *codec = socdev->codec;
+	struct snd_soc_pcm_link *pcm_link = substream->private_data;
+	struct snd_soc_codec *codec = pcm_link->codec;
 	u16 iface = wm8956_read_reg_cache(codec, WM8956_IFACE1) & 0xfff3;
 
 	/* bit size */
@@ -282,7 +284,7 @@ static int wm8956_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int wm8956_mute(struct snd_soc_codec_dai *dai, int mute)
+static int wm8956_digital_mute(struct snd_soc_dai *dai, int mute)
 {
 	struct snd_soc_codec *codec = dai->codec;
 	u16 mute_reg = wm8956_read_reg_cache(codec, WM8956_DACCTL1) & 0xfff7;
@@ -369,7 +371,7 @@ static void pll_factors(unsigned int target, unsigned int source)
 	pll_div.k = K;
 }
 
-static int wm8956_set_dai_pll(struct snd_soc_codec_dai *codec_dai,
+static int wm8956_set_dai_pll(struct snd_soc_dai *codec_dai,
 		int pll_id, unsigned int freq_in, unsigned int freq_out)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
@@ -398,7 +400,7 @@ static int wm8956_set_dai_pll(struct snd_soc_codec_dai *codec_dai,
 	return 0;
 }
 
-static int wm8956_set_dai_clkdiv(struct snd_soc_codec_dai *codec_dai,
+static int wm8956_set_dai_clkdiv(struct snd_soc_dai *codec_dai,
 		int div_id, int div)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
@@ -445,47 +447,18 @@ static int wm8956_set_dai_clkdiv(struct snd_soc_codec_dai *codec_dai,
 	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | \
 	SNDRV_PCM_FMTBIT_S24_LE)
 
-struct snd_soc_codec_dai wm8956_dai = {
-	.name = "WM8956",
-	.playback = {
-		.stream_name = "Playback",
-		.channels_min = 1,
-		.channels_max = 2,
-		.rates = WM8956_RATES,
-		.formats = WM8956_FORMATS,},
-	.capture = {
-		.stream_name = "Capture",
-		.channels_min = 1,
-		.channels_max = 2,
-		.rates = WM8956_RATES,
-		.formats = WM8956_FORMATS,},
-	.ops = {
-		.hw_params = wm8956_hw_params,
-	},
-	.dai_ops = {
-		.digital_mute = wm8956_mute,
-		.set_fmt = wm8956_set_dai_fmt,
-		.set_clkdiv = wm8956_set_dai_clkdiv,
-		.set_pll = wm8956_set_dai_pll,
-	},
-};
-EXPORT_SYMBOL_GPL(wm8956_dai);
-
-
 /* To complete PM */
-static int wm8956_suspend(struct platform_device *pdev, pm_message_t state)
+static int wm8956_suspend(struct device *dev, pm_message_t state)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->codec;
+	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 
 	wm8956_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
 	return 0;
 }
 
-static int wm8956_resume(struct platform_device *pdev)
+static int wm8956_resume(struct device *dev)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->codec;
+	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 	int i;
 	u8 data[2];
 	u16 *cache = codec->reg_cache;
@@ -494,7 +467,7 @@ static int wm8956_resume(struct platform_device *pdev)
 	for (i = 0; i < ARRAY_SIZE(wm8956_reg); i++) {
 		data[0] = (i << 1) | ((cache[i] >> 8) & 0x0001);
 		data[1] = cache[i] & 0x00ff;
-		codec->hw_write(codec->control_data, data, 2);
+		codec->mach_write(codec->control_data, (long)data, 2);
 	}
 	wm8956_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
 	wm8956_dapm_event(codec, codec->suspend_dapm_state);
@@ -502,35 +475,13 @@ static int wm8956_resume(struct platform_device *pdev)
 }
 
 /*
- * initialise the WM8956 driver
- * register the mixer and dsp interfaces with the kernel
+ * initialise the WM8956 codec
  */
-static int wm8956_init(struct snd_soc_device *socdev)
+static int wm8956_codec_io_probe(struct snd_soc_codec *codec,
+	struct snd_soc_machine *machine)
 {
-	struct snd_soc_codec *codec = socdev->codec;
-	int reg, ret = 0;
-
-	codec->name = "WM8956";
-	codec->owner = THIS_MODULE;
-	codec->read = wm8956_read_reg_cache;
-	codec->write = wm8956_write;
-	codec->dapm_event = wm8956_dapm_event;
-	codec->dai = &wm8956_dai;
-	codec->num_dai = 1;
-	codec->reg_cache_size = sizeof(wm8956_reg);
-	codec->reg_cache = kmemdup(wm8956_reg, sizeof(wm8956_reg), GFP_KERNEL);
-
-	if (codec->reg_cache == NULL)
-		return -ENOMEM;
-
+	u16 reg;
 	wm8956_reset(codec);
-
-	/* register pcms */
-	ret = snd_soc_new_pcms(socdev, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
-	if (ret < 0) {
-		printk(KERN_ERR "wm8956: failed to create pcms\n");
-		goto pcm_err;
-	}
 
 	/* power on device */
 	wm8956_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
@@ -540,179 +491,148 @@ static int wm8956_init(struct snd_soc_device *socdev)
 	wm8956_write(codec, WM8956_LOUT1, reg | 0x0100);
 	reg = wm8956_read_reg_cache(codec, WM8956_ROUT1);
 	wm8956_write(codec, WM8956_ROUT1, reg | 0x0100);
+	
+	wm8956_add_controls(codec, machine->card);
+	wm8956_add_widgets(codec, machine);
 
-	wm8956_add_controls(codec);
-	wm8956_add_widgets(codec);
-	ret = snd_soc_register_card(socdev);
-	if (ret < 0) {
-      	printk(KERN_ERR "wm8956: failed to register card\n");
-		goto card_err;
-    }
-	return ret;
-
-card_err:
-	snd_soc_free_pcms(socdev);
-	snd_soc_dapm_free(socdev);
-pcm_err:
-	kfree(codec->reg_cache);
-	return ret;
-}
-
-static struct snd_soc_device *wm8956_socdev;
-
-#if defined (CONFIG_I2C) || defined (CONFIG_I2C_MODULE)
-
-/*
- * WM8956 2 wire address is 0x1a
- */
-static unsigned short normal_i2c[] = { 0, I2C_CLIENT_END };
-
-/* Magic definition of all other variables and things */
-I2C_CLIENT_INSMOD;
-
-static struct i2c_driver wm8956_i2c_driver;
-static struct i2c_client client_template;
-
-/* If the i2c layer weren't so broken, we could pass this kind of data
-   around */
-
-static int wm8956_codec_probe(struct i2c_adapter *adap, int addr, int kind)
-{
-	struct snd_soc_device *socdev = wm8956_socdev;
-	struct wm8956_setup_data *setup = socdev->codec_data;
-	struct snd_soc_codec *codec = socdev->codec;
-	struct i2c_client *i2c;
-	int ret;
-
-	if (addr != setup->i2c_address)
-		return -ENODEV;
-
-	client_template.adapter = adap;
-	client_template.addr = addr;
-
-	i2c = kmemdup(&client_template, sizeof(client_template), GFP_KERNEL);
-	if (i2c == NULL) {
-		kfree(codec);
-		return -ENOMEM;
-	}
-	i2c_set_clientdata(i2c, codec);
-	codec->control_data = i2c;
-
-	ret = i2c_attach_client(i2c);
-	if (ret < 0) {
-		err("failed to attach codec at addr %x\n", addr);
-		goto err;
-	}
-
-	ret = wm8956_init(socdev);
-	if (ret < 0) {
-		err("failed to initialise WM8956\n");
-		goto err;
-	}
-	return ret;
-
-err:
-	kfree(codec);
-	kfree(i2c);
-	return ret;
-}
-
-static int wm8956_i2c_detach(struct i2c_client *client)
-{
-	struct snd_soc_codec* codec = i2c_get_clientdata(client);
-	i2c_detach_client(client);
-	kfree(codec->reg_cache);
-	kfree(client);
 	return 0;
 }
 
-static int wm8956_i2c_attach(struct i2c_adapter *adap)
-{
-	return i2c_probe(adap, &addr_data, wm8956_codec_probe);
-}
-
-// tmp
-#define I2C_DRIVERID_WM8956 0xfefe
-
-/* corgi i2c codec control layer */
-static struct i2c_driver wm8956_i2c_driver = {
-	.driver = {
-		.name = "WM8956 I2C Codec",
-		.owner = THIS_MODULE,
-	},
-	.id =             I2C_DRIVERID_WM8956,
-	.attach_adapter = wm8956_i2c_attach,
-	.detach_client =  wm8956_i2c_detach,
-	.command =        NULL,
+static struct snd_soc_codec_ops wm8956_codec_ops = {
+	.dapm_event	= wm8956_dapm_event,
+	.read		= wm8956_read_reg_cache,
+	.write		= wm8956_write,
+	.io_probe	= wm8956_codec_io_probe,
 };
 
-static struct i2c_client client_template = {
-	.name =   "WM8956",
-	.driver = &wm8956_i2c_driver,
-};
-#endif
-
-static int wm8956_probe(struct platform_device *pdev)
+static int wm8956_codec_probe(struct device *dev)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct wm8956_setup_data *setup;
-	struct snd_soc_codec *codec;
-	int ret = 0;
+	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 
 	info("WM8956 Audio Codec %s", WM8956_VERSION);
 
-	setup = socdev->codec_data;
-	codec = kzalloc(sizeof(struct snd_soc_codec), GFP_KERNEL);
-	if (codec == NULL)
+	codec->reg_cache = kmemdup(wm8956_reg, sizeof(wm8956_reg), GFP_KERNEL);
+	if (codec->reg_cache == NULL)
 		return -ENOMEM;
-
-	socdev->codec = codec;
-	mutex_init(&codec->mutex);
-	INIT_LIST_HEAD(&codec->dapm_widgets);
-	INIT_LIST_HEAD(&codec->dapm_paths);
-
-	wm8956_socdev = socdev;
-#if defined (CONFIG_I2C) || defined (CONFIG_I2C_MODULE)
-	if (setup->i2c_address) {
-		normal_i2c[0] = setup->i2c_address;
-		codec->hw_write = (hw_write_t)i2c_master_send;
-		ret = i2c_add_driver(&wm8956_i2c_driver);
-		if (ret != 0)
-			printk(KERN_ERR "can't add i2c driver");
-	}
-#else
-	/* Add other interfaces here */
-#endif
-	return ret;
-}
-
-/* power down chip */
-static int wm8956_remove(struct platform_device *pdev)
-{
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->codec;
-
-	if (codec->control_data)
-		wm8956_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
-
-	snd_soc_free_pcms(socdev);
-	snd_soc_dapm_free(socdev);
-#if defined (CONFIG_I2C) || defined (CONFIG_I2C_MODULE)
-	i2c_del_driver(&wm8956_i2c_driver);
-#endif
-	kfree(codec);
-
+	codec->reg_cache_size = sizeof(wm8956_reg);
+	
+	codec->owner = THIS_MODULE;
+	codec->ops = &wm8956_codec_ops;
 	return 0;
 }
 
-struct snd_soc_codec_device soc_codec_dev_wm8956 = {
-	.probe = 	wm8956_probe,
-	.remove = 	wm8956_remove,
-	.suspend = 	wm8956_suspend,
-	.resume =	wm8956_resume,
+static int wm8956_codec_remove(struct device *dev)
+{
+	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
+	
+	if (codec->control_data)
+		wm8956_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
+	kfree(codec->reg_cache);
+	return 0;
+}
+
+#define WM8956_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 |\
+		SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_22050 |\
+		SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 |\
+		SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_88200 |\
+		SNDRV_PCM_RATE_96000)
+
+#define WM8956_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |\
+	SNDRV_PCM_FMTBIT_S24_LE)
+
+static const struct snd_soc_pcm_stream wm8956_dai_playback = {
+	.stream_name	= "Playback",
+	.channels_min	= 1,
+	.channels_max	= 2,
+	.rates		= WM8956_RATES,
+	.formats	= WM8956_FORMATS,
 };
 
-EXPORT_SYMBOL_GPL(soc_codec_dev_wm8956);
+static const struct snd_soc_pcm_stream wm8956_dai_capture = {
+	.stream_name	= "Capture",
+	.channels_min	= 1,
+	.channels_max	= 2,
+	.rates		= WM8956_RATES,
+	.formats	= WM8956_FORMATS,
+};
+
+/* dai ops, called by machine drivers */
+static const struct snd_soc_dai_ops wm8956_dai_ops = {
+	.digital_mute	= wm8956_digital_mute,
+	.set_fmt	= wm8956_set_dai_fmt,
+	.set_pll	= wm8956_set_dai_pll,
+	.set_clkdiv	= wm8956_set_dai_clkdiv,
+};
+
+/* audio ops, called by alsa */
+static const struct snd_soc_ops wm8956_dai_audio_ops = {
+	.hw_params	= wm8956_hw_params,
+};
+
+static int wm8956_dai_probe(struct device *dev)
+{
+	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
+
+	dai->ops = &wm8956_dai_ops;
+	dai->audio_ops = &wm8956_dai_audio_ops;
+	dai->capture = &wm8956_dai_capture;
+	dai->playback = &wm8956_dai_playback;
+	return 0;
+}
+
+const char wm8956_codec[SND_SOC_CODEC_NAME_SIZE] = "wm8956-codec";
+EXPORT_SYMBOL_GPL(wm8956_codec);
+
+static struct snd_soc_device_driver wm8956_codec_driver = {
+	.type	= SND_SOC_BUS_TYPE_CODEC,
+	.driver	= {
+		.name 		= wm8956_codec,
+		.owner		= THIS_MODULE,
+		.bus 		= &asoc_bus_type,
+		.probe		= wm8956_codec_probe,
+		.remove		= __devexit_p(wm8956_codec_remove),
+		.suspend	= wm8956_suspend,
+		.resume		= wm8956_resume,
+	},
+};
+
+const char wm8956_hifi_dai[SND_SOC_CODEC_NAME_SIZE] = "wm8956-hifi-dai";
+EXPORT_SYMBOL_GPL(wm8956_hifi_dai);
+
+static struct snd_soc_device_driver wm8956_hifi_dai_driver = {
+	.type	= SND_SOC_BUS_TYPE_DAI,
+	.driver	= {
+		.name 		= wm8956_hifi_dai,
+		.owner		= THIS_MODULE,
+		.bus 		= &asoc_bus_type,
+		.probe		= wm8956_dai_probe,
+	},
+};
+
+static __init int wm8956_init(void)
+{
+	int ret = 0;
+	
+	ret = driver_register(&wm8956_codec_driver.driver);
+	if (ret < 0)
+		return ret;
+	ret = driver_register(&wm8956_hifi_dai_driver.driver);
+	if (ret < 0) {
+		driver_unregister(&wm8956_codec_driver.driver);
+		return ret;
+	}
+	return ret;
+}
+
+static __exit void wm8956_exit(void)
+{
+	driver_unregister(&wm8956_hifi_dai_driver.driver);
+	driver_unregister(&wm8956_codec_driver.driver);
+}
+
+module_init(wm8956_init);
+module_exit(wm8956_exit);
+
 
 MODULE_DESCRIPTION("ASoC WM8956 driver");
 MODULE_AUTHOR("Liam Girdwood");

@@ -679,12 +679,185 @@ static int ad1939_remove(struct platform_device *pdev)
 
 	return 0;
 }
+/*
+ * initialise the WM8731 codec
+ */
+static int wm8731_probe_codec(struct snd_soc_codec *codec,
+	struct snd_soc_machine *machine)
+{
+	int reg;
 
-struct snd_soc_codec_device soc_codec_dev_ad1939 = {
-	.probe = 	ad1939_probe,
-	.remove = 	ad1939_remove,
+	wm8731_reset(codec);
+
+	/* power on device */
+	wm8731_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
+
+	/* set the update bits */
+	reg = wm8731_read_reg_cache(codec, WM8731_LOUT1V);
+	wm8731_write(codec, WM8731_LOUT1V, reg | 0x0100);
+	reg = wm8731_read_reg_cache(codec, WM8731_ROUT1V);
+	wm8731_write(codec, WM8731_ROUT1V, reg | 0x0100);
+	reg = wm8731_read_reg_cache(codec, WM8731_LINVOL);
+	wm8731_write(codec, WM8731_LINVOL, reg | 0x0100);
+	reg = wm8731_read_reg_cache(codec, WM8731_RINVOL);
+	wm8731_write(codec, WM8731_RINVOL, reg | 0x0100);
+	
+	wm8731_add_controls(codec, machine->card);
+	wm8731_add_widgets(codec, machine);
+
+	return 0;
+}
+
+static struct snd_soc_codec_ops wm8731_codec_ops = {
+	.dapm_event	= wm8731_dapm_event,
+	.read		= wm8731_read_reg_cache,
+	.write		= wm8731_write,
+	.probe_codec	= wm8731_probe_codec,
 };
-EXPORT_SYMBOL_GPL(soc_codec_dev_ad1939);
+
+static int wm8731_codec_probe(struct device *dev)
+{
+	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
+
+	info("WM8731 Audio Codec %s", WM8731_VERSION);
+
+	codec->reg_cache = kmemdup(wm8731_reg, sizeof(wm8731_reg), GFP_KERNEL);
+	if (codec->reg_cache == NULL)
+		return -ENOMEM;
+	codec->reg_cache_size = sizeof(wm8731_reg);
+	
+	codec->owner = THIS_MODULE;
+	codec->ops = &wm8731_codec_ops;
+	return 0;
+}
+
+static int wm8731_codec_remove(struct device *dev)
+{
+	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
+	
+	if (codec->control_data)
+		wm8731_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
+	kfree(codec->reg_cache);
+	return 0;
+}
+
+#define WM8731_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 |\
+		SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_22050 |\
+		SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 |\
+		SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_88200 |\
+		SNDRV_PCM_RATE_96000)
+
+#define WM8731_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |\
+	SNDRV_PCM_FMTBIT_S24_LE)
+
+static const struct snd_soc_pcm_stream wm8731_dai_playback = {
+	.stream_name	= "Playback",
+	.channels_min	= 1,
+	.channels_max	= 2,
+	.rates		= WM8731_RATES,
+	.formats	= WM8731_FORMATS,
+};
+
+static const struct snd_soc_pcm_stream wm8731_dai_capture = {
+	.stream_name	= "Capture",
+	.channels_min	= 1,
+	.channels_max	= 2,
+	.rates		= WM8731_RATES,
+	.formats	= WM8731_FORMATS,
+};
+
+/* dai ops, called by machine drivers */
+static const struct snd_soc_dai_ops wm8731_dai_ops = {
+	.digital_mute	= wm8731_mute,
+	.set_sysclk	= wm8731_set_dai_sysclk,
+	.set_fmt	= wm8731_set_dai_fmt,
+};
+
+/* audio ops, called by alsa */
+static const struct snd_soc_ops wm8731_dai_audio_ops = {
+	.hw_params	= wm8731_hw_params,
+	.prepare	= wm8731_prepare,
+	.shutdown	= wm8731_shutdown,
+};
+
+static int wm8731_dai_probe(struct device *dev)
+{
+	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
+	struct wm8731_priv *wm8731;
+	
+	wm8731 = kzalloc(sizeof(struct wm8731_priv), GFP_KERNEL);
+	if (wm8731 == NULL)
+		return -ENOMEM;
+	
+	dai->private_data = wm8731;
+	dai->ops = &wm8731_dai_ops;
+	dai->audio_ops = &wm8731_dai_audio_ops;
+	dai->capture = &wm8731_dai_capture;
+	dai->playback = &wm8731_dai_playback;
+	return 0;
+}
+
+static int wm8731_dai_remove(struct device *dev)
+{
+	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
+	kfree(dai->private_data);
+	return 0;
+}
+
+const char wm8731_codec[SND_SOC_CODEC_NAME_SIZE] = "wm8731-codec";
+EXPORT_SYMBOL_GPL(wm8731_codec);
+
+static struct snd_soc_device_driver wm8731_codec_driver = {
+	.type	= SND_SOC_BUS_TYPE_CODEC,
+	.driver	= {
+		.name 		= wm8731_codec,
+		.owner		= THIS_MODULE,
+		.bus 		= &asoc_bus_type,
+		.probe		= wm8731_codec_probe,
+		.remove		= __devexit_p(wm8731_codec_remove),
+		.suspend	= wm8731_suspend,
+		.resume		= wm8731_resume,
+	},
+};
+
+const char wm8731_hifi_dai[SND_SOC_CODEC_NAME_SIZE] = "wm8731-hifi-dai";
+EXPORT_SYMBOL_GPL(wm8731_hifi_dai);
+
+static struct snd_soc_device_driver wm8731_hifi_dai_driver = {
+	.type	= SND_SOC_BUS_TYPE_DAI,
+	.driver	= {
+		.name 		= wm8731_hifi_dai,
+		.owner		= THIS_MODULE,
+		.bus 		= &asoc_bus_type,
+		.probe		= wm8731_dai_probe,
+		.remove		= __devexit_p(wm8731_dai_remove),
+	},
+};
+
+static __init int wm8731_init(void)
+{
+	int ret = 0;
+	
+	ret = driver_register(&wm8731_codec_driver.driver);
+	if (ret < 0)
+		return ret;
+	ret = driver_register(&wm8731_hifi_dai_driver.driver);
+	if (ret < 0) {
+		driver_unregister(&wm8731_codec_driver.driver);
+		return ret;
+	}
+	return ret;
+}
+
+static __exit void wm8731_exit(void)
+{
+	driver_unregister(&wm8731_hifi_dai_driver.driver);
+	driver_unregister(&wm8731_codec_driver.driver);
+}
+
+module_init(wm8731_init);
+module_exit(wm8731_exit);
+
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("ASoC AD1939 I2S Codec driver");
