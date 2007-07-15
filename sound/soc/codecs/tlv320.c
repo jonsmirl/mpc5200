@@ -40,7 +40,7 @@
  * Debug
  */
 
-//#define TLV320_DEBUG 0
+#define TLV320_DEBUG 0
 
 #ifdef TLV320_DEBUG
 #define dbg(format, arg...) \
@@ -56,32 +56,8 @@
 	printk(KERN_WARNING AUDIO_NAME ": " format "\n" , ## arg)
 
 
-#define TLV320_VOICE_RATES \
-	(SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 | SNDRV_PCM_RATE_16000 | \
-	SNDRV_PCM_RATE_22050 | SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 | \
-	SNDRV_PCM_RATE_48000)
-
-
-#define TLV320_VOICE_BITS \
-	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | \
-	SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
-
-
-static int caps_charge = 2000;
 static int setting = 1;
-module_param(caps_charge, int, 0);
 module_param(setting, int, 0);
-MODULE_PARM_DESC(caps_charge, "TLV320 cap charge time (msecs)");
-
-static struct workqueue_struct *tlv320_workq = NULL;
-//static struct work_struct tlv320_dapm_work;
-
-/* codec private data */
-struct tlv320_priv {
-	unsigned int sysclk;
-	unsigned int pcmclk;
-};
-
 
 #ifdef TLV320AIC24K
 /* ADDR table */
@@ -281,168 +257,15 @@ static int tlv320_write_block (struct snd_soc_codec *codec,
 	return ret;
 }
 
-
-static int tlv320_set_dai_fmt(struct snd_soc_codec_dai *codec_dai,
-		unsigned int fmt)
-{
-	dbg("tlv320_set_dai_fmt enter");
-	return 0;
-}
-
 /*
- * Set PCM DAI bit size and sample rate.
+ * initialise the WM8731 codec
  */
-static int tlv320_pcm_hw_params(struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params)
+static int tlv320_probe_codec(struct snd_soc_codec *codec,
+	struct snd_soc_machine *machine)
 {
-	dbg("tlv320_pcm_hw_params enter");
-	return 0;
-}
-
-
-static int tlv320_config_pcm_sysclk(struct snd_soc_codec_dai *codec_dai,
-		int clk_id, unsigned int freq, int dir)
-{
-	dbg("tlv320_config_pcm_sysclk enter");
-	return 0;
-}
-
-
-/*
- *  Voice over PCM DAI
- */
-struct snd_soc_codec_dai tlv320_dai[] = {
-{	.name = "TLV320 Voice",
-	.id = 1,
-	.playback = {
-		.stream_name = "Voice Playback",
-		.channels_min = 1,
-		.channels_max = 2,
-		.rates = TLV320_VOICE_RATES,
-		.formats = TLV320_VOICE_BITS,},
-	.capture = {
-		.stream_name = "Voice Capture",
-		.channels_min = 1,
-		.channels_max = 2,
-		.rates = TLV320_VOICE_RATES,
-		.formats = TLV320_VOICE_BITS,},
-	.ops = {
-		.hw_params = tlv320_pcm_hw_params,},
-	.dai_ops = {
-		.digital_mute = NULL,
-		.set_fmt = tlv320_set_dai_fmt,
-		.set_clkdiv = NULL,
-		.set_pll = NULL,
-		.set_sysclk = tlv320_config_pcm_sysclk,
-	},
-},
-
-
-};
-EXPORT_SYMBOL_GPL(tlv320_dai);
-
-
-static void tlv320_work(struct work_struct *work)
-{
-#if 0
-	struct snd_soc_codec *codec =
-		container_of(work, struct snd_soc_codec, delayed_work.work);
-	//wm8753_dapm_event(codec, codec->dapm_state);
-#endif
-}
-
-/*
- * initialise the TLV320 driver
- * register the mixer and dsp interfaces with the kernel
- */
-static int tlv320_init(struct snd_soc_device *socdev)
-{
-	struct snd_soc_codec *codec = socdev->codec;
-	int ret = 0;
-
-	codec->name = "TLV320";
-	codec->owner = THIS_MODULE;
-	codec->read = tlv320_read_reg_cache;
-	codec->write = tlv320_write;
-	codec->dai = tlv320_dai;
-	codec->num_dai = ARRAY_SIZE(tlv320_dai);
-	codec->reg_cache_size = sizeof(tlv320_reg_addr);
-
-	codec->reg_cache =
-		kmemdup(tlv320_reg_addr, sizeof(tlv320_reg_addr), GFP_KERNEL);
-	if (codec->reg_cache == NULL)
-		return -ENOMEM;
-
-	/* register pcms */
-	ret = snd_soc_new_pcms(socdev, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
-	if (ret < 0) {
-		kfree(codec->reg_cache);
-		return ret;
-	}
-
-	queue_delayed_work(tlv320_workq,
-		&codec->delayed_work, msecs_to_jiffies(caps_charge));
-
-	ret = snd_soc_register_card(socdev);
-	if (ret < 0) {
-		snd_soc_free_pcms(socdev);
-		snd_soc_dapm_free(socdev);
-	}
-
-	return ret;
-}
-
-/* If the i2c layer weren't so broken, we could pass this kind of data
-   around */
-static struct snd_soc_device *tlv320_socdev;
-
-#if defined (CONFIG_I2C) || defined (CONFIG_I2C_MODULE)
-
-#define I2C_DRIVERID_TLV320 0xfefe /* liam -  need a proper id */
-
-static unsigned short normal_i2c[] = { 0, I2C_CLIENT_END };
-
-/* Magic definition of all other variables and things */
-I2C_CLIENT_INSMOD;
-
-static struct i2c_driver tlv320_i2c_driver;
-static struct i2c_client client_template;
-
-static int tlv320_codec_probe(struct i2c_adapter *adap, int addr, int kind)
-{
-	struct snd_soc_device *socdev = tlv320_socdev;
-	struct tlv320_setup_data *setup = socdev->codec_data;
-	struct snd_soc_codec *codec = socdev->codec;
-	struct i2c_client *i2c;
 	int ret, len;
-        const unsigned char *data;
-
-	if (addr != setup->i2c_address)
-		return -ENODEV;
-
-	client_template.adapter = adap;
-	client_template.addr = addr;
-
-	i2c = kmemdup(&client_template, sizeof(client_template), GFP_KERNEL);
-	if (i2c == NULL){
-		kfree(codec);
-		return -ENOMEM;
-	}
-	i2c_set_clientdata(i2c, codec);
-	codec->control_data = i2c;
-
-	ret = i2c_attach_client(i2c);
-	if (ret < 0) {
-		err("failed to attach codec at addr %x\n", addr);
-		goto err;
-	}
-
-	ret = tlv320_init(socdev);
-	if (ret < 0) {
-		err("failed to initialise TLV320\n");
-		goto err;
-	}
-
+	static const unsigned char *data;
+	
 	switch(setting) {
 	case 1:
 		data = tlv320_reg_data_init_set1;
@@ -464,12 +287,11 @@ static int tlv320_codec_probe(struct i2c_adapter *adap, int addr, int kind)
 
 	ret = tlv320_write_block(codec, data, len);
 
-	if (ret < 0) {
+	if (ret < 0)
 		err("attach error: init status %d\n", ret);
-	} else {
+	else
 		info("attach: chip tlv320 at address 0x%02x",
 			tlv320_read(codec, 0x02) << 1);
-	}
 
         //tlv320_write(codec, CODEC_REG6B, 0x80);
 #if 0
@@ -484,87 +306,53 @@ static int tlv320_codec_probe(struct i2c_adapter *adap, int addr, int kind)
 
 #endif
 
-
-	return ret;
-
-err:
-	kfree(codec);
-	kfree(i2c);
-	return ret;
-}
-
-/*
- * initialise the WM8731 codec
- */
-static int wm8731_probe_codec(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
-{
-	int reg;
-
-	wm8731_reset(codec);
-
-	/* power on device */
-	wm8731_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
-
-	/* set the update bits */
-	reg = wm8731_read_reg_cache(codec, WM8731_LOUT1V);
-	wm8731_write(codec, WM8731_LOUT1V, reg | 0x0100);
-	reg = wm8731_read_reg_cache(codec, WM8731_ROUT1V);
-	wm8731_write(codec, WM8731_ROUT1V, reg | 0x0100);
-	reg = wm8731_read_reg_cache(codec, WM8731_LINVOL);
-	wm8731_write(codec, WM8731_LINVOL, reg | 0x0100);
-	reg = wm8731_read_reg_cache(codec, WM8731_RINVOL);
-	wm8731_write(codec, WM8731_RINVOL, reg | 0x0100);
-	
-	wm8731_add_controls(codec, machine->card);
-	wm8731_add_widgets(codec, machine);
-
 	return 0;
 }
 
-static struct snd_soc_codec_ops wm8731_codec_ops = {
-	.dapm_event	= wm8731_dapm_event,
-	.read		= wm8731_read_reg_cache,
-	.write		= wm8731_write,
-	.probe_codec	= wm8731_probe_codec,
+static struct snd_soc_codec_ops tlv320_codec_ops = {
+	.dapm_event	= tlv320_dapm_event,
+	.read		= tlv320_read_reg_cache,
+	.write		= tlv320_write,
+	.probe_codec	= tlv320_probe_codec,
 };
 
-static int wm8731_codec_probe(struct device *dev)
+static int tlv320_codec_probe(struct device *dev)
 {
 	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 
 	info("WM8731 Audio Codec %s", WM8731_VERSION);
 
-	codec->reg_cache = kmemdup(wm8731_reg, sizeof(wm8731_reg), GFP_KERNEL);
+	codec->reg_cache = kmemdup(tlv320_reg, sizeof(tlv320_reg), GFP_KERNEL);
 	if (codec->reg_cache == NULL)
 		return -ENOMEM;
-	codec->reg_cache_size = sizeof(wm8731_reg);
+	codec->reg_cache_size = sizeof(tlv320_reg);
 	
 	codec->owner = THIS_MODULE;
-	codec->ops = &wm8731_codec_ops;
+	codec->ops = &tlv320_codec_ops;
 	return 0;
 }
 
-static int wm8731_codec_remove(struct device *dev)
+static int tlv320_codec_remove(struct device *dev)
 {
 	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 	
 	if (codec->control_data)
-		wm8731_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
+		tlv320_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
 	kfree(codec->reg_cache);
 	return 0;
 }
 
-#define WM8731_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 |\
-		SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_22050 |\
-		SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 |\
-		SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_88200 |\
-		SNDRV_PCM_RATE_96000)
+#define TLV320_VOICE_RATES \
+	(SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 | SNDRV_PCM_RATE_16000 | \
+	SNDRV_PCM_RATE_22050 | SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 | \
+	SNDRV_PCM_RATE_48000)
 
-#define WM8731_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |\
-	SNDRV_PCM_FMTBIT_S24_LE)
 
-static const struct snd_soc_pcm_stream wm8731_dai_playback = {
+#define TLV320_VOICE_BITS \
+	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | \
+	SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
+
+static const struct snd_soc_pcm_stream tlv320_dai_playback = {
 	.stream_name	= "Playback",
 	.channels_min	= 1,
 	.channels_max	= 2,
@@ -572,7 +360,7 @@ static const struct snd_soc_pcm_stream wm8731_dai_playback = {
 	.formats	= WM8731_FORMATS,
 };
 
-static const struct snd_soc_pcm_stream wm8731_dai_capture = {
+static const struct snd_soc_pcm_stream tlv320_dai_capture = {
 	.stream_name	= "Capture",
 	.channels_min	= 1,
 	.channels_max	= 2,
@@ -581,96 +369,96 @@ static const struct snd_soc_pcm_stream wm8731_dai_capture = {
 };
 
 /* dai ops, called by machine drivers */
-static const struct snd_soc_dai_ops wm8731_dai_ops = {
-	.digital_mute	= wm8731_mute,
-	.set_sysclk	= wm8731_set_dai_sysclk,
-	.set_fmt	= wm8731_set_dai_fmt,
+static const struct snd_soc_dai_ops tlv320_dai_ops = {
+	.digital_mute	= tlv320_mute,
+	.set_sysclk	= tlv320_set_dai_sysclk,
+	.set_fmt	= tlv320_set_dai_fmt,
 };
 
 /* audio ops, called by alsa */
-static const struct snd_soc_ops wm8731_dai_audio_ops = {
-	.hw_params	= wm8731_hw_params,
-	.prepare	= wm8731_prepare,
-	.shutdown	= wm8731_shutdown,
+static const struct snd_soc_ops tlv320_dai_audio_ops = {
+	.hw_params	= tlv320_hw_params,
+	.prepare	= tlv320_prepare,
+	.shutdown	= tlv320_shutdown,
 };
 
-static int wm8731_dai_probe(struct device *dev)
+static int tlv320_dai_probe(struct device *dev)
 {
 	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
-	struct wm8731_priv *wm8731;
+	struct tlv320_priv *tlv320;
 	
-	wm8731 = kzalloc(sizeof(struct wm8731_priv), GFP_KERNEL);
-	if (wm8731 == NULL)
+	tlv320 = kzalloc(sizeof(struct tlv320_priv), GFP_KERNEL);
+	if (tlv320 == NULL)
 		return -ENOMEM;
 	
-	dai->private_data = wm8731;
-	dai->ops = &wm8731_dai_ops;
-	dai->audio_ops = &wm8731_dai_audio_ops;
-	dai->capture = &wm8731_dai_capture;
-	dai->playback = &wm8731_dai_playback;
+	dai->private_data = tlv320;
+	dai->ops = &tlv320_dai_ops;
+	dai->audio_ops = &tlv320_dai_audio_ops;
+	dai->capture = &tlv320_dai_capture;
+	dai->playback = &tlv320_dai_playback;
 	return 0;
 }
 
-static int wm8731_dai_remove(struct device *dev)
+static int tlv320_dai_remove(struct device *dev)
 {
 	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
 	kfree(dai->private_data);
 	return 0;
 }
 
-const char wm8731_codec[SND_SOC_CODEC_NAME_SIZE] = "wm8731-codec";
-EXPORT_SYMBOL_GPL(wm8731_codec);
+const char tlv320_codec[SND_SOC_CODEC_NAME_SIZE] = "tlv320-codec";
+EXPORT_SYMBOL_GPL(tlv320_codec);
 
-static struct snd_soc_device_driver wm8731_codec_driver = {
+static struct snd_soc_device_driver tlv320_codec_driver = {
 	.type	= SND_SOC_BUS_TYPE_CODEC,
 	.driver	= {
-		.name 		= wm8731_codec,
+		.name 		= tlv320_codec,
 		.owner		= THIS_MODULE,
 		.bus 		= &asoc_bus_type,
-		.probe		= wm8731_codec_probe,
-		.remove		= __devexit_p(wm8731_codec_remove),
-		.suspend	= wm8731_suspend,
-		.resume		= wm8731_resume,
+		.probe		= tlv320_codec_probe,
+		.remove		= __devexit_p(tlv320_codec_remove),
+		.suspend	= tlv320_suspend,
+		.resume		= tlv320_resume,
 	},
 };
 
-const char wm8731_hifi_dai[SND_SOC_CODEC_NAME_SIZE] = "wm8731-hifi-dai";
-EXPORT_SYMBOL_GPL(wm8731_hifi_dai);
+const char tlv320_hifi_dai[SND_SOC_CODEC_NAME_SIZE] = "tlv320-hifi-dai";
+EXPORT_SYMBOL_GPL(tlv320_hifi_dai);
 
-static struct snd_soc_device_driver wm8731_hifi_dai_driver = {
+static struct snd_soc_device_driver tlv320_hifi_dai_driver = {
 	.type	= SND_SOC_BUS_TYPE_DAI,
 	.driver	= {
-		.name 		= wm8731_hifi_dai,
+		.name 		= tlv320_hifi_dai,
 		.owner		= THIS_MODULE,
 		.bus 		= &asoc_bus_type,
-		.probe		= wm8731_dai_probe,
-		.remove		= __devexit_p(wm8731_dai_remove),
+		.probe		= tlv320_dai_probe,
+		.remove		= __devexit_p(tlv320_dai_remove),
 	},
 };
 
-static __init int wm8731_init(void)
+static __init int tlv320_init(void)
 {
 	int ret = 0;
 	
-	ret = driver_register(&wm8731_codec_driver.driver);
+	ret = driver_register(&tlv320_codec_driver.driver);
 	if (ret < 0)
 		return ret;
-	ret = driver_register(&wm8731_hifi_dai_driver.driver);
+	ret = driver_register(&tlv320_hifi_dai_driver.driver);
 	if (ret < 0) {
-		driver_unregister(&wm8731_codec_driver.driver);
+		driver_unregister(&tlv320_codec_driver.driver);
 		return ret;
 	}
 	return ret;
 }
 
-static __exit void wm8731_exit(void)
+static __exit void tlv320_exit(void)
 {
-	driver_unregister(&wm8731_hifi_dai_driver.driver);
-	driver_unregister(&wm8731_codec_driver.driver);
+	driver_unregister(&tlv320_hifi_dai_driver.driver);
+	driver_unregister(&tlv320_codec_driver.driver);
 }
 
-module_init(wm8731_init);
-module_exit(wm8731_exit);
+module_init(tlv320_init);
+module_exit(tlv320_exit);
 
 MODULE_DESCRIPTION("ASoC TLV320 driver");
 MODULE_AUTHOR("Nicola Perrino");

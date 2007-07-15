@@ -555,61 +555,61 @@ pcm_err:
 /*
  * initialise the WM8731 codec
  */
-static int wm8731_probe_codec(struct snd_soc_codec *codec,
+static int ak4535_probe_codec(struct snd_soc_codec *codec,
 	struct snd_soc_machine *machine)
 {
 	int reg;
 
-	wm8731_reset(codec);
+	ak4535_reset(codec);
 
 	/* power on device */
-	wm8731_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
+	ak4535_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
 
 	/* set the update bits */
-	reg = wm8731_read_reg_cache(codec, WM8731_LOUT1V);
-	wm8731_write(codec, WM8731_LOUT1V, reg | 0x0100);
-	reg = wm8731_read_reg_cache(codec, WM8731_ROUT1V);
-	wm8731_write(codec, WM8731_ROUT1V, reg | 0x0100);
-	reg = wm8731_read_reg_cache(codec, WM8731_LINVOL);
-	wm8731_write(codec, WM8731_LINVOL, reg | 0x0100);
-	reg = wm8731_read_reg_cache(codec, WM8731_RINVOL);
-	wm8731_write(codec, WM8731_RINVOL, reg | 0x0100);
+	reg = ak4535_read_reg_cache(codec, WM8731_LOUT1V);
+	ak4535_write(codec, WM8731_LOUT1V, reg | 0x0100);
+	reg = ak4535_read_reg_cache(codec, WM8731_ROUT1V);
+	ak4535_write(codec, WM8731_ROUT1V, reg | 0x0100);
+	reg = ak4535_read_reg_cache(codec, WM8731_LINVOL);
+	ak4535_write(codec, WM8731_LINVOL, reg | 0x0100);
+	reg = ak4535_read_reg_cache(codec, WM8731_RINVOL);
+	ak4535_write(codec, WM8731_RINVOL, reg | 0x0100);
 	
-	wm8731_add_controls(codec, machine->card);
-	wm8731_add_widgets(codec, machine);
+	ak4535_add_controls(codec, machine->card);
+	ak4535_add_widgets(codec, machine);
 
 	return 0;
 }
 
-static struct snd_soc_codec_ops wm8731_codec_ops = {
-	.dapm_event	= wm8731_dapm_event,
-	.read		= wm8731_read_reg_cache,
-	.write		= wm8731_write,
-	.probe_codec	= wm8731_probe_codec,
+static struct snd_soc_codec_ops ak4535_codec_ops = {
+	.dapm_event	= ak4535_dapm_event,
+	.read		= ak4535_read_reg_cache,
+	.write		= ak4535_write,
+	.probe_codec	= ak4535_probe_codec,
 };
 
-static int wm8731_codec_probe(struct device *dev)
+static int ak4535_codec_probe(struct device *dev)
 {
 	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 
 	info("WM8731 Audio Codec %s", WM8731_VERSION);
 
-	codec->reg_cache = kmemdup(wm8731_reg, sizeof(wm8731_reg), GFP_KERNEL);
+	codec->reg_cache = kmemdup(ak4535_reg, sizeof(ak4535_reg), GFP_KERNEL);
 	if (codec->reg_cache == NULL)
 		return -ENOMEM;
-	codec->reg_cache_size = sizeof(wm8731_reg);
+	codec->reg_cache_size = sizeof(ak4535_reg);
 	
 	codec->owner = THIS_MODULE;
-	codec->ops = &wm8731_codec_ops;
+	codec->ops = &ak4535_codec_ops;
 	return 0;
 }
 
-static int wm8731_codec_remove(struct device *dev)
+static int ak4535_codec_remove(struct device *dev)
 {
 	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 	
 	if (codec->control_data)
-		wm8731_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
+		ak4535_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
 	kfree(codec->reg_cache);
 	return 0;
 }
@@ -623,7 +623,7 @@ static int wm8731_codec_remove(struct device *dev)
 #define WM8731_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |\
 	SNDRV_PCM_FMTBIT_S24_LE)
 
-static const struct snd_soc_pcm_stream wm8731_dai_playback = {
+static const struct snd_soc_pcm_stream ak4535_dai_playback = {
 	.stream_name	= "Playback",
 	.channels_min	= 1,
 	.channels_max	= 2,
@@ -631,7 +631,7 @@ static const struct snd_soc_pcm_stream wm8731_dai_playback = {
 	.formats	= WM8731_FORMATS,
 };
 
-static const struct snd_soc_pcm_stream wm8731_dai_capture = {
+static const struct snd_soc_pcm_stream ak4535_dai_capture = {
 	.stream_name	= "Capture",
 	.channels_min	= 1,
 	.channels_max	= 2,
@@ -640,96 +640,96 @@ static const struct snd_soc_pcm_stream wm8731_dai_capture = {
 };
 
 /* dai ops, called by machine drivers */
-static const struct snd_soc_dai_ops wm8731_dai_ops = {
-	.digital_mute	= wm8731_mute,
-	.set_sysclk	= wm8731_set_dai_sysclk,
-	.set_fmt	= wm8731_set_dai_fmt,
+static const struct snd_soc_dai_ops ak4535_dai_ops = {
+	.digital_mute	= ak4535_mute,
+	.set_sysclk	= ak4535_set_dai_sysclk,
+	.set_fmt	= ak4535_set_dai_fmt,
 };
 
 /* audio ops, called by alsa */
-static const struct snd_soc_ops wm8731_dai_audio_ops = {
-	.hw_params	= wm8731_hw_params,
-	.prepare	= wm8731_prepare,
-	.shutdown	= wm8731_shutdown,
+static const struct snd_soc_ops ak4535_dai_audio_ops = {
+	.hw_params	= ak4535_hw_params,
+	.prepare	= ak4535_prepare,
+	.shutdown	= ak4535_shutdown,
 };
 
-static int wm8731_dai_probe(struct device *dev)
+static int ak4535_dai_probe(struct device *dev)
 {
 	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
-	struct wm8731_priv *wm8731;
+	struct ak4535_priv *ak4535;
 	
-	wm8731 = kzalloc(sizeof(struct wm8731_priv), GFP_KERNEL);
-	if (wm8731 == NULL)
+	ak4535 = kzalloc(sizeof(struct ak4535_priv), GFP_KERNEL);
+	if (ak4535 == NULL)
 		return -ENOMEM;
 	
-	dai->private_data = wm8731;
-	dai->ops = &wm8731_dai_ops;
-	dai->audio_ops = &wm8731_dai_audio_ops;
-	dai->capture = &wm8731_dai_capture;
-	dai->playback = &wm8731_dai_playback;
+	dai->private_data = ak4535;
+	dai->ops = &ak4535_dai_ops;
+	dai->audio_ops = &ak4535_dai_audio_ops;
+	dai->capture = &ak4535_dai_capture;
+	dai->playback = &ak4535_dai_playback;
 	return 0;
 }
 
-static int wm8731_dai_remove(struct device *dev)
+static int ak4535_dai_remove(struct device *dev)
 {
 	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
 	kfree(dai->private_data);
 	return 0;
 }
 
-const char wm8731_codec[SND_SOC_CODEC_NAME_SIZE] = "wm8731-codec";
-EXPORT_SYMBOL_GPL(wm8731_codec);
+const char ak4535_codec[SND_SOC_CODEC_NAME_SIZE] = "ak4535-codec";
+EXPORT_SYMBOL_GPL(ak4535_codec);
 
-static struct snd_soc_device_driver wm8731_codec_driver = {
+static struct snd_soc_device_driver ak4535_codec_driver = {
 	.type	= SND_SOC_BUS_TYPE_CODEC,
 	.driver	= {
-		.name 		= wm8731_codec,
+		.name 		= ak4535_codec,
 		.owner		= THIS_MODULE,
 		.bus 		= &asoc_bus_type,
-		.probe		= wm8731_codec_probe,
-		.remove		= __devexit_p(wm8731_codec_remove),
-		.suspend	= wm8731_suspend,
-		.resume		= wm8731_resume,
+		.probe		= ak4535_codec_probe,
+		.remove		= __devexit_p(ak4535_codec_remove),
+		.suspend	= ak4535_suspend,
+		.resume		= ak4535_resume,
 	},
 };
 
-const char wm8731_hifi_dai[SND_SOC_CODEC_NAME_SIZE] = "wm8731-hifi-dai";
-EXPORT_SYMBOL_GPL(wm8731_hifi_dai);
+const char ak4535_hifi_dai[SND_SOC_CODEC_NAME_SIZE] = "ak4535-hifi-dai";
+EXPORT_SYMBOL_GPL(ak4535_hifi_dai);
 
-static struct snd_soc_device_driver wm8731_hifi_dai_driver = {
+static struct snd_soc_device_driver ak4535_hifi_dai_driver = {
 	.type	= SND_SOC_BUS_TYPE_DAI,
 	.driver	= {
-		.name 		= wm8731_hifi_dai,
+		.name 		= ak4535_hifi_dai,
 		.owner		= THIS_MODULE,
 		.bus 		= &asoc_bus_type,
-		.probe		= wm8731_dai_probe,
-		.remove		= __devexit_p(wm8731_dai_remove),
+		.probe		= ak4535_dai_probe,
+		.remove		= __devexit_p(ak4535_dai_remove),
 	},
 };
 
-static __init int wm8731_init(void)
+static __init int ak4535_init(void)
 {
 	int ret = 0;
 	
-	ret = driver_register(&wm8731_codec_driver.driver);
+	ret = driver_register(&ak4535_codec_driver.driver);
 	if (ret < 0)
 		return ret;
-	ret = driver_register(&wm8731_hifi_dai_driver.driver);
+	ret = driver_register(&ak4535_hifi_dai_driver.driver);
 	if (ret < 0) {
-		driver_unregister(&wm8731_codec_driver.driver);
+		driver_unregister(&ak4535_codec_driver.driver);
 		return ret;
 	}
 	return ret;
 }
 
-static __exit void wm8731_exit(void)
+static __exit void ak4535_exit(void)
 {
-	driver_unregister(&wm8731_hifi_dai_driver.driver);
-	driver_unregister(&wm8731_codec_driver.driver);
+	driver_unregister(&ak4535_hifi_dai_driver.driver);
+	driver_unregister(&ak4535_codec_driver.driver);
 }
 
-module_init(wm8731_init);
-module_exit(wm8731_exit);
+module_init(ak4535_init);
+module_exit(ak4535_exit);
 
 
 MODULE_DESCRIPTION("Soc AK4535 driver");

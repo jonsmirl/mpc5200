@@ -801,7 +801,19 @@ static const struct snd_soc_ops uda1380_dai_audio_ops = {
 static int uda1380_dai_probe(struct device *dev)
 {
 	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
-
+	
+	if (!strcmp(pxa2xx_ssp_1, dai->name))
+		dai->id = 0;
+	else if (!strcmp(pxa2xx_ssp_2, dai->name))
+		dai->id = 1;
+	else if (!strcmp(pxa2xx_ssp_3, dai->name))
+		dai->id = 2;
+	else {
+		printk(KERN_ERR "%s: invalid device %s\n", __func__, 
+			dai->name);
+		kfree(ssp);
+		return -ENODEV;
+	}
 	dai->ops = &uda1380_dai_ops;
 	dai->audio_ops = &uda1380_dai_audio_ops;
 	dai->capture = &uda1380_dai_capture;

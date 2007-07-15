@@ -17,8 +17,7 @@
 #include <linux/init.h>
 #include <linux/delay.h>
 #include <linux/pm.h>
-#include <linux/i2c.h>
-#include <linux/platform_device.h>
+#include <linux/device.h>
 #include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>

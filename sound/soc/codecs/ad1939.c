@@ -30,7 +30,7 @@
 #include <linux/delay.h>
 #include <linux/pm.h>
 #include <linux/i2c.h>
-#include <linux/platform_device.h>
+#include <linux/device.h>
 #include <linux/workqueue.h>
 #include <sound/driver.h>
 #include <sound/core.h>
@@ -158,12 +158,13 @@ SOC_ENUM("DAC output polarity", ad1939_enum[1]),
 };
 
 /* add non dapm controls */
-static int ad1939_add_controls(struct snd_soc_codec *codec)
+static int ad1939_add_controls(struct snd_soc_codec *codec, 
+	struct snd_card *card)
 {
 	int err, i;
 
 	for (i = 0; i < ARRAY_SIZE(ad1939_snd_ctls); i++) {
-		err = snd_ctl_add(codec->card,
+		err = snd_ctl_add(card,
 			snd_soc_cnew(&ad1939_snd_ctls[i], codec, NULL));
 		if (err < 0)
 			return err;
@@ -178,9 +179,8 @@ static int ad1939_add_controls(struct snd_soc_codec *codec)
 static int ad1939_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_device *socdev = rtd->socdev;
-	struct snd_soc_codec *codec = socdev->codec;
+	struct snd_soc_pcm_link *pcm_link = substream->private_data;
+	struct snd_soc_codec *codec = pcm_link->codec;
 	struct ad1939_private *ad = codec->private_data;
 	unsigned char dac0, dac1, dac2, adc0, adc1, adc2;
 	unsigned long rate;
@@ -280,7 +280,7 @@ static int ad1939_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int ad1939_set_dai_fmt(struct snd_soc_codec_dai *codec_dai,
+static int ad1939_set_dai_fmt(struct snd_soc_dai *codec_dai,
 		unsigned int fmt)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
@@ -406,13 +406,13 @@ static int ad1939_dapm_event(struct snd_soc_codec *codec, int event)
 	return 0;
 }
 
-static int ad1939_digmute(struct snd_soc_codec_dai *dai, int mute)
+static int ad1939_digmute(struct snd_soc_dai *dai, int mute)
 {
 	dai->codec->write(dai->codec, AD1939_DACMUTE, mute ? 0xff : 0);
 	return 0;
 }
 
-static int ad1939_set_dai_sysclk(struct snd_soc_codec_dai *codec_dai,
+static int ad1939_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 		int clk_id, unsigned int freq, int dir)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
@@ -429,39 +429,6 @@ static int ad1939_set_dai_sysclk(struct snd_soc_codec_dai *codec_dai,
 	}
 	return 0;
 }
-
-#define AD1939_RATES	\
-	(SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 | \
-	 SNDRV_PCM_RATE_192000)
-
-#define AD1939_FORMATS	\
-	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE)
-
-struct snd_soc_codec_dai ad1939_dai = {
-	.name = "AD1939",
-	.playback = {
-		.stream_name = "Playback",
-		.channels_min = 2,
-		.channels_max = 4,	/* 4/8 in single/dualline TDM */
-		.rates = AD1939_RATES,
-		.formats = AD1939_FORMATS,},
-	.capture = {
-		.stream_name = "Capture",
-		.channels_min = 2,
-		.channels_max = 4,	/* yes, 2 DACs! */
-		.rates = AD1939_RATES,
-		.formats = AD1939_FORMATS,},
-	.ops = {
-		.hw_params = ad1939_hw_params,
-	},
-	.dai_ops = {
-		.digital_mute = ad1939_digmute,
-		.set_sysclk = ad1939_set_dai_sysclk,
-		.set_fmt = ad1939_set_dai_fmt,
-	}
-};
-EXPORT_SYMBOL_GPL(ad1939_dai);
-
 
 static int ad1939_init(struct snd_soc_device *socdev)
 {
@@ -682,181 +649,180 @@ static int ad1939_remove(struct platform_device *pdev)
 /*
  * initialise the WM8731 codec
  */
-static int wm8731_probe_codec(struct snd_soc_codec *codec,
+static int ad1939_probe_codec(struct snd_soc_codec *codec,
 	struct snd_soc_machine *machine)
 {
 	int reg;
 
-	wm8731_reset(codec);
+	ad1939_reset(codec);
 
 	/* power on device */
-	wm8731_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
+	ad1939_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
 
 	/* set the update bits */
-	reg = wm8731_read_reg_cache(codec, WM8731_LOUT1V);
-	wm8731_write(codec, WM8731_LOUT1V, reg | 0x0100);
-	reg = wm8731_read_reg_cache(codec, WM8731_ROUT1V);
-	wm8731_write(codec, WM8731_ROUT1V, reg | 0x0100);
-	reg = wm8731_read_reg_cache(codec, WM8731_LINVOL);
-	wm8731_write(codec, WM8731_LINVOL, reg | 0x0100);
-	reg = wm8731_read_reg_cache(codec, WM8731_RINVOL);
-	wm8731_write(codec, WM8731_RINVOL, reg | 0x0100);
+	reg = ad1939_read_reg_cache(codec, WM8731_LOUT1V);
+	ad1939_write(codec, WM8731_LOUT1V, reg | 0x0100);
+	reg = ad1939_read_reg_cache(codec, WM8731_ROUT1V);
+	ad1939_write(codec, WM8731_ROUT1V, reg | 0x0100);
+	reg = ad1939_read_reg_cache(codec, WM8731_LINVOL);
+	ad1939_write(codec, WM8731_LINVOL, reg | 0x0100);
+	reg = ad1939_read_reg_cache(codec, WM8731_RINVOL);
+	ad1939_write(codec, WM8731_RINVOL, reg | 0x0100);
 	
-	wm8731_add_controls(codec, machine->card);
-	wm8731_add_widgets(codec, machine);
+	ad1939_add_controls(codec, machine->card);
+	ad1939_add_widgets(codec, machine);
 
 	return 0;
 }
 
-static struct snd_soc_codec_ops wm8731_codec_ops = {
-	.dapm_event	= wm8731_dapm_event,
-	.read		= wm8731_read_reg_cache,
-	.write		= wm8731_write,
-	.probe_codec	= wm8731_probe_codec,
+static struct snd_soc_codec_ops ad1939_codec_ops = {
+	.dapm_event	= ad1939_dapm_event,
+	.read		= ad1939_read_reg_cache,
+	.write		= ad1939_write,
+	.probe_codec	= ad1939_probe_codec,
 };
 
-static int wm8731_codec_probe(struct device *dev)
+static int ad1939_codec_probe(struct device *dev)
 {
 	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 
 	info("WM8731 Audio Codec %s", WM8731_VERSION);
 
-	codec->reg_cache = kmemdup(wm8731_reg, sizeof(wm8731_reg), GFP_KERNEL);
+	codec->reg_cache = kmemdup(ad1939_reg, sizeof(ad1939_reg), GFP_KERNEL);
 	if (codec->reg_cache == NULL)
 		return -ENOMEM;
-	codec->reg_cache_size = sizeof(wm8731_reg);
+	codec->reg_cache_size = sizeof(ad1939_reg);
 	
 	codec->owner = THIS_MODULE;
-	codec->ops = &wm8731_codec_ops;
+	codec->ops = &ad1939_codec_ops;
 	return 0;
 }
 
-static int wm8731_codec_remove(struct device *dev)
+static int ad1939_codec_remove(struct device *dev)
 {
 	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 	
 	if (codec->control_data)
-		wm8731_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
+		ad1939_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
 	kfree(codec->reg_cache);
 	return 0;
 }
 
-#define WM8731_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 |\
-		SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_22050 |\
-		SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 |\
-		SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_88200 |\
-		SNDRV_PCM_RATE_96000)
+#define AD1939_RATES	\
+	(SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 | \
+	 SNDRV_PCM_RATE_192000)
 
-#define WM8731_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |\
-	SNDRV_PCM_FMTBIT_S24_LE)
+#define AD1939_FORMATS	\
+	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE)
 
-static const struct snd_soc_pcm_stream wm8731_dai_playback = {
+
+static const struct snd_soc_pcm_stream ad1939_dai_playback = {
 	.stream_name	= "Playback",
-	.channels_min	= 1,
-	.channels_max	= 2,
-	.rates		= WM8731_RATES,
-	.formats	= WM8731_FORMATS,
+	.channels_min	= 2,
+	.channels_max	= 8,
+	.rates		= AD1939_RATES,
+	.formats	= AD1939_FORMATS,
 };
 
-static const struct snd_soc_pcm_stream wm8731_dai_capture = {
+static const struct snd_soc_pcm_stream ad1939_dai_capture = {
 	.stream_name	= "Capture",
-	.channels_min	= 1,
-	.channels_max	= 2,
-	.rates		= WM8731_RATES,
-	.formats	= WM8731_FORMATS,
+	.channels_min	= 2,
+	.channels_max	= 4,
+	.rates		= AD1939_RATES,
+	.formats	= AD1939_FORMATS,
 };
 
 /* dai ops, called by machine drivers */
-static const struct snd_soc_dai_ops wm8731_dai_ops = {
-	.digital_mute	= wm8731_mute,
-	.set_sysclk	= wm8731_set_dai_sysclk,
-	.set_fmt	= wm8731_set_dai_fmt,
+static const struct snd_soc_dai_ops ad1939_dai_ops = {
+	.digital_mute	= ad1939_mute,
+	.set_sysclk	= ad1939_set_dai_sysclk,
+	.set_fmt	= ad1939_set_dai_fmt,
 };
 
 /* audio ops, called by alsa */
-static const struct snd_soc_ops wm8731_dai_audio_ops = {
-	.hw_params	= wm8731_hw_params,
-	.prepare	= wm8731_prepare,
-	.shutdown	= wm8731_shutdown,
+static const struct snd_soc_ops ad1939_dai_audio_ops = {
+	.hw_params	= ad1939_hw_params,
+	.prepare	= ad1939_prepare,
+	.shutdown	= ad1939_shutdown,
 };
 
-static int wm8731_dai_probe(struct device *dev)
+static int ad1939_dai_probe(struct device *dev)
 {
 	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
-	struct wm8731_priv *wm8731;
+	struct ad1939_priv *ad1939;
 	
-	wm8731 = kzalloc(sizeof(struct wm8731_priv), GFP_KERNEL);
-	if (wm8731 == NULL)
+	ad1939 = kzalloc(sizeof(struct ad1939_priv), GFP_KERNEL);
+	if (ad1939 == NULL)
 		return -ENOMEM;
 	
-	dai->private_data = wm8731;
-	dai->ops = &wm8731_dai_ops;
-	dai->audio_ops = &wm8731_dai_audio_ops;
-	dai->capture = &wm8731_dai_capture;
-	dai->playback = &wm8731_dai_playback;
+	dai->private_data = ad1939;
+	dai->ops = &ad1939_dai_ops;
+	dai->audio_ops = &ad1939_dai_audio_ops;
+	dai->capture = &ad1939_dai_capture;
+	dai->playback = &ad1939_dai_playback;
 	return 0;
 }
 
-static int wm8731_dai_remove(struct device *dev)
+static int ad1939_dai_remove(struct device *dev)
 {
 	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
 	kfree(dai->private_data);
 	return 0;
 }
 
-const char wm8731_codec[SND_SOC_CODEC_NAME_SIZE] = "wm8731-codec";
-EXPORT_SYMBOL_GPL(wm8731_codec);
+const char ad1939_codec[SND_SOC_CODEC_NAME_SIZE] = "ad1939-codec";
+EXPORT_SYMBOL_GPL(ad1939_codec);
 
-static struct snd_soc_device_driver wm8731_codec_driver = {
+static struct snd_soc_device_driver ad1939_codec_driver = {
 	.type	= SND_SOC_BUS_TYPE_CODEC,
 	.driver	= {
-		.name 		= wm8731_codec,
+		.name 		= ad1939_codec,
 		.owner		= THIS_MODULE,
 		.bus 		= &asoc_bus_type,
-		.probe		= wm8731_codec_probe,
-		.remove		= __devexit_p(wm8731_codec_remove),
-		.suspend	= wm8731_suspend,
-		.resume		= wm8731_resume,
+		.probe		= ad1939_codec_probe,
+		.remove		= __devexit_p(ad1939_codec_remove),
+		.suspend	= ad1939_suspend,
+		.resume		= ad1939_resume,
 	},
 };
 
-const char wm8731_hifi_dai[SND_SOC_CODEC_NAME_SIZE] = "wm8731-hifi-dai";
-EXPORT_SYMBOL_GPL(wm8731_hifi_dai);
+const char ad1939_hifi_dai[SND_SOC_CODEC_NAME_SIZE] = "ad1939-hifi-dai";
+EXPORT_SYMBOL_GPL(ad1939_hifi_dai);
 
-static struct snd_soc_device_driver wm8731_hifi_dai_driver = {
+static struct snd_soc_device_driver ad1939_hifi_dai_driver = {
 	.type	= SND_SOC_BUS_TYPE_DAI,
 	.driver	= {
-		.name 		= wm8731_hifi_dai,
+		.name 		= ad1939_hifi_dai,
 		.owner		= THIS_MODULE,
 		.bus 		= &asoc_bus_type,
-		.probe		= wm8731_dai_probe,
-		.remove		= __devexit_p(wm8731_dai_remove),
+		.probe		= ad1939_dai_probe,
+		.remove		= __devexit_p(ad1939_dai_remove),
 	},
 };
 
-static __init int wm8731_init(void)
+static __init int ad1939_init(void)
 {
 	int ret = 0;
 	
-	ret = driver_register(&wm8731_codec_driver.driver);
+	ret = driver_register(&ad1939_codec_driver.driver);
 	if (ret < 0)
 		return ret;
-	ret = driver_register(&wm8731_hifi_dai_driver.driver);
+	ret = driver_register(&ad1939_hifi_dai_driver.driver);
 	if (ret < 0) {
-		driver_unregister(&wm8731_codec_driver.driver);
+		driver_unregister(&ad1939_codec_driver.driver);
 		return ret;
 	}
 	return ret;
 }
 
-static __exit void wm8731_exit(void)
+static __exit void ad1939_exit(void)
 {
-	driver_unregister(&wm8731_hifi_dai_driver.driver);
-	driver_unregister(&wm8731_codec_driver.driver);
+	driver_unregister(&ad1939_hifi_dai_driver.driver);
+	driver_unregister(&ad1939_codec_driver.driver);
 }
 
-module_init(wm8731_init);
-module_exit(wm8731_exit);
+module_init(ad1939_init);
+module_exit(ad1939_exit);
 
 
 MODULE_LICENSE("GPL");
