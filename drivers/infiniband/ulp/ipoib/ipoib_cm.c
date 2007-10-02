@@ -37,6 +37,7 @@
 #include <net/dst.h>
 #include <net/icmp.h>
 #include <linux/icmpv6.h>
+#include <linux/delay.h>
 
 #ifdef CONFIG_INFINIBAND_IPOIB_DEBUG_DATA
 static int data_debug_level;
@@ -55,11 +56,15 @@ MODULE_PARM_DESC(cm_data_debug_level,
 #define IPOIB_CM_RX_DELAY       (3 * 256 * HZ)
 #define IPOIB_CM_RX_UPDATE_MASK (0x3)
 
-struct ipoib_cm_id {
-	struct ib_cm_id *id;
-	int flags;
-	u32 remote_qpn;
-	u32 remote_mtu;
+static struct ib_qp_attr ipoib_cm_err_attr = {
+	.qp_state = IB_QPS_ERR
+};
+
+#define IPOIB_CM_RX_DRAIN_WRID 0x7fffffff
+
+static struct ib_send_wr ipoib_cm_rx_drain_wr = {
+	.wr_id = IPOIB_CM_RX_DRAIN_WRID,
+	.opcode = IB_WR_SEND,
 };
 
 static int ipoib_cm_tx_handler(struct ib_cm_id *cm_id,
@@ -143,11 +148,49 @@ partial_error:
 
 	ib_dma_unmap_single(priv->ca, mapping[0], IPOIB_CM_HEAD_SIZE, DMA_FROM_DEVICE);
 
-	for (; i >= 0; --i)
-		ib_dma_unmap_single(priv->ca, mapping[i + 1], PAGE_SIZE, DMA_FROM_DEVICE);
+	for (; i > 0; --i)
+		ib_dma_unmap_single(priv->ca, mapping[i], PAGE_SIZE, DMA_FROM_DEVICE);
 
 	dev_kfree_skb_any(skb);
 	return NULL;
+}
+
+static void ipoib_cm_start_rx_drain(struct ipoib_dev_priv* priv)
+{
+	struct ib_send_wr *bad_wr;
+	struct ipoib_cm_rx *p;
+
+	/* We only reserved 1 extra slot in CQ for drain WRs, so
+	 * make sure we have at most 1 outstanding WR. */
+	if (list_empty(&priv->cm.rx_flush_list) ||
+	    !list_empty(&priv->cm.rx_drain_list))
+		return;
+
+	/*
+	 * QPs on flush list are error state.  This way, a "flush
+	 * error" WC will be immediately generated for each WR we post.
+	 */
+	p = list_entry(priv->cm.rx_flush_list.next, typeof(*p), list);
+	if (ib_post_send(p->qp, &ipoib_cm_rx_drain_wr, &bad_wr))
+		ipoib_warn(priv, "failed to post drain wr\n");
+
+	list_splice_init(&priv->cm.rx_flush_list, &priv->cm.rx_drain_list);
+}
+
+static void ipoib_cm_rx_event_handler(struct ib_event *event, void *ctx)
+{
+	struct ipoib_cm_rx *p = ctx;
+	struct ipoib_dev_priv *priv = netdev_priv(p->dev);
+	unsigned long flags;
+
+	if (event->event != IB_EVENT_QP_LAST_WQE_REACHED)
+		return;
+
+	spin_lock_irqsave(&priv->lock, flags);
+	list_move(&p->list, &priv->cm.rx_flush_list);
+	p->state = IPOIB_CM_RX_FLUSH;
+	ipoib_cm_start_rx_drain(priv);
+	spin_unlock_irqrestore(&priv->lock, flags);
 }
 
 static struct ib_qp *ipoib_cm_create_rx_qp(struct net_device *dev,
@@ -155,10 +198,11 @@ static struct ib_qp *ipoib_cm_create_rx_qp(struct net_device *dev,
 {
 	struct ipoib_dev_priv *priv = netdev_priv(dev);
 	struct ib_qp_init_attr attr = {
-		.send_cq = priv->cq, /* does not matter, we never send anything */
+		.event_handler = ipoib_cm_rx_event_handler,
+		.send_cq = priv->cq, /* For drain WR */
 		.recv_cq = priv->cq,
 		.srq = priv->cm.srq,
-		.cap.max_send_wr = 1, /* FIXME: 0 Seems not to work */
+		.cap.max_send_wr = 1, /* For drain WR */
 		.cap.max_send_sge = 1, /* FIXME: 0 Seems not to work */
 		.sq_sig_type = IB_SIGNAL_ALL_WR,
 		.qp_type = IB_QPT_RC,
@@ -198,6 +242,27 @@ static int ipoib_cm_modify_rx_qp(struct net_device *dev,
 		ipoib_warn(priv, "failed to modify QP to RTR: %d\n", ret);
 		return ret;
 	}
+
+	/*
+	 * Current Mellanox HCA firmware won't generate completions
+	 * with error for drain WRs unless the QP has been moved to
+	 * RTS first. This work-around leaves a window where a QP has
+	 * moved to error asynchronously, but this will eventually get
+	 * fixed in firmware, so let's not error out if modify QP
+	 * fails.
+	 */
+	qp_attr.qp_state = IB_QPS_RTS;
+	ret = ib_cm_init_qp_attr(cm_id, &qp_attr, &qp_attr_mask);
+	if (ret) {
+		ipoib_warn(priv, "failed to init QP attr for RTS: %d\n", ret);
+		return 0;
+	}
+	ret = ib_modify_qp(qp, &qp_attr, qp_attr_mask);
+	if (ret) {
+		ipoib_warn(priv, "failed to modify QP to RTS: %d\n", ret);
+		return 0;
+	}
+
 	return 0;
 }
 
@@ -216,7 +281,6 @@ static int ipoib_cm_send_rep(struct net_device *dev, struct ib_cm_id *cm_id,
 	rep.private_data_len = sizeof data;
 	rep.flow_control = 0;
 	rep.rnr_retry_count = req->rnr_retry_count;
-	rep.target_ack_delay = 20; /* FIXME */
 	rep.srq = 1;
 	rep.qp_num = qp->qp_num;
 	rep.starting_psn = psn;
@@ -237,6 +301,11 @@ static int ipoib_cm_req_handler(struct ib_cm_id *cm_id, struct ib_cm_event *even
 		return -ENOMEM;
 	p->dev = dev;
 	p->id = cm_id;
+	cm_id->context = p;
+	p->state = IPOIB_CM_RX_LIVE;
+	p->jiffies = jiffies;
+	INIT_LIST_HEAD(&p->list);
+
 	p->qp = ipoib_cm_create_rx_qp(dev, p);
 	if (IS_ERR(p->qp)) {
 		ret = PTR_ERR(p->qp);
@@ -248,23 +317,24 @@ static int ipoib_cm_req_handler(struct ib_cm_id *cm_id, struct ib_cm_event *even
 	if (ret)
 		goto err_modify;
 
+	spin_lock_irq(&priv->lock);
+	queue_delayed_work(ipoib_workqueue,
+			   &priv->cm.stale_task, IPOIB_CM_RX_DELAY);
+	/* Add this entry to passive ids list head, but do not re-add it
+	 * if IB_EVENT_QP_LAST_WQE_REACHED has moved it to flush list. */
+	p->jiffies = jiffies;
+	if (p->state == IPOIB_CM_RX_LIVE)
+		list_move(&p->list, &priv->cm.passive_ids);
+	spin_unlock_irq(&priv->lock);
+
 	ret = ipoib_cm_send_rep(dev, cm_id, p->qp, &event->param.req_rcvd, psn);
 	if (ret) {
 		ipoib_warn(priv, "failed to send REP: %d\n", ret);
-		goto err_rep;
+		if (ib_modify_qp(p->qp, &ipoib_cm_err_attr, IB_QP_STATE))
+			ipoib_warn(priv, "unable to move qp to error state\n");
 	}
-
-	cm_id->context = p;
-	p->jiffies = jiffies;
-	spin_lock_irq(&priv->lock);
-	if (list_empty(&priv->cm.passive_ids))
-		queue_delayed_work(ipoib_workqueue,
-				   &priv->cm.stale_task, IPOIB_CM_RX_DELAY);
-	list_add(&p->list, &priv->cm.passive_ids);
-	spin_unlock_irq(&priv->lock);
 	return 0;
 
-err_rep:
 err_modify:
 	ib_destroy_qp(p->qp);
 err_qp:
@@ -277,7 +347,6 @@ static int ipoib_cm_rx_handler(struct ib_cm_id *cm_id,
 {
 	struct ipoib_cm_rx *p;
 	struct ipoib_dev_priv *priv;
-	int ret;
 
 	switch (event->event) {
 	case IB_CM_REQ_RECEIVED:
@@ -289,20 +358,9 @@ static int ipoib_cm_rx_handler(struct ib_cm_id *cm_id,
 	case IB_CM_REJ_RECEIVED:
 		p = cm_id->context;
 		priv = netdev_priv(p->dev);
-		spin_lock_irq(&priv->lock);
-		if (list_empty(&p->list))
-			ret = 0; /* Connection is going away already. */
-		else {
-			list_del_init(&p->list);
-			ret = -ECONNRESET;
-		}
-		spin_unlock_irq(&priv->lock);
-		if (ret) {
-			ib_destroy_qp(p->qp);
-			kfree(p);
-			return ret;
-		}
-		return 0;
+		if (ib_modify_qp(p->qp, &ipoib_cm_err_attr, IB_QP_STATE))
+			ipoib_warn(priv, "unable to move qp to error state\n");
+		/* Fall through */
 	default:
 		return 0;
 	}
@@ -354,8 +412,15 @@ void ipoib_cm_handle_rx_wc(struct net_device *dev, struct ib_wc *wc)
 		       wr_id, wc->status);
 
 	if (unlikely(wr_id >= ipoib_recvq_size)) {
-		ipoib_warn(priv, "cm recv completion event with wrid %d (> %d)\n",
-			   wr_id, ipoib_recvq_size);
+		if (wr_id == (IPOIB_CM_RX_DRAIN_WRID & ~IPOIB_CM_OP_SRQ)) {
+			spin_lock_irqsave(&priv->lock, flags);
+			list_splice_init(&priv->cm.rx_drain_list, &priv->cm.rx_reap_list);
+			ipoib_cm_start_rx_drain(priv);
+			queue_work(ipoib_workqueue, &priv->cm.rx_reap_task);
+			spin_unlock_irqrestore(&priv->lock, flags);
+		} else
+			ipoib_warn(priv, "cm recv completion event with wrid %d (> %d)\n",
+				   wr_id, ipoib_recvq_size);
 		return;
 	}
 
@@ -374,9 +439,9 @@ void ipoib_cm_handle_rx_wc(struct net_device *dev, struct ib_wc *wc)
 		if (p && time_after_eq(jiffies, p->jiffies + IPOIB_CM_RX_UPDATE_TIME)) {
 			spin_lock_irqsave(&priv->lock, flags);
 			p->jiffies = jiffies;
-			/* Move this entry to list head, but do
-			 * not re-add it if it has been removed. */
-			if (!list_empty(&p->list))
+			/* Move this entry to list head, but do not re-add it
+			 * if it has been moved out of list. */
+			if (p->state == IPOIB_CM_RX_LIVE)
 				list_move(&p->list, &priv->cm.passive_ids);
 			spin_unlock_irqrestore(&priv->lock, flags);
 		}
@@ -592,8 +657,7 @@ int ipoib_cm_dev_open(struct net_device *dev)
 	if (IS_ERR(priv->cm.id)) {
 		printk(KERN_WARNING "%s: failed to create CM ID\n", priv->ca->name);
 		ret = PTR_ERR(priv->cm.id);
-		priv->cm.id = NULL;
-		return ret;
+		goto err_cm;
 	}
 
 	ret = ib_cm_listen(priv->cm.id, cpu_to_be64(IPOIB_CM_IETF_ID | priv->qp->qp_num),
@@ -601,34 +665,76 @@ int ipoib_cm_dev_open(struct net_device *dev)
 	if (ret) {
 		printk(KERN_WARNING "%s: failed to listen on ID 0x%llx\n", priv->ca->name,
 		       IPOIB_CM_IETF_ID | priv->qp->qp_num);
-		ib_destroy_cm_id(priv->cm.id);
-		priv->cm.id = NULL;
-		return ret;
+		goto err_listen;
 	}
+
 	return 0;
+
+err_listen:
+	ib_destroy_cm_id(priv->cm.id);
+err_cm:
+	priv->cm.id = NULL;
+	return ret;
 }
 
 void ipoib_cm_dev_stop(struct net_device *dev)
 {
 	struct ipoib_dev_priv *priv = netdev_priv(dev);
-	struct ipoib_cm_rx *p;
+	struct ipoib_cm_rx *p, *n;
+	unsigned long begin;
+	LIST_HEAD(list);
+	int ret;
 
 	if (!IPOIB_CM_SUPPORTED(dev->dev_addr) || !priv->cm.id)
 		return;
 
 	ib_destroy_cm_id(priv->cm.id);
 	priv->cm.id = NULL;
+
 	spin_lock_irq(&priv->lock);
 	while (!list_empty(&priv->cm.passive_ids)) {
 		p = list_entry(priv->cm.passive_ids.next, typeof(*p), list);
-		list_del_init(&p->list);
+		list_move(&p->list, &priv->cm.rx_error_list);
+		p->state = IPOIB_CM_RX_ERROR;
 		spin_unlock_irq(&priv->lock);
+		ret = ib_modify_qp(p->qp, &ipoib_cm_err_attr, IB_QP_STATE);
+		if (ret)
+			ipoib_warn(priv, "unable to move qp to error state: %d\n", ret);
+		spin_lock_irq(&priv->lock);
+	}
+
+	/* Wait for all RX to be drained */
+	begin = jiffies;
+
+	while (!list_empty(&priv->cm.rx_error_list) ||
+	       !list_empty(&priv->cm.rx_flush_list) ||
+	       !list_empty(&priv->cm.rx_drain_list)) {
+		if (time_after(jiffies, begin + 5 * HZ)) {
+			ipoib_warn(priv, "RX drain timing out\n");
+
+			/*
+			 * assume the HW is wedged and just free up everything.
+			 */
+			list_splice_init(&priv->cm.rx_flush_list, &list);
+			list_splice_init(&priv->cm.rx_error_list, &list);
+			list_splice_init(&priv->cm.rx_drain_list, &list);
+			break;
+		}
+		spin_unlock_irq(&priv->lock);
+		msleep(1);
+		ipoib_drain_cq(dev);
+		spin_lock_irq(&priv->lock);
+	}
+
+	list_splice_init(&priv->cm.rx_reap_list, &list);
+
+	spin_unlock_irq(&priv->lock);
+
+	list_for_each_entry_safe(p, n, &list, list) {
 		ib_destroy_cm_id(p->id);
 		ib_destroy_qp(p->qp);
 		kfree(p);
-		spin_lock_irq(&priv->lock);
 	}
-	spin_unlock_irq(&priv->lock);
 
 	cancel_delayed_work(&priv->cm.stale_task);
 }
@@ -645,9 +751,9 @@ static int ipoib_cm_rep_handler(struct ib_cm_id *cm_id, struct ib_cm_event *even
 
 	p->mtu = be32_to_cpu(data->mtu);
 
-	if (p->mtu < priv->dev->mtu + IPOIB_ENCAP_LEN) {
-		ipoib_warn(priv, "Rejecting connection: mtu %d < device mtu %d + 4\n",
-			   p->mtu, priv->dev->mtu);
+	if (p->mtu <= IPOIB_ENCAP_LEN) {
+		ipoib_warn(priv, "Rejecting connection: mtu %d <= %d\n",
+			   p->mtu, IPOIB_ENCAP_LEN);
 		return -EINVAL;
 	}
 
@@ -1041,7 +1147,6 @@ static void ipoib_cm_skb_reap(struct work_struct *work)
 {
 	struct ipoib_dev_priv *priv = container_of(work, struct ipoib_dev_priv,
 						   cm.skb_task);
-	struct net_device *dev = priv->dev;
 	struct sk_buff *skb;
 
 	unsigned mtu = priv->mcast_mtu;
@@ -1055,7 +1160,7 @@ static void ipoib_cm_skb_reap(struct work_struct *work)
 			icmp_send(skb, ICMP_DEST_UNREACH, ICMP_FRAG_NEEDED, htonl(mtu));
 #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
 		else if (skb->protocol == htons(ETH_P_IPV6))
-			icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu, dev);
+			icmpv6_send(skb, ICMPV6_PKT_TOOBIG, 0, mtu, priv->dev);
 #endif
 		dev_kfree_skb_any(skb);
 		spin_lock_irq(&priv->tx_lock);
@@ -1079,24 +1184,44 @@ void ipoib_cm_skb_too_long(struct net_device* dev, struct sk_buff *skb,
 		queue_work(ipoib_workqueue, &priv->cm.skb_task);
 }
 
+static void ipoib_cm_rx_reap(struct work_struct *work)
+{
+	struct ipoib_dev_priv *priv = container_of(work, struct ipoib_dev_priv,
+						   cm.rx_reap_task);
+	struct ipoib_cm_rx *p, *n;
+	LIST_HEAD(list);
+
+	spin_lock_irq(&priv->lock);
+	list_splice_init(&priv->cm.rx_reap_list, &list);
+	spin_unlock_irq(&priv->lock);
+
+	list_for_each_entry_safe(p, n, &list, list) {
+		ib_destroy_cm_id(p->id);
+		ib_destroy_qp(p->qp);
+		kfree(p);
+	}
+}
+
 static void ipoib_cm_stale_task(struct work_struct *work)
 {
 	struct ipoib_dev_priv *priv = container_of(work, struct ipoib_dev_priv,
 						   cm.stale_task.work);
 	struct ipoib_cm_rx *p;
+	int ret;
 
 	spin_lock_irq(&priv->lock);
 	while (!list_empty(&priv->cm.passive_ids)) {
-		/* List if sorted by LRU, start from tail,
+		/* List is sorted by LRU, start from tail,
 		 * stop when we see a recently used entry */
 		p = list_entry(priv->cm.passive_ids.prev, typeof(*p), list);
 		if (time_before_eq(jiffies, p->jiffies + IPOIB_CM_RX_TIMEOUT))
 			break;
-		list_del_init(&p->list);
+		list_move(&p->list, &priv->cm.rx_error_list);
+		p->state = IPOIB_CM_RX_ERROR;
 		spin_unlock_irq(&priv->lock);
-		ib_destroy_cm_id(p->id);
-		ib_destroy_qp(p->qp);
-		kfree(p);
+		ret = ib_modify_qp(p->qp, &ipoib_cm_err_attr, IB_QP_STATE);
+		if (ret)
+			ipoib_warn(priv, "unable to move qp to error state: %d\n", ret);
 		spin_lock_irq(&priv->lock);
 	}
 
@@ -1164,9 +1289,14 @@ int ipoib_cm_dev_init(struct net_device *dev)
 	INIT_LIST_HEAD(&priv->cm.passive_ids);
 	INIT_LIST_HEAD(&priv->cm.reap_list);
 	INIT_LIST_HEAD(&priv->cm.start_list);
+	INIT_LIST_HEAD(&priv->cm.rx_error_list);
+	INIT_LIST_HEAD(&priv->cm.rx_flush_list);
+	INIT_LIST_HEAD(&priv->cm.rx_drain_list);
+	INIT_LIST_HEAD(&priv->cm.rx_reap_list);
 	INIT_WORK(&priv->cm.start_task, ipoib_cm_tx_start);
 	INIT_WORK(&priv->cm.reap_task, ipoib_cm_tx_reap);
 	INIT_WORK(&priv->cm.skb_task, ipoib_cm_skb_reap);
+	INIT_WORK(&priv->cm.rx_reap_task, ipoib_cm_rx_reap);
 	INIT_DELAYED_WORK(&priv->cm.stale_task, ipoib_cm_stale_task);
 
 	skb_queue_head_init(&priv->cm.skb_queue);

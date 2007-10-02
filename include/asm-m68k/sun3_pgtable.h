@@ -132,8 +132,8 @@ static inline void pte_clear (struct mm_struct *mm, unsigned long addr, pte_t *p
 #define pfn_pte(pfn, pgprot) \
 ({ pte_t __pte; pte_val(__pte) = pfn | pgprot_val(pgprot); __pte; })
 
-#define pte_page(pte)		(mem_map+((__pte_page(pte) - PAGE_OFFSET) >> PAGE_SHIFT))
-#define pmd_page(pmd)		(mem_map+((__pmd_page(pmd) - PAGE_OFFSET) >> PAGE_SHIFT))
+#define pte_page(pte)		virt_to_page(__pte_page(pte))
+#define pmd_page(pmd)		virt_to_page(__pmd_page(pmd))
 
 
 static inline int pmd_none2 (pmd_t *pmd) { return !pmd_val (*pmd); }
@@ -165,21 +165,15 @@ static inline void pgd_clear (pgd_t *pgdp) {}
  * Undefined behaviour if not...
  * [we have the full set here even if they don't change from m68k]
  */
-static inline int pte_read(pte_t pte)		{ return 1; }
 static inline int pte_write(pte_t pte)		{ return pte_val(pte) & SUN3_PAGE_WRITEABLE; }
-static inline int pte_exec(pte_t pte)		{ return 1; }
 static inline int pte_dirty(pte_t pte)		{ return pte_val(pte) & SUN3_PAGE_MODIFIED; }
 static inline int pte_young(pte_t pte)		{ return pte_val(pte) & SUN3_PAGE_ACCESSED; }
 static inline int pte_file(pte_t pte)		{ return pte_val(pte) & SUN3_PAGE_ACCESSED; }
 
 static inline pte_t pte_wrprotect(pte_t pte)	{ pte_val(pte) &= ~SUN3_PAGE_WRITEABLE; return pte; }
-static inline pte_t pte_rdprotect(pte_t pte)	{ return pte; }
-static inline pte_t pte_exprotect(pte_t pte)	{ return pte; }
 static inline pte_t pte_mkclean(pte_t pte)	{ pte_val(pte) &= ~SUN3_PAGE_MODIFIED; return pte; }
 static inline pte_t pte_mkold(pte_t pte)	{ pte_val(pte) &= ~SUN3_PAGE_ACCESSED; return pte; }
 static inline pte_t pte_mkwrite(pte_t pte)	{ pte_val(pte) |= SUN3_PAGE_WRITEABLE; return pte; }
-static inline pte_t pte_mkread(pte_t pte)	{ return pte; }
-static inline pte_t pte_mkexec(pte_t pte)	{ return pte; }
 static inline pte_t pte_mkdirty(pte_t pte)	{ pte_val(pte) |= SUN3_PAGE_MODIFIED; return pte; }
 static inline pte_t pte_mkyoung(pte_t pte)	{ pte_val(pte) |= SUN3_PAGE_ACCESSED; return pte; }
 static inline pte_t pte_mknocache(pte_t pte)	{ pte_val(pte) |= SUN3_PAGE_NOCACHE; return pte; }

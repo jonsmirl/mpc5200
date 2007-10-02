@@ -28,7 +28,10 @@
  */
 
 #include <linux/linkage.h>
+#include <linux/init.h>
 #include <asm/blackfin.h>
+#include <asm/trace.h>
+
 #if CONFIG_BFIN_KERNEL_CLOCK
 #include <asm/mach/mem_init.h>
 #endif
@@ -40,20 +43,21 @@
 .extern ___bss_start
 .extern _bf53x_relocate_l1_mem
 
-#define INITIAL_STACK   0xFFB01000
+#define INITIAL_STACK	0xFFB01000
 
-.text
+__INIT
 
 ENTRY(__start)
-ENTRY(__stext)
 	/* R0: argument of command line string, passed from uboot, save it */
 	R7 = R0;
-	/* Set the SYSCFG register */
+	/* Set the SYSCFG register:
+	 * Enable Cycle Counter and Nesting Of Interrupts (3rd Bit)
+	 */
 	R0 = 0x36;
-	SYSCFG = R0;   /*Enable Cycle Counter and Nesting Of Interrupts(3rd Bit)*/
+	SYSCFG = R0;
 	R0 = 0;
 
-	/* Clear Out All the data and pointer  Registers*/
+	/* Clear Out All the data and pointer Registers */
 	R1 = R0;
 	R2 = R0;
 	R3 = R0;
@@ -75,7 +79,7 @@ ENTRY(__stext)
 	L2 = r0;
 	L3 = r0;
 
-	/* Clear Out All the DAG Registers*/
+	/* Clear Out All the DAG Registers */
 	B0 = r0;
 	B1 = r0;
 	B2 = r0;
@@ -90,6 +94,10 @@ ENTRY(__stext)
 	M1 = r0;
 	M2 = r0;
 	M3 = r0;
+
+	trace_buffer_start(p0,r0);
+	P0 = R1;
+	R0 = R1;
 
 	/* Turn off the icache */
 	p0.l = (IMEM_CONTROL & 0xFFFF);
@@ -181,7 +189,8 @@ ENTRY(__stext)
 	SSYNC;
 #endif
 
-	/*Initialise UART*/
+	/* Initialise UART - when booting from u-boot, the UART is not disabled
+	 * so if we dont initalize here, our serial console gets hosed */
 	p0.h = hi(UART_LCR);
 	p0.l = lo(UART_LCR);
 	r0 = 0x0(Z);
@@ -190,7 +199,7 @@ ENTRY(__stext)
 
 	p0.h = hi(UART_DLL);
 	p0.l = lo(UART_DLL);
-	r0 = 0x00(Z);
+	r0 = 0x0(Z);
 	w[p0] = r0.L;
 	ssync;
 
@@ -217,6 +226,7 @@ ENTRY(__stext)
 #if CONFIG_BFIN_KERNEL_CLOCK
 	call _start_dma_code;
 #endif
+
 	/* Code for initializing Async memory banks */
 
 	p2.h = hi(EBIU_AMBCTL1);
@@ -271,6 +281,7 @@ ENTRY(__stext)
 
 .LWAIT_HERE:
 	jump .LWAIT_HERE;
+ENDPROC(__start)
 
 ENTRY(_real_start)
 	[ -- sp ] = reti;
@@ -290,7 +301,7 @@ ENTRY(_real_start)
 	p2.h = ___bss_stop;
 	r0 = 0;
 	p2 -= p1;
-	lsetup (.L_clear_bss, .L_clear_bss ) lc0 = p2;
+	lsetup (.L_clear_bss, .L_clear_bss) lc0 = p2;
 .L_clear_bss:
 	B[p1++] = r0;
 
@@ -305,7 +316,7 @@ ENTRY(_real_start)
 	r0 = r0 >> 1;
 	p2 = r0;
 	r0 = 0;
-	lsetup (.L_clear_zero, .L_clear_zero ) lc0 = p2;
+	lsetup (.L_clear_zero, .L_clear_zero) lc0 = p2;
 .L_clear_zero:
 	W[p1++] = r0;
 
@@ -327,9 +338,8 @@ ENTRY(_real_start)
 	r1 = p3;
 	[p1] = r1;
 
-
 	/*
-	 *  load the current thread pointer and stack
+	 * load the current thread pointer and stack
 	 */
 	r1.l = _init_thread_union;
 	r1.h = _init_thread_union;
@@ -340,9 +350,10 @@ ENTRY(_real_start)
 	sp = r1;
 	usp = sp;
 	fp = sp;
-	call _start_kernel;
-.L_exit:
-	jump.s	.L_exit;
+	jump.l _start_kernel;
+ENDPROC(_real_start)
+
+__FINIT
 
 .section .l1.text
 #if CONFIG_BFIN_KERNEL_CLOCK
@@ -461,6 +472,7 @@ ENTRY(_start_dma_code)
 	SSYNC;
 
 	RTS;
+ENDPROC(_start_dma_code)
 #endif /* CONFIG_BFIN_KERNEL_CLOCK */
 
 ENTRY(_bfin_reset)
@@ -469,46 +481,40 @@ ENTRY(_bfin_reset)
 	SSYNC;
 
 #if defined(CONFIG_MTD_M25P80)
-/*
- * The following code fix the SPI flash reboot issue,
- * /CS signal of the chip which is using PF10 return to GPIO mode
- */
+	/*
+	 * The following code fix the SPI flash reboot issue,
+	 * /CS signal of the chip which is using PF10 return to GPIO mode
+	 */
 	p0.h = hi(PORTF_FER);
 	p0.l = lo(PORTF_FER);
 	r0.l = 0x0000;
 	w[p0] = r0.l;
 	SSYNC;
 
-/* /CS return to high */
+	/* /CS return to high */
 	p0.h = hi(PORTFIO);
 	p0.l = lo(PORTFIO);
 	r0.l = 0xFFFF;
 	w[p0] = r0.l;
 	SSYNC;
 
-/* Delay some time, This is necessary */
+	/* Delay some time, This is necessary */
 	r1.h = 0;
 	r1.l = 0x400;
 	p1   = r1;
-	lsetup (_delay_lab1,_delay_lab1_end ) lc1 = p1;
-_delay_lab1:
+	lsetup (.L_delay_lab1, .L_delay_lab1_end) lc1 = p1;
+.L_delay_lab1:
 	r0.h = 0;
 	r0.l = 0x8000;
 	p0   = r0;
-	lsetup (_delay_lab0,_delay_lab0_end ) lc0 = p0;
-_delay_lab0:
+	lsetup (.L_delay_lab0, .L_delay_lab0_end) lc0 = p0;
+.L_delay_lab0:
 	nop;
-_delay_lab0_end:
+.L_delay_lab0_end:
 	nop;
-_delay_lab1_end:
+.L_delay_lab1_end:
 	nop;
 #endif
-
-	/* Clear the bits 13-15 in SWRST if they werent cleared */
-	p0.h = hi(SWRST);
-	p0.l = lo(SWRST);
-	csync;
-	r0.l = w[p0];
 
 	/* Clear the IMASK register */
 	p0.h = hi(IMASK);
@@ -523,68 +529,30 @@ _delay_lab1_end:
 	[p0] = r0;
 	SSYNC;
 
-	/* Disable the WDOG TIMER */
-	p0.h = hi(WDOG_CTL);
-	p0.l = lo(WDOG_CTL);
-	r0.l = 0xAD6;
-	w[p0] = r0.l;
+	/* make sure SYSCR is set to use BMODE */
+	P0.h = hi(SYSCR);
+	P0.l = lo(SYSCR);
+	R0.l = 0x0;
+	W[P0] = R0.l;
 	SSYNC;
 
-	/* Clear the sticky bit incase it is already set */
-	p0.h = hi(WDOG_CTL);
-	p0.l = lo(WDOG_CTL);
-	r0.l = 0x8AD6;
-	w[p0] = r0.l;
+	/* issue a system soft reset */
+	P1.h = hi(SWRST);
+	P1.l = lo(SWRST);
+	R1.l = 0x0007;
+	W[P1] = R1;
 	SSYNC;
 
-	/* Program the count value */
-	R0.l = 0x100;
-	R0.h = 0x0;
-	P0.h = hi(WDOG_CNT);
-	P0.l = lo(WDOG_CNT);
-	[P0] = R0;
+	/* clear system soft reset */
+	R0.l = 0x0000;
+	W[P0] = R0;
 	SSYNC;
 
-	/* Program WDOG_STAT if necessary */
-	P0.h = hi(WDOG_CTL);
-	P0.l = lo(WDOG_CTL);
-	R0 = W[P0](Z);
-	CC = BITTST(R0,1);
-	if !CC JUMP .LWRITESTAT;
-	CC = BITTST(R0,2);
-	if !CC JUMP .LWRITESTAT;
-	JUMP .LSKIP_WRITE;
-
-.LWRITESTAT:
-	/* When watch dog timer is enabled,
-	 * a write to STAT will load the contents of CNT to STAT
-	 */
-	R0 = 0x0000(z);
-	P0.h = hi(WDOG_STAT);
-	P0.l = lo(WDOG_STAT)
-	[P0] = R0;
-	SSYNC;
-
-.LSKIP_WRITE:
-	/* Enable the reset event */
-	P0.h = hi(WDOG_CTL);
-	P0.l = lo(WDOG_CTL);
-	R0 = W[P0](Z);
-	BITCLR(R0,1);
-	BITCLR(R0,2);
-	W[P0] = R0.L;
-	SSYNC;
-	NOP;
-
-	/* Enable the wdog counter */
-	R0 = W[P0](Z);
-	BITCLR(R0,4);
-	W[P0] = R0.L;
-	SSYNC;
-
-	IDLE;
+	/* issue core reset */
+	raise 1;
 
 	RTS;
+ENDPROC(_bfin_reset)
 
 .data
 

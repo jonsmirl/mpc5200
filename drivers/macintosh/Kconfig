@@ -2,7 +2,12 @@
 menuconfig MACINTOSH_DRIVERS
 	bool "Macintosh device drivers"
 	depends on PPC || MAC || X86
-	default y
+	default y if (PPC_PMAC || MAC)
+	---help---
+	  Say Y here to get to see options for devices used with Macintosh
+	  computers. This option alone does not add any kernel code.
+
+	  If you say N, all options in this submenu will be skipped and disabled.
 
 if MACINTOSH_DRIVERS
 
@@ -113,9 +118,8 @@ config PMAC_SMU
 
 config PMAC_APM_EMU
 	tristate "APM emulation"
-	select SYS_SUPPORTS_APM_EMULATION
 	select APM_EMULATION
-	depends on ADB_PMU && PM
+	depends on ADB_PMU && PM && PPC32
 
 config PMAC_MEDIABAY
 	bool "Support PowerBook hotswap media bay"

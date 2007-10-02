@@ -160,9 +160,9 @@ static void pxa2xx_ac97_cold_reset(struct snd_ac97 *ac97)
 	gsr_bits = 0;
 #ifdef CONFIG_PXA27x
 	/* PXA27x Developers Manual section 13.5.2.2.1 */
-	pxa_set_cken(1 << 31, 1);
+	pxa_set_cken(31, 1);
 	udelay(5);
-	pxa_set_cken(1 << 31, 0);
+	pxa_set_cken(31, 0);
 	GCR = GCR_COLD_RST;
 	udelay(50);
 #else
@@ -404,9 +404,9 @@ static int pxa2xx_ac97_probe(struct device *dev)
 	dai->ac97_ops = &pxa2xx_ac97_ops;
 	snd_soc_register_cpu_dai(dai);
 	return 0;
-	
-err:
-	if (CKEN & CKEN_AC97) {
+
+ err:
+	if (CKEN & (1 << CKEN_AC97)) {
 		GCR |= GCR_ACLINK_OFF;
 		free_irq(IRQ_AC97, NULL);
 		pxa_set_cken(CKEN_AC97, 0);

@@ -46,6 +46,8 @@
 #include <linux/mm.h>
 #include <linux/dma-mapping.h>
 #include <linux/kref.h>
+#include <linux/list.h>
+#include <linux/rwsem.h>
 
 #include <asm/atomic.h>
 #include <asm/scatterlist.h>
@@ -731,11 +733,6 @@ struct ib_udata {
 	size_t       outlen;
 };
 
-#define IB_UMEM_MAX_PAGE_CHUNK						\
-	((PAGE_SIZE - offsetof(struct ib_umem_chunk, page_list)) /	\
-	 ((void *) &((struct ib_umem_chunk *) 0)->page_list[1] -	\
-	  (void *) &((struct ib_umem_chunk *) 0)->page_list[0]))
-
 struct ib_pd {
 	struct ib_device       *device;
 	struct ib_uobject      *uobject;
@@ -890,6 +887,8 @@ struct ib_device {
 	spinlock_t                    client_data_lock;
 
 	struct ib_cache               cache;
+	int                          *pkey_tbl_len;
+	int                          *gid_tbl_len;
 
 	u32                           flags;
 
@@ -1117,6 +1116,12 @@ int ib_modify_device(struct ib_device *device,
 int ib_modify_port(struct ib_device *device,
 		   u8 port_num, int port_modify_mask,
 		   struct ib_port_modify *port_modify);
+
+int ib_find_gid(struct ib_device *device, union ib_gid *gid,
+		u8 *port_num, u16 *index);
+
+int ib_find_pkey(struct ib_device *device,
+		 u8 port_num, u16 pkey, u16 *index);
 
 /**
  * ib_alloc_pd - Allocates an unused protection domain.

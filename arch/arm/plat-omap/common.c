@@ -73,7 +73,7 @@ static const void *get_config(u16 tag, size_t len, int skip, size_t *len_out)
 	}
 	if (info != NULL) {
 		/* Check the length as a lame attempt to check for
-		 * binary inconsistancy. */
+		 * binary inconsistency. */
 		if (len != NO_LENGTH_CHECK) {
 			/* Word-align len */
 			if (len & 0x03)
@@ -172,7 +172,7 @@ console_initcall(omap_add_serial_console);
 #if defined(CONFIG_ARCH_OMAP16XX)
 #define TIMER_32K_SYNCHRONIZED		0xfffbc410
 #elif defined(CONFIG_ARCH_OMAP24XX)
-#define TIMER_32K_SYNCHRONIZED		0x48004010
+#define TIMER_32K_SYNCHRONIZED		(OMAP24XX_32KSYNCT_BASE + 0x10)
 #endif
 
 #ifdef	TIMER_32K_SYNCHRONIZED

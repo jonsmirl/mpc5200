@@ -454,16 +454,12 @@ int netxen_niu_gbe_init_port(struct netxen_adapter *adapter, int port)
 
 int netxen_niu_xg_init_port(struct netxen_adapter *adapter, int port)
 {
-	u32 reg;
 	u32 portnum = physical_port[adapter->portnum];
 
 	netxen_crb_writelit_adapter(adapter,
-		NETXEN_NIU_XGE_CONFIG_0+(0x10000*portnum), 0x5);
-	netxen_nic_hw_read_wx(adapter,
-		NETXEN_NIU_XGE_CONFIG_1+(0x10000*portnum), &reg, 4);
-	reg = (reg & ~0x2000UL);
+		NETXEN_NIU_XGE_CONFIG_1+(0x10000*portnum), 0x1447);
 	netxen_crb_writelit_adapter(adapter,
-		NETXEN_NIU_XGE_CONFIG_1+(0x10000*portnum), reg);
+		NETXEN_NIU_XGE_CONFIG_0+(0x10000*portnum), 0x5);
 
 	return 0;
 }
@@ -728,7 +724,7 @@ int netxen_niu_disable_gbe_port(struct netxen_adapter *adapter)
 	__u32 mac_cfg0;
 	u32 port = physical_port[adapter->portnum];
 
-	if ((port < 0) || (port > NETXEN_NIU_MAX_GBE_PORTS))
+	if (port > NETXEN_NIU_MAX_GBE_PORTS)
 		return -EINVAL;
 	mac_cfg0 = 0;
 	netxen_gb_soft_reset(mac_cfg0);
@@ -761,7 +757,7 @@ int netxen_niu_set_promiscuous_mode(struct netxen_adapter *adapter,
 	__u32 reg;
 	u32 port = physical_port[adapter->portnum];
 
-	if ((port < 0) || (port > NETXEN_NIU_MAX_GBE_PORTS))
+	if (port > NETXEN_NIU_MAX_GBE_PORTS)
 		return -EINVAL;
 
 	/* save previous contents */
@@ -898,7 +894,7 @@ int netxen_niu_xg_set_promiscuous_mode(struct netxen_adapter *adapter,
 	__u32 reg;
 	u32 port = physical_port[adapter->portnum];
 
-	if ((port < 0) || (port > NETXEN_NIU_MAX_XG_PORTS))
+	if (port > NETXEN_NIU_MAX_XG_PORTS)
 		return -EINVAL;
 
 	if (netxen_nic_hw_read_wx(adapter,

@@ -271,20 +271,58 @@ static int debug;
 static __u16 vendor = FTDI_VID;
 static __u16 product;
 
-/* struct ftdi_sio_quirk is used by devices requiring special attention. */
-struct ftdi_sio_quirk {
-	void (*setup)(struct usb_serial *); /* Special settings during startup. */
+struct ftdi_private {
+	ftdi_chip_type_t chip_type;
+				/* type of the device, either SIO or FT8U232AM */
+	int baud_base;		/* baud base clock for divisor setting */
+	int custom_divisor;	/* custom_divisor kludge, this is for baud_base (different from what goes to the chip!) */
+	__u16 last_set_data_urb_value ;
+				/* the last data state set - needed for doing a break */
+        int write_offset;       /* This is the offset in the usb data block to write the serial data -
+				 * it is different between devices
+				 */
+	int flags;		/* some ASYNC_xxxx flags are supported */
+	unsigned long last_dtr_rts;	/* saved modem control outputs */
+        wait_queue_head_t delta_msr_wait; /* Used for TIOCMIWAIT */
+	char prev_status, diff_status;        /* Used for TIOCMIWAIT */
+	__u8 rx_flags;		/* receive state flags (throttling) */
+	spinlock_t rx_lock;	/* spinlock for receive state */
+	struct delayed_work rx_work;
+	struct usb_serial_port *port;
+	int rx_processed;
+	unsigned long rx_bytes;
+
+	__u16 interface;	/* FT2232C port interface (0 for FT232/245) */
+
+	int force_baud;		/* if non-zero, force the baud rate to this value */
+	int force_rtscts;	/* if non-zero, force RTS-CTS to always be enabled */
+
+	spinlock_t tx_lock;	/* spinlock for transmit state */
+	unsigned long tx_bytes;
+	unsigned long tx_outstanding_bytes;
+	unsigned long tx_outstanding_urbs;
 };
 
-static void  ftdi_USB_UIRT_setup	(struct usb_serial *serial);
-static void  ftdi_HE_TIRA1_setup	(struct usb_serial *serial);
+/* struct ftdi_sio_quirk is used by devices requiring special attention. */
+struct ftdi_sio_quirk {
+	int (*probe)(struct usb_serial *);
+	void (*port_probe)(struct ftdi_private *); /* Special settings for probed ports. */
+};
+
+static int   ftdi_olimex_probe		(struct usb_serial *serial);
+static void  ftdi_USB_UIRT_setup	(struct ftdi_private *priv);
+static void  ftdi_HE_TIRA1_setup	(struct ftdi_private *priv);
+
+static struct ftdi_sio_quirk ftdi_olimex_quirk = {
+	.probe	= ftdi_olimex_probe,
+};
 
 static struct ftdi_sio_quirk ftdi_USB_UIRT_quirk = {
-	.setup = ftdi_USB_UIRT_setup,
+	.port_probe = ftdi_USB_UIRT_setup,
 };
 
 static struct ftdi_sio_quirk ftdi_HE_TIRA1_quirk = {
-	.setup = ftdi_HE_TIRA1_setup,
+	.port_probe = ftdi_HE_TIRA1_setup,
 };
 
 /*
@@ -311,6 +349,7 @@ static struct usb_device_id id_table_combined [] = {
 	{ USB_DEVICE(FTDI_VID, FTDI_ACTZWAVE_PID) },
 	{ USB_DEVICE(FTDI_VID, FTDI_IRTRANS_PID) },
 	{ USB_DEVICE(FTDI_VID, FTDI_IPLUS_PID) },
+	{ USB_DEVICE(FTDI_VID, FTDI_IPLUS2_PID) },
 	{ USB_DEVICE(FTDI_VID, FTDI_DMX4ALL) },
 	{ USB_DEVICE(FTDI_VID, FTDI_SIO_PID) },
 	{ USB_DEVICE(FTDI_VID, FTDI_8U232AM_PID) },
@@ -319,6 +358,7 @@ static struct usb_device_id id_table_combined [] = {
 	{ USB_DEVICE(FTDI_VID, FTDI_8U2232C_PID) },
 	{ USB_DEVICE(FTDI_VID, FTDI_MICRO_CHAMELEON_PID) },
 	{ USB_DEVICE(FTDI_VID, FTDI_RELAIS_PID) },
+	{ USB_DEVICE(FTDI_VID, FTDI_OPENDCC_PID) },
 	{ USB_DEVICE(INTERBIOMETRICS_VID, INTERBIOMETRICS_IOBOARD_PID) },
 	{ USB_DEVICE(INTERBIOMETRICS_VID, INTERBIOMETRICS_MINI_IOBOARD_PID) },
 	{ USB_DEVICE(FTDI_VID, FTDI_XF_632_PID) },
@@ -498,6 +538,8 @@ static struct usb_device_id id_table_combined [] = {
 	{ USB_DEVICE(FTDI_VID, FTDI_TERATRONIK_VCP_PID) },
 	{ USB_DEVICE(FTDI_VID, FTDI_TERATRONIK_D2XX_PID) },
 	{ USB_DEVICE(EVOLUTION_VID, EVOLUTION_ER1_PID) },
+	{ USB_DEVICE(EVOLUTION_VID, EVO_HYBRID_PID) },
+	{ USB_DEVICE(EVOLUTION_VID, EVO_RCM4_PID) },
 	{ USB_DEVICE(FTDI_VID, FTDI_ARTEMIS_PID) },
 	{ USB_DEVICE(FTDI_VID, FTDI_ATIK_ATK16_PID) },
 	{ USB_DEVICE(FTDI_VID, FTDI_ATIK_ATK16C_PID) },
@@ -525,6 +567,10 @@ static struct usb_device_id id_table_combined [] = {
 	{ USB_DEVICE(FTDI_VID, FTDI_TACTRIX_OPENPORT_13U_PID) },
 	{ USB_DEVICE(ELEKTOR_VID, ELEKTOR_FT323R_PID) },
 	{ USB_DEVICE(TELLDUS_VID, TELLDUS_TELLSTICK_PID) },
+	{ USB_DEVICE(FTDI_VID, FTDI_MAXSTREAM_PID) },
+	{ USB_DEVICE(TML_VID, TML_USB_SERIAL_PID) },
+	{ USB_DEVICE(OLIMEX_VID, OLIMEX_ARM_USB_OCD_PID),
+		.driver_info = (kernel_ulong_t)&ftdi_olimex_quirk },
 	{ },					/* Optional parameter entry */
 	{ }					/* Terminating entry */
 };
@@ -556,38 +602,6 @@ static const char *ftdi_chip_name[] = {
 #define THROTTLED		0x01
 #define ACTUALLY_THROTTLED	0x02
 
-struct ftdi_private {
-	ftdi_chip_type_t chip_type;
-				/* type of the device, either SIO or FT8U232AM */
-	int baud_base;		/* baud base clock for divisor setting */
-	int custom_divisor;	/* custom_divisor kludge, this is for baud_base (different from what goes to the chip!) */
-	__u16 last_set_data_urb_value ;
-				/* the last data state set - needed for doing a break */
-        int write_offset;       /* This is the offset in the usb data block to write the serial data -
-				 * it is different between devices
-				 */
-	int flags;		/* some ASYNC_xxxx flags are supported */
-	unsigned long last_dtr_rts;	/* saved modem control outputs */
-        wait_queue_head_t delta_msr_wait; /* Used for TIOCMIWAIT */
-	char prev_status, diff_status;        /* Used for TIOCMIWAIT */
-	__u8 rx_flags;		/* receive state flags (throttling) */
-	spinlock_t rx_lock;	/* spinlock for receive state */
-	struct delayed_work rx_work;
-	struct usb_serial_port *port;
-	int rx_processed;
-	unsigned long rx_bytes;
-
-	__u16 interface;	/* FT2232C port interface (0 for FT232/245) */
-
-	int force_baud;		/* if non-zero, force the baud rate to this value */
-	int force_rtscts;	/* if non-zero, force RTS-CTS to always be enabled */
-
-	spinlock_t tx_lock;	/* spinlock for transmit state */
-	unsigned long tx_bytes;
-	unsigned long tx_outstanding_bytes;
-	unsigned long tx_outstanding_urbs;
-};
-
 /* Used for TIOCMIWAIT */
 #define FTDI_STATUS_B0_MASK	(FTDI_RS0_CTS | FTDI_RS0_DSR | FTDI_RS0_RI | FTDI_RS0_RLSD)
 #define FTDI_STATUS_B1_MASK	(FTDI_RS_BI)
@@ -598,7 +612,6 @@ struct ftdi_private {
 
 /* function prototypes for a FTDI serial converter */
 static int  ftdi_sio_probe	(struct usb_serial *serial, const struct usb_device_id *id);
-static int  ftdi_sio_attach		(struct usb_serial *serial);
 static void ftdi_shutdown		(struct usb_serial *serial);
 static int  ftdi_sio_port_probe	(struct usb_serial_port *port);
 static int  ftdi_sio_port_remove	(struct usb_serial_port *port);
@@ -652,7 +665,6 @@ static struct usb_serial_driver ftdi_sio_device = {
 	.ioctl =		ftdi_ioctl,
 	.set_termios =		ftdi_set_termios,
 	.break_ctl =		ftdi_break_ctl,
-	.attach =		ftdi_sio_attach,
 	.shutdown =		ftdi_shutdown,
 };
 
@@ -669,7 +681,7 @@ static struct usb_serial_driver ftdi_sio_device = {
 
 /*
  * ***************************************************************************
- * Utlity functions
+ * Utility functions
  * ***************************************************************************
  */
 
@@ -1138,7 +1150,9 @@ static int create_sysfs_attrs(struct usb_serial_port *port)
 		dbg("sysfs attributes for %s", ftdi_chip_name[priv->chip_type]);
 		retval = device_create_file(&port->dev, &dev_attr_event_char);
 		if ((!retval) &&
-		    (priv->chip_type == FT232BM || priv->chip_type == FT2232C)) {
+		    (priv->chip_type == FT232BM ||
+		     priv->chip_type == FT2232C ||
+		     priv->chip_type == FT232RL)) {
 			retval = device_create_file(&port->dev,
 						    &dev_attr_latency_timer);
 		}
@@ -1171,14 +1185,24 @@ static void remove_sysfs_attrs(struct usb_serial_port *port)
 /* Probe function to check for special devices */
 static int ftdi_sio_probe (struct usb_serial *serial, const struct usb_device_id *id)
 {
+	struct ftdi_sio_quirk *quirk = (struct ftdi_sio_quirk *)id->driver_info;
+
+	if (quirk && quirk->probe) {
+		int ret = quirk->probe(serial);
+		if (ret != 0)
+			return ret;
+	}
+
 	usb_set_serial_data(serial, (void *)id->driver_info);
 
-	return (0);
+	return 0;
 }
 
 static int ftdi_sio_port_probe(struct usb_serial_port *port)
 {
 	struct ftdi_private *priv;
+	struct ftdi_sio_quirk *quirk = usb_get_serial_data(port->serial);
+
 
 	dbg("%s",__FUNCTION__);
 
@@ -1194,6 +1218,9 @@ static int ftdi_sio_port_probe(struct usb_serial_port *port)
 	/* This will push the characters through immediately rather
 	   than queue a task to deliver them */
 	priv->flags = ASYNC_LOW_LATENCY;
+
+	if (quirk && quirk->port_probe)
+		quirk->port_probe(priv);
 
 	/* Increase the size of read buffers */
 	kfree(port->bulk_in_buffer);
@@ -1225,29 +1252,13 @@ static int ftdi_sio_port_probe(struct usb_serial_port *port)
 	return 0;
 }
 
-/* attach subroutine */
-static int ftdi_sio_attach (struct usb_serial *serial)
-{
-	/* Check for device requiring special set up. */
-	struct ftdi_sio_quirk *quirk = usb_get_serial_data(serial);
-
-	if (quirk && quirk->setup)
-		quirk->setup(serial);
-
-	return 0;
-} /* ftdi_sio_attach */
-
-
 /* Setup for the USB-UIRT device, which requires hardwired
  * baudrate (38400 gets mapped to 312500) */
 /* Called from usbserial:serial_probe */
-static void ftdi_USB_UIRT_setup (struct usb_serial *serial)
+static void ftdi_USB_UIRT_setup (struct ftdi_private *priv)
 {
-	struct ftdi_private *priv;
-
 	dbg("%s",__FUNCTION__);
 
-	priv = usb_get_serial_port_data(serial->port[0]);
 	priv->flags |= ASYNC_SPD_CUST;
 	priv->custom_divisor = 77;
 	priv->force_baud = B38400;
@@ -1255,19 +1266,34 @@ static void ftdi_USB_UIRT_setup (struct usb_serial *serial)
 
 /* Setup for the HE-TIRA1 device, which requires hardwired
  * baudrate (38400 gets mapped to 100000) and RTS-CTS enabled.  */
-static void ftdi_HE_TIRA1_setup (struct usb_serial *serial)
+static void ftdi_HE_TIRA1_setup (struct ftdi_private *priv)
 {
-	struct ftdi_private *priv;
-
 	dbg("%s",__FUNCTION__);
 
-	priv = usb_get_serial_port_data(serial->port[0]);
 	priv->flags |= ASYNC_SPD_CUST;
 	priv->custom_divisor = 240;
 	priv->force_baud = B38400;
 	priv->force_rtscts = 1;
 } /* ftdi_HE_TIRA1_setup */
 
+/*
+ * First port on Olimex arm-usb-ocd is reserved for JTAG interface
+ * and can be accessed from userspace using openocd.
+ */
+static int ftdi_olimex_probe(struct usb_serial *serial)
+{
+	struct usb_device *udev = serial->dev;
+	struct usb_interface *interface = serial->interface;
+
+	dbg("%s",__FUNCTION__);
+
+	if (interface == udev->actconfig->interface[0]) {
+		info("Ignoring reserved serial port on Olimex arm-usb-ocd\n");
+		return -ENODEV;
+	}
+
+	return 0;
+}
 
 /* ftdi_shutdown is called from usbserial:usb_serial_disconnect
  *   it is called when the usb device is disconnected
@@ -1537,14 +1563,15 @@ static void ftdi_write_bulk_callback (struct urb *urb)
 	struct ftdi_private *priv;
 	int data_offset;       /* will be 1 for the SIO and 0 otherwise */
 	unsigned long countback;
+	int status = urb->status;
 
 	/* free up the transfer buffer, as usb_free_urb() does not do this */
 	kfree (urb->transfer_buffer);
 
 	dbg("%s - port %d", __FUNCTION__, port->number);
 
-	if (urb->status) {
-		dbg("nonzero write bulk status received: %d", urb->status);
+	if (status) {
+		dbg("nonzero write bulk status received: %d", status);
 		return;
 	}
 
@@ -1620,6 +1647,7 @@ static void ftdi_read_bulk_callback (struct urb *urb)
 	struct ftdi_private *priv;
 	unsigned long countread;
 	unsigned long flags;
+	int status = urb->status;
 
 	if (urb->number_of_packets > 0) {
 		err("%s transfer_buffer_length %d actual_length %d number of packets %d",__FUNCTION__,
@@ -1648,9 +1676,10 @@ static void ftdi_read_bulk_callback (struct urb *urb)
 		err("%s - Not my urb!", __FUNCTION__);
 	}
 
-	if (urb->status) {
+	if (status) {
 		/* This will happen at close every time so it is a dbg not an err */
-		dbg("(this is ok on close) nonzero read bulk status received: %d", urb->status);
+		dbg("(this is ok on close) nonzero read bulk status received: "
+		    "%d", status);
 		return;
 	}
 

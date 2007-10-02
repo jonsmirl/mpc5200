@@ -10,7 +10,7 @@
  *	   2 of the License, or (at your option) any later version.
  *
  * FILE		: megaraid_sas.c
- * Version	: v00.00.03.10-rc1
+ * Version	: v00.00.03.10-rc5
  *
  * Authors:
  *	(email-id : megaraidlinux@lsi.com)
@@ -433,34 +433,15 @@ megasas_make_sgl32(struct megasas_instance *instance, struct scsi_cmnd *scp,
 	int sge_count;
 	struct scatterlist *os_sgl;
 
-	/*
-	 * Return 0 if there is no data transfer
-	 */
-	if (!scp->request_buffer || !scp->request_bufflen)
-		return 0;
+	sge_count = scsi_dma_map(scp);
+	BUG_ON(sge_count < 0);
 
-	if (!scp->use_sg) {
-		mfi_sgl->sge32[0].phys_addr = pci_map_single(instance->pdev,
-							     scp->
-							     request_buffer,
-							     scp->
-							     request_bufflen,
-							     scp->
-							     sc_data_direction);
-		mfi_sgl->sge32[0].length = scp->request_bufflen;
-
-		return 1;
+	if (sge_count) {
+		scsi_for_each_sg(scp, os_sgl, sge_count, i) {
+			mfi_sgl->sge32[i].length = sg_dma_len(os_sgl);
+			mfi_sgl->sge32[i].phys_addr = sg_dma_address(os_sgl);
+		}
 	}
-
-	os_sgl = (struct scatterlist *)scp->request_buffer;
-	sge_count = pci_map_sg(instance->pdev, os_sgl, scp->use_sg,
-			       scp->sc_data_direction);
-
-	for (i = 0; i < sge_count; i++, os_sgl++) {
-		mfi_sgl->sge32[i].length = sg_dma_len(os_sgl);
-		mfi_sgl->sge32[i].phys_addr = sg_dma_address(os_sgl);
-	}
-
 	return sge_count;
 }
 
@@ -481,35 +462,15 @@ megasas_make_sgl64(struct megasas_instance *instance, struct scsi_cmnd *scp,
 	int sge_count;
 	struct scatterlist *os_sgl;
 
-	/*
-	 * Return 0 if there is no data transfer
-	 */
-	if (!scp->request_buffer || !scp->request_bufflen)
-		return 0;
+	sge_count = scsi_dma_map(scp);
+	BUG_ON(sge_count < 0);
 
-	if (!scp->use_sg) {
-		mfi_sgl->sge64[0].phys_addr = pci_map_single(instance->pdev,
-							     scp->
-							     request_buffer,
-							     scp->
-							     request_bufflen,
-							     scp->
-							     sc_data_direction);
-
-		mfi_sgl->sge64[0].length = scp->request_bufflen;
-
-		return 1;
+	if (sge_count) {
+		scsi_for_each_sg(scp, os_sgl, sge_count, i) {
+			mfi_sgl->sge64[i].length = sg_dma_len(os_sgl);
+			mfi_sgl->sge64[i].phys_addr = sg_dma_address(os_sgl);
+		}
 	}
-
-	os_sgl = (struct scatterlist *)scp->request_buffer;
-	sge_count = pci_map_sg(instance->pdev, os_sgl, scp->use_sg,
-			       scp->sc_data_direction);
-
-	for (i = 0; i < sge_count; i++, os_sgl++) {
-		mfi_sgl->sge64[i].length = sg_dma_len(os_sgl);
-		mfi_sgl->sge64[i].phys_addr = sg_dma_address(os_sgl);
-	}
-
 	return sge_count;
 }
 
@@ -593,7 +554,7 @@ megasas_build_dcdb(struct megasas_instance *instance, struct scsi_cmnd *scp,
 	pthru->cdb_len = scp->cmd_len;
 	pthru->timeout = 0;
 	pthru->flags = flags;
-	pthru->data_xfer_len = scp->request_bufflen;
+	pthru->data_xfer_len = scsi_bufflen(scp);
 
 	memcpy(pthru->cdb, scp->cmnd, scp->cmd_len);
 
@@ -886,6 +847,7 @@ megasas_queue_command(struct scsi_cmnd *scmd, void (*done) (struct scsi_cmnd *))
 		goto out_return_cmd;
 
 	cmd->scmd = scmd;
+	scmd->SCp.ptr = (char *)cmd;
 
 	/*
 	 * Issue the command to the FW
@@ -919,7 +881,7 @@ static int megasas_slave_configure(struct scsi_device *sdev)
 	 * The RAID firmware may require extended timeouts.
 	 */
 	if (sdev->channel >= MEGASAS_MAX_PD_CHANNELS)
-		sdev->timeout = 90 * HZ;
+		sdev->timeout = MEGASAS_DEFAULT_CMD_TIMEOUT * HZ;
 	return 0;
 }
 
@@ -981,8 +943,8 @@ static int megasas_generic_reset(struct scsi_cmnd *scmd)
 
 	instance = (struct megasas_instance *)scmd->device->host->hostdata;
 
-	scmd_printk(KERN_NOTICE, scmd, "megasas: RESET -%ld cmd=%x\n",
-	       scmd->serial_number, scmd->cmnd[0]);
+	scmd_printk(KERN_NOTICE, scmd, "megasas: RESET -%ld cmd=%x retries=%x\n",
+		 scmd->serial_number, scmd->cmnd[0], scmd->retries);
 
 	if (instance->hw_crit_error) {
 		printk(KERN_ERR "megasas: cannot recover from previous reset "
@@ -997,6 +959,39 @@ static int megasas_generic_reset(struct scsi_cmnd *scmd)
 		printk(KERN_ERR "megasas: failed to do reset\n");
 
 	return ret_val;
+}
+
+/**
+ * megasas_reset_timer - quiesce the adapter if required
+ * @scmd:		scsi cmnd
+ *
+ * Sets the FW busy flag and reduces the host->can_queue if the
+ * cmd has not been completed within the timeout period.
+ */
+static enum
+scsi_eh_timer_return megasas_reset_timer(struct scsi_cmnd *scmd)
+{
+	struct megasas_cmd *cmd = (struct megasas_cmd *)scmd->SCp.ptr;
+	struct megasas_instance *instance;
+	unsigned long flags;
+
+	if (time_after(jiffies, scmd->jiffies_at_alloc +
+				(MEGASAS_DEFAULT_CMD_TIMEOUT * 2) * HZ)) {
+		return EH_NOT_HANDLED;
+	}
+
+	instance = cmd->instance;
+	if (!(instance->flag & MEGASAS_FW_BUSY)) {
+		/* FW is busy, throttle IO */
+		spin_lock_irqsave(instance->host->host_lock, flags);
+
+		instance->host->can_queue = 16;
+		instance->last_time = jiffies;
+		instance->flag |= MEGASAS_FW_BUSY;
+
+		spin_unlock_irqrestore(instance->host->host_lock, flags);
+	}
+	return EH_RESET_TIMER;
 }
 
 /**
@@ -1112,6 +1107,7 @@ static struct scsi_host_template megasas_template = {
 	.eh_device_reset_handler = megasas_reset_device,
 	.eh_bus_reset_handler = megasas_reset_bus_host,
 	.eh_host_reset_handler = megasas_reset_bus_host,
+	.eh_timed_out = megasas_reset_timer,
 	.bios_param = megasas_bios_param,
 	.use_clustering = ENABLE_CLUSTERING,
 };
@@ -1160,45 +1156,6 @@ megasas_complete_abort(struct megasas_instance *instance,
 }
 
 /**
- * megasas_unmap_sgbuf -	Unmap SG buffers
- * @instance:			Adapter soft state
- * @cmd:			Completed command
- */
-static void
-megasas_unmap_sgbuf(struct megasas_instance *instance, struct megasas_cmd *cmd)
-{
-	dma_addr_t buf_h;
-	u8 opcode;
-
-	if (cmd->scmd->use_sg) {
-		pci_unmap_sg(instance->pdev, cmd->scmd->request_buffer,
-			     cmd->scmd->use_sg, cmd->scmd->sc_data_direction);
-		return;
-	}
-
-	if (!cmd->scmd->request_bufflen)
-		return;
-
-	opcode = cmd->frame->hdr.cmd;
-
-	if ((opcode == MFI_CMD_LD_READ) || (opcode == MFI_CMD_LD_WRITE)) {
-		if (IS_DMA64)
-			buf_h = cmd->frame->io.sgl.sge64[0].phys_addr;
-		else
-			buf_h = cmd->frame->io.sgl.sge32[0].phys_addr;
-	} else {
-		if (IS_DMA64)
-			buf_h = cmd->frame->pthru.sgl.sge64[0].phys_addr;
-		else
-			buf_h = cmd->frame->pthru.sgl.sge32[0].phys_addr;
-	}
-
-	pci_unmap_single(instance->pdev, buf_h, cmd->scmd->request_bufflen,
-			 cmd->scmd->sc_data_direction);
-	return;
-}
-
-/**
  * megasas_complete_cmd -	Completes a command
  * @instance:			Adapter soft state
  * @cmd:			Command to be completed
@@ -1215,9 +1172,8 @@ megasas_complete_cmd(struct megasas_instance *instance, struct megasas_cmd *cmd,
 	int exception = 0;
 	struct megasas_header *hdr = &cmd->frame->hdr;
 
-	if (cmd->scmd) {
-		cmd->scmd->SCp.ptr = (char *)0;
-	}
+	if (cmd->scmd)
+		cmd->scmd->SCp.ptr = NULL;
 
 	switch (hdr->cmd) {
 
@@ -1247,7 +1203,7 @@ megasas_complete_cmd(struct megasas_instance *instance, struct megasas_cmd *cmd,
 
 			atomic_dec(&instance->fw_outstanding);
 
-			megasas_unmap_sgbuf(instance, cmd);
+			scsi_dma_unmap(cmd->scmd);
 			cmd->scmd->scsi_done(cmd->scmd);
 			megasas_return_cmd(instance, cmd);
 
@@ -1295,7 +1251,7 @@ megasas_complete_cmd(struct megasas_instance *instance, struct megasas_cmd *cmd,
 
 		atomic_dec(&instance->fw_outstanding);
 
-		megasas_unmap_sgbuf(instance, cmd);
+		scsi_dma_unmap(cmd->scmd);
 		cmd->scmd->scsi_done(cmd->scmd);
 		megasas_return_cmd(instance, cmd);
 
@@ -1680,15 +1636,13 @@ static int megasas_alloc_cmds(struct megasas_instance *instance)
 	 * Allocate the dynamic array first and then allocate individual
 	 * commands.
 	 */
-	instance->cmd_list = kmalloc(sizeof(struct megasas_cmd *) * max_cmd,
-				     GFP_KERNEL);
+	instance->cmd_list = kcalloc(max_cmd, sizeof(struct megasas_cmd*), GFP_KERNEL);
 
 	if (!instance->cmd_list) {
 		printk(KERN_DEBUG "megasas: out of memory\n");
 		return -ENOMEM;
 	}
 
-	memset(instance->cmd_list, 0, sizeof(struct megasas_cmd *) * max_cmd);
 
 	for (i = 0; i < max_cmd; i++) {
 		instance->cmd_list[i] = kmalloc(sizeof(struct megasas_cmd),
@@ -1806,6 +1760,7 @@ static void megasas_complete_cmd_dpc(unsigned long instance_addr)
 	u32 context;
 	struct megasas_cmd *cmd;
 	struct megasas_instance *instance = (struct megasas_instance *)instance_addr;
+	unsigned long flags;
 
 	/* If we have already declared adapter dead, donot complete cmds */
 	if (instance->hw_crit_error)
@@ -1828,6 +1783,22 @@ static void megasas_complete_cmd_dpc(unsigned long instance_addr)
 	}
 
 	*instance->consumer = producer;
+
+	/*
+	 * Check if we can restore can_queue
+	 */
+	if (instance->flag & MEGASAS_FW_BUSY
+		&& time_after(jiffies, instance->last_time + 5 * HZ)
+		&& atomic_read(&instance->fw_outstanding) < 17) {
+
+		spin_lock_irqsave(instance->host->host_lock, flags);
+		instance->flag &= ~MEGASAS_FW_BUSY;
+		instance->host->can_queue =
+				instance->max_fw_cmds - MEGASAS_INT_CMDS;
+
+		spin_unlock_irqrestore(instance->host->host_lock, flags);
+	}
+
 }
 
 /**
@@ -2398,6 +2369,8 @@ megasas_probe_one(struct pci_dev *pdev, const struct pci_device_id *id)
 	instance->init_id = MEGASAS_DEFAULT_INIT_ID;
 
 	megasas_dbg_lvl = 0;
+	instance->flag = 0;
+	instance->last_time = 0;
 
 	/*
 	 * Initialize MFI Firmware

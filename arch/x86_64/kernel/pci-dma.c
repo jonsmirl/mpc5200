@@ -8,7 +8,7 @@
 #include <linux/pci.h>
 #include <linux/module.h>
 #include <asm/io.h>
-#include <asm/proto.h>
+#include <asm/iommu.h>
 #include <asm/calgary.h>
 
 int iommu_merge __read_mostly = 0;
@@ -22,8 +22,7 @@ EXPORT_SYMBOL(bad_dma_address);
 int iommu_bio_merge __read_mostly = 0;
 EXPORT_SYMBOL(iommu_bio_merge);
 
-int iommu_sac_force __read_mostly = 0;
-EXPORT_SYMBOL(iommu_sac_force);
+static int iommu_sac_force __read_mostly = 0;
 
 int no_iommu __read_mostly;
 #ifdef CONFIG_IOMMU_DEBUG
@@ -82,6 +81,10 @@ dma_alloc_coherent(struct device *dev, size_t size, dma_addr_t *dma_handle,
 	dma_mask = dev->coherent_dma_mask;
 	if (dma_mask == 0)
 		dma_mask = DMA_32BIT_MASK;
+
+	/* Device not DMA able */
+	if (dev->dma_mask == NULL)
+		return NULL;
 
 	/* Don't invoke OOM killer */
 	gfp |= __GFP_NORETRY;
@@ -322,5 +325,22 @@ static int __init pci_iommu_init(void)
 	return 0;
 }
 
+void pci_iommu_shutdown(void)
+{
+	gart_iommu_shutdown();
+}
+
+#ifdef CONFIG_PCI
+/* Many VIA bridges seem to corrupt data for DAC. Disable it here */
+
+static __devinit void via_no_dac(struct pci_dev *dev)
+{
+	if ((dev->class >> 8) == PCI_CLASS_BRIDGE_PCI && forbid_dac == 0) {
+		printk(KERN_INFO "PCI: VIA PCI bridge detected. Disabling DAC.\n");
+		forbid_dac = 1;
+	}
+}
+DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_VIA, PCI_ANY_ID, via_no_dac);
+#endif
 /* Must execute after PCI subsystem */
 fs_initcall(pci_iommu_init);

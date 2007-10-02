@@ -317,8 +317,8 @@ claw_probe(struct ccwgroup_device *cgdev)
 		CLAW_DBF_TEXT_(2,setup,"probex%d",-ENOMEM);
 		return -ENOMEM;
 	}
-	privptr->p_mtc_envelope= kmalloc( MAX_ENVELOPE_SIZE, GFP_KERNEL);
-	privptr->p_env = kmalloc(sizeof(struct claw_env), GFP_KERNEL);
+	privptr->p_mtc_envelope= kzalloc( MAX_ENVELOPE_SIZE, GFP_KERNEL);
+	privptr->p_env = kzalloc(sizeof(struct claw_env), GFP_KERNEL);
         if ((privptr->p_mtc_envelope==NULL) || (privptr->p_env==NULL)) {
                 probe_error(cgdev);
 		put_device(&cgdev->dev);
@@ -327,8 +327,6 @@ claw_probe(struct ccwgroup_device *cgdev)
 		CLAW_DBF_TEXT_(2,setup,"probex%d",-ENOMEM);
                 return -ENOMEM;
         }
-	memset(privptr->p_mtc_envelope, 0x00, MAX_ENVELOPE_SIZE);
-	memset(privptr->p_env, 0x00, sizeof(struct claw_env));
 	memcpy(privptr->p_env->adapter_name,WS_NAME_NOT_DEF,8);
 	memcpy(privptr->p_env->host_name,WS_NAME_NOT_DEF,8);
 	memcpy(privptr->p_env->api_type,WS_NAME_NOT_DEF,8);
@@ -3912,6 +3910,7 @@ static int
 add_channel(struct ccw_device *cdev,int i,struct claw_privbk *privptr)
 {
 	struct chbk *p_ch;
+	struct ccw_dev_id dev_id;
 
 #ifdef FUNCTRACE
         printk(KERN_INFO "%s:%s Enter\n",cdev->dev.bus_id,__FUNCTION__);
@@ -3921,8 +3920,9 @@ add_channel(struct ccw_device *cdev,int i,struct claw_privbk *privptr)
 	p_ch = &privptr->channel[i];
 	p_ch->cdev = cdev;
 	snprintf(p_ch->id, CLAW_ID_SIZE, "cl-%s", cdev->dev.bus_id);
-	sscanf(cdev->dev.bus_id+4,"%x",&p_ch->devno);
-	if ((p_ch->irb = kmalloc(sizeof (struct irb),GFP_KERNEL)) == NULL) {
+	ccw_device_get_id(cdev, &dev_id);
+	p_ch->devno = dev_id.devno;
+	if ((p_ch->irb = kzalloc(sizeof (struct irb),GFP_KERNEL)) == NULL) {
 		printk(KERN_WARNING "%s Out of memory in %s for irb\n",
 			p_ch->id,__FUNCTION__);
 #ifdef FUNCTRACE
@@ -3931,7 +3931,6 @@ add_channel(struct ccw_device *cdev,int i,struct claw_privbk *privptr)
 #endif
 		return -ENOMEM;
 	}
-	memset(p_ch->irb, 0, sizeof (struct irb));
 #ifdef FUNCTRACE
         	printk(KERN_INFO "%s:%s Exit on line %d\n",
 			cdev->dev.bus_id,__FUNCTION__,__LINE__);
@@ -3955,6 +3954,7 @@ claw_new_device(struct ccwgroup_device *cgdev)
 	struct claw_env *p_env;
 	struct net_device *dev;
 	int ret;
+	struct ccw_dev_id dev_id;
 
 	pr_debug("%s() called\n", __FUNCTION__);
 	printk(KERN_INFO "claw: add for %s\n",cgdev->cdev[READ]->dev.bus_id);
@@ -3965,10 +3965,10 @@ claw_new_device(struct ccwgroup_device *cgdev)
 	if (!privptr)
 		return -ENODEV;
 	p_env = privptr->p_env;
-	sscanf(cgdev->cdev[READ]->dev.bus_id+4,"%x",
-		&p_env->devno[READ]);
-        sscanf(cgdev->cdev[WRITE]->dev.bus_id+4,"%x",
-		&p_env->devno[WRITE]);
+	ccw_device_get_id(cgdev->cdev[READ], &dev_id);
+	p_env->devno[READ] = dev_id.devno;
+	ccw_device_get_id(cgdev->cdev[WRITE], &dev_id);
+	p_env->devno[WRITE] = dev_id.devno;
 	ret = add_channel(cgdev->cdev[0],0,privptr);
 	if (ret == 0)
 		ret = add_channel(cgdev->cdev[1],1,privptr);

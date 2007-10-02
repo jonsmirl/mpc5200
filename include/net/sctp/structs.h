@@ -207,6 +207,9 @@ extern struct sctp_globals {
 	 * It is a list of sctp_sockaddr_entry.
 	 */
 	struct list_head local_addr_list;
+
+	/* Lock that protects the local_addr_list writers */
+	spinlock_t addr_list_lock;
 	
 	/* Flag to indicate if addip is enabled. */
 	int addip_enable;
@@ -242,6 +245,7 @@ extern struct sctp_globals {
 #define sctp_port_alloc_lock		(sctp_globals.port_alloc_lock)
 #define sctp_port_hashtable		(sctp_globals.port_hashtable)
 #define sctp_local_addr_list		(sctp_globals.local_addr_list)
+#define sctp_local_addr_lock		(sctp_globals.addr_list_lock)
 #define sctp_addip_enable		(sctp_globals.addip_enable)
 #define sctp_prsctp_enable		(sctp_globals.prsctp_enable)
 
@@ -417,6 +421,7 @@ struct sctp_signed_cookie {
  * internally.
  */
 union sctp_addr_param {
+	struct sctp_paramhdr p;
 	struct sctp_ipv4addr_param v4;
 	struct sctp_ipv6addr_param v6;
 };
@@ -726,6 +731,7 @@ int sctp_user_addto_chunk(struct sctp_chunk *chunk, int off, int len,
 			  struct iovec *data);
 void sctp_chunk_free(struct sctp_chunk *);
 void  *sctp_addto_chunk(struct sctp_chunk *, int len, const void *data);
+void  *sctp_addto_param(struct sctp_chunk *, int len, const void *data);
 struct sctp_chunk *sctp_chunkify(struct sk_buff *,
 				 const struct sctp_association *,
 				 struct sock *);
@@ -736,8 +742,10 @@ const union sctp_addr *sctp_source(const struct sctp_chunk *chunk);
 /* This is a structure for holding either an IPv6 or an IPv4 address.  */
 struct sctp_sockaddr_entry {
 	struct list_head list;
+	struct rcu_head	rcu;
 	union sctp_addr a;
 	__u8 use_as_src;
+	__u8 valid;
 };
 
 typedef struct sctp_chunk *(sctp_packet_phandler_t)(struct sctp_association *);
@@ -912,6 +920,9 @@ struct sctp_transport {
 	 */
 	__u16 pathmaxrxt;
 
+	/* is the Path MTU update pending on this tranport */
+	__u8 pmtu_pending;
+
 	/* PMTU	      : The current known path MTU.  */
 	__u32 pathmtu;
 
@@ -1006,6 +1017,7 @@ void sctp_transport_raise_cwnd(struct sctp_transport *, __u32, __u32);
 void sctp_transport_lower_cwnd(struct sctp_transport *, sctp_lower_cwnd_t);
 unsigned long sctp_transport_timeout(struct sctp_transport *);
 void sctp_transport_reset(struct sctp_transport *);
+void sctp_transport_update_pmtu(struct sctp_transport *, u32);
 
 
 /* This is the structure we use to queue packets as they come into
@@ -1144,7 +1156,9 @@ int sctp_bind_addr_copy(struct sctp_bind_addr *dest,
 			int flags);
 int sctp_add_bind_addr(struct sctp_bind_addr *, union sctp_addr *,
 		       __u8 use_as_src, gfp_t gfp);
-int sctp_del_bind_addr(struct sctp_bind_addr *, union sctp_addr *);
+int sctp_del_bind_addr(struct sctp_bind_addr *, union sctp_addr *,
+			void fastcall (*rcu_call)(struct rcu_head *,
+					  void (*func)(struct rcu_head *)));
 int sctp_bind_addr_match(struct sctp_bind_addr *, const union sctp_addr *,
 			 struct sctp_sock *);
 union sctp_addr *sctp_find_unmatch_addr(struct sctp_bind_addr	*bp,
@@ -1215,9 +1229,6 @@ struct sctp_ep_common {
 	 * bind_addr.address_list is our set of local IP addresses.
 	 */
 	struct sctp_bind_addr bind_addr;
-
-	/* Protection during address list comparisons. */
-	rwlock_t   addr_lock;
 };
 
 
@@ -1564,6 +1575,9 @@ struct sctp_association {
 	 * association.
 	 */
 	__u16 pathmaxrxt;
+
+	/* Flag that path mtu update is pending */
+	__u8   pmtu_pending;
 
 	/* Association : The smallest PMTU discovered for all of the
 	 * PMTU	       : peer's transport addresses.

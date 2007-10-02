@@ -11,12 +11,15 @@ SECTIONS
   . = 0x1000;
   _text = .;			/* Text and read-only data */
   .text : {
-	*(.text)
+	*(.text.head)
+	TEXT_TEXT
 	SCHED_TEXT
 	LOCK_TEXT
 	*(.fixup)
 	*(.gnu.warning)
 	} :text = 0x4e75
+
+  _etext = .;			/* End of text section */
 
   . = ALIGN(16);		/* Exception table */
   __start___ex_table = .;
@@ -25,10 +28,8 @@ SECTIONS
 
   RODATA
 
-  _etext = .;			/* End of text section */
-
   .data : {			/* Data */
-	*(.data)
+	DATA_DATA
 	CONSTRUCTORS
 	}
 
@@ -60,6 +61,11 @@ SECTIONS
   __con_initcall_start = .;
   .con_initcall.init : { *(.con_initcall.init) }
   __con_initcall_end = .;
+  .m68k_fixup : {
+	__start_fixup = .;
+	*(.m68k_fixup)
+	__stop_fixup = .;
+  }
   SECURITY_INIT
 #ifdef CONFIG_BLK_DEV_INITRD
   . = ALIGN(8192);

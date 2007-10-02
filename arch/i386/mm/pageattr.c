@@ -60,7 +60,7 @@ static struct page *split_large_page(unsigned long address, pgprot_t prot,
 	address = __pa(address);
 	addr = address & LARGE_PAGE_MASK; 
 	pbase = (pte_t *)page_address(base);
-	paravirt_alloc_pt(page_to_pfn(base));
+	paravirt_alloc_pt(&init_mm, page_to_pfn(base));
 	for (i = 0; i < PTRS_PER_PTE; i++, addr += PAGE_SIZE) {
                set_pte(&pbase[i], pfn_pte(addr >> PAGE_SHIFT,
                                           addr == address ? prot : ref_prot));
@@ -68,14 +68,23 @@ static struct page *split_large_page(unsigned long address, pgprot_t prot,
 	return base;
 } 
 
-static void flush_kernel_map(void *arg)
+static void cache_flush_page(struct page *p)
 { 
-	unsigned long adr = (unsigned long)arg;
+	unsigned long adr = (unsigned long)page_address(p);
+	int i;
+	for (i = 0; i < PAGE_SIZE; i += boot_cpu_data.x86_clflush_size)
+		asm volatile("clflush (%0)" :: "r" (adr + i));
+}
 
-	if (adr && cpu_has_clflush) {
-		int i;
-		for (i = 0; i < PAGE_SIZE; i += boot_cpu_data.x86_clflush_size)
-			asm volatile("clflush (%0)" :: "r" (adr + i));
+static void flush_kernel_map(void *arg)
+{
+	struct list_head *lh = (struct list_head *)arg;
+	struct page *p;
+
+	/* High level code is not ready for clflush yet */
+	if (0 && cpu_has_clflush) {
+		list_for_each_entry (p, lh, lru)
+			cache_flush_page(p);
 	} else if (boot_cpu_data.x86_model >= 4)
 		wbinvd();
 
@@ -127,6 +136,12 @@ static inline void revert_page(struct page *kpte_page, unsigned long address)
 			    ref_prot));
 }
 
+static inline void save_page(struct page *kpte_page)
+{
+	if (!test_and_set_bit(PG_arch_1, &kpte_page->flags))
+		list_add(&kpte_page->lru, &df_list);
+}
+
 static int
 __change_page_attr(struct page *page, pgprot_t prot)
 { 
@@ -141,6 +156,9 @@ __change_page_attr(struct page *page, pgprot_t prot)
 	if (!kpte)
 		return -EINVAL;
 	kpte_page = virt_to_page(kpte);
+	BUG_ON(PageLRU(kpte_page));
+	BUG_ON(PageCompound(kpte_page));
+
 	if (pgprot_val(prot) != pgprot_val(PAGE_KERNEL)) { 
 		if (!pte_huge(*kpte)) {
 			set_pte_atomic(kpte, mk_pte(page, prot)); 
@@ -170,20 +188,20 @@ __change_page_attr(struct page *page, pgprot_t prot)
 	 * time (not via split_large_page) and in turn we must not
 	 * replace it with a largepage.
 	 */
+
+	save_page(kpte_page);
 	if (!PageReserved(kpte_page)) {
 		if (cpu_has_pse && (page_private(kpte_page) == 0)) {
-			ClearPagePrivate(kpte_page);
 			paravirt_release_pt(page_to_pfn(kpte_page));
-			list_add(&kpte_page->lru, &df_list);
 			revert_page(kpte_page, address);
 		}
 	}
 	return 0;
 } 
 
-static inline void flush_map(void *adr)
+static inline void flush_map(struct list_head *l)
 {
-	on_each_cpu(flush_kernel_map, adr, 1, 1);
+	on_each_cpu(flush_kernel_map, l, 1, 1);
 }
 
 /*
@@ -225,11 +243,13 @@ void global_flush_tlb(void)
 	spin_lock_irq(&cpa_lock);
 	list_replace_init(&df_list, &l);
 	spin_unlock_irq(&cpa_lock);
-	if (!cpu_has_clflush)
-		flush_map(NULL);
+	flush_map(&l);
 	list_for_each_entry_safe(pg, next, &l, lru) {
-		if (cpu_has_clflush)
-			flush_map(page_address(pg));
+		list_del(&pg->lru);
+		clear_bit(PG_arch_1, &pg->flags);
+		if (PageReserved(pg) || !cpu_has_pse || page_private(pg) != 0)
+			continue;
+		ClearPagePrivate(pg);
 		__free_page(pg);
 	}
 }

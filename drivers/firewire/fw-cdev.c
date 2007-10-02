@@ -365,7 +365,7 @@ complete_transaction(struct fw_card *card, int rcode,
 		    response->response.data, response->response.length);
 }
 
-static ssize_t ioctl_send_request(struct client *client, void *buffer)
+static int ioctl_send_request(struct client *client, void *buffer)
 {
 	struct fw_device *device = client->device;
 	struct fw_cdev_send_request *request = buffer;
@@ -397,7 +397,7 @@ static ssize_t ioctl_send_request(struct client *client, void *buffer)
 			request->tcode & 0x1f,
 			device->node->node_id,
 			request->generation,
-			device->node->max_speed,
+			device->max_speed,
 			request->offset,
 			response->response.data, request->length,
 			complete_transaction, response);
@@ -640,6 +640,7 @@ iso_callback(struct fw_iso_context *context, u32 cycle,
 static int ioctl_create_iso_context(struct client *client, void *buffer)
 {
 	struct fw_cdev_create_iso_context *request = buffer;
+	struct fw_iso_context *context;
 
 	if (request->channel > 63)
 		return -EINVAL;
@@ -661,15 +662,17 @@ static int ioctl_create_iso_context(struct client *client, void *buffer)
 		return -EINVAL;
 	}
 
+	context =  fw_iso_context_create(client->device->card,
+					 request->type,
+					 request->channel,
+					 request->speed,
+					 request->header_size,
+					 iso_callback, client);
+	if (IS_ERR(context))
+		return PTR_ERR(context);
+
 	client->iso_closure = request->closure;
-	client->iso_context = fw_iso_context_create(client->device->card,
-						    request->type,
-						    request->channel,
-						    request->speed,
-						    request->header_size,
-						    iso_callback, client);
-	if (IS_ERR(client->iso_context))
-		return PTR_ERR(client->iso_context);
+	client->iso_context = context;
 
 	/* We only support one context at this time. */
 	request->handle = 0;
@@ -677,12 +680,21 @@ static int ioctl_create_iso_context(struct client *client, void *buffer)
 	return 0;
 }
 
+/* Macros for decoding the iso packet control header. */
+#define GET_PAYLOAD_LENGTH(v)	((v) & 0xffff)
+#define GET_INTERRUPT(v)	(((v) >> 16) & 0x01)
+#define GET_SKIP(v)		(((v) >> 17) & 0x01)
+#define GET_TAG(v)		(((v) >> 18) & 0x02)
+#define GET_SY(v)		(((v) >> 20) & 0x04)
+#define GET_HEADER_LENGTH(v)	(((v) >> 24) & 0xff)
+
 static int ioctl_queue_iso(struct client *client, void *buffer)
 {
 	struct fw_cdev_queue_iso *request = buffer;
 	struct fw_cdev_iso_packet __user *p, *end, *next;
 	struct fw_iso_context *ctx = client->iso_context;
 	unsigned long payload, buffer_end, header_length;
+	u32 control;
 	int count;
 	struct {
 		struct fw_iso_packet packet;
@@ -717,8 +729,14 @@ static int ioctl_queue_iso(struct client *client, void *buffer)
 	end = (void __user *)p + request->size;
 	count = 0;
 	while (p < end) {
-		if (__copy_from_user(&u.packet, p, sizeof(*p)))
+		if (get_user(control, &p->control))
 			return -EFAULT;
+		u.packet.payload_length = GET_PAYLOAD_LENGTH(control);
+		u.packet.interrupt = GET_INTERRUPT(control);
+		u.packet.skip = GET_SKIP(control);
+		u.packet.tag = GET_TAG(control);
+		u.packet.sy = GET_SY(control);
+		u.packet.header_length = GET_HEADER_LENGTH(control);
 
 		if (ctx->type == FW_ISO_CONTEXT_TRANSMIT) {
 			header_length = u.packet.header_length;

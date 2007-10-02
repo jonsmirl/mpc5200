@@ -200,8 +200,10 @@ static int em_call_function(int (*fn)(void))
 	data.fn = fn;
 	data.ret = 0;
 
+	preempt_disable();
 	smp_call_function(em_func, &data, 1, 1);
 	em_func(&data);
+	preempt_enable();
 
 	return data.ret;
 }
@@ -257,8 +259,13 @@ static void em_stop(void)
  */
 static void em_route_irq(int irq, unsigned int cpu)
 {
-	irq_desc[irq].affinity = cpumask_of_cpu(cpu);
-	irq_desc[irq].chip->set_affinity(irq, cpumask_of_cpu(cpu));
+	struct irq_desc *desc = irq_desc + irq;
+	cpumask_t mask = cpumask_of_cpu(cpu);
+
+	spin_lock_irq(&desc->lock);
+	desc->affinity = mask;
+	desc->chip->set_affinity(irq, mask);
+	spin_unlock_irq(&desc->lock);
 }
 
 static int em_setup(void)

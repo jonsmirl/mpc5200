@@ -378,7 +378,7 @@ static int aac_rx_check_health(struct aac_dev *dev)
  *
  *	Will send a fib, returning 0 if successful.
  */
-static int aac_rx_deliver_producer(struct fib * fib)
+int aac_rx_deliver_producer(struct fib * fib)
 {
 	struct aac_dev *dev = fib->dev;
 	struct aac_queue *q = &dev->queues->queue[AdapNormCmdQueue];
@@ -464,21 +464,24 @@ static int aac_rx_restart_adapter(struct aac_dev *dev, int bled)
 {
 	u32 var;
 
-	if (bled)
-		printk(KERN_ERR "%s%d: adapter kernel panic'd %x.\n",
-			dev->name, dev->id, bled);
-	else {
-		bled = aac_adapter_sync_cmd(dev, IOP_RESET_ALWAYS,
-		  0, 0, 0, 0, 0, 0, &var, NULL, NULL, NULL, NULL);
-		if (!bled && (var != 0x00000001))
-			bled = -EINVAL;
-	}
-	if (bled && (bled != -ETIMEDOUT))
-		bled = aac_adapter_sync_cmd(dev, IOP_RESET,
-		  0, 0, 0, 0, 0, 0, &var, NULL, NULL, NULL, NULL);
+	if (!(dev->supplement_adapter_info.SupportedOptions2 &
+	  le32_to_cpu(AAC_OPTION_MU_RESET)) || (bled >= 0) || (bled == -2)) {
+		if (bled)
+			printk(KERN_ERR "%s%d: adapter kernel panic'd %x.\n",
+				dev->name, dev->id, bled);
+		else {
+			bled = aac_adapter_sync_cmd(dev, IOP_RESET_ALWAYS,
+			  0, 0, 0, 0, 0, 0, &var, NULL, NULL, NULL, NULL);
+			if (!bled && (var != 0x00000001) && (var != 0x3803000F))
+				bled = -EINVAL;
+		}
+		if (bled && (bled != -ETIMEDOUT))
+			bled = aac_adapter_sync_cmd(dev, IOP_RESET,
+			  0, 0, 0, 0, 0, 0, &var, NULL, NULL, NULL, NULL);
 
-	if (bled && (bled != -ETIMEDOUT))
-		return -EINVAL;
+		if (bled && (bled != -ETIMEDOUT))
+			return -EINVAL;
+	}
 	if (bled || (var == 0x3803000F)) { /* USE_OTHER_METHOD */
 		rx_writel(dev, MUnit.reserved2, 3);
 		msleep(5000); /* Delay 5 seconds */
@@ -488,6 +491,8 @@ static int aac_rx_restart_adapter(struct aac_dev *dev, int bled)
 		return -EINVAL;
 	if (rx_readl(dev, MUnit.OMRx[0]) & KERNEL_PANIC)
 		return -ENODEV;
+	if (startup_timeout < 300)
+		startup_timeout = 300;
 	return 0;
 }
 
@@ -542,7 +547,7 @@ int _aac_rx_init(struct aac_dev *dev)
 	dev->a_ops.adapter_sync_cmd = rx_sync_cmd;
 	dev->a_ops.adapter_enable_int = aac_rx_disable_interrupt;
 	dev->OIMR = status = rx_readb (dev, MUnit.OIMR);
-	if ((((status & 0x0c) != 0x0c) || reset_devices) &&
+	if ((((status & 0x0c) != 0x0c) || aac_reset_devices || reset_devices) &&
 	  !aac_rx_restart_adapter(dev, 0))
 		++restart;
 	/*
@@ -594,6 +599,8 @@ int _aac_rx_init(struct aac_dev *dev)
 		}
 		msleep(1);
 	}
+	if (restart && aac_commit)
+		aac_commit = 1;
 	/*
 	 *	Fill in the common function dispatch table.
 	 */

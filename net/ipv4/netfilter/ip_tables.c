@@ -152,20 +152,20 @@ ip_packet_match(const struct iphdr *ip,
 	return 1;
 }
 
-static inline int
+static inline bool
 ip_checkentry(const struct ipt_ip *ip)
 {
 	if (ip->flags & ~IPT_F_MASK) {
 		duprintf("Unknown flag bits set: %08X\n",
 			 ip->flags & ~IPT_F_MASK);
-		return 0;
+		return false;
 	}
 	if (ip->invflags & ~IPT_INV_MASK) {
 		duprintf("Unknown invflag bits set: %08X\n",
 			 ip->invflags & ~IPT_INV_MASK);
-		return 0;
+		return false;
 	}
-	return 1;
+	return true;
 }
 
 static unsigned int
@@ -183,19 +183,19 @@ ipt_error(struct sk_buff **pskb,
 }
 
 static inline
-int do_match(struct ipt_entry_match *m,
-	     const struct sk_buff *skb,
-	     const struct net_device *in,
-	     const struct net_device *out,
-	     int offset,
-	     int *hotdrop)
+bool do_match(struct ipt_entry_match *m,
+	      const struct sk_buff *skb,
+	      const struct net_device *in,
+	      const struct net_device *out,
+	      int offset,
+	      bool *hotdrop)
 {
 	/* Stop iteration if it doesn't match */
 	if (!m->u.kernel.match->match(skb, in, out, m->u.kernel.match, m->data,
 				      offset, ip_hdrlen(skb), hotdrop))
-		return 1;
+		return true;
 	else
-		return 0;
+		return false;
 }
 
 static inline struct ipt_entry *
@@ -203,6 +203,112 @@ get_entry(void *base, unsigned int offset)
 {
 	return (struct ipt_entry *)(base + offset);
 }
+
+/* All zeroes == unconditional rule. */
+static inline int
+unconditional(const struct ipt_ip *ip)
+{
+	unsigned int i;
+
+	for (i = 0; i < sizeof(*ip)/sizeof(__u32); i++)
+		if (((__u32 *)ip)[i])
+			return 0;
+
+	return 1;
+}
+
+#if defined(CONFIG_NETFILTER_XT_TARGET_TRACE) || \
+    defined(CONFIG_NETFILTER_XT_TARGET_TRACE_MODULE)
+static const char *hooknames[] = {
+	[NF_IP_PRE_ROUTING]		= "PREROUTING",
+	[NF_IP_LOCAL_IN]		= "INPUT",
+	[NF_IP_FORWARD]			= "FORWARD",
+	[NF_IP_LOCAL_OUT]		= "OUTPUT",
+	[NF_IP_POST_ROUTING]		= "POSTROUTING",
+};
+
+enum nf_ip_trace_comments {
+	NF_IP_TRACE_COMMENT_RULE,
+	NF_IP_TRACE_COMMENT_RETURN,
+	NF_IP_TRACE_COMMENT_POLICY,
+};
+
+static const char *comments[] = {
+	[NF_IP_TRACE_COMMENT_RULE]	= "rule",
+	[NF_IP_TRACE_COMMENT_RETURN]	= "return",
+	[NF_IP_TRACE_COMMENT_POLICY]	= "policy",
+};
+
+static struct nf_loginfo trace_loginfo = {
+	.type = NF_LOG_TYPE_LOG,
+	.u = {
+		.log = {
+			.level = 4,
+			.logflags = NF_LOG_MASK,
+		},
+	},
+};
+
+static inline int
+get_chainname_rulenum(struct ipt_entry *s, struct ipt_entry *e,
+		      char *hookname, char **chainname,
+		      char **comment, unsigned int *rulenum)
+{
+	struct ipt_standard_target *t = (void *)ipt_get_target(s);
+
+	if (strcmp(t->target.u.kernel.target->name, IPT_ERROR_TARGET) == 0) {
+		/* Head of user chain: ERROR target with chainname */
+		*chainname = t->target.data;
+		(*rulenum) = 0;
+	} else if (s == e) {
+		(*rulenum)++;
+
+		if (s->target_offset == sizeof(struct ipt_entry)
+		   && strcmp(t->target.u.kernel.target->name,
+			     IPT_STANDARD_TARGET) == 0
+		   && t->verdict < 0
+		   && unconditional(&s->ip)) {
+			/* Tail of chains: STANDARD target (return/policy) */
+			*comment = *chainname == hookname
+				? (char *)comments[NF_IP_TRACE_COMMENT_POLICY]
+				: (char *)comments[NF_IP_TRACE_COMMENT_RETURN];
+		}
+		return 1;
+	} else
+		(*rulenum)++;
+
+	return 0;
+}
+
+static void trace_packet(struct sk_buff *skb,
+			 unsigned int hook,
+			 const struct net_device *in,
+			 const struct net_device *out,
+			 char *tablename,
+			 struct xt_table_info *private,
+			 struct ipt_entry *e)
+{
+	void *table_base;
+	struct ipt_entry *root;
+	char *hookname, *chainname, *comment;
+	unsigned int rulenum = 0;
+
+	table_base = (void *)private->entries[smp_processor_id()];
+	root = get_entry(table_base, private->hook_entry[hook]);
+
+	hookname = chainname = (char *)hooknames[hook];
+	comment = (char *)comments[NF_IP_TRACE_COMMENT_RULE];
+
+	IPT_ENTRY_ITERATE(root,
+			  private->size - private->hook_entry[hook],
+			  get_chainname_rulenum,
+			  e, hookname, &chainname, &comment, &rulenum);
+
+	nf_log_packet(AF_INET, hook, skb, in, out, &trace_loginfo,
+		      "TRACE: %s:%s:%s:%u ",
+		      tablename, chainname, comment, rulenum);
+}
+#endif
 
 /* Returns one of the generic firewall policies, like NF_ACCEPT. */
 unsigned int
@@ -216,7 +322,7 @@ ipt_do_table(struct sk_buff **pskb,
 	u_int16_t offset;
 	struct iphdr *ip;
 	u_int16_t datalen;
-	int hotdrop = 0;
+	bool hotdrop = false;
 	/* Initializing verdict to NF_DROP keeps gcc happy. */
 	unsigned int verdict = NF_DROP;
 	const char *indev, *outdev;
@@ -261,6 +367,14 @@ ipt_do_table(struct sk_buff **pskb,
 
 			t = ipt_get_target(e);
 			IP_NF_ASSERT(t->u.kernel.target);
+
+#if defined(CONFIG_NETFILTER_XT_TARGET_TRACE) || \
+    defined(CONFIG_NETFILTER_XT_TARGET_TRACE_MODULE)
+			/* The packet is traced: log it */
+			if (unlikely((*pskb)->nf_trace))
+				trace_packet(*pskb, hook, in, out,
+					     table->name, private, e);
+#endif
 			/* Standard target? */
 			if (!t->u.kernel.target->target) {
 				int v;
@@ -339,19 +453,6 @@ ipt_do_table(struct sk_buff **pskb,
 		return NF_DROP;
 	else return verdict;
 #endif
-}
-
-/* All zeroes == unconditional rule. */
-static inline int
-unconditional(const struct ipt_ip *ip)
-{
-	unsigned int i;
-
-	for (i = 0; i < sizeof(*ip)/sizeof(__u32); i++)
-		if (((__u32 *)ip)[i])
-			return 0;
-
-	return 1;
 }
 
 /* Figures out from what hook each rule can be called: returns 0 if
@@ -499,7 +600,8 @@ check_entry(struct ipt_entry *e, const char *name)
 }
 
 static inline int check_match(struct ipt_entry_match *m, const char *name,
-				const struct ipt_ip *ip, unsigned int hookmask)
+				const struct ipt_ip *ip, unsigned int hookmask,
+				unsigned int *i)
 {
 	struct xt_match *match;
 	int ret;
@@ -515,6 +617,8 @@ static inline int check_match(struct ipt_entry_match *m, const char *name,
 			 m->u.kernel.match->name);
 		ret = -EINVAL;
 	}
+	if (!ret)
+		(*i)++;
 	return ret;
 }
 
@@ -537,11 +641,10 @@ find_check_match(struct ipt_entry_match *m,
 	}
 	m->u.kernel.match = match;
 
-	ret = check_match(m, name, ip, hookmask);
+	ret = check_match(m, name, ip, hookmask, i);
 	if (ret)
 		goto err;
 
-	(*i)++;
 	return 0;
 err:
 	module_put(m->u.kernel.match->me);
@@ -1425,7 +1528,7 @@ out:
 }
 
 static inline int
-compat_check_calc_match(struct ipt_entry_match *m,
+compat_find_calc_match(struct ipt_entry_match *m,
 	    const char *name,
 	    const struct ipt_ip *ip,
 	    unsigned int hookmask,
@@ -1445,6 +1548,31 @@ compat_check_calc_match(struct ipt_entry_match *m,
 	*size += xt_compat_match_offset(match);
 
 	(*i)++;
+	return 0;
+}
+
+static inline int
+compat_release_match(struct ipt_entry_match *m, unsigned int *i)
+{
+	if (i && (*i)-- == 0)
+		return 1;
+
+	module_put(m->u.kernel.match->me);
+	return 0;
+}
+
+static inline int
+compat_release_entry(struct ipt_entry *e, unsigned int *i)
+{
+	struct ipt_entry_target *t;
+
+	if (i && (*i)-- == 0)
+		return 1;
+
+	/* Cleanup all matches */
+	IPT_MATCH_ITERATE(e, compat_release_match, NULL);
+	t = ipt_get_target(e);
+	module_put(t->u.kernel.target->me);
 	return 0;
 }
 
@@ -1485,10 +1613,10 @@ check_compat_entry_size_and_hooks(struct ipt_entry *e,
 	off = 0;
 	entry_offset = (void *)e - (void *)base;
 	j = 0;
-	ret = IPT_MATCH_ITERATE(e, compat_check_calc_match, name, &e->ip,
+	ret = IPT_MATCH_ITERATE(e, compat_find_calc_match, name, &e->ip,
 			e->comefrom, &off, &j);
 	if (ret != 0)
-		goto cleanup_matches;
+		goto release_matches;
 
 	t = ipt_get_target(e);
 	target = try_then_request_module(xt_find_target(AF_INET,
@@ -1499,7 +1627,7 @@ check_compat_entry_size_and_hooks(struct ipt_entry *e,
 		duprintf("check_compat_entry_size_and_hooks: `%s' not found\n",
 							t->u.user.name);
 		ret = target ? PTR_ERR(target) : -ENOENT;
-		goto cleanup_matches;
+		goto release_matches;
 	}
 	t->u.kernel.target = target;
 
@@ -1526,8 +1654,8 @@ check_compat_entry_size_and_hooks(struct ipt_entry *e,
 
 out:
 	module_put(t->u.kernel.target->me);
-cleanup_matches:
-	IPT_MATCH_ITERATE(e, cleanup_match, &j);
+release_matches:
+	IPT_MATCH_ITERATE(e, compat_release_match, &j);
 	return ret;
 }
 
@@ -1574,15 +1702,26 @@ static int compat_copy_entry_from_user(struct ipt_entry *e, void **dstptr,
 	return ret;
 }
 
-static inline int compat_check_entry(struct ipt_entry *e, const char *name)
+static inline int compat_check_entry(struct ipt_entry *e, const char *name,
+						unsigned int *i)
 {
-	int ret;
+	int j, ret;
 
-	ret = IPT_MATCH_ITERATE(e, check_match, name, &e->ip, e->comefrom);
+	j = 0;
+	ret = IPT_MATCH_ITERATE(e, check_match, name, &e->ip, e->comefrom, &j);
 	if (ret)
-		return ret;
+		goto cleanup_matches;
 
-	return check_target(e, name);
+	ret = check_target(e, name);
+	if (ret)
+		goto cleanup_matches;
+
+	(*i)++;
+	return 0;
+
+ cleanup_matches:
+	IPT_MATCH_ITERATE(e, cleanup_match, &j);
+	return ret;
 }
 
 static int
@@ -1673,10 +1812,17 @@ translate_compat_table(const char *name,
 	if (!mark_source_chains(newinfo, valid_hooks, entry1))
 		goto free_newinfo;
 
+	i = 0;
 	ret = IPT_ENTRY_ITERATE(entry1, newinfo->size, compat_check_entry,
-									name);
-	if (ret)
-		goto free_newinfo;
+								name, &i);
+	if (ret) {
+		j -= i;
+		IPT_ENTRY_ITERATE_CONTINUE(entry1, newinfo->size, i,
+						compat_release_entry, &j);
+		IPT_ENTRY_ITERATE(entry1, newinfo->size, cleanup_entry, &i);
+		xt_free_table_info(newinfo);
+		return ret;
+	}
 
 	/* And one copy for every other CPU */
 	for_each_possible_cpu(i)
@@ -1691,7 +1837,7 @@ translate_compat_table(const char *name,
 free_newinfo:
 	xt_free_table_info(newinfo);
 out:
-	IPT_ENTRY_ITERATE(entry0, total_size, cleanup_entry, &j);
+	IPT_ENTRY_ITERATE(entry0, total_size, compat_release_entry, &j);
 	return ret;
 out_unlock:
 	compat_flush_offsets();
@@ -2060,16 +2206,16 @@ void ipt_unregister_table(struct xt_table *table)
 }
 
 /* Returns 1 if the type and code is matched by the range, 0 otherwise */
-static inline int
+static inline bool
 icmp_type_code_match(u_int8_t test_type, u_int8_t min_code, u_int8_t max_code,
 		     u_int8_t type, u_int8_t code,
-		     int invert)
+		     bool invert)
 {
 	return ((test_type == 0xFF) || (type == test_type && code >= min_code && code <= max_code))
 		^ invert;
 }
 
-static int
+static bool
 icmp_match(const struct sk_buff *skb,
 	   const struct net_device *in,
 	   const struct net_device *out,
@@ -2077,14 +2223,14 @@ icmp_match(const struct sk_buff *skb,
 	   const void *matchinfo,
 	   int offset,
 	   unsigned int protoff,
-	   int *hotdrop)
+	   bool *hotdrop)
 {
 	struct icmphdr _icmph, *ic;
 	const struct ipt_icmp *icmpinfo = matchinfo;
 
 	/* Must not be a fragment. */
 	if (offset)
-		return 0;
+		return false;
 
 	ic = skb_header_pointer(skb, protoff, sizeof(_icmph), &_icmph);
 	if (ic == NULL) {
@@ -2092,8 +2238,8 @@ icmp_match(const struct sk_buff *skb,
 		 * can't.  Hence, no choice but to drop.
 		 */
 		duprintf("Dropping evil ICMP tinygram.\n");
-		*hotdrop = 1;
-		return 0;
+		*hotdrop = true;
+		return false;
 	}
 
 	return icmp_type_code_match(icmpinfo->type,
@@ -2104,7 +2250,7 @@ icmp_match(const struct sk_buff *skb,
 }
 
 /* Called when user tries to insert an entry of this type. */
-static int
+static bool
 icmp_checkentry(const char *tablename,
 	   const void *info,
 	   const struct xt_match *match,
@@ -2118,7 +2264,7 @@ icmp_checkentry(const char *tablename,
 }
 
 /* The built-in targets: standard (NULL) and error. */
-static struct xt_target ipt_standard_target = {
+static struct xt_target ipt_standard_target __read_mostly = {
 	.name		= IPT_STANDARD_TARGET,
 	.targetsize	= sizeof(int),
 	.family		= AF_INET,
@@ -2129,7 +2275,7 @@ static struct xt_target ipt_standard_target = {
 #endif
 };
 
-static struct xt_target ipt_error_target = {
+static struct xt_target ipt_error_target __read_mostly = {
 	.name		= IPT_ERROR_TARGET,
 	.target		= ipt_error,
 	.targetsize	= IPT_FUNCTION_MAXNAMELEN,
@@ -2150,9 +2296,10 @@ static struct nf_sockopt_ops ipt_sockopts = {
 #ifdef CONFIG_COMPAT
 	.compat_get	= compat_do_ipt_get_ctl,
 #endif
+	.owner		= THIS_MODULE,
 };
 
-static struct xt_match icmp_matchstruct = {
+static struct xt_match icmp_matchstruct __read_mostly = {
 	.name		= "icmp",
 	.match		= icmp_match,
 	.matchsize	= sizeof(struct ipt_icmp),
@@ -2185,7 +2332,7 @@ static int __init ip_tables_init(void)
 	if (ret < 0)
 		goto err5;
 
-	printk("ip_tables: (C) 2000-2006 Netfilter Core Team\n");
+	printk(KERN_INFO "ip_tables: (C) 2000-2006 Netfilter Core Team\n");
 	return 0;
 
 err5:

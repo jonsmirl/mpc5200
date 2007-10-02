@@ -56,9 +56,13 @@
 
 /* iPlus device */
 #define FTDI_IPLUS_PID 0xD070 /* Product Id */
+#define FTDI_IPLUS2_PID 0xD071 /* Product Id */
 
 /* DMX4ALL DMX Interfaces */
 #define FTDI_DMX4ALL 0xC850
+
+/* OpenDCC (www.opendcc.de) product id */
+#define FTDI_OPENDCC_PID	0xBFD8
 
 /* www.crystalfontz.com devices - thanx for providing free devices for evaluation ! */
 /* they use the ftdi chipset for the USB interface and the vendor id is the same */
@@ -426,6 +430,9 @@
  */
 #define EVOLUTION_VID		0xDEEE	/* Vendor ID */
 #define EVOLUTION_ER1_PID	0x0300	/* ER1 Control Module */
+#define EVO_8U232AM_PID	0x02FF	/* Evolution robotics RCM2 (FT232AM)*/
+#define EVO_HYBRID_PID		0x0302	/* Evolution robotics RCM4 PID (FT232BM)*/
+#define EVO_RCM4_PID		0x0303	/* Evolution robotics RCM4 PID */
 
 /* Pyramid Computer GmbH */
 #define FTDI_PYRAMID_PID	0xE6C8	/* Pyramid Appliance Display */
@@ -517,6 +524,23 @@
 #define FTDI_IBS_APP70_PID	0xff3d  /* APP 70 (dust monitoring system) */
 #define FTDI_IBS_PEDO_PID	0xff3e  /* IBS PEDO-Modem (RF modem 868.35 MHz) */
 #define FTDI_IBS_PROD_PID	0xff3f  /* future device */
+
+/*
+ *  MaxStream devices	www.maxstream.net
+ */
+#define FTDI_MAXSTREAM_PID	0xEE18	/* Xbee PKG-U Module */
+
+/* Olimex */
+#define OLIMEX_VID			0x15BA
+#define OLIMEX_ARM_USB_OCD_PID		0x0003
+
+
+/*
+ * The Mobility Lab (TML)
+ * Submitted by Pierre Castella
+ */
+#define TML_VID			0x1B91	/* Vendor ID */
+#define TML_USB_SERIAL_PID	0x0064	/* USB - Serial Converter */
 
 /* Commands */
 #define FTDI_SIO_RESET 		0 /* Reset the port */

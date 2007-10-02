@@ -200,7 +200,7 @@ int dvb_register_device(struct dvb_adapter *adap, struct dvb_device **pdvbdev,
 {
 	struct dvb_device *dvbdev;
 	struct file_operations *dvbdevfops;
-
+	struct class_device *clsdev;
 	int id;
 
 	mutex_lock(&dvbdev_register_lock);
@@ -208,7 +208,7 @@ int dvb_register_device(struct dvb_adapter *adap, struct dvb_device **pdvbdev,
 	if ((id = dvbdev_get_free_id (adap, type)) < 0){
 		mutex_unlock(&dvbdev_register_lock);
 		*pdvbdev = NULL;
-		printk ("%s: could get find free device id...\n", __FUNCTION__);
+		printk(KERN_ERR "%s: couldn't find free device id\n", __FUNCTION__);
 		return -ENFILE;
 	}
 
@@ -242,10 +242,17 @@ int dvb_register_device(struct dvb_adapter *adap, struct dvb_device **pdvbdev,
 
 	mutex_unlock(&dvbdev_register_lock);
 
-	class_device_create(dvb_class, NULL, MKDEV(DVB_MAJOR, nums2minor(adap->num, type, id)),
-			    adap->device, "dvb%d.%s%d", adap->num, dnames[type], id);
+	clsdev = class_device_create(dvb_class, NULL, MKDEV(DVB_MAJOR,
+				     nums2minor(adap->num, type, id)),
+				     adap->device, "dvb%d.%s%d", adap->num,
+				     dnames[type], id);
+	if (IS_ERR(clsdev)) {
+		printk(KERN_ERR "%s: failed to create device dvb%d.%s%d (%ld)\n",
+		       __FUNCTION__, adap->num, dnames[type], id, PTR_ERR(clsdev));
+		return PTR_ERR(clsdev);
+	}
 
-	dprintk("DVB: register adapter%d/%s%d @ minor: %i (0x%02x)\n",
+	dprintk(KERN_DEBUG "DVB: register adapter%d/%s%d @ minor: %i (0x%02x)\n",
 		adap->num, dnames[type], id, nums2minor(adap->num, type, id),
 		nums2minor(adap->num, type, id));
 
@@ -304,7 +311,7 @@ int dvb_register_adapter(struct dvb_adapter *adap, const char *name, struct modu
 	memset (adap, 0, sizeof(struct dvb_adapter));
 	INIT_LIST_HEAD (&adap->device_list);
 
-	printk ("DVB: registering new adapter (%s).\n", name);
+	printk(KERN_INFO "DVB: registering new adapter (%s)\n", name);
 
 	adap->num = num;
 	adap->name = name;
@@ -400,13 +407,13 @@ static int __init init_dvbdev(void)
 	dev_t dev = MKDEV(DVB_MAJOR, 0);
 
 	if ((retval = register_chrdev_region(dev, MAX_DVB_MINORS, "DVB")) != 0) {
-		printk("dvb-core: unable to get major %d\n", DVB_MAJOR);
+		printk(KERN_ERR "dvb-core: unable to get major %d\n", DVB_MAJOR);
 		return retval;
 	}
 
 	cdev_init(&dvb_device_cdev, &dvb_device_fops);
 	if ((retval = cdev_add(&dvb_device_cdev, dev, MAX_DVB_MINORS)) != 0) {
-		printk("dvb-core: unable to get major %d\n", DVB_MAJOR);
+		printk(KERN_ERR "dvb-core: unable register character device\n");
 		goto error;
 	}
 
@@ -431,7 +438,7 @@ static void __exit exit_dvbdev(void)
 	unregister_chrdev_region(MKDEV(DVB_MAJOR, 0), MAX_DVB_MINORS);
 }
 
-module_init(init_dvbdev);
+subsys_initcall(init_dvbdev);
 module_exit(exit_dvbdev);
 
 MODULE_DESCRIPTION("DVB Core Driver");

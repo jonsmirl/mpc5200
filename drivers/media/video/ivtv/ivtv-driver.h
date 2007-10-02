@@ -67,14 +67,6 @@
 
 #include <media/ivtv.h>
 
-#ifdef CONFIG_LIRC_I2C
-#  error "This driver is not compatible with the LIRC I2C kernel configuration option."
-#endif /* CONFIG_LIRC_I2C */
-
-#ifndef CONFIG_PCI
-#  error "This driver requires kernel PCI support."
-#endif /* CONFIG_PCI */
-
 #define IVTV_ENCODER_OFFSET	0x00000000
 #define IVTV_ENCODER_SIZE	0x00800000	/* Last half isn't needed 0x01000000 */
 
@@ -245,6 +237,7 @@ extern const u32 yuv_offset[4];
 #define IVTV_IRQ_ENC_VBI_CAP		(0x1 << 29)
 #define IVTV_IRQ_ENC_VIM_RST		(0x1 << 28)
 #define IVTV_IRQ_ENC_DMA_COMPLETE	(0x1 << 27)
+#define IVTV_IRQ_ENC_PIO_COMPLETE	(0x1 << 25)
 #define IVTV_IRQ_DEC_AUD_MODE_CHG	(0x1 << 24)
 #define IVTV_IRQ_DEC_DATA_REQ		(0x1 << 22)
 #define IVTV_IRQ_DEC_DMA_COMPLETE	(0x1 << 20)
@@ -255,7 +248,8 @@ extern const u32 yuv_offset[4];
 #define IVTV_IRQ_DEC_VSYNC		(0x1 << 10)
 
 /* IRQ Masks */
-#define IVTV_IRQ_MASK_INIT (IVTV_IRQ_DMA_ERR|IVTV_IRQ_ENC_DMA_COMPLETE|IVTV_IRQ_DMA_READ)
+#define IVTV_IRQ_MASK_INIT (IVTV_IRQ_DMA_ERR|IVTV_IRQ_ENC_DMA_COMPLETE|\
+		IVTV_IRQ_DMA_READ|IVTV_IRQ_ENC_PIO_COMPLETE)
 
 #define IVTV_IRQ_MASK_CAPTURE (IVTV_IRQ_ENC_START_CAP | IVTV_IRQ_ENC_EOS)
 #define IVTV_IRQ_MASK_DECODE  (IVTV_IRQ_DEC_DATA_REQ|IVTV_IRQ_DEC_AUD_MODE_CHG)
@@ -274,6 +268,8 @@ extern const u32 yuv_offset[4];
 #define IVTV_DBGFLG_IRQ   (1 << 6)
 #define IVTV_DBGFLG_DEC   (1 << 7)
 #define IVTV_DBGFLG_YUV   (1 << 8)
+/* Flag to turn on high volume debugging */
+#define IVTV_DBGFLG_HIGHVOL (1 << 9)
 
 /* NOTE: extra space before comma in 'itv->num , ## args' is required for
    gcc-2.95, otherwise it won't compile. */
@@ -291,6 +287,21 @@ extern const u32 yuv_offset[4];
 #define IVTV_DEBUG_IRQ(fmt, args...)   IVTV_DEBUG(IVTV_DBGFLG_IRQ, "irq", fmt , ## args)
 #define IVTV_DEBUG_DEC(fmt, args...)   IVTV_DEBUG(IVTV_DBGFLG_DEC, "dec", fmt , ## args)
 #define IVTV_DEBUG_YUV(fmt, args...)   IVTV_DEBUG(IVTV_DBGFLG_YUV, "yuv", fmt , ## args)
+
+#define IVTV_DEBUG_HIGH_VOL(x, type, fmt, args...) \
+	do { \
+		if (((x) & ivtv_debug) && (ivtv_debug & IVTV_DBGFLG_HIGHVOL)) \
+			printk(KERN_INFO "ivtv%d " type ": " fmt, itv->num , ## args); \
+	} while (0)
+#define IVTV_DEBUG_HI_WARN(fmt, args...)  IVTV_DEBUG_HIGH_VOL(IVTV_DBGFLG_WARN, "warning", fmt , ## args)
+#define IVTV_DEBUG_HI_INFO(fmt, args...)  IVTV_DEBUG_HIGH_VOL(IVTV_DBGFLG_INFO, "info",fmt , ## args)
+#define IVTV_DEBUG_HI_API(fmt, args...)   IVTV_DEBUG_HIGH_VOL(IVTV_DBGFLG_API, "api", fmt , ## args)
+#define IVTV_DEBUG_HI_DMA(fmt, args...)   IVTV_DEBUG_HIGH_VOL(IVTV_DBGFLG_DMA, "dma", fmt , ## args)
+#define IVTV_DEBUG_HI_IOCTL(fmt, args...) IVTV_DEBUG_HIGH_VOL(IVTV_DBGFLG_IOCTL, "ioctl", fmt , ## args)
+#define IVTV_DEBUG_HI_I2C(fmt, args...)   IVTV_DEBUG_HIGH_VOL(IVTV_DBGFLG_I2C, "i2c", fmt , ## args)
+#define IVTV_DEBUG_HI_IRQ(fmt, args...)   IVTV_DEBUG_HIGH_VOL(IVTV_DBGFLG_IRQ, "irq", fmt , ## args)
+#define IVTV_DEBUG_HI_DEC(fmt, args...)   IVTV_DEBUG_HIGH_VOL(IVTV_DBGFLG_DEC, "dec", fmt , ## args)
+#define IVTV_DEBUG_HI_YUV(fmt, args...)   IVTV_DEBUG_HIGH_VOL(IVTV_DBGFLG_YUV, "yuv", fmt , ## args)
 
 #define IVTV_FB_DEBUG(x, type, fmt, args...) \
 	do { \
@@ -382,6 +393,9 @@ struct ivtv_mailbox_data {
 #define IVTV_F_S_STREAMOFF	7	/* signal end of stream EOS */
 #define IVTV_F_S_APPL_IO        8	/* this stream is used read/written by an application */
 
+#define IVTV_F_S_PIO_PENDING	9	/* this stream has pending PIO */
+#define IVTV_F_S_PIO_HAS_VBI	1       /* the current PIO request also requests VBI data */
+
 /* per-ivtv, i_flags */
 #define IVTV_F_I_DMA		   0 	/* DMA in progress */
 #define IVTV_F_I_UDMA		   1 	/* UDMA in progress */
@@ -398,8 +412,12 @@ struct ivtv_mailbox_data {
 #define IVTV_F_I_DECODING_YUV	   12 	/* this stream is YUV frame decoding */
 #define IVTV_F_I_ENC_PAUSED	   13 	/* the encoder is paused */
 #define IVTV_F_I_VALID_DEC_TIMINGS 14 	/* last_dec_timing is valid */
-#define IVTV_F_I_WORK_HANDLER_VBI  15	/* there is work to be done for VBI */
-#define IVTV_F_I_WORK_HANDLER_YUV  16	/* there is work to be done for YUV */
+#define IVTV_F_I_HAVE_WORK  	   15	/* Used in the interrupt handler: there is work to be done */
+#define IVTV_F_I_WORK_HANDLER_VBI  16	/* there is work to be done for VBI */
+#define IVTV_F_I_WORK_HANDLER_YUV  17	/* there is work to be done for YUV */
+#define IVTV_F_I_WORK_HANDLER_PIO  18	/* there is work to be done for PIO */
+#define IVTV_F_I_PIO		   19	/* PIO in progress */
+#define IVTV_F_I_DEC_PAUSED	   20 	/* the decoder is paused */
 
 /* Event notifications */
 #define IVTV_F_I_EV_DEC_STOPPED	   28	/* decoder stopped event */
@@ -492,6 +510,7 @@ struct ivtv_stream {
 
 	/* Base Dev SG Array for cx23415/6 */
 	struct ivtv_SG_element *SGarray;
+	struct ivtv_SG_element *PIOarray;
 	dma_addr_t SG_handle;
 	int SG_length;
 
@@ -649,7 +668,6 @@ struct vbi_info {
 	/* convenience pointer to sliced struct in vbi_in union */
 	struct v4l2_sliced_vbi_format *sliced_in;
 	u32 service_set_in;
-	u32 service_set_out;
 	int insert_mpeg;
 
 	/* Buffer for the maximum of 2 * 18 * packet_size sliced VBI lines.
@@ -714,6 +732,7 @@ struct ivtv {
 	atomic_t decoding;	/* count number of active decoding streams */
 	u32 irq_rr_idx; /* Round-robin stream index */
 	int cur_dma_stream;	/* index of stream doing DMA */
+	int cur_pio_stream;	/* index of stream doing PIO */
 	u32 dma_data_req_offset;
 	u32 dma_data_req_size;
 	int output_mode;        /* NONE, MPG, YUV, UDMA YUV, passthrough */
@@ -721,6 +740,7 @@ struct ivtv {
 	int search_pack_header;
 
 	spinlock_t dma_reg_lock; /* lock access to DMA engine registers */
+	struct mutex serialize_lock;  /* lock used to serialize starting streams */
 
 	/* User based DMA for OSD */
 	struct ivtv_user_dma udma;
@@ -829,7 +849,7 @@ int ivtv_set_output_mode(struct ivtv *itv, int mode);
 struct ivtv_stream *ivtv_get_output_stream(struct ivtv *itv);
 
 /* Return non-zero if a signal is pending */
-int ivtv_sleep_timeout(int timeout, int intr);
+int ivtv_msleep_timeout(unsigned int msecs, int intr);
 
 /* Wait on queue, returns -EINTR if interrupted */
 int ivtv_waitq(wait_queue_head_t *waitq);

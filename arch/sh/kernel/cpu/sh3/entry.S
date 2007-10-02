@@ -149,8 +149,7 @@ call_dpf:
 	 lds	r10, pr
 	rts
 	 nop
-0:	sti
-	mov.l	3f, r0
+0:	mov.l	3f, r0
 	mov	r9, r6
 	mov	r8, r5
 	jmp	@r0
@@ -320,6 +319,9 @@ skip_restore:
 
 	.align	2
 5:	.long	0x00001000	! DSP
+#ifdef CONFIG_KGDB_NMI
+6:	.long	in_nmi
+#endif
 7:	.long	0x30000000
 
 ! common exception handler
@@ -337,8 +339,27 @@ ENTRY(vbr_base)
 general_exception:
 	mov.l	1f, k2
 	mov.l	2f, k3
+#ifdef CONFIG_CPU_SUBTYPE_SHX3
+	mov.l	@k2, k2
+
+	! Is EXPEVT larger than 0x800?
+	mov	#0x8, k0
+	shll8	k0
+	cmp/hs	k0, k2
+	bf	0f
+
+	! then add 0x580 (k2 is 0xd80 or 0xda0)
+	mov	#0x58, k0
+	shll2	k0
+	shll2	k0
+	add	k0, k2
+0:
+	bra	handle_exception
+	 nop
+#else
 	bra	handle_exception
 	 mov.l	@k2, k2
+#endif
 	.align	2
 1:	.long	EXPEVT
 2:	.long	ret_from_exception

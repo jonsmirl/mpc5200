@@ -78,7 +78,7 @@ static const char mlx4_version[] __devinitdata =
 static struct mlx4_profile default_profile = {
 	.num_qp		= 1 << 16,
 	.num_srq	= 1 << 16,
-	.rdmarc_per_qp	= 4,
+	.rdmarc_per_qp	= 1 << 4,
 	.num_cq		= 1 << 16,
 	.num_mcg	= 1 << 13,
 	.num_mpt	= 1 << 17,
@@ -88,6 +88,7 @@ static struct mlx4_profile default_profile = {
 static int __devinit mlx4_dev_cap(struct mlx4_dev *dev, struct mlx4_dev_cap *dev_cap)
 {
 	int err;
+	int i;
 
 	err = mlx4_QUERY_DEV_CAP(dev, dev_cap);
 	if (err) {
@@ -117,11 +118,15 @@ static int __devinit mlx4_dev_cap(struct mlx4_dev *dev, struct mlx4_dev_cap *dev
 	}
 
 	dev->caps.num_ports	     = dev_cap->num_ports;
+	for (i = 1; i <= dev->caps.num_ports; ++i) {
+		dev->caps.vl_cap[i]	    = dev_cap->max_vl[i];
+		dev->caps.mtu_cap[i]	    = dev_cap->max_mtu[i];
+		dev->caps.gid_table_len[i]  = dev_cap->max_gids[i];
+		dev->caps.pkey_table_len[i] = dev_cap->max_pkeys[i];
+		dev->caps.port_width_cap[i] = dev_cap->max_port_width[i];
+	}
+
 	dev->caps.num_uars	     = dev_cap->uar_size / PAGE_SIZE;
-	dev->caps.vl_cap	     = dev_cap->max_vl;
-	dev->caps.mtu_cap	     = dev_cap->max_mtu;
-	dev->caps.gid_table_len	     = dev_cap->max_gids;
-	dev->caps.pkey_table_len     = dev_cap->max_pkeys;
 	dev->caps.local_ca_ack_delay = dev_cap->local_ca_ack_delay;
 	dev->caps.bf_reg_size	     = dev_cap->bf_reg_size;
 	dev->caps.bf_regs_per_page   = dev_cap->bf_regs_per_page;
@@ -148,8 +153,8 @@ static int __devinit mlx4_dev_cap(struct mlx4_dev *dev, struct mlx4_dev_cap *dev
 	dev->caps.reserved_mrws	     = dev_cap->reserved_mrws;
 	dev->caps.reserved_uars	     = dev_cap->reserved_uars;
 	dev->caps.reserved_pds	     = dev_cap->reserved_pds;
-	dev->caps.port_width_cap     = dev_cap->max_port_width;
 	dev->caps.mtt_entry_sz	     = MLX4_MTT_ENTRY_PER_SEG * dev_cap->mtt_entry_sz;
+	dev->caps.max_msg_sz         = dev_cap->max_msg_sz;
 	dev->caps.page_size_cap	     = ~(u32) (dev_cap->min_page_sz - 1);
 	dev->caps.flags		     = dev_cap->flags;
 	dev->caps.stat_rate_support  = dev_cap->stat_rate_support;
@@ -578,13 +583,11 @@ static int __devinit mlx4_setup_hca(struct mlx4_dev *dev)
 		goto err_pd_table_free;
 	}
 
-	mlx4_map_catas_buf(dev);
-
 	err = mlx4_init_eq_table(dev);
 	if (err) {
 		mlx4_err(dev, "Failed to initialize "
 			 "event queue table, aborting.\n");
-		goto err_catas_buf;
+		goto err_mr_table_free;
 	}
 
 	err = mlx4_cmd_use_events(dev);
@@ -654,8 +657,7 @@ err_cmd_poll:
 err_eq_table_free:
 	mlx4_cleanup_eq_table(dev);
 
-err_catas_buf:
-	mlx4_unmap_catas_buf(dev);
+err_mr_table_free:
 	mlx4_cleanup_mr_table(dev);
 
 err_pd_table_free:
@@ -787,6 +789,8 @@ static int __devinit mlx4_init_one(struct pci_dev *pdev,
 
 	dev       = &priv->dev;
 	dev->pdev = pdev;
+	INIT_LIST_HEAD(&priv->ctx_list);
+	spin_lock_init(&priv->ctx_lock);
 
 	/*
 	 * Now reset the HCA before we touch the PCI capabilities or
@@ -829,9 +833,6 @@ err_cleanup:
 	mlx4_cleanup_cq_table(dev);
 	mlx4_cmd_use_polling(dev);
 	mlx4_cleanup_eq_table(dev);
-
-	mlx4_unmap_catas_buf(dev);
-
 	mlx4_cleanup_mr_table(dev);
 	mlx4_cleanup_pd_table(dev);
 	mlx4_cleanup_uar_table(dev);
@@ -878,9 +879,6 @@ static void __devexit mlx4_remove_one(struct pci_dev *pdev)
 		mlx4_cleanup_cq_table(dev);
 		mlx4_cmd_use_polling(dev);
 		mlx4_cleanup_eq_table(dev);
-
-		mlx4_unmap_catas_buf(dev);
-
 		mlx4_cleanup_mr_table(dev);
 		mlx4_cleanup_pd_table(dev);
 
@@ -901,10 +899,18 @@ static void __devexit mlx4_remove_one(struct pci_dev *pdev)
 	}
 }
 
+int mlx4_restart_one(struct pci_dev *pdev)
+{
+	mlx4_remove_one(pdev);
+	return mlx4_init_one(pdev, NULL);
+}
+
 static struct pci_device_id mlx4_pci_table[] = {
 	{ PCI_VDEVICE(MELLANOX, 0x6340) }, /* MT25408 "Hermon" SDR */
 	{ PCI_VDEVICE(MELLANOX, 0x634a) }, /* MT25408 "Hermon" DDR */
 	{ PCI_VDEVICE(MELLANOX, 0x6354) }, /* MT25408 "Hermon" QDR */
+	{ PCI_VDEVICE(MELLANOX, 0x6732) }, /* MT25408 "Hermon" DDR PCIe gen2 */
+	{ PCI_VDEVICE(MELLANOX, 0x673c) }, /* MT25408 "Hermon" QDR PCIe gen2 */
 	{ 0, }
 };
 
@@ -921,6 +927,10 @@ static int __init mlx4_init(void)
 {
 	int ret;
 
+	ret = mlx4_catas_init();
+	if (ret)
+		return ret;
+
 	ret = pci_register_driver(&mlx4_driver);
 	return ret < 0 ? ret : 0;
 }
@@ -928,6 +938,7 @@ static int __init mlx4_init(void)
 static void __exit mlx4_cleanup(void)
 {
 	pci_unregister_driver(&mlx4_driver);
+	mlx4_catas_cleanup();
 }
 
 module_init(mlx4_init);

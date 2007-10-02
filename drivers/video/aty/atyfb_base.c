@@ -541,7 +541,7 @@ static char ram_off[] __devinitdata = "OFF";
 #endif /* CONFIG_FB_ATY_CT */
 
 
-static u32 pseudo_palette[17];
+static u32 pseudo_palette[16];
 
 #ifdef CONFIG_FB_ATY_GX
 static char *aty_gx_ram[8] __devinitdata = {
@@ -2141,7 +2141,7 @@ static int aty_bl_get_level_brightness(struct atyfb_par *par, int level)
 
 static int aty_bl_update_status(struct backlight_device *bd)
 {
-	struct atyfb_par *par = class_get_devdata(&bd->class_dev);
+	struct atyfb_par *par = bl_get_data(bd);
 	unsigned int reg = aty_ld_lcd(LCD_MISC_CNTL, par);
 	int level;
 
@@ -2290,15 +2290,6 @@ static int __devinit aty_init(struct fb_info *info)
 	init_waitqueue_head(&par->vblank.wait);
 	spin_lock_init(&par->int_lock);
 
-#ifdef CONFIG_PPC_PMAC
-	/* The Apple iBook1 uses non-standard memory frequencies. We detect it
-	 * and set the frequency manually. */
-	if (machine_is_compatible("PowerBook2,1")) {
-		par->pll_limits.mclk = 70;
-		par->pll_limits.xclk = 53;
-	}
-#endif
-
 #ifdef CONFIG_FB_ATY_GX
 	if (!M64_HAS(INTEGRATED)) {
 		u32 stat0;
@@ -2381,6 +2372,14 @@ static int __devinit aty_init(struct fb_info *info)
 		/* Mobility + 32bit memory interface need halved XCLK. */
 		if (M64_HAS(MOBIL_BUS) && par->ram_type == SDRAM32)
 			par->pll_limits.xclk = (par->pll_limits.xclk + 1) >> 1;
+	}
+#endif
+#ifdef CONFIG_PPC_PMAC
+	/* The Apple iBook1 uses non-standard memory frequencies. We detect it
+	 * and set the frequency manually. */
+	if (machine_is_compatible("PowerBook2,1")) {
+		par->pll_limits.mclk = 70;
+		par->pll_limits.xclk = 53;
 	}
 #endif
 
@@ -2914,10 +2913,6 @@ static int __devinit atyfb_setup_sparc(struct pci_dev *pdev,
 	int node, len, i, j, ret;
 	u32 mem, chip_id;
 
-	/* Do not attach when we have a serial console. */
-	if (!con_is_present())
-		return -ENXIO;
-
 	/*
 	 * Map memory-mapped registers.
 	 */
@@ -2938,12 +2933,11 @@ static int __devinit atyfb_setup_sparc(struct pci_dev *pdev,
 		/* nothing */ ;
 	j = i + 4;
 
-	par->mmap_map = kmalloc(j * sizeof(*par->mmap_map), GFP_ATOMIC);
+	par->mmap_map = kcalloc(j, sizeof(*par->mmap_map), GFP_ATOMIC);
 	if (!par->mmap_map) {
 		PRINTKE("atyfb_setup_sparc() can't alloc mmap_map\n");
 		return -ENOMEM;
 	}
-	memset(par->mmap_map, 0, j * sizeof(*par->mmap_map));
 
 	for (i = 0, j = 2; i < 6 && pdev->resource[i].start; i++) {
 		struct resource *rp = &pdev->resource[i];

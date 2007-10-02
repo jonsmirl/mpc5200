@@ -173,7 +173,7 @@ int appldata_diag(char record_nr, u16 function, unsigned long buffer,
 /*
  * appldata_mod_vtimer_wrap()
  *
- * wrapper function for mod_virt_timer(), because smp_call_function_on()
+ * wrapper function for mod_virt_timer(), because smp_call_function_single()
  * accepts only one parameter.
  */
 static void __appldata_mod_vtimer_wrap(void *p) {
@@ -208,9 +208,9 @@ __appldata_vtimer_setup(int cmd)
 					  num_online_cpus()) * TOD_MICRO;
 		for_each_online_cpu(i) {
 			per_cpu(appldata_timer, i).expires = per_cpu_interval;
-			smp_call_function_on(add_virt_timer_periodic,
-					     &per_cpu(appldata_timer, i),
-					     0, 1, i);
+			smp_call_function_single(i, add_virt_timer_periodic,
+						 &per_cpu(appldata_timer, i),
+						 0, 1);
 		}
 		appldata_timer_active = 1;
 		P_INFO("Monitoring timer started.\n");
@@ -236,8 +236,8 @@ __appldata_vtimer_setup(int cmd)
 			} args;
 			args.timer = &per_cpu(appldata_timer, i);
 			args.expires = per_cpu_interval;
-			smp_call_function_on(__appldata_mod_vtimer_wrap,
-					     &args, 0, 1, i);
+			smp_call_function_single(i, __appldata_mod_vtimer_wrap,
+						 &args, 0, 1);
 		}
 	}
 }
@@ -535,8 +535,7 @@ void appldata_unregister_ops(struct appldata_ops *ops)
 
 /******************************* init / exit *********************************/
 
-static void
-appldata_online_cpu(int cpu)
+static void __cpuinit appldata_online_cpu(int cpu)
 {
 	init_virt_timer(&per_cpu(appldata_timer, cpu));
 	per_cpu(appldata_timer, cpu).function = appldata_timer_function;
@@ -580,7 +579,7 @@ appldata_cpu_notify(struct notifier_block *self,
 	return NOTIFY_OK;
 }
 
-static struct notifier_block appldata_nb = {
+static struct notifier_block __cpuinitdata appldata_nb = {
 	.notifier_call = appldata_cpu_notify,
 };
 

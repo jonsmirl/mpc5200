@@ -44,8 +44,14 @@ static struct platform_device cf_ide_device = {
 	},
 };
 
+static struct platform_device rtc_device = {
+	.name		= "rs5c313",
+	.id		= -1,
+};
+
 static struct platform_device *landisk_devices[] __initdata = {
 	&cf_ide_device,
+	&rtc_device,
 };
 
 static int __init landisk_devices_setup(void)
@@ -91,10 +97,9 @@ static void __init landisk_setup(char **cmdline_p)
 /*
  * The Machine Vector
  */
-struct sh_machine_vector mv_landisk __initmv = {
+static struct sh_machine_vector mv_landisk __initmv = {
 	.mv_name = "LANDISK",
 	.mv_nr_irqs = 72,
 	.mv_setup = landisk_setup,
 	.mv_init_irq = init_landisk_IRQ,
 };
-ALIAS_MV(landisk)

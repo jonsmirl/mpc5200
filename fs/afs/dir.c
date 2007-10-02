@@ -16,6 +16,7 @@
 #include <linux/fs.h>
 #include <linux/pagemap.h>
 #include <linux/ctype.h>
+#include <linux/sched.h>
 #include "internal.h"
 
 static struct dentry *afs_lookup(struct inode *dir, struct dentry *dentry,
@@ -43,6 +44,7 @@ const struct file_operations afs_dir_file_operations = {
 	.open		= afs_dir_open,
 	.release	= afs_release,
 	.readdir	= afs_readdir,
+	.lock		= afs_lock,
 };
 
 const struct inode_operations afs_dir_inode_operations = {

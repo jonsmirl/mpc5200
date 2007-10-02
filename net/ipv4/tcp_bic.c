@@ -29,7 +29,7 @@ static int fast_convergence = 1;
 static int max_increment = 16;
 static int low_window = 14;
 static int beta = 819;		/* = 819/1024 (BICTCP_BETA_SCALE) */
-static int initial_ssthresh = 100;
+static int initial_ssthresh;
 static int smooth_part = 20;
 
 module_param(fast_convergence, int, 0644);
@@ -137,7 +137,7 @@ static inline void bictcp_update(struct bictcp *ca, u32 cwnd)
 }
 
 static void bictcp_cong_avoid(struct sock *sk, u32 ack,
-			      u32 seq_rtt, u32 in_flight, int data_acked)
+			      u32 in_flight, int data_acked)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
 	struct bictcp *ca = inet_csk_ca(sk);
@@ -206,7 +206,7 @@ static void bictcp_state(struct sock *sk, u8 new_state)
 /* Track delayed acknowledgment ratio using sliding window
  * ratio = (15*ratio + sample) / 16
  */
-static void bictcp_acked(struct sock *sk, u32 cnt, ktime_t last)
+static void bictcp_acked(struct sock *sk, u32 cnt, s32 rtt)
 {
 	const struct inet_connection_sock *icsk = inet_csk(sk);
 

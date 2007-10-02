@@ -37,7 +37,7 @@
 #if defined(CONFIG_USB_ISP1362_HCD) || defined(CONFIG_USB_ISP1362_HCD_MODULE)
 #include <linux/usb_isp1362.h>
 #endif
-#include <asm/irq.h>
+#include <linux/irq.h>
 #include <asm/bfin5xx_spi.h>
 
 /*
@@ -62,7 +62,7 @@ static struct resource smc91x_resources[] = {
 		.start = 0x20300300,
 		.end = 0x20300300 + 16,
 		.flags = IORESOURCE_MEM,
-	},{
+	}, {
 		.start = IRQ_PF7,
 		.end = IRQ_PF7,
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
@@ -83,7 +83,7 @@ static struct resource net2272_bfin_resources[] = {
 		.start = 0x20300000,
 		.end = 0x20300000 + 0x100,
 		.flags = IORESOURCE_MEM,
-	},{
+	}, {
 		.start = IRQ_PF10,
 		.end = IRQ_PF10,
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
@@ -108,11 +108,11 @@ static struct mtd_partition bfin_spi_flash_partitions[] = {
 		.size = 0x00020000,
 		.offset = 0,
 		.mask_flags = MTD_CAP_ROM
-	},{
+	}, {
 		.name = "kernel",
 		.size = 0xe0000,
 		.offset = 0x20000
-	},{
+	}, {
 		.name = "file system",
 		.size = 0x700000,
 		.offset = 0x00100000,
@@ -164,6 +164,13 @@ static struct bfin5xx_spi_chip ad5304_chip_info = {
 };
 #endif
 
+#if defined(CONFIG_SPI_MMC) || defined(CONFIG_SPI_MMC_MODULE)
+static struct bfin5xx_spi_chip spi_mmc_chip_info = {
+	.enable_dma = 1,
+	.bits_per_word = 8,
+};
+#endif
+
 static struct spi_board_info bfin_spi_board_info[] __initdata = {
 #if defined(CONFIG_MTD_M25P80) || defined(CONFIG_MTD_M25P80_MODULE)
 	{
@@ -199,21 +206,42 @@ static struct spi_board_info bfin_spi_board_info[] __initdata = {
 	},
 #endif
 
-#if defined(CONFIG_PBX)
+#if defined(CONFIG_SPI_MMC) || defined(CONFIG_SPI_MMC_MODULE)
 	{
-		.modalias	= "fxs-spi",
-		.max_speed_hz	= 12500000,     /* max spi clock (SCK) speed in HZ */
-		.bus_num	= 1,
-		.chip_select	= 3,
-		.controller_data= &spi_si3xxx_chip_info,
+		.modalias = "spi_mmc_dummy",
+		.max_speed_hz = 25000000,     /* max spi clock (SCK) speed in HZ */
+		.bus_num = 1,
+		.chip_select = 0,
+		.platform_data = NULL,
+		.controller_data = &spi_mmc_chip_info,
 		.mode = SPI_MODE_3,
 	},
 	{
-		.modalias	= "fxo-spi",
-		.max_speed_hz	= 12500000,     /* max spi clock (SCK) speed in HZ */
-		.bus_num	= 1,
-		.chip_select	= 2,
-		.controller_data= &spi_si3xxx_chip_info,
+		.modalias = "spi_mmc",
+		.max_speed_hz = 25000000,     /* max spi clock (SCK) speed in HZ */
+		.bus_num = 1,
+		.chip_select = CONFIG_SPI_MMC_CS_CHAN,
+		.platform_data = NULL,
+		.controller_data = &spi_mmc_chip_info,
+		.mode = SPI_MODE_3,
+	},
+#endif
+
+#if defined(CONFIG_PBX)
+	{
+		.modalias = "fxs-spi",
+		.max_speed_hz = 12500000,     /* max spi clock (SCK) speed in HZ */
+		.bus_num = 1,
+		.chip_select = 3,
+		.controller_data = &spi_si3xxx_chip_info,
+		.mode = SPI_MODE_3,
+	},
+	{
+		.modalias = "fxo-spi",
+		.max_speed_hz = 12500000,     /* max spi clock (SCK) speed in HZ */
+		.bus_num = 1,
+		.chip_select = 2,
+		.controller_data = &spi_si3xxx_chip_info,
 		.mode = SPI_MODE_3,
 	},
 #endif
@@ -310,12 +338,25 @@ static struct platform_device *stamp_devices[] __initdata = {
 
 static int __init stamp_init(void)
 {
+	int ret;
+
 	printk(KERN_INFO "%s(): registering device resources\n", __FUNCTION__);
-	platform_add_devices(stamp_devices, ARRAY_SIZE(stamp_devices));
-#if defined(CONFIG_SPI_BFIN) || defined(CONFIG_SPI_BFIN_MODULE)
-	spi_register_board_info(bfin_spi_board_info, ARRAY_SIZE(bfin_spi_board_info));
+	ret = platform_add_devices(stamp_devices, ARRAY_SIZE(stamp_devices));
+	if (ret < 0)
+		return ret;
+
+#if defined(CONFIG_SMC91X) || defined(CONFIG_SMC91X_MODULE)
+# if defined(CONFIG_BFIN_SHARED_FLASH_ENET)
+	/* setup BF533_STAMP CPLD to route AMS3 to Ethernet MAC */
+	bfin_write_FIO_DIR(bfin_read_FIO_DIR() | (1 << CONFIG_ENET_FLASH_PIN));
+	bfin_write_FIO_FLAG_S(1 << CONFIG_ENET_FLASH_PIN);
+	SSYNC();
+# endif
 #endif
-	return 0;
+
+#if defined(CONFIG_SPI_BFIN) || defined(CONFIG_SPI_BFIN_MODULE)
+	return spi_register_board_info(bfin_spi_board_info, ARRAY_SIZE(bfin_spi_board_info));
+#endif
 }
 
 arch_initcall(stamp_init);

@@ -25,7 +25,6 @@
 #include <linux/ptrace.h>
 #include <linux/unistd.h>
 #include <linux/stddef.h>
-#include <linux/personality.h>
 #include <asm/ucontext.h>
 #include <asm/uaccess.h>
 #include <asm/pgtable.h>
@@ -640,6 +639,7 @@ handle_signal(unsigned long sig, siginfo_t *info, struct k_sigaction *ka,
 	if (regs->syscall_nr >= 0) {
 		/* If so, check system call restarting.. */
 		switch (regs->regs[REG_RET]) {
+			case -ERESTART_RESTARTBLOCK:
 			case -ERESTARTNOHAND:
 				regs->regs[REG_RET] = -EINTR;
 				break;

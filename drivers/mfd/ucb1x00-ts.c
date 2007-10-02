@@ -207,17 +207,9 @@ static int ucb1x00_thread(void *_ts)
 	struct ucb1x00_ts *ts = _ts;
 	struct task_struct *tsk = current;
 	DECLARE_WAITQUEUE(wait, tsk);
-	int valid;
+	int valid = 0;
 
-	/*
-	 * We could run as a real-time thread.  However, thus far
-	 * this doesn't seem to be necessary.
-	 */
-//	tsk->policy = SCHED_FIFO;
-//	tsk->rt_priority = 1;
-
-	valid = 0;
-
+	set_freezable();
 	add_wait_queue(&ts->irq_wait, &wait);
 	while (!kthread_should_stop()) {
 		unsigned int x, y, p;
@@ -300,7 +292,7 @@ static void ucb1x00_ts_irq(int idx, void *id)
 
 static int ucb1x00_ts_open(struct input_dev *idev)
 {
-	struct ucb1x00_ts *ts = idev->private;
+	struct ucb1x00_ts *ts = input_get_drvdata(idev);
 	int ret = 0;
 
 	BUG_ON(ts->rtask);
@@ -337,7 +329,7 @@ static int ucb1x00_ts_open(struct input_dev *idev)
  */
 static void ucb1x00_ts_close(struct input_dev *idev)
 {
-	struct ucb1x00_ts *ts = idev->private;
+	struct ucb1x00_ts *ts = input_get_drvdata(idev);
 
 	if (ts->rtask)
 		kthread_stop(ts->rtask);
@@ -389,7 +381,6 @@ static int ucb1x00_ts_add(struct ucb1x00_dev *dev)
 	ts->idev = idev;
 	ts->adcsync = adcsync ? UCB_SYNC : UCB_NOSYNC;
 
-	idev->private    = ts;
 	idev->name       = "Touchscreen panel";
 	idev->id.product = ts->ucb->id;
 	idev->open       = ucb1x00_ts_open;
@@ -399,6 +390,8 @@ static int ucb1x00_ts_add(struct ucb1x00_dev *dev)
 	__set_bit(ABS_X, idev->absbit);
 	__set_bit(ABS_Y, idev->absbit);
 	__set_bit(ABS_PRESSURE, idev->absbit);
+
+	input_set_drvdata(idev, ts);
 
 	err = input_register_device(idev);
 	if (err)

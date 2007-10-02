@@ -37,6 +37,8 @@
 #include <linux/agpgart.h>
 #include <linux/slab.h>
 #include <linux/mm.h>
+#include <linux/fs.h>
+#include <linux/sched.h>
 #include <asm/uaccess.h>
 #include <asm/pgtable.h>
 #include "agp.h"

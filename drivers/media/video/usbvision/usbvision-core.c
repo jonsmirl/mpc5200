@@ -1414,6 +1414,11 @@ static void usbvision_isocIrq(struct urb *urb)
 	if (!USBVISION_IS_OPERATIONAL(usbvision))
 		return;
 
+	/* any urb with wrong status is ignored without acknowledgement */
+	if (urb->status == -ENOENT) {
+		return;
+	}
+
 	f = &usbvision->curFrame;
 
 	/* Manage streaming interruption */
@@ -1436,18 +1441,21 @@ static void usbvision_isocIrq(struct urb *urb)
 	if (usbvision->streaming == Stream_On) {
 
 		/* If we collected enough data let's parse! */
-		if (scratch_len(usbvision) > USBVISION_HEADER_LENGTH) {	/* 12 == header_length */
-			/*If we don't have a frame we're current working on, complain */
-			if(!list_empty(&(usbvision->inqueue))) {
-				if (!(*f)) {
-					(*f) = list_entry(usbvision->inqueue.next,struct usbvision_frame, frame);
-				}
-				usbvision_parse_data(usbvision);
+		if ((scratch_len(usbvision) > USBVISION_HEADER_LENGTH) &&
+		    (!list_empty(&(usbvision->inqueue))) ) {
+			if (!(*f)) {
+				(*f) = list_entry(usbvision->inqueue.next,
+						  struct usbvision_frame,
+						  frame);
 			}
-			else {
-				PDEBUG(DBG_IRQ, "received data, but no one needs it");
-				scratch_reset(usbvision);
-			}
+			usbvision_parse_data(usbvision);
+		}
+		else {
+			/*If we don't have a frame
+			  we're current working on, complain */
+			PDEBUG(DBG_IRQ,
+			       "received data, but no one needs it");
+			scratch_reset(usbvision);
 		}
 	}
 	else {
@@ -1466,10 +1474,10 @@ static void usbvision_isocIrq(struct urb *urb)
 	urb->dev = usbvision->dev;
 	errCode = usb_submit_urb (urb, GFP_ATOMIC);
 
-	/* Disable this warning.  By design of the driver. */
-	//	if(errCode) {
-	//		err("%s: usb_submit_urb failed: error %d", __FUNCTION__, errCode);
-	//	}
+	if(errCode) {
+		err("%s: usb_submit_urb failed: error %d",
+		    __FUNCTION__, errCode);
+	}
 
 	return;
 }
@@ -1734,7 +1742,7 @@ static int usbvision_set_video_format(struct usb_usbvision *usbvision, int forma
 		format = ISOC_MODE_YUV420;
 	}
 	value[0] = 0x0A;  //TODO: See the effect of the filter
-	value[1] = format;
+	value[1] = format; // Sets the VO_MODE register which follows FILT_CONT
 	rc = usb_control_msg(usbvision->dev, usb_sndctrlpipe(usbvision->dev, 1),
 			     USBVISION_OP_CODE,
 			     USB_DIR_OUT | USB_TYPE_VENDOR |
@@ -1823,10 +1831,10 @@ int usbvision_set_output(struct usb_usbvision *usbvision, int width,
 		frameRate = FRAMERATE_MAX;
 	}
 
-	if (usbvision->tvnorm->id & V4L2_STD_625_50) {
+	if (usbvision->tvnormId & V4L2_STD_625_50) {
 		frameDrop = frameRate * 32 / 25 - 1;
 	}
-	else if (usbvision->tvnorm->id & V4L2_STD_525_60) {
+	else if (usbvision->tvnormId & V4L2_STD_525_60) {
 		frameDrop = frameRate * 32 / 30 - 1;
 	}
 
@@ -2059,7 +2067,7 @@ int usbvision_set_input(struct usb_usbvision *usbvision)
 	}
 
 
-	if (usbvision->tvnorm->id & V4L2_STD_PAL) {
+	if (usbvision->tvnormId & V4L2_STD_PAL) {
 		value[0] = 0xC0;
 		value[1] = 0x02;	//0x02C0 -> 704 Input video line length
 		value[2] = 0x20;
@@ -2068,7 +2076,7 @@ int usbvision_set_input(struct usb_usbvision *usbvision)
 		value[5] = 0x00;	//0x0060 -> 96 Input video h offset
 		value[6] = 0x16;
 		value[7] = 0x00;	//0x0016 -> 22 Input video v offset
-	} else if (usbvision->tvnorm->id & V4L2_STD_SECAM) {
+	} else if (usbvision->tvnormId & V4L2_STD_SECAM) {
 		value[0] = 0xC0;
 		value[1] = 0x02;	//0x02C0 -> 704 Input video line length
 		value[2] = 0x20;
@@ -2394,7 +2402,7 @@ int usbvision_init_isoc(struct usb_usbvision *usbvision)
 {
 	struct usb_device *dev = usbvision->dev;
 	int bufIdx, errCode, regValue;
-	const int sb_size = USBVISION_URB_FRAMES * USBVISION_MAX_ISOC_PACKET_SIZE;
+	int sb_size;
 
 	if (!USBVISION_IS_OPERATIONAL(usbvision))
 		return -EFAULT;
@@ -2408,11 +2416,14 @@ int usbvision_init_isoc(struct usb_usbvision *usbvision)
 		usbvision->last_error = errCode;
 		return -EBUSY;
 	}
+	sb_size = USBVISION_URB_FRAMES * usbvision->isocPacketSize;
 
-	regValue = (16 - usbvision_read_reg(usbvision, USBVISION_ALTER_REG)) & 0x0F;
+	regValue = (16 - usbvision_read_reg(usbvision,
+					    USBVISION_ALTER_REG)) & 0x0F;
 
 	usbvision->usb_bandwidth = regValue >> 1;
-	PDEBUG(DBG_ISOC, "USB Bandwidth Usage: %dMbit/Sec", usbvision->usb_bandwidth);
+	PDEBUG(DBG_ISOC, "USB Bandwidth Usage: %dMbit/Sec",
+	       usbvision->usb_bandwidth);
 
 
 
@@ -2428,7 +2439,11 @@ int usbvision_init_isoc(struct usb_usbvision *usbvision)
 			return -ENOMEM;
 		}
 		usbvision->sbuf[bufIdx].urb = urb;
-		usbvision->sbuf[bufIdx].data = usb_buffer_alloc(usbvision->dev, sb_size, GFP_KERNEL,&urb->transfer_dma);
+		usbvision->sbuf[bufIdx].data =
+			usb_buffer_alloc(usbvision->dev,
+					 sb_size,
+					 GFP_KERNEL,
+					 &urb->transfer_dma);
 		urb->dev = dev;
 		urb->context = usbvision;
 		urb->pipe = usb_rcvisocpipe(dev, usbvision->video_endp);
@@ -2442,21 +2457,26 @@ int usbvision_init_isoc(struct usb_usbvision *usbvision)
 		for (j = k = 0; j < USBVISION_URB_FRAMES; j++,
 		     k += usbvision->isocPacketSize) {
 			urb->iso_frame_desc[j].offset = k;
-			urb->iso_frame_desc[j].length = usbvision->isocPacketSize;
+			urb->iso_frame_desc[j].length =
+				usbvision->isocPacketSize;
 		}
 	}
 
 
 	/* Submit all URBs */
 	for (bufIdx = 0; bufIdx < USBVISION_NUMSBUF; bufIdx++) {
-			errCode = usb_submit_urb(usbvision->sbuf[bufIdx].urb, GFP_KERNEL);
+			errCode = usb_submit_urb(usbvision->sbuf[bufIdx].urb,
+						 GFP_KERNEL);
 		if (errCode) {
-			err("%s: usb_submit_urb(%d) failed: error %d", __FUNCTION__, bufIdx, errCode);
+			err("%s: usb_submit_urb(%d) failed: error %d",
+			    __FUNCTION__, bufIdx, errCode);
 		}
 	}
 
 	usbvision->streaming = Stream_Idle;
-	PDEBUG(DBG_ISOC, "%s: streaming=1 usbvision->video_endp=$%02x", __FUNCTION__, usbvision->video_endp);
+	PDEBUG(DBG_ISOC, "%s: streaming=1 usbvision->video_endp=$%02x",
+	       __FUNCTION__,
+	       usbvision->video_endp);
 	return 0;
 }
 
@@ -2470,7 +2490,7 @@ int usbvision_init_isoc(struct usb_usbvision *usbvision)
 void usbvision_stop_isoc(struct usb_usbvision *usbvision)
 {
 	int bufIdx, errCode, regValue;
-	const int sb_size = USBVISION_URB_FRAMES * USBVISION_MAX_ISOC_PACKET_SIZE;
+	int sb_size = USBVISION_URB_FRAMES * usbvision->isocPacketSize;
 
 	if ((usbvision->streaming == Stream_Off) || (usbvision->dev == NULL))
 		return;
@@ -2499,21 +2519,27 @@ void usbvision_stop_isoc(struct usb_usbvision *usbvision)
 		errCode = usb_set_interface(usbvision->dev, usbvision->iface,
 					    usbvision->ifaceAlt);
 		if (errCode < 0) {
-			err("%s: usb_set_interface() failed: error %d", __FUNCTION__, errCode);
+			err("%s: usb_set_interface() failed: error %d",
+			    __FUNCTION__, errCode);
 			usbvision->last_error = errCode;
 		}
-		regValue = (16 - usbvision_read_reg(usbvision, USBVISION_ALTER_REG)) & 0x0F;
-		usbvision->isocPacketSize = (regValue == 0) ? 0 : (regValue * 64) - 1;
-		PDEBUG(DBG_ISOC, "ISO Packet Length:%d", usbvision->isocPacketSize);
+		regValue = (16-usbvision_read_reg(usbvision, USBVISION_ALTER_REG)) & 0x0F;
+		usbvision->isocPacketSize =
+			(regValue == 0) ? 0 : (regValue * 64) - 1;
+		PDEBUG(DBG_ISOC, "ISO Packet Length:%d",
+		       usbvision->isocPacketSize);
 
 		usbvision->usb_bandwidth = regValue >> 1;
-		PDEBUG(DBG_ISOC, "USB Bandwidth Usage: %dMbit/Sec", usbvision->usb_bandwidth);
+		PDEBUG(DBG_ISOC, "USB Bandwidth Usage: %dMbit/Sec",
+		       usbvision->usb_bandwidth);
 	}
 }
 
 int usbvision_muxsel(struct usb_usbvision *usbvision, int channel)
 {
-	int mode[4];
+	/* inputs #0 and #3 are constant for every SAA711x. */
+	/* inputs #1 and #2 are variable for SAA7111 and SAA7113 */
+	int mode[4]= {SAA7115_COMPOSITE0, 0, 0, SAA7115_COMPOSITE3};
 	int audio[]= {1, 0, 0, 0};
 	struct v4l2_routing route;
 	//channel 0 is TV with audiochannel 1 (tuner mono)
@@ -2523,10 +2549,6 @@ int usbvision_muxsel(struct usb_usbvision *usbvision, int channel)
 
 	RESTRICT_TO_RANGE(channel, 0, usbvision->video_inputs);
 	usbvision->ctl_input = channel;
-	  route.input = SAA7115_COMPOSITE1;
-	  route.output = 0;
-	  call_i2c_clients(usbvision, VIDIOC_INT_S_VIDEO_ROUTING,&route);
-	  call_i2c_clients(usbvision, VIDIOC_S_INPUT, &usbvision->ctl_input);
 
 	// set the new channel
 	// Regular USB TV Tuners -> channel: 0 = Television, 1 = Composite, 2 = S-Video
@@ -2534,28 +2556,27 @@ int usbvision_muxsel(struct usb_usbvision *usbvision, int channel)
 
 	switch (usbvision_device_data[usbvision->DevModel].Codec) {
 		case CODEC_SAA7113:
-			if (SwitchSVideoInput) { // To handle problems with S-Video Input for some devices.  Use SwitchSVideoInput parameter when loading the module.
-				mode[2] = 1;
+			mode[1] = SAA7115_COMPOSITE2;
+			if (SwitchSVideoInput) {
+				/* To handle problems with S-Video Input for
+				 * some devices.  Use SwitchSVideoInput
+				 * parameter when loading the module.*/
+				mode[2] = SAA7115_COMPOSITE1;
 			}
 			else {
-				mode[2] = 7;
-			}
-			if (usbvision_device_data[usbvision->DevModel].VideoChannels == 4) {
-				mode[0] = 0; mode[1] = 2; mode[3] = 3;  // Special for four input devices
-			}
-			else {
-				mode[0] = 0; mode[1] = 2; //modes for regular saa7113 devices
+				mode[2] = SAA7115_SVIDEO1;
 			}
 			break;
 		case CODEC_SAA7111:
-			mode[0] = 0; mode[1] = 1; mode[2] = 7; //modes for saa7111
-			break;
 		default:
-			mode[0] = 0; mode[1] = 1; mode[2] = 7; //default modes
+			/* modes for saa7111 */
+			mode[1] = SAA7115_COMPOSITE1;
+			mode[2] = SAA7115_SVIDEO1;
+			break;
 	}
 	route.input = mode[channel];
+	route.output = 0;
 	call_i2c_clients(usbvision, VIDIOC_INT_S_VIDEO_ROUTING,&route);
-	usbvision->channel = channel;
 	usbvision_set_audio(usbvision, audio[channel]);
 	return 0;
 }

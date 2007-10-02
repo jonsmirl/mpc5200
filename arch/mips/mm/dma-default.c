@@ -35,7 +35,7 @@ static inline unsigned long dma_addr_to_virt(dma_addr_t dma_addr)
 static inline int cpu_is_noncoherent_r10000(struct device *dev)
 {
 	return !plat_device_is_coherent(dev) &&
-	       (current_cpu_data.cputype == CPU_R10000 &&
+	       (current_cpu_data.cputype == CPU_R10000 ||
 	       current_cpu_data.cputype == CPU_R12000);
 }
 
@@ -168,8 +168,9 @@ int dma_map_sg(struct device *dev, struct scatterlist *sg, int nents,
 		addr = (unsigned long) page_address(sg->page);
 		if (!plat_device_is_coherent(dev) && addr)
 			__dma_sync(addr + sg->offset, sg->length, direction);
-		sg->dma_address = plat_map_dma_mem_page(dev, sg->page) +
-		                  sg->offset;
+		sg->dma_address = plat_map_dma_mem(dev,
+				                   (void *)(addr + sg->offset),
+						   sg->length);
 	}
 
 	return nents;

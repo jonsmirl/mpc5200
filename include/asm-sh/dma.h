@@ -13,6 +13,7 @@
 
 #include <linux/spinlock.h>
 #include <linux/wait.h>
+#include <linux/sched.h>
 #include <linux/sysdev.h>
 #include <asm/cpu/dma.h>
 
@@ -110,6 +111,7 @@ struct dma_info {
 
 	struct list_head list;
 	int first_channel_nr;
+	int first_vchannel_nr;
 };
 
 struct dma_chan_caps {

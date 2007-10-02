@@ -1206,6 +1206,9 @@ static struct xfrm_state * pfkey_msg2xfrm_state(struct sadb_msg *hdr,
 		x->sel.prefixlen_s = addr->sadb_address_prefixlen;
 	}
 
+	if (!x->sel.family)
+		x->sel.family = x->props.family;
+
 	if (ext_hdrs[SADB_X_EXT_NAT_T_TYPE-1]) {
 		struct sadb_x_nat_t_type* n_type;
 		struct xfrm_encap_tmpl *natt;
@@ -1448,8 +1451,6 @@ static int pfkey_add(struct sock *sk, struct sk_buff *skb, struct sadb_msg *hdr,
 	int err;
 	struct km_event c;
 
-	xfrm_probe_algs();
-
 	x = pfkey_msg2xfrm_state(hdr, ext_hdrs);
 	if (IS_ERR(x))
 		return PTR_ERR(x);
@@ -1684,6 +1685,7 @@ static int pfkey_flush(struct sock *sk, struct sk_buff *skb, struct sadb_msg *hd
 	unsigned proto;
 	struct km_event c;
 	struct xfrm_audit audit_info;
+	int err;
 
 	proto = pfkey_satype2proto(hdr->sadb_msg_satype);
 	if (proto == 0)
@@ -1691,7 +1693,9 @@ static int pfkey_flush(struct sock *sk, struct sk_buff *skb, struct sadb_msg *hd
 
 	audit_info.loginuid = audit_get_loginuid(current->audit_context);
 	audit_info.secid = 0;
-	xfrm_state_flush(proto, &audit_info);
+	err = xfrm_state_flush(proto, &audit_info);
+	if (err)
+		return err;
 	c.data.proto = proto;
 	c.seq = hdr->sadb_msg_seq;
 	c.pid = hdr->sadb_msg_pid;
@@ -2539,7 +2543,7 @@ static int pfkey_migrate(struct sock *sk, struct sk_buff *skb,
 	sel.proto = pfkey_proto_to_xfrm(sa->sadb_address_proto);
 	sel.sport = ((struct sockaddr_in *)(sa + 1))->sin_port;
 	if (sel.sport)
-		sel.sport_mask = ~0;
+		sel.sport_mask = htons(0xffff);
 
 	/* set destination address info of selector */
 	sa = ext_hdrs[SADB_EXT_ADDRESS_DST - 1],
@@ -2548,7 +2552,7 @@ static int pfkey_migrate(struct sock *sk, struct sk_buff *skb,
 	sel.proto = pfkey_proto_to_xfrm(sa->sadb_address_proto);
 	sel.dport = ((struct sockaddr_in *)(sa + 1))->sin_port;
 	if (sel.dport)
-		sel.dport_mask = ~0;
+		sel.dport_mask = htons(0xffff);
 
 	rq = (struct sadb_x_ipsecrequest *)(pol + 1);
 
@@ -2685,10 +2689,13 @@ static int pfkey_spdflush(struct sock *sk, struct sk_buff *skb, struct sadb_msg 
 {
 	struct km_event c;
 	struct xfrm_audit audit_info;
+	int err;
 
 	audit_info.loginuid = audit_get_loginuid(current->audit_context);
 	audit_info.secid = 0;
-	xfrm_policy_flush(XFRM_POLICY_TYPE_MAIN, &audit_info);
+	err = xfrm_policy_flush(XFRM_POLICY_TYPE_MAIN, &audit_info);
+	if (err)
+		return err;
 	c.data.type = XFRM_POLICY_TYPE_MAIN;
 	c.event = XFRM_MSG_FLUSHPOLICY;
 	c.pid = hdr->sadb_msg_pid;

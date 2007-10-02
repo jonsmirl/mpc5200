@@ -21,6 +21,7 @@
 #include <asm/ccwdev.h>
 #include <asm/cio.h>
 #include <asm/ebcdic.h>
+#include <asm/diag.h>
 
 #include "raw3270.h"
 
@@ -147,8 +148,7 @@ raw3270_request_alloc(size_t size)
  * Allocate a new 3270 ccw request from bootmem. Only works very
  * early in the boot process. Only con3270.c should be using this.
  */
-struct raw3270_request *
-raw3270_request_alloc_bootmem(size_t size)
+struct raw3270_request __init *raw3270_request_alloc_bootmem(size_t size)
 {
 	struct raw3270_request *rq;
 
@@ -487,7 +487,7 @@ struct raw3270_ua {	/* Query Reply structure for Usable Area */
 } __attribute__ ((packed));
 
 static struct diag210 raw3270_init_diag210;
-static DECLARE_MUTEX(raw3270_init_sem);
+static DEFINE_MUTEX(raw3270_init_mutex);
 
 static int
 raw3270_init_irq(struct raw3270_view *view, struct raw3270_request *rq,
@@ -713,7 +713,7 @@ raw3270_size_device(struct raw3270 *rp)
 {
 	int rc;
 
-	down(&raw3270_init_sem);
+	mutex_lock(&raw3270_init_mutex);
 	rp->view = &raw3270_init_view;
 	raw3270_init_view.dev = rp;
 	if (MACHINE_IS_VM)
@@ -722,7 +722,7 @@ raw3270_size_device(struct raw3270 *rp)
 		rc = __raw3270_size_device(rp);
 	raw3270_init_view.dev = NULL;
 	rp->view = NULL;
-	up(&raw3270_init_sem);
+	mutex_unlock(&raw3270_init_mutex);
 	if (rc == 0) {	/* Found something. */
 		/* Try to find a model. */
 		rp->model = 0;
@@ -749,7 +749,7 @@ raw3270_reset_device(struct raw3270 *rp)
 {
 	int rc;
 
-	down(&raw3270_init_sem);
+	mutex_lock(&raw3270_init_mutex);
 	memset(&rp->init_request, 0, sizeof(rp->init_request));
 	memset(&rp->init_data, 0, sizeof(rp->init_data));
 	/* Store reset data stream to init_data/init_request */
@@ -764,7 +764,7 @@ raw3270_reset_device(struct raw3270 *rp)
 	rc = raw3270_start_init(rp, &raw3270_init_view, &rp->init_request);
 	raw3270_init_view.dev = NULL;
 	rp->view = NULL;
-	up(&raw3270_init_sem);
+	mutex_unlock(&raw3270_init_mutex);
 	return rc;
 }
 
@@ -848,8 +848,7 @@ raw3270_setup_device(struct ccw_device *cdev, struct raw3270 *rp, char *ascebc)
 /*
  * Setup 3270 device configured as console.
  */
-struct raw3270 *
-raw3270_setup_console(struct ccw_device *cdev)
+struct raw3270 __init *raw3270_setup_console(struct ccw_device *cdev)
 {
 	struct raw3270 *rp;
 	char *ascebc;

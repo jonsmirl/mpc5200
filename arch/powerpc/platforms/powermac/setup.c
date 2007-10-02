@@ -363,8 +363,19 @@ static void __init pmac_setup_arch(void)
 		smp_ops = &core99_smp_ops;
 	}
 #ifdef CONFIG_PPC32
-	else
+	else {
+		/*
+		 * We have to set bits in cpu_possible_map here since the
+		 * secondary CPU(s) aren't in the device tree, and
+		 * setup_per_cpu_areas only allocates per-cpu data for
+		 * CPUs in the cpu_possible_map.
+		 */
+		int cpu;
+
+		for (cpu = 1; cpu < 4 && cpu < NR_CPUS; ++cpu)
+			cpu_set(cpu, cpu_possible_map);
 		smp_ops = &psurge_smp_ops;
+	}
 #endif
 #endif /* CONFIG_SMP */
 
@@ -384,7 +395,7 @@ int boot_part;
 static dev_t boot_dev;
 
 #ifdef CONFIG_SCSI
-void __init note_scsi_host(struct device_node *node, void *host)
+void note_scsi_host(struct device_node *node, void *host)
 {
 	int l;
 	char *p;
@@ -443,6 +454,9 @@ static int initializing = 1;
 
 static int pmac_late_init(void)
 {
+	if (!machine_is(powermac))
+		return -ENODEV;
+
 	initializing = 0;
 	/* this is udbg (which is __init) and we can later use it during
 	 * cpu hotplug (in smp_core99_kick_cpu) */

@@ -25,7 +25,7 @@
 #ifndef _SPIDER_NET_H
 #define _SPIDER_NET_H
 
-#define VERSION "2.0 A"
+#define VERSION "2.0 B"
 
 #include "sungem_phy.h"
 
@@ -222,6 +222,7 @@ extern char spider_net_driver_name[];
 #define SPIDER_NET_GDTBSTA             0x00000300
 #define SPIDER_NET_GDTDCEIDIS          0x00000002
 #define SPIDER_NET_DMA_TX_VALUE        SPIDER_NET_TX_DMA_EN | \
+                                       SPIDER_NET_GDTDCEIDIS | \
                                        SPIDER_NET_GDTBSTA
 
 #define SPIDER_NET_DMA_TX_FEND_VALUE	0x00030003
@@ -332,8 +333,7 @@ enum spider_net_int2_status {
 	SPIDER_NET_GRISPDNGINT
 };
 
-#define SPIDER_NET_TXINT	( (1 << SPIDER_NET_GDTFDCINT) | \
-                             (1 << SPIDER_NET_GDTDCEINT) )
+#define SPIDER_NET_TXINT	(1 << SPIDER_NET_GDTFDCINT)
 
 /* We rely on flagged descriptor interrupts */
 #define SPIDER_NET_RXINT	( (1 << SPIDER_NET_GDAFDCINT) )
@@ -349,10 +349,22 @@ enum spider_net_int2_status {
 #define SPIDER_NET_GPRDAT_MASK			0x0000ffff
 
 #define SPIDER_NET_DMAC_NOINTR_COMPLETE		0x00800000
-#define SPIDER_NET_DMAC_NOCS			0x00040000
+#define SPIDER_NET_DMAC_TXFRMTL		0x00040000
 #define SPIDER_NET_DMAC_TCP			0x00020000
 #define SPIDER_NET_DMAC_UDP			0x00030000
 #define SPIDER_NET_TXDCEST			0x08000000
+
+#define SPIDER_NET_DESCR_RXFDIS        0x00000001
+#define SPIDER_NET_DESCR_RXDCEIS       0x00000002
+#define SPIDER_NET_DESCR_RXDEN0IS      0x00000004
+#define SPIDER_NET_DESCR_RXINVDIS      0x00000008
+#define SPIDER_NET_DESCR_RXRERRIS      0x00000010
+#define SPIDER_NET_DESCR_RXFDCIMS      0x00000100
+#define SPIDER_NET_DESCR_RXDCEIMS      0x00000200
+#define SPIDER_NET_DESCR_RXDEN0IMS     0x00000400
+#define SPIDER_NET_DESCR_RXINVDIMS     0x00000800
+#define SPIDER_NET_DESCR_RXRERRMIS     0x00001000
+#define SPIDER_NET_DESCR_UNUSED        0x077fe0e0
 
 #define SPIDER_NET_DESCR_IND_PROC_MASK		0xF0000000
 #define SPIDER_NET_DESCR_COMPLETE		0x00000000 /* used in rx and tx */
@@ -363,6 +375,13 @@ enum spider_net_int2_status {
 #define SPIDER_NET_DESCR_CARDOWNED		0xA0000000 /* used in rx and tx */
 #define SPIDER_NET_DESCR_NOT_IN_USE		0xF0000000
 #define SPIDER_NET_DESCR_TXDESFLG		0x00800000
+
+#define SPIDER_NET_DESCR_BAD_STATUS   (SPIDER_NET_DESCR_RXDEN0IS | \
+                                       SPIDER_NET_DESCR_RXRERRIS | \
+                                       SPIDER_NET_DESCR_RXDEN0IMS | \
+                                       SPIDER_NET_DESCR_RXINVDIMS | \
+                                       SPIDER_NET_DESCR_RXRERRMIS | \
+                                       SPIDER_NET_DESCR_UNUSED)
 
 /* Descriptor, as defined by the hardware */
 struct spider_net_hw_descr {
@@ -461,6 +480,8 @@ struct spider_net_card {
 	struct work_struct tx_timeout_task;
 	atomic_t tx_timeout_task_counter;
 	wait_queue_head_t waitq;
+	int num_rx_ints;
+	int ignore_rx_ramfull;
 
 	/* for ethtool */
 	int msg_enable;

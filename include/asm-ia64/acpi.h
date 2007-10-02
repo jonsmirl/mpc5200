@@ -30,6 +30,8 @@
 
 #ifdef __KERNEL__
 
+#include <acpi/pdc_intel.h>
+
 #include <linux/init.h>
 #include <linux/numa.h>
 #include <asm/system.h>
@@ -98,6 +100,11 @@ const char *acpi_get_sysname (void);
 int acpi_request_vector (u32 int_type);
 int acpi_gsi_to_irq (u32 gsi, unsigned int *irq);
 
+/* routines for saving/restoring kernel state */
+extern int acpi_save_state_mem(void);
+extern void acpi_restore_state_mem(void);
+extern unsigned long acpi_wakeup_address;
+
 /*
  * Record the cpei override flag and current logical cpu. This is
  * useful for CPU removal.
@@ -118,11 +125,6 @@ extern int additional_cpus;
 extern int __devinitdata pxm_to_nid_map[MAX_PXM_DOMAINS];
 extern int __initdata nid_to_pxm_map[MAX_NUMNODES];
 #endif
-
-/*
- * Refer Intel ACPI _PDC support document for bit definitions
- */
-#define ACPI_PDC_EST_CAPABILITY_SMP     0x8
 
 #endif /*__KERNEL__*/
 

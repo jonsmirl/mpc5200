@@ -171,7 +171,7 @@ struct cxacru_data {
 	struct delayed_work poll_work;
 	u32 card_info[CXINF_MAX];
 	struct mutex poll_state_serialize;
-	int poll_state;
+	enum cxacru_poll_state poll_state;
 
 	/* contol handles */
 	struct mutex cm_serialize;
@@ -226,58 +226,48 @@ static ssize_t cxacru_sysfs_showattr_s8(s8 value, char *buf)
 
 static ssize_t cxacru_sysfs_showattr_dB(s16 value, char *buf)
 {
-	if (unlikely(value < 0)) {
-		return snprintf(buf, PAGE_SIZE, "%d.%02u\n",
-						value / 100, -value % 100);
-	} else {
-		return snprintf(buf, PAGE_SIZE, "%d.%02u\n",
-						value / 100, value % 100);
-	}
+	return snprintf(buf, PAGE_SIZE, "%d.%02u\n",
+					value / 100, abs(value) % 100);
 }
 
 static ssize_t cxacru_sysfs_showattr_bool(u32 value, char *buf)
 {
-	switch (value) {
-	case 0: return snprintf(buf, PAGE_SIZE, "no\n");
-	case 1: return snprintf(buf, PAGE_SIZE, "yes\n");
-	default: return 0;
-	}
+	static char *str[] = { "no", "yes" };
+	if (unlikely(value >= ARRAY_SIZE(str)))
+		return snprintf(buf, PAGE_SIZE, "%u\n", value);
+	return snprintf(buf, PAGE_SIZE, "%s\n", str[value]);
 }
 
 static ssize_t cxacru_sysfs_showattr_LINK(u32 value, char *buf)
 {
-	switch (value) {
-	case 1: return snprintf(buf, PAGE_SIZE, "not connected\n");
-	case 2: return snprintf(buf, PAGE_SIZE, "connected\n");
-	case 3: return snprintf(buf, PAGE_SIZE, "lost\n");
-	default: return snprintf(buf, PAGE_SIZE, "unknown (%u)\n", value);
-	}
+	static char *str[] = { NULL, "not connected", "connected", "lost" };
+	if (unlikely(value >= ARRAY_SIZE(str) || str[value] == NULL))
+		return snprintf(buf, PAGE_SIZE, "%u\n", value);
+	return snprintf(buf, PAGE_SIZE, "%s\n", str[value]);
 }
 
 static ssize_t cxacru_sysfs_showattr_LINE(u32 value, char *buf)
 {
-	switch (value) {
-	case 0: return snprintf(buf, PAGE_SIZE, "down\n");
-	case 1: return snprintf(buf, PAGE_SIZE, "attempting to activate\n");
-	case 2: return snprintf(buf, PAGE_SIZE, "training\n");
-	case 3: return snprintf(buf, PAGE_SIZE, "channel analysis\n");
-	case 4: return snprintf(buf, PAGE_SIZE, "exchange\n");
-	case 5: return snprintf(buf, PAGE_SIZE, "up\n");
-	case 6: return snprintf(buf, PAGE_SIZE, "waiting\n");
-	case 7: return snprintf(buf, PAGE_SIZE, "initialising\n");
-	default: return snprintf(buf, PAGE_SIZE, "unknown (%u)\n", value);
-	}
+	static char *str[] = { "down", "attempting to activate",
+		"training", "channel analysis", "exchange", "up",
+		"waiting", "initialising"
+	};
+	if (unlikely(value >= ARRAY_SIZE(str)))
+		return snprintf(buf, PAGE_SIZE, "%u\n", value);
+	return snprintf(buf, PAGE_SIZE, "%s\n", str[value]);
 }
 
 static ssize_t cxacru_sysfs_showattr_MODU(u32 value, char *buf)
 {
-	switch (value) {
-	case 0: return 0;
-	case 1: return snprintf(buf, PAGE_SIZE, "ANSI T1.413\n");
-	case 2: return snprintf(buf, PAGE_SIZE, "ITU-T G.992.1 (G.DMT)\n");
-	case 3: return snprintf(buf, PAGE_SIZE, "ITU-T G.992.2 (G.LITE)\n");
-	default: return snprintf(buf, PAGE_SIZE, "unknown (%u)\n", value);
-	}
+	static char *str[] = {
+			NULL,
+			"ANSI T1.413",
+			"ITU-T G.992.1 (G.DMT)",
+			"ITU-T G.992.2 (G.LITE)"
+	};
+	if (unlikely(value >= ARRAY_SIZE(str) || str[value] == NULL))
+		return snprintf(buf, PAGE_SIZE, "%u\n", value);
+	return snprintf(buf, PAGE_SIZE, "%s\n", str[value]);
 }
 
 /*
@@ -308,11 +298,10 @@ static ssize_t cxacru_sysfs_show_adsl_state(struct device *dev,
 	struct cxacru_data *instance = usbatm_instance->driver_data;
 	u32 value = instance->card_info[CXINF_LINE_STARTABLE];
 
-	switch (value) {
-	case 0: return snprintf(buf, PAGE_SIZE, "running\n");
-	case 1: return snprintf(buf, PAGE_SIZE, "stopped\n");
-	default: return snprintf(buf, PAGE_SIZE, "unknown (%u)\n", value);
-	}
+	static char *str[] = { "running", "stopped" };
+	if (unlikely(value >= ARRAY_SIZE(str)))
+		return snprintf(buf, PAGE_SIZE, "%u\n", value);
+	return snprintf(buf, PAGE_SIZE, "%s\n", str[value]);
 }
 
 static ssize_t cxacru_sysfs_store_adsl_state(struct device *dev,
@@ -467,7 +456,6 @@ static int cxacru_start_wait_urb(struct urb *urb, struct completion *done,
 				 int* actual_length)
 {
 	struct timer_list timer;
-	int status;
 
 	init_timer(&timer);
 	timer.expires = jiffies + msecs_to_jiffies(CMD_TIMEOUT);
@@ -475,14 +463,11 @@ static int cxacru_start_wait_urb(struct urb *urb, struct completion *done,
 	timer.function = cxacru_timeout_kill;
 	add_timer(&timer);
 	wait_for_completion(done);
-	status = urb->status;
-	if (status == -ECONNRESET)
-		status = -ETIMEDOUT;
 	del_timer_sync(&timer);
 
 	if (actual_length)
 		*actual_length = urb->actual_length;
-	return status;
+	return urb->status; /* must read status after completion */
 }
 
 static int cxacru_cm(struct cxacru_data *instance, enum cxacru_cm_request cm,
@@ -629,10 +614,22 @@ static int cxacru_card_status(struct cxacru_data *instance)
 	return 0;
 }
 
+static void cxacru_remove_device_files(struct usbatm_data *usbatm_instance,
+		struct atm_dev *atm_dev)
+{
+	struct usb_interface *intf = usbatm_instance->usb_intf;
+
+	#define CXACRU_DEVICE_REMOVE_FILE(_name) \
+		device_remove_file(&intf->dev, &dev_attr_##_name);
+	CXACRU_ALL_FILES(REMOVE);
+	#undef CXACRU_DEVICE_REMOVE_FILE
+}
+
 static int cxacru_atm_start(struct usbatm_data *usbatm_instance,
 		struct atm_dev *atm_dev)
 {
 	struct cxacru_data *instance = usbatm_instance->driver_data;
+	struct usb_interface *intf = usbatm_instance->usb_intf;
 	/*
 	struct atm_dev *atm_dev = usbatm_instance->atm_dev;
 	*/
@@ -649,14 +646,18 @@ static int cxacru_atm_start(struct usbatm_data *usbatm_instance,
 		return ret;
 	}
 
+	#define CXACRU_DEVICE_CREATE_FILE(_name) \
+		ret = device_create_file(&intf->dev, &dev_attr_##_name); \
+		if (unlikely(ret)) \
+			goto fail_sysfs;
+	CXACRU_ALL_FILES(CREATE);
+	#undef CXACRU_DEVICE_CREATE_FILE
+
 	/* start ADSL */
 	mutex_lock(&instance->adsl_state_serialize);
 	ret = cxacru_cm(instance, CM_REQUEST_CHIP_ADSL_LINE_START, NULL, 0, NULL, 0);
-	if (ret < 0) {
+	if (ret < 0)
 		atm_err(usbatm_instance, "cxacru_atm_start: CHIP_ADSL_LINE_START returned %d\n", ret);
-		mutex_unlock(&instance->adsl_state_serialize);
-		return ret;
-	}
 
 	/* Start status polling */
 	mutex_lock(&instance->poll_state_serialize);
@@ -680,6 +681,11 @@ static int cxacru_atm_start(struct usbatm_data *usbatm_instance,
 	if (start_polling)
 		cxacru_poll_status(&instance->poll_work.work);
 	return 0;
+
+fail_sysfs:
+	usb_err(usbatm_instance, "cxacru_atm_start: device_create_file failed (%d)\n", ret);
+	cxacru_remove_device_files(usbatm_instance, atm_dev);
+	return ret;
 }
 
 static void cxacru_poll_status(struct work_struct *work)
@@ -1065,13 +1071,6 @@ static int cxacru_bind(struct usbatm_data *usbatm_instance,
 		goto fail;
 	}
 
-	#define CXACRU_DEVICE_CREATE_FILE(_name) \
-		ret = device_create_file(&intf->dev, &dev_attr_##_name); \
-		if (unlikely(ret)) \
-			goto fail_sysfs;
-	CXACRU_ALL_FILES(CREATE);
-	#undef CXACRU_DEVICE_CREATE_FILE
-
 	usb_fill_int_urb(instance->rcv_urb,
 			usb_dev, usb_rcvintpipe(usb_dev, CXACRU_EP_CMD),
 			instance->rcv_buf, PAGE_SIZE,
@@ -1091,14 +1090,6 @@ static int cxacru_bind(struct usbatm_data *usbatm_instance,
 	usbatm_instance->flags = (cxacru_card_status(instance) ? 0 : UDSL_SKIP_HEAVY_INIT);
 
 	return 0;
-
- fail_sysfs:
-	dbg("cxacru_bind: device_create_file failed (%d)\n", ret);
-
-	#define CXACRU_DEVICE_REMOVE_FILE(_name) \
-		device_remove_file(&intf->dev, &dev_attr_##_name);
-	CXACRU_ALL_FILES(REMOVE);
-	#undef CXACRU_DEVICE_REVOVE_FILE
 
  fail:
 	free_page((unsigned long) instance->snd_buf);
@@ -1145,11 +1136,6 @@ static void cxacru_unbind(struct usbatm_data *usbatm_instance,
 
 	free_page((unsigned long) instance->snd_buf);
 	free_page((unsigned long) instance->rcv_buf);
-
-	#define CXACRU_DEVICE_REMOVE_FILE(_name) \
-		device_remove_file(&intf->dev, &dev_attr_##_name);
-	CXACRU_ALL_FILES(REMOVE);
-	#undef CXACRU_DEVICE_REVOVE_FILE
 
 	kfree(instance);
 
@@ -1231,6 +1217,7 @@ static struct usbatm_driver cxacru_driver = {
 	.heavy_init	= cxacru_heavy_init,
 	.unbind		= cxacru_unbind,
 	.atm_start	= cxacru_atm_start,
+	.atm_stop	= cxacru_remove_device_files,
 	.bulk_in	= CXACRU_EP_DATA,
 	.bulk_out	= CXACRU_EP_DATA,
 	.rx_padding	= 3,

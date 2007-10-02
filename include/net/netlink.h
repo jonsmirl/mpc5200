@@ -118,6 +118,9 @@
  * Nested Attributes Construction:
  *   nla_nest_start(skb, type)		start a nested attribute
  *   nla_nest_end(skb, nla)		finalize a nested attribute
+ *   nla_nest_compat_start(skb, type,	start a nested compat attribute
+ *			   len, data)
+ *   nla_nest_compat_end(skb, type)	finalize a nested compat attribute
  *   nla_nest_cancel(skb, nla)		cancel nested attribute construction
  *
  * Attribute Length Calculations:
@@ -152,6 +155,7 @@
  *   nla_find_nested()			find attribute in nested attributes
  *   nla_parse()			parse and validate stream of attrs
  *   nla_parse_nested()			parse nested attribuets
+ *   nla_parse_nested_compat()		parse nested compat attributes
  *   nla_for_each_attr()		loop over all attributes
  *   nla_for_each_nested()		loop over the nested attributes
  *=========================================================================
@@ -170,6 +174,7 @@ enum {
 	NLA_FLAG,
 	NLA_MSECS,
 	NLA_NESTED,
+	NLA_NESTED_COMPAT,
 	NLA_NUL_STRING,
 	NLA_BINARY,
 	__NLA_TYPE_MAX,
@@ -190,6 +195,7 @@ enum {
  *    NLA_NUL_STRING       Maximum length of string (excluding NUL)
  *    NLA_FLAG             Unused
  *    NLA_BINARY           Maximum length of attribute payload
+ *    NLA_NESTED_COMPAT    Exact length of structure payload
  *    All other            Exact length of attribute payload
  *
  * Example:
@@ -222,10 +228,10 @@ extern int		nlmsg_notify(struct sock *sk, struct sk_buff *skb,
 				     gfp_t flags);
 
 extern int		nla_validate(struct nlattr *head, int len, int maxtype,
-				     struct nla_policy *policy);
+				     const struct nla_policy *policy);
 extern int		nla_parse(struct nlattr *tb[], int maxtype,
 				  struct nlattr *head, int len,
-				  struct nla_policy *policy);
+				  const struct nla_policy *policy);
 extern struct nlattr *	nla_find(struct nlattr *head, int len, int attrtype);
 extern size_t		nla_strlcpy(char *dst, const struct nlattr *nla,
 				    size_t dstsize);
@@ -360,7 +366,7 @@ static inline struct nlmsghdr *nlmsg_next(struct nlmsghdr *nlh, int *remaining)
  */
 static inline int nlmsg_parse(struct nlmsghdr *nlh, int hdrlen,
 			      struct nlattr *tb[], int maxtype,
-			      struct nla_policy *policy)
+			      const struct nla_policy *policy)
 {
 	if (nlh->nlmsg_len < nlmsg_msg_size(hdrlen))
 		return -EINVAL;
@@ -392,7 +398,7 @@ static inline struct nlattr *nlmsg_find_attr(struct nlmsghdr *nlh,
  * @policy: validation policy
  */
 static inline int nlmsg_validate(struct nlmsghdr *nlh, int hdrlen, int maxtype,
-				 struct nla_policy *policy)
+				 const struct nla_policy *policy)
 {
 	if (nlh->nlmsg_len < nlmsg_msg_size(hdrlen))
 		return -EINVAL;
@@ -729,10 +735,43 @@ static inline struct nlattr *nla_find_nested(struct nlattr *nla, int attrtype)
  */
 static inline int nla_parse_nested(struct nlattr *tb[], int maxtype,
 				   struct nlattr *nla,
-				   struct nla_policy *policy)
+				   const struct nla_policy *policy)
 {
 	return nla_parse(tb, maxtype, nla_data(nla), nla_len(nla), policy);
 }
+
+/**
+ * nla_parse_nested_compat - parse nested compat attributes
+ * @tb: destination array with maxtype+1 elements
+ * @maxtype: maximum attribute type to be expected
+ * @nla: attribute containing the nested attributes
+ * @data: pointer to point to contained structure
+ * @len: length of contained structure
+ * @policy: validation policy
+ *
+ * Parse a nested compat attribute. The compat attribute contains a structure
+ * and optionally a set of nested attributes. On success the data pointer
+ * points to the nested data and tb contains the parsed attributes
+ * (see nla_parse).
+ */
+static inline int __nla_parse_nested_compat(struct nlattr *tb[], int maxtype,
+					    struct nlattr *nla,
+					    const struct nla_policy *policy,
+					    int len)
+{
+	if (nla_len(nla) < len)
+		return -1;
+	if (nla_len(nla) >= NLA_ALIGN(len) + sizeof(struct nlattr))
+		return nla_parse_nested(tb, maxtype,
+					nla_data(nla) + NLA_ALIGN(len),
+					policy);
+	memset(tb, 0, sizeof(struct nlattr *) * (maxtype + 1));
+	return 0;
+}
+
+#define nla_parse_nested_compat(tb, maxtype, nla, policy, data, len) \
+({	data = nla_len(nla) >= len ? nla_data(nla) : NULL; \
+	__nla_parse_nested_compat(tb, maxtype, nla, policy, len); })
 /**
  * nla_put_u8 - Add a u16 netlink attribute to a socket buffer
  * @skb: socket buffer to add attribute to
@@ -965,6 +1004,51 @@ static inline int nla_nest_end(struct sk_buff *skb, struct nlattr *start)
 }
 
 /**
+ * nla_nest_compat_start - Start a new level of nested compat attributes
+ * @skb: socket buffer to add attributes to
+ * @attrtype: attribute type of container
+ * @attrlen: length of structure
+ * @data: pointer to structure
+ *
+ * Start a nested compat attribute that contains both a structure and
+ * a set of nested attributes.
+ *
+ * Returns the container attribute
+ */
+static inline struct nlattr *nla_nest_compat_start(struct sk_buff *skb,
+						   int attrtype, int attrlen,
+						   const void *data)
+{
+	struct nlattr *start = (struct nlattr *)skb_tail_pointer(skb);
+
+	if (nla_put(skb, attrtype, attrlen, data) < 0)
+		return NULL;
+	if (nla_nest_start(skb, attrtype) == NULL) {
+		nlmsg_trim(skb, start);
+		return NULL;
+	}
+	return start;
+}
+
+/**
+ * nla_nest_compat_end - Finalize nesting of compat attributes
+ * @skb: socket buffer the attribtues are stored in
+ * @start: container attribute
+ *
+ * Corrects the container attribute header to include the all
+ * appeneded attributes.
+ *
+ * Returns the total data length of the skb.
+ */
+static inline int nla_nest_compat_end(struct sk_buff *skb, struct nlattr *start)
+{
+	struct nlattr *nest = (void *)start + NLMSG_ALIGN(start->nla_len);
+
+	start->nla_len = skb_tail_pointer(skb) - (unsigned char *)start;
+	return nla_nest_end(skb, nest);
+}
+
+/**
  * nla_nest_cancel - Cancel nesting of attributes
  * @skb: socket buffer the message is stored in
  * @start: container attribute
@@ -990,7 +1074,7 @@ static inline int nla_nest_cancel(struct sk_buff *skb, struct nlattr *start)
  * Returns 0 on success or a negative error code.
  */
 static inline int nla_validate_nested(struct nlattr *start, int maxtype,
-				      struct nla_policy *policy)
+				      const struct nla_policy *policy)
 {
 	return nla_validate(nla_data(start), nla_len(start), maxtype, policy);
 }

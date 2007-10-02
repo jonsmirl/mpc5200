@@ -19,7 +19,7 @@
 #include <linux/ata.h>
 
 #define DRV_NAME	"pata_jmicron"
-#define DRV_VERSION	"0.1.4"
+#define DRV_VERSION	"0.1.5"
 
 typedef enum {
 	PORT_PATA0 = 0,
@@ -193,11 +193,11 @@ static int jmicron_init_one (struct pci_dev *pdev, const struct pci_device_id *i
 {
 	static const struct ata_port_info info = {
 		.sht		= &jmicron_sht,
-		.flags	= ATA_FLAG_SLAVE_POSS | ATA_FLAG_SRST,
+		.flags	= ATA_FLAG_SLAVE_POSS,
 
 		.pio_mask	= 0x1f,
 		.mwdma_mask	= 0x07,
-		.udma_mask 	= 0x3f,
+		.udma_mask 	= ATA_UDMA5,
 
 		.port_ops	= &jmicron_ops,
 	};

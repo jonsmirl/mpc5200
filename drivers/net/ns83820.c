@@ -506,17 +506,6 @@ static void ns83820_vlan_rx_register(struct net_device *ndev, struct vlan_group 
 	spin_unlock(&dev->tx_lock);
 	spin_unlock_irq(&dev->misc_lock);
 }
-
-static void ns83820_vlan_rx_kill_vid(struct net_device *ndev, unsigned short vid)
-{
-	struct ns83820 *dev = PRIV(ndev);
-
-	spin_lock_irq(&dev->misc_lock);
-	spin_lock(&dev->tx_lock);
-	vlan_group_set_device(dev->vlgrp, vid, NULL);
-	spin_unlock(&dev->tx_lock);
-	spin_unlock_irq(&dev->misc_lock);
-}
 #endif
 
 /* Packet Receiver
@@ -1593,7 +1582,7 @@ static void ns83820_set_multicast(struct net_device *ndev)
 	else
 		and_mask &= ~(RFCR_AAU | RFCR_AAM);
 
-	if (ndev->flags & IFF_ALLMULTI)
+	if (ndev->flags & IFF_ALLMULTI || ndev->mc_count)
 		or_mask |= RFCR_AAM;
 	else
 		and_mask &= ~RFCR_AAM;
@@ -1842,10 +1831,12 @@ static int __devinit ns83820_init_one(struct pci_dev *pci_dev, const struct pci_
 
 	ndev = alloc_etherdev(sizeof(struct ns83820));
 	dev = PRIV(ndev);
-	dev->ndev = ndev;
+
 	err = -ENOMEM;
 	if (!dev)
 		goto out;
+
+	dev->ndev = ndev;
 
 	spin_lock_init(&dev->rx_info.lock);
 	spin_lock_init(&dev->tx_lock);
@@ -2083,7 +2074,6 @@ static int __devinit ns83820_init_one(struct pci_dev *pci_dev, const struct pci_
 	/* We also support hardware vlan acceleration */
 	ndev->features |= NETIF_F_HW_VLAN_TX | NETIF_F_HW_VLAN_RX;
 	ndev->vlan_rx_register = ns83820_vlan_rx_register;
-	ndev->vlan_rx_kill_vid = ns83820_vlan_rx_kill_vid;
 #endif
 
 	if (using_dac) {

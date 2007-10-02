@@ -49,33 +49,14 @@
 
 
 #include <linux/linkage.h>
+#include <linux/unistd.h>
 #include <asm/blackfin.h>
-#include <asm/unistd.h>
 #include <asm/errno.h>
 #include <asm/thread_info.h>  /* TIF_NEED_RESCHED */
 #include <asm/asm-offsets.h>
+#include <asm/trace.h>
 
 #include <asm/mach-common/context.S>
-
-#ifdef CONFIG_DEBUG_BFIN_NO_KERN_HWTRACE
-	/*
-	 * TODO: this should be proper save/restore, but for now
-	 * we'll just cheat and use 0x1/0x13
-	 */
-# define DEBUG_START_HWTRACE \
-	P5.l = LO(TBUFCTL); \
-	P5.h = HI(TBUFCTL); \
-	R7 = 0x13; \
-	[P5] = R7;
-# define DEBUG_STOP_HWTRACE \
-	P5.l = LO(TBUFCTL); \
-	P5.h = HI(TBUFCTL); \
-	R7 = 0x01; \
-	[P5] = R7;
-#else
-# define DEBUG_START_HWTRACE
-# define DEBUG_STOP_HWTRACE
-#endif
 
 #ifdef CONFIG_EXCPT_IRQ_SYSC_L1
 .section .l1.text
@@ -103,59 +84,34 @@ ENTRY(_ex_dcplb)
 	if !cc jump _return_from_exception;
 	/* fall through */
 #endif
+ENDPROC(_ex_dcplb)
 
 ENTRY(_ex_icplb)
 	(R7:6,P5:4) = [sp++];
 	ASTAT = [sp++];
 	SAVE_ALL_SYS
 	call __cplb_hdr;
-	DEBUG_START_HWTRACE
+	DEBUG_START_HWTRACE(p5, r7)
 	RESTORE_ALL_SYS
 	SP = RETN;
 	rtx;
-
-ENTRY(_ex_spinlock)
-	/* Transform this into a syscall - twiddle the syscall vector.  */
-	p5.l = lo(EVT15);
-	p5.h = hi(EVT15);
-	r7.l = _spinlock_bh;
-	r7.h = _spinlock_bh;
-	[p5] = r7;
-	csync;
-	/* Fall through.  */
+ENDPROC(_ex_icplb)
 
 ENTRY(_ex_syscall)
-	DEBUG_START_HWTRACE
+	DEBUG_START_HWTRACE(p5, r7)
 	(R7:6,P5:4) = [sp++];
 	ASTAT = [sp++];
 	raise 15;		/* invoked by TRAP #0, for sys call */
 	sp = retn;
 	rtx
-
-ENTRY(_spinlock_bh)
-	SAVE_ALL_SYS
-	/* To end up here, vector 15 was changed - so we have to change it
-	 * back.
-	 */
-	p0.l = lo(EVT15);
-	p0.h = hi(EVT15);
-	p1.l = _evt_system_call;
-	p1.h = _evt_system_call;
-	[p0] = p1;
-	csync;
-	r0 = [sp + PT_R0];
-	sp += -12;
-	call _sys_bfin_spinlock;
-	sp += 12;
-	[SP + PT_R0] = R0;
-	RESTORE_ALL_SYS
-	rti;
+ENDPROC(_ex_syscall)
 
 ENTRY(_ex_soft_bp)
 	r7 = retx;
 	r7 += -2;
 	retx = r7;
 	jump.s _ex_trap_c;
+ENDPROC(_ex_soft_bp)
 
 ENTRY(_ex_single_step)
 	r7 = retx;
@@ -180,11 +136,18 @@ ENTRY(_ex_single_step)
 	if !cc jump _ex_trap_c;
 
 _return_from_exception:
-	DEBUG_START_HWTRACE
+	DEBUG_START_HWTRACE(p5, r7)
+#ifdef ANOMALY_05000257
+	R7=LC0;
+	LC0=R7;
+	R7=LC1;
+	LC1=R7;
+#endif
 	(R7:6,P5:4) = [sp++];
 	ASTAT = [sp++];
 	sp = retn;
 	rtx;
+ENDPROC(_ex_soft_bp)
 
 ENTRY(_handle_bad_cplb)
 	/* To get here, we just tried and failed to change a CPLB
@@ -195,7 +158,7 @@ ENTRY(_handle_bad_cplb)
 	 * need to make a CPLB exception look like a normal exception
 	 */
 
-	DEBUG_START_HWTRACE
+	DEBUG_START_HWTRACE(p5, r7)
 	RESTORE_ALL_SYS
 	[--sp] = ASTAT;
 	[--sp] = (R7:6, P5:4);
@@ -238,12 +201,13 @@ ENTRY(_ex_trap_c)
 	R6 = SEQSTAT;
 	[P5] = R6;
 
-	DEBUG_START_HWTRACE
+	DEBUG_START_HWTRACE(p5, r7)
 	(R7:6,P5:4) = [sp++];
 	ASTAT = [sp++];
 	SP = RETN;
 	raise 5;
 	rtx;
+ENDPROC(_ex_trap_c)
 
 ENTRY(_exception_to_level5)
 	SAVE_ALL_SYS
@@ -308,6 +272,7 @@ ENTRY(_exception_to_level5)
 	call _ret_from_exception;
 	RESTORE_ALL_SYS
 	rti;
+ENDPROC(_exception_to_level5)
 
 ENTRY(_trap) /* Exception: 4th entry into system event table(supervisor mode)*/
 	/* Since the kernel stack can be anywhere, it's not guaranteed to be
@@ -320,7 +285,7 @@ ENTRY(_trap) /* Exception: 4th entry into system event table(supervisor mode)*/
 	/* Try to deal with syscalls quickly.  */
 	[--sp] = ASTAT;
 	[--sp] = (R7:6, P5:4);
-	DEBUG_STOP_HWTRACE
+	DEBUG_STOP_HWTRACE(p5, r7)
 	r7 = SEQSTAT;		/* reason code is in bit 5:0 */
 	r6.l = lo(SEQSTAT_EXCAUSE);
 	r6.h = hi(SEQSTAT_EXCAUSE);
@@ -336,6 +301,7 @@ ENTRY(_trap) /* Exception: 4th entry into system event table(supervisor mode)*/
 	r7 = -ENOSYS; 		/* signextending enough */
 	[sp + PT_R0] = r7;	/* return value from system call */
 	jump .Lsyscall_really_exit;
+ENDPROC(_trap)
 
 ENTRY(_kernel_execve)
 	link SIZEOF_PTREGS;
@@ -390,6 +356,7 @@ ENTRY(_kernel_execve)
 1:
 	unlink;
 	rts;
+ENDPROC(_kernel_execve)
 
 ENTRY(_system_call)
 	/* Store IPEND */
@@ -497,6 +464,7 @@ ENTRY(_system_call)
 	r5 = [sp + PT_RESERVED];
 	rets = r5;
 	rts;
+ENDPROC(_system_call)
 
 _sys_trace:
 	call _syscall_trace;
@@ -525,6 +493,7 @@ _sys_trace:
 
 	call _syscall_trace;
 	jump .Lresume_userspace;
+ENDPROC(_sys_trace)
 
 ENTRY(_resume)
 	/*
@@ -574,6 +543,7 @@ _new_old_task:
 	 * in "new" task.
 	 */
 	rts;
+ENDPROC(_resume)
 
 ENTRY(_ret_from_exception)
 	p2.l = lo(IPEND);
@@ -632,6 +602,7 @@ ENTRY(_ret_from_exception)
 	syscfg = r0;
 5:
 	rts;
+ENDPROC(_ret_from_exception)
 
 ENTRY(_return_from_int)
 	/* If someone else already raised IRQ 15, do nothing.  */
@@ -674,6 +645,7 @@ ENTRY(_return_from_int)
 	rti;
 2:
 	rts;
+ENDPROC(_return_from_int)
 
 ENTRY(_lower_to_irq14)
 #if defined(ANOMALY_05000281)
@@ -706,6 +678,11 @@ _schedule_and_signal_from_int:
 	p1.h = _evt_system_call;
 	[p0] = p1;
 	csync;
+
+	/* Set orig_p0 to -1 to indicate this isn't the end of a syscall.  */
+	r0 = -1 (x);
+	[sp + PT_ORIG_P0] = r0;
+
 	p1 = rets;
 	[sp + PT_RESERVED] = p1;
 
@@ -714,6 +691,10 @@ _schedule_and_signal_from_int:
 	r0 = [p0];
 	sti r0;
 
+	r0 = sp;
+	sp += -12;
+	call _finish_atomic_sections;
+	sp += 12;
 	jump.s .Lresume_userspace;
 
 _schedule_and_signal:
@@ -734,6 +715,7 @@ _schedule_and_signal:
 1:
 	RESTORE_CONTEXT
 	rti;
+ENDPROC(_lower_to_irq14)
 
 /* Make sure when we start, that the circular buffer is initialized properly
  * R0 and P0 are call clobbered, so we can use them here.
@@ -747,6 +729,7 @@ ENTRY(_init_exception_buff)
 	p0.l = _out_ptr_excause;
 	[p0] = r0;
 	rts;
+ENDPROC(_init_exception_buff)
 
 /*
  * Put these in the kernel data section - that should always be covered by
@@ -761,14 +744,14 @@ ENTRY(_init_exception_buff)
 ALIGN
 _extable:
 	/* entry for each EXCAUSE[5:0]
-	 * This table bmust be in sync with the table in ./kernel/traps.c
+	 * This table must be in sync with the table in ./kernel/traps.c
 	 * EXCPT instruction can provide 4 bits of EXCAUSE, allowing 16 to be user defined
 	 */
 	.long _ex_syscall;      /* 0x00 - User Defined - Linux Syscall */
 	.long _ex_soft_bp       /* 0x01 - User Defined - Software breakpoint */
 	.long _ex_trap_c        /* 0x02 - User Defined */
-	.long _ex_trap_c        /* 0x03 - User Defined  - Atomic test and set service */
-	.long _ex_spinlock      /* 0x04 - User Defined */
+	.long _ex_trap_c        /* 0x03 - User Defined - userspace stack overflow */
+	.long _ex_trap_c        /* 0x04 - User Defined */
 	.long _ex_trap_c        /* 0x05 - User Defined */
 	.long _ex_trap_c        /* 0x06 - User Defined */
 	.long _ex_trap_c        /* 0x07 - User Defined */

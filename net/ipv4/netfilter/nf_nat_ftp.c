@@ -25,12 +25,6 @@ MODULE_AUTHOR("Rusty Russell <rusty@rustcorp.com.au>");
 MODULE_DESCRIPTION("ftp NAT helper");
 MODULE_ALIAS("ip_nat_ftp");
 
-#if 0
-#define DEBUGP printk
-#else
-#define DEBUGP(format, args...)
-#endif
-
 /* FIXME: Time out? --RR */
 
 static int
@@ -40,17 +34,15 @@ mangle_rfc959_packet(struct sk_buff **pskb,
 		     unsigned int matchoff,
 		     unsigned int matchlen,
 		     struct nf_conn *ct,
-		     enum ip_conntrack_info ctinfo,
-		     u32 *seq)
+		     enum ip_conntrack_info ctinfo)
 {
 	char buffer[sizeof("nnn,nnn,nnn,nnn,nnn,nnn")];
 
 	sprintf(buffer, "%u,%u,%u,%u,%u,%u",
 		NIPQUAD(newip), port>>8, port&0xFF);
 
-	DEBUGP("calling nf_nat_mangle_tcp_packet\n");
+	pr_debug("calling nf_nat_mangle_tcp_packet\n");
 
-	*seq += strlen(buffer) - matchlen;
 	return nf_nat_mangle_tcp_packet(pskb, ct, ctinfo, matchoff,
 					matchlen, buffer, strlen(buffer));
 }
@@ -63,16 +55,14 @@ mangle_eprt_packet(struct sk_buff **pskb,
 		   unsigned int matchoff,
 		   unsigned int matchlen,
 		   struct nf_conn *ct,
-		   enum ip_conntrack_info ctinfo,
-		   u32 *seq)
+		   enum ip_conntrack_info ctinfo)
 {
 	char buffer[sizeof("|1|255.255.255.255|65535|")];
 
 	sprintf(buffer, "|1|%u.%u.%u.%u|%u|", NIPQUAD(newip), port);
 
-	DEBUGP("calling nf_nat_mangle_tcp_packet\n");
+	pr_debug("calling nf_nat_mangle_tcp_packet\n");
 
-	*seq += strlen(buffer) - matchlen;
 	return nf_nat_mangle_tcp_packet(pskb, ct, ctinfo, matchoff,
 					matchlen, buffer, strlen(buffer));
 }
@@ -85,23 +75,21 @@ mangle_epsv_packet(struct sk_buff **pskb,
 		   unsigned int matchoff,
 		   unsigned int matchlen,
 		   struct nf_conn *ct,
-		   enum ip_conntrack_info ctinfo,
-		   u32 *seq)
+		   enum ip_conntrack_info ctinfo)
 {
 	char buffer[sizeof("|||65535|")];
 
 	sprintf(buffer, "|||%u|", port);
 
-	DEBUGP("calling nf_nat_mangle_tcp_packet\n");
+	pr_debug("calling nf_nat_mangle_tcp_packet\n");
 
-	*seq += strlen(buffer) - matchlen;
 	return nf_nat_mangle_tcp_packet(pskb, ct, ctinfo, matchoff,
 					matchlen, buffer, strlen(buffer));
 }
 
 static int (*mangle[])(struct sk_buff **, __be32, u_int16_t,
 		       unsigned int, unsigned int, struct nf_conn *,
-		       enum ip_conntrack_info, u32 *seq)
+		       enum ip_conntrack_info)
 = {
 	[NF_CT_FTP_PORT] = mangle_rfc959_packet,
 	[NF_CT_FTP_PASV] = mangle_rfc959_packet,
@@ -116,15 +104,14 @@ static unsigned int nf_nat_ftp(struct sk_buff **pskb,
 			       enum nf_ct_ftp_type type,
 			       unsigned int matchoff,
 			       unsigned int matchlen,
-			       struct nf_conntrack_expect *exp,
-			       u32 *seq)
+			       struct nf_conntrack_expect *exp)
 {
 	__be32 newip;
 	u_int16_t port;
 	int dir = CTINFO2DIR(ctinfo);
 	struct nf_conn *ct = exp->master;
 
-	DEBUGP("FTP_NAT: type %i, off %u len %u\n", type, matchoff, matchlen);
+	pr_debug("FTP_NAT: type %i, off %u len %u\n", type, matchoff, matchlen);
 
 	/* Connection will come from wherever this packet goes, hence !dir */
 	newip = ct->tuplehash[!dir].tuple.dst.u3.ip;
@@ -138,16 +125,15 @@ static unsigned int nf_nat_ftp(struct sk_buff **pskb,
 	/* Try to get same port: if not, try to change it. */
 	for (port = ntohs(exp->saved_proto.tcp.port); port != 0; port++) {
 		exp->tuple.dst.u.tcp.port = htons(port);
-		if (nf_conntrack_expect_related(exp) == 0)
+		if (nf_ct_expect_related(exp) == 0)
 			break;
 	}
 
 	if (port == 0)
 		return NF_DROP;
 
-	if (!mangle[type](pskb, newip, port, matchoff, matchlen, ct, ctinfo,
-			  seq)) {
-		nf_conntrack_unexpect_related(exp);
+	if (!mangle[type](pskb, newip, port, matchoff, matchlen, ct, ctinfo)) {
+		nf_ct_unexpect_related(exp);
 		return NF_DROP;
 	}
 	return NF_ACCEPT;

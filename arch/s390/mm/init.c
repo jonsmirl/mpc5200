@@ -42,49 +42,40 @@ DEFINE_PER_CPU(struct mmu_gather, mmu_gathers);
 pgd_t swapper_pg_dir[PTRS_PER_PGD] __attribute__((__aligned__(PAGE_SIZE)));
 char  empty_zero_page[PAGE_SIZE] __attribute__((__aligned__(PAGE_SIZE)));
 
-void diag10(unsigned long addr)
-{
-        if (addr >= 0x7ff00000)
-                return;
-	asm volatile(
-#ifdef CONFIG_64BIT
-		"	sam31\n"
-		"	diag	%0,%0,0x10\n"
-		"0:	sam64\n"
-#else
-		"	diag	%0,%0,0x10\n"
-		"0:\n"
-#endif
-		EX_TABLE(0b,0b)
-		: : "a" (addr));
-}
-
 void show_mem(void)
 {
-        int i, total = 0, reserved = 0;
-        int shared = 0, cached = 0;
+	int i, total = 0, reserved = 0;
+	int shared = 0, cached = 0;
 	struct page *page;
 
-        printk("Mem-info:\n");
-        show_free_areas();
-        printk("Free swap:       %6ldkB\n", nr_swap_pages<<(PAGE_SHIFT-10));
-        i = max_mapnr;
-        while (i-- > 0) {
+	printk("Mem-info:\n");
+	show_free_areas();
+	printk("Free swap:       %6ldkB\n", nr_swap_pages << (PAGE_SHIFT - 10));
+	i = max_mapnr;
+	while (i-- > 0) {
 		if (!pfn_valid(i))
 			continue;
 		page = pfn_to_page(i);
-                total++;
+		total++;
 		if (PageReserved(page))
-                        reserved++;
+			reserved++;
 		else if (PageSwapCache(page))
-                        cached++;
+			cached++;
 		else if (page_count(page))
 			shared += page_count(page) - 1;
-        }
-        printk("%d pages of RAM\n",total);
-        printk("%d reserved pages\n",reserved);
-        printk("%d pages shared\n",shared);
-        printk("%d pages swap cached\n",cached);
+	}
+	printk("%d pages of RAM\n", total);
+	printk("%d reserved pages\n", reserved);
+	printk("%d pages shared\n", shared);
+	printk("%d pages swap cached\n", cached);
+
+	printk("%lu pages dirty\n", global_page_state(NR_FILE_DIRTY));
+	printk("%lu pages writeback\n", global_page_state(NR_WRITEBACK));
+	printk("%lu pages mapped\n", global_page_state(NR_FILE_MAPPED));
+	printk("%lu pages slab\n",
+	       global_page_state(NR_SLAB_RECLAIMABLE) +
+	       global_page_state(NR_SLAB_UNRECLAIMABLE));
+	printk("%lu pages pagetables\n", global_page_state(NR_PAGETABLE));
 }
 
 static void __init setup_ro_region(void)

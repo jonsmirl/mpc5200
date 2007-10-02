@@ -102,7 +102,7 @@ static struct resource data_resource = {
 /*
  * cpu_init() initializes state that is per-CPU.
  */
-void __devinit cpu_init (void)
+void __cpuinit cpu_init(void)
 {
         int addr = hard_smp_processor_id();
 
@@ -300,6 +300,7 @@ static void __init setup_zfcpdump(unsigned int console_devno)
 	else
 		sprintf(str, "cio_ignore=all,!0.0.%04x",
 			ipl_info.data.fcp.dev_id.devno);
+	strcat(COMMAND_LINE, " ");
 	strcat(COMMAND_LINE, str);
 	console_loglevel = 2;
 }
@@ -915,7 +916,7 @@ setup_arch(char **cmdline_p)
 	setup_zfcpdump(console_devno);
 }
 
-void print_cpu_info(struct cpuinfo_S390 *cpuinfo)
+void __cpuinit print_cpu_info(struct cpuinfo_S390 *cpuinfo)
 {
    printk("cpu %d "
 #ifdef CONFIG_SMP

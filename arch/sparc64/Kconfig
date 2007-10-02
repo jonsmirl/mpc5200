@@ -23,6 +23,10 @@ config GENERIC_TIME
 	bool
 	default y
 
+config GENERIC_CMOS_UPDATE
+	bool
+	default y
+
 config GENERIC_CLOCKEVENTS
 	bool
 	default y
@@ -61,6 +65,12 @@ config ARCH_HAS_ILOG2_U64
 config AUDIT_ARCH
 	bool
 	default y
+
+config ARCH_NO_VIRT_TO_BUS
+	def_bool y
+
+config OF
+	def_bool y
 
 choice
 	prompt "Kernel page size"
@@ -108,6 +118,15 @@ config SECCOMP
 
 source kernel/Kconfig.hz
 
+config HOTPLUG_CPU
+	bool "Support for hot-pluggable CPUs"
+	depends on SMP
+	select HOTPLUG
+	---help---
+	  Say Y here to experiment with turning CPUs off and on.  CPUs
+	  can be controlled through /sys/devices/system/cpu/cpu#.
+	  Say N if you want to disable CPU hotplug.
+
 source "init/Kconfig"
 
 config SYSVIPC_COMPAT
@@ -147,10 +166,10 @@ config SMP
 	  If you don't know what to do here, say N.
 
 config NR_CPUS
-	int "Maximum number of CPUs (2-64)"
-	range 2 64
+	int "Maximum number of CPUs (2-1024)"
+	range 2 1024
 	depends on SMP
-	default "32"
+	default "64"
 
 source "drivers/cpufreq/Kconfig"
 
@@ -305,6 +324,12 @@ config SUN_IO
 	bool
 	default y
 
+config SUN_LDOMS
+	bool "Sun Logical Domains support"
+	help
+	  Say Y here is you want to support virtual devices via
+	  Logical Domains.
+
 config PCI
 	bool "PCI support"
 	select ARCH_SUPPORTS_MSI
@@ -320,8 +345,10 @@ config PCI
 	  doesn't.
 
 config PCI_DOMAINS
-	bool
-	default PCI
+	def_bool PCI
+
+config PCI_SYSCALL
+	def_bool PCI
 
 source "drivers/pci/Kconfig"
 
@@ -395,6 +422,15 @@ config SCHED_SMT
 	  SMT scheduler support improves the CPU scheduler's decision making
 	  when dealing with UltraSPARC cpus at a cost of slightly increased
 	  overhead in some places. If unsure say N here.
+
+config SCHED_MC
+	bool "Multi-core scheduler support"
+	depends on SMP
+	default y
+	help
+	  Multi-core scheduler support improves the CPU scheduler's decision
+	  making when dealing with multi-core CPU chips at a cost of slightly
+	  increased overhead in some places. If unsure say N here.
 
 source "kernel/Kconfig.preempt"
 

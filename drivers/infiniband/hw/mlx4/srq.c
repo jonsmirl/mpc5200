@@ -240,6 +240,24 @@ int mlx4_ib_modify_srq(struct ib_srq *ibsrq, struct ib_srq_attr *attr,
 	return 0;
 }
 
+int mlx4_ib_query_srq(struct ib_srq *ibsrq, struct ib_srq_attr *srq_attr)
+{
+	struct mlx4_ib_dev *dev = to_mdev(ibsrq->device);
+	struct mlx4_ib_srq *srq = to_msrq(ibsrq);
+	int ret;
+	int limit_watermark;
+
+	ret = mlx4_srq_query(dev->dev, &srq->msrq, &limit_watermark);
+	if (ret)
+		return ret;
+
+	srq_attr->srq_limit = be16_to_cpu(limit_watermark);
+	srq_attr->max_wr    = srq->msrq.max - 1;
+	srq_attr->max_sge   = srq->msrq.max_gs;
+
+	return 0;
+}
+
 int mlx4_ib_destroy_srq(struct ib_srq *srq)
 {
 	struct mlx4_ib_dev *dev = to_mdev(srq->device);
@@ -293,6 +311,12 @@ int mlx4_ib_post_srq_recv(struct ib_srq *ibsrq, struct ib_recv_wr *wr,
 	for (nreq = 0; wr; ++nreq, wr = wr->next) {
 		if (unlikely(wr->num_sge > srq->msrq.max_gs)) {
 			err = -EINVAL;
+			*bad_wr = wr;
+			break;
+		}
+
+		if (unlikely(srq->head == srq->tail)) {
+			err = -ENOMEM;
 			*bad_wr = wr;
 			break;
 		}

@@ -34,6 +34,10 @@
 #include <linux/bug.h>
 #include <linux/kdebug.h>
 
+#if defined(CONFIG_EDAC)
+#include <linux/edac.h>
+#endif
+
 #include <asm/system.h>
 #include <asm/io.h>
 #include <asm/atomic.h>
@@ -330,6 +334,7 @@ static int print_trace_stack(void *data, char *name)
 
 static void print_trace_address(void *data, unsigned long addr)
 {
+	touch_nmi_watchdog();
 	printk_address(addr);
 }
 
@@ -465,13 +470,14 @@ static unsigned int die_nest_count;
 
 unsigned __kprobes long oops_begin(void)
 {
-	int cpu = smp_processor_id();
+	int cpu;
 	unsigned long flags;
 
 	oops_enter();
 
 	/* racy, but better than risking deadlock. */
 	local_irq_save(flags);
+	cpu = smp_processor_id();
 	if (!spin_trylock(&die_lock)) { 
 		if (cpu == die_owner) 
 			/* nested oops. should stop eventually */;
@@ -517,6 +523,7 @@ void __kprobes __die(const char * str, struct pt_regs * regs, long err)
 	printk("\n");
 	notify_die(DIE_OOPS, str, regs, err, current->thread.trap_no, SIGSEGV);
 	show_registers(regs);
+	add_taint(TAINT_DIE);
 	/* Executive summary in case the oops scrolled away */
 	printk(KERN_ALERT "RIP ");
 	printk_address(regs->rip); 
@@ -530,7 +537,7 @@ void die(const char * str, struct pt_regs * regs, long err)
 	unsigned long flags = oops_begin();
 
 	if (!user_mode(regs))
-		report_bug(regs->rip);
+		report_bug(regs->rip, regs);
 
 	__die(str, regs, err);
 	oops_end(flags);
@@ -577,7 +584,8 @@ static void __kprobes do_trap(int trapnr, int signr, char *str,
 		tsk->thread.error_code = error_code;
 		tsk->thread.trap_no = trapnr;
 
-		if (exception_trace && unhandled_signal(tsk, signr))
+		if (show_unhandled_signals && unhandled_signal(tsk, signr) &&
+		    printk_ratelimit())
 			printk(KERN_INFO
 			       "%s[%d] trap %s rip:%lx rsp:%lx error:%lx\n",
 			       tsk->comm, tsk->pid, str,
@@ -681,7 +689,8 @@ asmlinkage void __kprobes do_general_protection(struct pt_regs * regs,
 		tsk->thread.error_code = error_code;
 		tsk->thread.trap_no = 13;
 
-		if (exception_trace && unhandled_signal(tsk, SIGSEGV))
+		if (show_unhandled_signals && unhandled_signal(tsk, SIGSEGV) &&
+		    printk_ratelimit())
 			printk(KERN_INFO
 		       "%s[%d] general protection rip:%lx rsp:%lx error:%lx\n",
 			       tsk->comm, tsk->pid,
@@ -715,6 +724,13 @@ mem_parity_error(unsigned char reason, struct pt_regs * regs)
 	printk(KERN_EMERG "Uhhuh. NMI received for unknown reason %02x.\n",
 		reason);
 	printk(KERN_EMERG "You have some hardware problem, likely on the PCI bus.\n");
+
+#if defined(CONFIG_EDAC)
+	if(edac_handler_set()) {
+		edac_atomic_assert_error();
+		return;
+	}
+#endif
 
 	if (panic_on_unrecovered_nmi)
 		panic("NMI: Not continuing");

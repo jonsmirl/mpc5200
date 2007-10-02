@@ -48,7 +48,7 @@
 #include <asm/mach-types.h>
 #include <asm/arch/fb.h>
 
-#include <asm/arch/regs-serial.h>
+#include <asm/plat-s3c/regs-serial.h>
 #include <asm/arch/regs-lcd.h>
 #include <asm/arch/regs-gpio.h>
 
@@ -160,7 +160,7 @@ static struct platform_device *amlm5900_devices[] __initdata = {
 #endif
 };
 
-void __init amlm5900_map_io(void)
+static void __init amlm5900_map_io(void)
 {
 	s3c24xx_init_io(amlm5900_iodesc, ARRAY_SIZE(amlm5900_iodesc));
 	s3c24xx_init_clocks(0);

@@ -7,7 +7,7 @@
  * Description:
  *
  * Modified:
- *               Copyright 2004-2006 Analog Devices Inc.
+ *               Copyright 2004-2007 Analog Devices Inc.
  *
  * Bugs:         Enter bugs at http://blackfin.uclinux.org/
  *
@@ -29,8 +29,8 @@
 
 #include <linux/swap.h>
 #include <linux/bootmem.h>
+#include <linux/uaccess.h>
 #include <asm/bfin-global.h>
-#include <asm/uaccess.h>
 #include <asm/l1layout.h>
 #include "blackfin_sram.h"
 
@@ -53,7 +53,7 @@ static unsigned long empty_bad_page;
 
 unsigned long empty_zero_page;
 
-void show_mem(void)
+void __init show_mem(void)
 {
 	unsigned long i;
 	int free = 0, total = 0, reserved = 0, shared = 0;
@@ -86,7 +86,7 @@ void show_mem(void)
  * The parameters are pointers to where to stick the starting and ending
  * addresses  of available kernel virtual memory.
  */
-void paging_init(void)
+void __init paging_init(void)
 {
 	/*
 	 * make sure start_mem is page aligned,  otherwise bootmem and
@@ -116,7 +116,8 @@ void paging_init(void)
 	{
 		unsigned long zones_size[MAX_NR_ZONES] = { 0, };
 
-		zones_size[ZONE_NORMAL] = (end_mem - PAGE_OFFSET) >> PAGE_SHIFT;
+		zones_size[ZONE_DMA] = (end_mem - PAGE_OFFSET) >> PAGE_SHIFT;
+		zones_size[ZONE_NORMAL] = 0;
 #ifdef CONFIG_HIGHMEM
 		zones_size[ZONE_HIGHMEM] = 0;
 #endif
@@ -124,7 +125,7 @@ void paging_init(void)
 	}
 }
 
-void mem_init(void)
+void __init mem_init(void)
 {
 	unsigned int codek = 0, datak = 0, initk = 0;
 	unsigned long tmp;
@@ -167,42 +168,31 @@ void mem_init(void)
 	}
 }
 
-#ifdef CONFIG_BLK_DEV_INITRD
-void free_initrd_mem(unsigned long start, unsigned long end)
+static __init void free_init_pages(const char *what, unsigned long begin, unsigned long end)
 {
-	int pages = 0;
-	for (; start < end; start += PAGE_SIZE) {
-		ClearPageReserved(virt_to_page(start));
-		init_page_count(virt_to_page(start));
-		free_page(start);
-		totalram_pages++;
-		pages++;
-	}
-	printk(KERN_NOTICE "Freeing initrd memory: %dk freed\n", pages);
-}
-#endif
-
-void free_initmem(void)
-{
-#ifdef CONFIG_RAMKERNEL
 	unsigned long addr;
-/*
- *	the following code should be cool even if these sections
- *	are not page aligned.
- */
-	addr = PAGE_ALIGN((unsigned long)(__init_begin));
 	/* next to check that the page we free is not a partial page */
-	for (; addr + PAGE_SIZE < (unsigned long)(__init_end);
-	     addr += PAGE_SIZE) {
+	for (addr = begin; addr + PAGE_SIZE <= end; addr += PAGE_SIZE) {
 		ClearPageReserved(virt_to_page(addr));
 		init_page_count(virt_to_page(addr));
 		free_page(addr);
 		totalram_pages++;
 	}
-	printk(KERN_NOTICE
-	       "Freeing unused kernel memory: %ldk freed (0x%x - 0x%x)\n",
-	       (addr - PAGE_ALIGN((long)__init_begin)) >> 10,
-	       (int)(PAGE_ALIGN((unsigned long)(__init_begin))),
-	       (int)(addr - PAGE_SIZE));
+	printk(KERN_INFO "Freeing %s: %ldk freed\n", what, (end - begin) >> 10);
+}
+
+#ifdef CONFIG_BLK_DEV_INITRD
+void __init free_initrd_mem(unsigned long start, unsigned long end)
+{
+	free_init_pages("initrd memory", start, end);
+}
+#endif
+
+void __init free_initmem(void)
+{
+#ifdef CONFIG_RAMKERNEL
+	free_init_pages("unused kernel memory",
+			(unsigned long)(&__init_begin),
+			(unsigned long)(&__init_end));
 #endif
 }

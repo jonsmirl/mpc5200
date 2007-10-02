@@ -55,7 +55,7 @@ static inline dev_info_t *which_dev(mddev_t *mddev, sector_t sector)
  *
  *	Return amount of bytes we can take at this offset
  */
-static int linear_mergeable_bvec(request_queue_t *q, struct bio *bio, struct bio_vec *biovec)
+static int linear_mergeable_bvec(struct request_queue *q, struct bio *bio, struct bio_vec *biovec)
 {
 	mddev_t *mddev = q->queuedata;
 	dev_info_t *dev0;
@@ -79,20 +79,20 @@ static int linear_mergeable_bvec(request_queue_t *q, struct bio *bio, struct bio
 	return maxsectors << 9;
 }
 
-static void linear_unplug(request_queue_t *q)
+static void linear_unplug(struct request_queue *q)
 {
 	mddev_t *mddev = q->queuedata;
 	linear_conf_t *conf = mddev_to_conf(mddev);
 	int i;
 
 	for (i=0; i < mddev->raid_disks; i++) {
-		request_queue_t *r_queue = bdev_get_queue(conf->disks[i].rdev->bdev);
+		struct request_queue *r_queue = bdev_get_queue(conf->disks[i].rdev->bdev);
 		if (r_queue->unplug_fn)
 			r_queue->unplug_fn(r_queue);
 	}
 }
 
-static int linear_issue_flush(request_queue_t *q, struct gendisk *disk,
+static int linear_issue_flush(struct request_queue *q, struct gendisk *disk,
 			      sector_t *error_sector)
 {
 	mddev_t *mddev = q->queuedata;
@@ -101,7 +101,7 @@ static int linear_issue_flush(request_queue_t *q, struct gendisk *disk,
 
 	for (i=0; i < mddev->raid_disks && ret == 0; i++) {
 		struct block_device *bdev = conf->disks[i].rdev->bdev;
-		request_queue_t *r_queue = bdev_get_queue(bdev);
+		struct request_queue *r_queue = bdev_get_queue(bdev);
 
 		if (!r_queue->issue_flush_fn)
 			ret = -EOPNOTSUPP;
@@ -118,7 +118,7 @@ static int linear_congested(void *data, int bits)
 	int i, ret = 0;
 
 	for (i = 0; i < mddev->raid_disks && !ret ; i++) {
-		request_queue_t *q = bdev_get_queue(conf->disks[i].rdev->bdev);
+		struct request_queue *q = bdev_get_queue(conf->disks[i].rdev->bdev);
 		ret |= bdi_congested(&q->backing_dev_info, bits);
 	}
 	return ret;
@@ -138,8 +138,6 @@ static linear_conf_t *linear_conf(mddev_t *mddev, int raid_disks)
 			GFP_KERNEL);
 	if (!conf)
 		return NULL;
-
-	mddev->private = conf;
 
 	cnt = 0;
 	conf->array_size = 0;
@@ -232,7 +230,7 @@ static linear_conf_t *linear_conf(mddev_t *mddev, int raid_disks)
 	 * First calculate the device offsets.
 	 */
 	conf->disks[0].offset = 0;
-	for (i=1; i<mddev->raid_disks; i++)
+	for (i = 1; i < raid_disks; i++)
 		conf->disks[i].offset =
 			conf->disks[i-1].offset +
 			conf->disks[i-1].size;
@@ -244,7 +242,7 @@ static linear_conf_t *linear_conf(mddev_t *mddev, int raid_disks)
 	     curr_offset < conf->array_size;
 	     curr_offset += conf->hash_spacing) {
 
-		while (i < mddev->raid_disks-1 &&
+		while (i < raid_disks-1 &&
 		       curr_offset >= conf->disks[i+1].offset)
 			i++;
 
@@ -299,8 +297,10 @@ static int linear_add(mddev_t *mddev, mdk_rdev_t *rdev)
 	 */
 	linear_conf_t *newconf;
 
-	if (rdev->raid_disk != mddev->raid_disks)
+	if (rdev->saved_raid_disk != mddev->raid_disks)
 		return -EINVAL;
+
+	rdev->raid_disk = rdev->saved_raid_disk;
 
 	newconf = linear_conf(mddev,mddev->raid_disks+1);
 
@@ -330,7 +330,7 @@ static int linear_stop (mddev_t *mddev)
 	return 0;
 }
 
-static int linear_make_request (request_queue_t *q, struct bio *bio)
+static int linear_make_request (struct request_queue *q, struct bio *bio)
 {
 	const int rw = bio_data_dir(bio);
 	mddev_t *mddev = q->queuedata;

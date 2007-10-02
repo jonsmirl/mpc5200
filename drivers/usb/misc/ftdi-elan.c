@@ -44,6 +44,7 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/kref.h>
+#include <linux/mutex.h>
 #include <asm/uaccess.h>
 #include <linux/usb.h>
 #include <linux/workqueue.h>
@@ -64,7 +65,7 @@ static struct workqueue_struct *respond_queue;
 * ftdi_module_lock exists to protect access to global variables
 *
 */
-static struct semaphore ftdi_module_lock;
+static struct mutex ftdi_module_lock;
 static int ftdi_instances = 0;
 static struct list_head ftdi_static_list;
 /*
@@ -73,6 +74,13 @@ static struct list_head ftdi_static_list;
 #include "usb_u132.h"
 #include <asm/io.h>
 #include "../core/hcd.h"
+
+	/* FIXME ohci.h is ONLY for internal use by the OHCI driver.
+	 * If you're going to try stuff like this, you need to split
+	 * out shareable stuff (register declarations?) into its own
+	 * file, maybe name <linux/usb/ohci.h>
+	 */
+
 #include "../host/ohci.h"
 /* Define these values to match your devices*/
 #define USB_FTDI_ELAN_VENDOR_ID 0x0403
@@ -192,10 +200,10 @@ static void ftdi_elan_delete(struct kref *kref)
         dev_warn(&ftdi->udev->dev, "FREEING ftdi=%p\n", ftdi);
         usb_put_dev(ftdi->udev);
         ftdi->disconnected += 1;
-        down(&ftdi_module_lock);
+        mutex_lock(&ftdi_module_lock);
         list_del_init(&ftdi->ftdi_list);
         ftdi_instances -= 1;
-        up(&ftdi_module_lock);
+        mutex_unlock(&ftdi_module_lock);
         kfree(ftdi->bulk_in_buffer);
         ftdi->bulk_in_buffer = NULL;
 }
@@ -739,10 +747,12 @@ static ssize_t ftdi_elan_read(struct file *file, char __user *buffer,
 static void ftdi_elan_write_bulk_callback(struct urb *urb)
 {
         struct usb_ftdi *ftdi = (struct usb_ftdi *)urb->context;
-        if (urb->status && !(urb->status == -ENOENT || urb->status ==
-                -ECONNRESET || urb->status == -ESHUTDOWN)) {
+	int status = urb->status;
+
+	if (status && !(status == -ENOENT || status == -ECONNRESET ||
+	    status == -ESHUTDOWN)) {
                 dev_err(&ftdi->udev->dev, "urb=%p write bulk status received: %"
-                        "d\n", urb, urb->status);
+                        "d\n", urb, status);
         }
         usb_buffer_free(urb->dev, urb->transfer_buffer_length,
                 urb->transfer_buffer, urb->transfer_dma);
@@ -2300,10 +2310,7 @@ static int ftdi_elan_checkingPCI(struct usb_ftdi *ftdi)
         offsetof(struct ohci_regs, member), 0, data);
 #define ftdi_write_pcimem(ftdi, member, data) ftdi_elan_write_pcimem(ftdi, \
         offsetof(struct ohci_regs, member), 0, data);
-#define OHCI_QUIRK_AMD756 0x01
-#define OHCI_QUIRK_SUPERIO 0x02
-#define OHCI_QUIRK_INITRESET 0x04
-#define OHCI_BIG_ENDIAN 0x08
+
 #define OHCI_CONTROL_INIT OHCI_CTRL_CBSR
 #define OHCI_INTR_INIT (OHCI_INTR_MIE | OHCI_INTR_UE | OHCI_INTR_RD | \
         OHCI_INTR_WDH)
@@ -2776,10 +2783,10 @@ static int ftdi_elan_probe(struct usb_interface *interface,
                 return -ENOMEM;
         }
         memset(ftdi, 0x00, sizeof(struct usb_ftdi));
-        down(&ftdi_module_lock);
+        mutex_lock(&ftdi_module_lock);
         list_add_tail(&ftdi->ftdi_list, &ftdi_static_list);
         ftdi->sequence_num = ++ftdi_instances;
-        up(&ftdi_module_lock);
+        mutex_unlock(&ftdi_module_lock);
         ftdi_elan_init_kref(ftdi);
         init_MUTEX(&ftdi->sw_lock);
         ftdi->udev = usb_get_dev(interface_to_usbdev(interface));
@@ -2905,7 +2912,7 @@ static int __init ftdi_elan_init(void)
         int result;
         printk(KERN_INFO "driver %s built at %s on %s\n", ftdi_elan_driver.name,
 	       __TIME__, __DATE__);
-        init_MUTEX(&ftdi_module_lock);
+        mutex_init(&ftdi_module_lock);
         INIT_LIST_HEAD(&ftdi_static_list);
         status_queue = create_singlethread_workqueue("ftdi-status-control");
 	if (!status_queue)

@@ -636,13 +636,18 @@ static void apb_init(struct pci_bus *sabre_bus)
 static void sabre_scan_bus(struct pci_pbm_info *pbm)
 {
 	static int once;
-	struct pci_bus *pbus;
 
 	/* The APB bridge speaks to the Sabre host PCI bridge
 	 * at 66Mhz, but the front side of APB runs at 33Mhz
 	 * for both segments.
+	 *
+	 * Hummingbird systems do not use APB, so they run
+	 * at 66MHZ.
 	 */
-	pbm->is_66mhz_capable = 0;
+	if (hummingbird_p)
+		pbm->is_66mhz_capable = 1;
+	else
+		pbm->is_66mhz_capable = 0;
 
 	/* This driver has not been verified to handle
 	 * multiple SABREs yet, so trap this.
@@ -656,29 +661,31 @@ static void sabre_scan_bus(struct pci_pbm_info *pbm)
 	}
 	once++;
 
-	pbus = pci_scan_one_pbm(pbm);
-	if (!pbus)
+	pbm->pci_bus = pci_scan_one_pbm(pbm);
+	if (!pbm->pci_bus)
 		return;
 
-	sabre_root_bus = pbus;
+	sabre_root_bus = pbm->pci_bus;
 
-	apb_init(pbus);
+	apb_init(pbm->pci_bus);
 
 	sabre_register_error_handlers(pbm);
 }
 
-static void sabre_iommu_init(struct pci_pbm_info *pbm,
-			     int tsbsize, unsigned long dvma_offset,
-			     u32 dma_mask)
+static int sabre_iommu_init(struct pci_pbm_info *pbm,
+			    int tsbsize, unsigned long dvma_offset,
+			    u32 dma_mask)
 {
 	struct iommu *iommu = pbm->iommu;
 	unsigned long i;
 	u64 control;
+	int err;
 
 	/* Register addresses. */
 	iommu->iommu_control  = pbm->controller_regs + SABRE_IOMMU_CONTROL;
 	iommu->iommu_tsbbase  = pbm->controller_regs + SABRE_IOMMU_TSBBASE;
 	iommu->iommu_flush    = pbm->controller_regs + SABRE_IOMMU_FLUSH;
+	iommu->iommu_tags     = iommu->iommu_flush + (0xa580UL - 0x0210UL);
 	iommu->write_complete_reg = pbm->controller_regs + SABRE_WRSYNC;
 	/* Sabre's IOMMU lacks ctx flushing. */
 	iommu->iommu_ctxflush = 0;
@@ -696,7 +703,10 @@ static void sabre_iommu_init(struct pci_pbm_info *pbm,
 	/* Leave diag mode enabled for full-flushing done
 	 * in pci_iommu.c
 	 */
-	pci_iommu_table_init(iommu, tsbsize * 1024 * 8, dvma_offset, dma_mask);
+	err = iommu_table_init(iommu, tsbsize * 1024 * 8,
+			       dvma_offset, dma_mask);
+	if (err)
+		return err;
 
 	sabre_write(pbm->controller_regs + SABRE_IOMMU_TSBBASE,
 		    __pa(iommu->page_table));
@@ -717,6 +727,8 @@ static void sabre_iommu_init(struct pci_pbm_info *pbm,
 		break;
 	}
 	sabre_write(pbm->controller_regs + SABRE_IOMMU_CONTROL, control);
+
+	return 0;
 }
 
 static void sabre_pbm_init(struct pci_controller_info *p, struct pci_pbm_info *pbm, struct device_node *dp)
@@ -762,23 +774,20 @@ void sabre_init(struct device_node *dp, char *model_name)
 			/* Of course, Sun has to encode things a thousand
 			 * different ways, inconsistently.
 			 */
-			cpu_find_by_instance(0, &dp, NULL);
-			if (!strcmp(dp->name, "SUNW,UltraSPARC-IIe"))
-				hummingbird_p = 1;
+			for_each_node_by_type(dp, "cpu") {
+				if (!strcmp(dp->name, "SUNW,UltraSPARC-IIe"))
+					hummingbird_p = 1;
+			}
 		}
 	}
 
 	p = kzalloc(sizeof(*p), GFP_ATOMIC);
-	if (!p) {
-		prom_printf("SABRE: Error, kmalloc(pci_controller_info) failed.\n");
-		prom_halt();
-	}
+	if (!p)
+		goto fatal_memory_error;
 
 	iommu = kzalloc(sizeof(*iommu), GFP_ATOMIC);
-	if (!iommu) {
-		prom_printf("SABRE: Error, kmalloc(pci_iommu) failed.\n");
-		prom_halt();
-	}
+	if (!iommu)
+		goto fatal_memory_error;
 	pbm = &p->pbm_A;
 	pbm->iommu = iommu;
 
@@ -841,10 +850,16 @@ void sabre_init(struct device_node *dp, char *model_name)
 			prom_halt();
 	}
 
-	sabre_iommu_init(pbm, tsbsize, vdma[0], dma_mask);
+	if (sabre_iommu_init(pbm, tsbsize, vdma[0], dma_mask))
+		goto fatal_memory_error;
 
 	/*
 	 * Look for APB underneath.
 	 */
 	sabre_pbm_init(p, pbm, dp);
+	return;
+
+fatal_memory_error:
+	prom_printf("SABRE: Fatal memory allocation error.\n");
+	prom_halt();
 }

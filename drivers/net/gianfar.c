@@ -130,6 +130,9 @@ static int gfar_remove(struct platform_device *pdev);
 static void free_skb_resources(struct gfar_private *priv);
 static void gfar_set_multi(struct net_device *dev);
 static void gfar_set_hash_for_addr(struct net_device *dev, u8 *addr);
+static void gfar_configure_serdes(struct net_device *dev);
+extern int gfar_local_mdio_write(struct gfar_mii *regs, int mii_id, int regnum, u16 value);
+extern int gfar_local_mdio_read(struct gfar_mii *regs, int mii_id, int regnum);
 #ifdef CONFIG_GFAR_NAPI
 static int gfar_poll(struct net_device *dev, int *budget);
 #endif
@@ -140,7 +143,6 @@ int gfar_clean_rx_ring(struct net_device *dev, int rx_work_limit);
 static int gfar_process_frame(struct net_device *dev, struct sk_buff *skb, int length);
 static void gfar_vlan_rx_register(struct net_device *netdev,
 		                struct vlan_group *grp);
-static void gfar_vlan_rx_kill_vid(struct net_device *netdev, uint16_t vid);
 void gfar_halt(struct net_device *dev);
 void gfar_start(struct net_device *dev);
 static void gfar_clear_exact_match(struct net_device *dev);
@@ -284,7 +286,6 @@ static int gfar_probe(struct platform_device *pdev)
 
 	if (priv->einfo->device_flags & FSL_GIANFAR_DEV_HAS_VLAN) {
 		dev->vlan_rx_register = gfar_vlan_rx_register;
-		dev->vlan_rx_kill_vid = gfar_vlan_rx_kill_vid;
 
 		dev->features |= NETIF_F_HW_VLAN_TX | NETIF_F_HW_VLAN_RX;
 
@@ -419,8 +420,18 @@ static phy_interface_t gfar_get_interface(struct net_device *dev)
 	if (ecntrl & ECNTRL_REDUCED_MODE) {
 		if (ecntrl & ECNTRL_REDUCED_MII_MODE)
 			return PHY_INTERFACE_MODE_RMII;
-		else
+		else {
+			phy_interface_t interface = priv->einfo->interface;
+
+			/*
+			 * This isn't autodetected right now, so it must
+			 * be set by the device tree or platform code.
+			 */
+			if (interface == PHY_INTERFACE_MODE_RGMII_ID)
+				return PHY_INTERFACE_MODE_RGMII_ID;
+
 			return PHY_INTERFACE_MODE_RGMII;
+		}
 	}
 
 	if (priv->einfo->device_flags & FSL_GIANFAR_DEV_HAS_GIGABIT)
@@ -453,6 +464,9 @@ static int init_phy(struct net_device *dev)
 
 	phydev = phy_connect(dev, phy_id, &adjust_link, 0, interface);
 
+	if (interface == PHY_INTERFACE_MODE_SGMII)
+		gfar_configure_serdes(dev);
+
 	if (IS_ERR(phydev)) {
 		printk(KERN_ERR "%s: Could not attach to PHY\n", dev->name);
 		return PTR_ERR(phydev);
@@ -465,6 +479,27 @@ static int init_phy(struct net_device *dev)
 	priv->phydev = phydev;
 
 	return 0;
+}
+
+static void gfar_configure_serdes(struct net_device *dev)
+{
+	struct gfar_private *priv = netdev_priv(dev);
+	struct gfar_mii __iomem *regs =
+			(void __iomem *)&priv->regs->gfar_mii_regs;
+
+	/* Initialise TBI i/f to communicate with serdes (lynx phy) */
+
+	/* Single clk mode, mii mode off(for aerdes communication) */
+	gfar_local_mdio_write(regs, TBIPA_VALUE, MII_TBICON, TBICON_CLK_SELECT);
+
+	/* Supported pause and full-duplex, no half-duplex */
+	gfar_local_mdio_write(regs, TBIPA_VALUE, MII_ADVERTISE,
+			ADVERTISE_1000XFULL | ADVERTISE_1000XPAUSE |
+			ADVERTISE_1000XPSE_ASYM);
+
+	/* ANEG enable, restart ANEG, full duplex mode, speed[1] set */
+	gfar_local_mdio_write(regs, TBIPA_VALUE, MII_BMCR, BMCR_ANENABLE |
+			BMCR_ANRESTART | BMCR_FULLDPLX | BMCR_SPEED1000);
 }
 
 static void init_registers(struct net_device *dev)
@@ -946,7 +981,7 @@ static inline void gfar_tx_checksum(struct sk_buff *skb, struct txfcb *fcb)
 		flags |= TXFCB_UDP;
 		fcb->phcs = udp_hdr(skb)->check;
 	} else
-		fcb->phcs = udp_hdr(skb)->check;
+		fcb->phcs = tcp_hdr(skb)->check;
 
 	/* l3os is the distance between the start of the
 	 * frame (skb->data) and the start of the IP hdr.
@@ -1132,20 +1167,6 @@ static void gfar_vlan_rx_register(struct net_device *dev,
 
 	spin_unlock_irqrestore(&priv->rxlock, flags);
 }
-
-
-static void gfar_vlan_rx_kill_vid(struct net_device *dev, uint16_t vid)
-{
-	struct gfar_private *priv = netdev_priv(dev);
-	unsigned long flags;
-
-	spin_lock_irqsave(&priv->rxlock, flags);
-
-	vlan_group_set_device(priv->vlgrp, vid, NULL);
-
-	spin_unlock_irqrestore(&priv->rxlock, flags);
-}
-
 
 static int gfar_change_mtu(struct net_device *dev, int new_mtu)
 {

@@ -10,6 +10,7 @@
 #ifndef __GLOCK_DOT_H__
 #define __GLOCK_DOT_H__
 
+#include <linux/sched.h>
 #include "incore.h"
 
 /* Flags for lock requests; used in gfs2_holder gh_flag field.
@@ -86,6 +87,7 @@ int gfs2_glock_nq(struct gfs2_holder *gh);
 int gfs2_glock_poll(struct gfs2_holder *gh);
 int gfs2_glock_wait(struct gfs2_holder *gh);
 void gfs2_glock_dq(struct gfs2_holder *gh);
+void gfs2_glock_dq_wait(struct gfs2_holder *gh);
 
 void gfs2_glock_dq_uninit(struct gfs2_holder *gh);
 int gfs2_glock_nq_num(struct gfs2_sbd *sdp,

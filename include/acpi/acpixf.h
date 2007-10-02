@@ -55,7 +55,7 @@ acpi_status
 acpi_initialize_tables(struct acpi_table_desc *initial_storage,
 		       u32 initial_table_count, u8 allow_resize);
 
-acpi_status acpi_initialize_subsystem(void);
+acpi_status __init acpi_initialize_subsystem(void);
 
 acpi_status acpi_enable_subsystem(u32 flags);
 
@@ -130,7 +130,7 @@ acpi_walk_namespace(acpi_object_type type,
 		    void *context, void **return_value);
 
 acpi_status
-acpi_get_devices(char *HID,
+acpi_get_devices(const char *HID,
 		 acpi_walk_callback user_function,
 		 void *context, void **return_value);
 

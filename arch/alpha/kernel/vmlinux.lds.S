@@ -3,7 +3,7 @@
 OUTPUT_FORMAT("elf64-alpha")
 OUTPUT_ARCH(alpha)
 ENTRY(__start)
-PHDRS { kernel PT_LOAD ; }
+PHDRS { kernel PT_LOAD; note PT_NOTE; }
 jiffies = jiffies_64;
 SECTIONS
 {
@@ -15,7 +15,8 @@ SECTIONS
 
   _text = .;					/* Text and read-only data */
   .text : { 
-	*(.text) 
+	*(.text.head)
+	TEXT_TEXT
 	SCHED_TEXT
 	LOCK_TEXT
 	*(.fixup)
@@ -27,6 +28,9 @@ SECTIONS
   __start___ex_table = .;			/* Exception table */
   __ex_table : { *(__ex_table) }
   __stop___ex_table = .;
+
+  NOTES :kernel :note
+  .dummy : { *(.dummy) } :kernel
 
   RODATA
 
@@ -69,10 +73,7 @@ SECTIONS
   . = ALIGN(8);
   SECURITY_INIT
 
-  . = ALIGN(8192);
-  __per_cpu_start = .;
-  .data.percpu : { *(.data.percpu) }
-  __per_cpu_end = .;
+  PERCPU(8192)
 
   . = ALIGN(2*8192);
   __init_end = .;
@@ -89,7 +90,7 @@ SECTIONS
 
   _data = .;
   .data : {					/* Data */
-	*(.data)
+	DATA_DATA
 	CONSTRUCTORS
   }
 

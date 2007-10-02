@@ -649,9 +649,11 @@ enum {
 #define PCIX_INT_VECTOR		(0x10100)
 #define PCIX_INT_MASK		(0x10104)
 
-#define PCIX_MN_WINDOW		(0x10200)
+#define PCIX_MN_WINDOW_F0	(0x10200)
+#define PCIX_MN_WINDOW(_f)	(PCIX_MN_WINDOW_F0 + (0x20 * (_f)))
 #define PCIX_MS_WINDOW		(0x10204)
-#define PCIX_SN_WINDOW		(0x10208)
+#define PCIX_SN_WINDOW_F0	(0x10208)
+#define PCIX_SN_WINDOW(_f)	(PCIX_SN_WINDOW_F0 + (0x20 * (_f)))
 #define PCIX_CRB_WINDOW		(0x10210)
 #define PCIX_CRB_WINDOW_F0	(0x10210)
 #define PCIX_CRB_WINDOW_F1	(0x10230)
@@ -686,5 +688,7 @@ enum {
 #define PCIE_TGT_SPLIT_CHICKEN	(0x12080)
 
 #define PCIE_MAX_MASTER_SPLIT	(0x14048)
+
+#define NETXEN_CAM_RAM_DMA_WATCHDOG_CTRL		(0x14)
 
 #endif				/* __NETXEN_NIC_HDR_H_ */

@@ -11,6 +11,7 @@
 #include <linux/pagemap.h>
 #include <linux/slab.h>
 #include <linux/kernel.h>
+#include <linux/sched.h>
 
 static const struct file_operations fuse_direct_io_file_operations;
 
@@ -609,7 +610,9 @@ static ssize_t fuse_direct_write(struct file *file, const char __user *buf,
 	ssize_t res;
 	/* Don't allow parallel writes to the same file */
 	mutex_lock(&inode->i_mutex);
-	res = fuse_direct_io(file, buf, count, ppos, 1);
+	res = generic_write_checks(file, ppos, &count, 0);
+	if (!res)
+		res = fuse_direct_io(file, buf, count, ppos, 1);
 	mutex_unlock(&inode->i_mutex);
 	return res;
 }
@@ -799,7 +802,7 @@ static const struct file_operations fuse_file_operations = {
 	.release	= fuse_release,
 	.fsync		= fuse_fsync,
 	.lock		= fuse_file_lock,
-	.sendfile	= generic_file_sendfile,
+	.splice_read	= generic_file_splice_read,
 };
 
 static const struct file_operations fuse_direct_io_file_operations = {
@@ -811,7 +814,7 @@ static const struct file_operations fuse_direct_io_file_operations = {
 	.release	= fuse_release,
 	.fsync		= fuse_fsync,
 	.lock		= fuse_file_lock,
-	/* no mmap and sendfile */
+	/* no mmap and splice_read */
 };
 
 static const struct address_space_operations fuse_file_aops  = {

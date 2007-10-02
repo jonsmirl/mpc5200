@@ -47,6 +47,7 @@
 #include <linux/types.h>
 #include <linux/delay.h>
 #include <linux/init.h>
+#include <linux/workqueue.h>
 
 #include <linux/netdevice.h>
 #include <linux/inetdevice.h>
@@ -235,6 +236,9 @@ static int ether1394_open(struct net_device *dev)
 /* This is called after an "ifdown" */
 static int ether1394_stop(struct net_device *dev)
 {
+	/* flush priv->wake */
+	flush_scheduled_work();
+
 	netif_stop_queue(dev);
 	return 0;
 }
@@ -531,6 +535,37 @@ static void ether1394_init_dev(struct net_device *dev)
 }
 
 /*
+ * Wake the queue up after commonly encountered transmit failure conditions are
+ * hopefully over.  Currently only tlabel exhaustion is accounted for.
+ */
+static void ether1394_wake_queue(struct work_struct *work)
+{
+	struct eth1394_priv *priv;
+	struct hpsb_packet *packet;
+
+	priv = container_of(work, struct eth1394_priv, wake);
+	packet = hpsb_alloc_packet(0);
+
+	/* This is really bad, but unjam the queue anyway. */
+	if (!packet)
+		goto out;
+
+	packet->host = priv->host;
+	packet->node_id = priv->wake_node;
+	/*
+	 * A transaction label is all we really want.  If we get one, it almost
+	 * always means we can get a lot more because the ieee1394 core recycled
+	 * a whole batch of tlabels, at last.
+	 */
+	if (hpsb_get_tlabel(packet) == 0)
+		hpsb_free_tlabel(packet);
+
+	hpsb_free_packet(packet);
+out:
+	netif_wake_queue(priv->wake_dev);
+}
+
+/*
  * This function is called every time a card is found. It is generally called
  * when the module is installed. This is where we add all of our ethernet
  * devices. One for each host.
@@ -564,16 +599,15 @@ static void ether1394_add_host(struct hpsb_host *host)
 	}
 
 	SET_MODULE_OWNER(dev);
-#if 0
-	/* FIXME - Is this the correct parent device anyway? */
 	SET_NETDEV_DEV(dev, &host->device);
-#endif
 
 	priv = netdev_priv(dev);
 	INIT_LIST_HEAD(&priv->ip_node_list);
 	spin_lock_init(&priv->lock);
 	priv->host = host;
 	priv->local_fifo = fifo_addr;
+	INIT_WORK(&priv->wake, ether1394_wake_queue);
+	priv->wake_dev = dev;
 
 	hi = hpsb_create_hostinfo(&eth1394_highlevel, host, sizeof(*hi));
 	if (hi == NULL) {
@@ -1390,22 +1424,17 @@ static int ether1394_prep_write_packet(struct hpsb_packet *p,
 				       u64 addr, void *data, int tx_len)
 {
 	p->node_id = node;
-	p->data = NULL;
+
+	if (hpsb_get_tlabel(p))
+		return -EAGAIN;
 
 	p->tcode = TCODE_WRITEB;
-	p->header[1] = host->node_id << 16 | addr >> 32;
-	p->header[2] = addr & 0xffffffff;
-
 	p->header_size = 16;
 	p->expect_response = 1;
-
-	if (hpsb_get_tlabel(p)) {
-		ETH1394_PRINT_G(KERN_ERR, "Out of tlabels\n");
-		return -1;
-	}
 	p->header[0] =
 		p->node_id << 16 | p->tlabel << 10 | 1 << 8 | TCODE_WRITEB << 4;
-
+	p->header[1] = host->node_id << 16 | addr >> 32;
+	p->header[2] = addr & 0xffffffff;
 	p->header[3] = tx_len << 16;
 	p->data_size = (tx_len + 3) & ~3;
 	p->data = data;
@@ -1451,7 +1480,7 @@ static int ether1394_send_packet(struct packet_task *ptask, unsigned int tx_len)
 
 	packet = ether1394_alloc_common_packet(priv->host);
 	if (!packet)
-		return -1;
+		return -ENOMEM;
 
 	if (ptask->tx_type == ETH1394_GASP) {
 		int length = tx_len + 2 * sizeof(quadlet_t);
@@ -1462,7 +1491,7 @@ static int ether1394_send_packet(struct packet_task *ptask, unsigned int tx_len)
 					       ptask->addr, ptask->skb->data,
 					       tx_len)) {
 		hpsb_free_packet(packet);
-		return -1;
+		return -EAGAIN;
 	}
 
 	ptask->packet = packet;
@@ -1471,7 +1500,7 @@ static int ether1394_send_packet(struct packet_task *ptask, unsigned int tx_len)
 
 	if (hpsb_send_packet(packet) < 0) {
 		ether1394_free_packet(packet);
-		return -1;
+		return -EIO;
 	}
 
 	return 0;
@@ -1514,13 +1543,18 @@ static void ether1394_complete_cb(void *__ptask)
 
 	ptask->outstanding_pkts--;
 	if (ptask->outstanding_pkts > 0 && !fail) {
-		int tx_len;
+		int tx_len, err;
 
 		/* Add the encapsulation header to the fragment */
 		tx_len = ether1394_encapsulate(ptask->skb, ptask->max_payload,
 					       &ptask->hdr);
-		if (ether1394_send_packet(ptask, tx_len))
+		err = ether1394_send_packet(ptask, tx_len);
+		if (err) {
+			if (err == -EAGAIN)
+				ETH1394_PRINT_G(KERN_ERR, "Out of tlabels\n");
+
 			ether1394_dg_complete(ptask, 1);
+		}
 	} else {
 		ether1394_dg_complete(ptask, fail);
 	}
@@ -1529,7 +1563,7 @@ static void ether1394_complete_cb(void *__ptask)
 /* Transmit a packet (called by kernel) */
 static int ether1394_tx(struct sk_buff *skb, struct net_device *dev)
 {
-	struct eth1394hdr *eth;
+	struct eth1394hdr hdr_buf;
 	struct eth1394_priv *priv = netdev_priv(dev);
 	__be16 proto;
 	unsigned long flags;
@@ -1559,16 +1593,17 @@ static int ether1394_tx(struct sk_buff *skb, struct net_device *dev)
 	if (!skb)
 		goto fail;
 
-	/* Get rid of the fake eth1394 header, but save a pointer */
-	eth = (struct eth1394hdr *)skb->data;
+	/* Get rid of the fake eth1394 header, but first make a copy.
+	 * We might need to rebuild the header on tx failure. */
+	memcpy(&hdr_buf, skb->data, sizeof(hdr_buf));
 	skb_pull(skb, ETH1394_HLEN);
 
-	proto = eth->h_proto;
+	proto = hdr_buf.h_proto;
 	dg_size = skb->len;
 
 	/* Set the transmission type for the packet.  ARP packets and IP
 	 * broadcast packets are sent via GASP. */
-	if (memcmp(eth->h_dest, dev->broadcast, ETH1394_ALEN) == 0 ||
+	if (memcmp(hdr_buf.h_dest, dev->broadcast, ETH1394_ALEN) == 0 ||
 	    proto == htons(ETH_P_ARP) ||
 	    (proto == htons(ETH_P_IP) &&
 	     IN_MULTICAST(ntohl(ip_hdr(skb)->daddr)))) {
@@ -1580,7 +1615,7 @@ static int ether1394_tx(struct sk_buff *skb, struct net_device *dev)
 		if (max_payload < dg_size + hdr_type_len[ETH1394_HDR_LF_UF])
 			priv->bc_dgl++;
 	} else {
-		__be64 guid = get_unaligned((u64 *)eth->h_dest);
+		__be64 guid = get_unaligned((u64 *)hdr_buf.h_dest);
 
 		node = eth1394_find_node_guid(&priv->ip_node_list,
 					      be64_to_cpu(guid));
@@ -1633,10 +1668,26 @@ static int ether1394_tx(struct sk_buff *skb, struct net_device *dev)
 	/* Add the encapsulation header to the fragment */
 	tx_len = ether1394_encapsulate(skb, max_payload, &ptask->hdr);
 	dev->trans_start = jiffies;
-	if (ether1394_send_packet(ptask, tx_len))
-		goto fail;
+	if (ether1394_send_packet(ptask, tx_len)) {
+		if (dest_node == (LOCAL_BUS | ALL_NODES))
+			goto fail;
 
-	netif_wake_queue(dev);
+		/* At this point we want to restore the packet.  When we return
+		 * here with NETDEV_TX_BUSY we will get another entrance in this
+		 * routine with the same skb and we need it to look the same.
+		 * So we pull 4 more bytes, then build the header again. */
+		skb_pull(skb, 4);
+		ether1394_header(skb, dev, ntohs(hdr_buf.h_proto),
+				 hdr_buf.h_dest, NULL, 0);
+
+		/* Most failures of ether1394_send_packet are recoverable. */
+		netif_stop_queue(dev);
+		priv->wake_node = dest_node;
+		schedule_work(&priv->wake);
+		kmem_cache_free(packet_task_cache, ptask);
+		return NETDEV_TX_BUSY;
+	}
+
 	return NETDEV_TX_OK;
 fail:
 	if (ptask)
@@ -1649,9 +1700,6 @@ fail:
 	priv->stats.tx_dropped++;
 	priv->stats.tx_errors++;
 	spin_unlock_irqrestore(&priv->lock, flags);
-
-	if (netif_queue_stopped(dev))
-		netif_wake_queue(dev);
 
 	/*
 	 * FIXME: According to a patch from 2003-02-26, "returning non-zero
@@ -1681,7 +1729,7 @@ static int __init ether1394_init_module(void)
 
 	packet_task_cache = kmem_cache_create("packet_task",
 					      sizeof(struct packet_task),
-					      0, 0, NULL, NULL);
+					      0, 0, NULL);
 	if (!packet_task_cache)
 		return -ENOMEM;
 

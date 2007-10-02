@@ -216,6 +216,11 @@ static inline void cpu_relax(void)
 	barrier();
 }
 
+static inline void psw_set_key(unsigned int key)
+{
+	asm volatile("spka 0(%0)" : : "d" (key));
+}
+
 /*
  * Set PSW to specified value.
  */
@@ -352,8 +357,8 @@ extern void (*s390_base_ext_handler_fn)(void);
 /*
  * CPU idle notifier chain.
  */
-#define CPU_IDLE	0
-#define CPU_NOT_IDLE	1
+#define S390_CPU_IDLE		0
+#define S390_CPU_NOT_IDLE	1
 
 struct notifier_block;
 int register_idle_notifier(struct notifier_block *nb);

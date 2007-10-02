@@ -94,7 +94,7 @@ static const char netxen_nic_gstrings_test[][ETH_GSTRING_LEN] = {
 
 static int netxen_nic_get_eeprom_len(struct net_device *dev)
 {
-	return FLASH_TOTAL_SIZE;
+	return NETXEN_FLASH_TOTAL_SIZE;
 }
 
 static void
@@ -470,7 +470,7 @@ netxen_nic_set_eeprom(struct net_device *dev, struct ethtool_eeprom *eeprom,
 		return 0;
 	}
 
-	if (offset == BOOTLD_START) {
+	if (offset == NETXEN_BOOTLD_START) {
 		ret = netxen_flash_erase_primary(adapter);
 		if (ret != FLASH_SUCCESS) {
 			printk(KERN_ERR "%s: Flash erase failed.\n", 
@@ -478,10 +478,10 @@ netxen_nic_set_eeprom(struct net_device *dev, struct ethtool_eeprom *eeprom,
 			return ret;
 		}
 
-		ret = netxen_rom_se(adapter, USER_START);
+		ret = netxen_rom_se(adapter, NETXEN_USER_START);
 		if (ret != FLASH_SUCCESS)
 			return ret;
-		ret = netxen_rom_se(adapter, FIXED_START);
+		ret = netxen_rom_se(adapter, NETXEN_FIXED_START);
 		if (ret != FLASH_SUCCESS)
 			return ret;
 
@@ -755,5 +755,4 @@ struct ethtool_ops netxen_nic_ethtool_ops = {
 	.get_strings = netxen_nic_get_strings,
 	.get_stats_count = netxen_nic_get_stats_count,
 	.get_ethtool_stats = netxen_nic_get_ethtool_stats,
-	.get_perm_addr = ethtool_op_get_perm_addr,
 };

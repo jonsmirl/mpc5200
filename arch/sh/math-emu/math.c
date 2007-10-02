@@ -148,7 +148,7 @@ fmac(struct sh_fpu_soft_struct *fregs, struct pt_regs *regs, int m, int n)
 	return 0;
 }
 
-// to process fmov's extention (odd n for DR access XD).
+// to process fmov's extension (odd n for DR access XD).
 #define FMOV_EXT(x) if(x&1) x+=16-1
 
 static int
@@ -507,6 +507,7 @@ static int ieee_fpe_handler(struct pt_regs *regs)
 	unsigned short insn = *(unsigned short *)regs->pc;
 	unsigned short finsn;
 	unsigned long nextpc;
+	siginfo_t info;
 	int nib[4] = {
 		(insn >> 12) & 0xf,
 		(insn >> 8) & 0xf,
@@ -559,9 +560,11 @@ static int ieee_fpe_handler(struct pt_regs *regs)
 				~(FPSCR_CAUSE_MASK | FPSCR_FLAG_MASK);
 			set_tsk_thread_flag(tsk, TIF_USEDFPU);
 		} else {
-			tsk->thread.trap_no = 11;
-			tsk->thread.error_code = 0;
-			force_sig(SIGFPE, tsk);
+			info.si_signo = SIGFPE;
+			info.si_errno = 0;
+			info.si_code = FPE_FLTINV;
+			info.si_addr = (void __user *)regs->pc;
+			force_sig_info(SIGFPE, &info, tsk);
 		}
 
 		regs->pc = nextpc;
@@ -576,14 +579,17 @@ asmlinkage void do_fpu_error(unsigned long r4, unsigned long r5,
 			     struct pt_regs regs)
 {
 	struct task_struct *tsk = current;
+	siginfo_t info;
 
 	if (ieee_fpe_handler (&regs))
 		return;
 
 	regs.pc += 2;
-	tsk->thread.trap_no = 11;
-	tsk->thread.error_code = 0;
-	force_sig(SIGFPE, tsk);
+	info.si_signo = SIGFPE;
+	info.si_errno = 0;
+	info.si_code = FPE_FLTINV;
+	info.si_addr = (void __user *)regs.pc;
+	force_sig_info(SIGFPE, &info, tsk);
 }
 
 /**

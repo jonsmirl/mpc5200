@@ -6,7 +6,7 @@
  * for more details.
  *
  * Copyright (C) 1996, 97, 98, 2000, 03, 04, 06 Ralf Baechle (ralf@linux-mips.org)
- * Copyright (C) 2006 Thomas Bogendoerfer (tsbogend@alpha.franken.de)
+ * Copyright (C) 2006,2007 Thomas Bogendoerfer (tsbogend@alpha.franken.de)
  */
 
 #include <linux/init.h>
@@ -14,7 +14,6 @@
 #include <linux/pci.h>
 #include <linux/serial_8250.h>
 
-#include <asm/mc146818-time.h>
 #include <asm/sni.h>
 #include <asm/time.h>
 #include <asm/i8259.h>
@@ -90,6 +89,26 @@ static struct platform_device pcimt_serial8250_device = {
 	},
 };
 
+static struct resource pcimt_cmos_rsrc[] = {
+        {
+                .start = 0x70,
+                .end   = 0x71,
+                .flags = IORESOURCE_IO
+        },
+        {
+                .start = 8,
+                .end   = 8,
+                .flags = IORESOURCE_IRQ
+        }
+};
+
+static struct platform_device pcimt_cmos_device = {
+        .name           = "rtc_cmos",
+        .num_resources  = ARRAY_SIZE(pcimt_cmos_rsrc),
+        .resource       = pcimt_cmos_rsrc
+};
+
+
 static struct resource sni_io_resource = {
 	.start	= 0x00000000UL,
 	.end	= 0x03bfffffUL,
@@ -131,6 +150,19 @@ static struct resource pcimt_io_resources[] = {
 	}
 };
 
+static struct resource pcimt_mem_resources[] = {
+	{
+		/*
+		 * this region should only be 4 bytes long,
+		 * but it's 16MB on all RM300C I've checked
+		 */
+		.start	= 0x1a000000,
+		.end	= 0x1affffff,
+		.name	= "PCI INT ACK",
+		.flags	= IORESOURCE_BUSY
+	}
+};
+
 static struct resource sni_mem_resource = {
 	.start	= 0x18000000UL,
 	.end	= 0x1fbfffffUL,
@@ -145,6 +177,9 @@ static void __init sni_pcimt_resource_init(void)
 	/* request I/O space for devices used on all i[345]86 PCs */
 	for (i = 0; i < ARRAY_SIZE(pcimt_io_resources); i++)
 		request_resource(&sni_io_resource, pcimt_io_resources + i);
+	/* request MEM space for devices used on all i[345]86 PCs */
+	for (i = 0; i < ARRAY_SIZE(pcimt_mem_resources); i++)
+		request_resource(&sni_mem_resource, pcimt_mem_resources + i);
 }
 
 extern struct pci_ops sni_pcimt_ops;
@@ -274,12 +309,10 @@ void __init sni_pcimt_irq_init(void)
 	change_c0_status(ST0_IM, IE_IRQ1|IE_IRQ3);
 }
 
-void sni_pcimt_init(void)
+void __init sni_pcimt_init(void)
 {
 	sni_pcimt_detect();
 	sni_pcimt_sc_init();
-	rtc_mips_get_time = mc146818_get_cmos_time;
-	rtc_mips_set_time = mc146818_set_rtc_mmss;
 	board_time_init = sni_cpu_time_init;
 	ioport_resource.end = sni_io_resource.end;
 #ifdef CONFIG_PCI
@@ -296,6 +329,7 @@ static int __init snirm_pcimt_setup_devinit(void)
 	case SNI_BRD_PCI_DESKTOP:
 	case SNI_BRD_PCI_MTOWER_CPLUS:
 	        platform_device_register(&pcimt_serial8250_device);
+	        platform_device_register(&pcimt_cmos_device);
 	        break;
 	}
 

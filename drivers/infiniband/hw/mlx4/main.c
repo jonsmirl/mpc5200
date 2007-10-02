@@ -120,12 +120,12 @@ static int mlx4_ib_query_device(struct ib_device *ibdev,
 	props->max_qp_init_rd_atom = dev->dev->caps.max_qp_init_rdma;
 	props->max_res_rd_atom	   = props->max_qp_rd_atom * props->max_qp;
 	props->max_srq		   = dev->dev->caps.num_srqs - dev->dev->caps.reserved_srqs;
-	props->max_srq_wr	   = dev->dev->caps.max_srq_wqes;
+	props->max_srq_wr	   = dev->dev->caps.max_srq_wqes - 1;
 	props->max_srq_sge	   = dev->dev->caps.max_srq_sge;
 	props->local_ca_ack_delay  = dev->dev->caps.local_ca_ack_delay;
 	props->atomic_cap	   = dev->dev->caps.flags & MLX4_DEV_CAP_FLAG_ATOMIC ?
 		IB_ATOMIC_HCA : IB_ATOMIC_NONE;
-	props->max_pkeys	   = dev->dev->caps.pkey_table_len;
+	props->max_pkeys	   = dev->dev->caps.pkey_table_len[1];
 	props->max_mcast_grp	   = dev->dev->caps.num_mgms + dev->dev->caps.num_amgms;
 	props->max_mcast_qp_attach = dev->dev->caps.num_qp_per_mgm;
 	props->max_total_mcast_qp_attach = props->max_mcast_qp_attach *
@@ -168,9 +168,9 @@ static int mlx4_ib_query_port(struct ib_device *ibdev, u8 port,
 	props->state		= out_mad->data[32] & 0xf;
 	props->phys_state	= out_mad->data[33] >> 4;
 	props->port_cap_flags	= be32_to_cpup((__be32 *) (out_mad->data + 20));
-	props->gid_tbl_len	= to_mdev(ibdev)->dev->caps.gid_table_len;
-	props->max_msg_sz	= 0x80000000;
-	props->pkey_tbl_len	= to_mdev(ibdev)->dev->caps.pkey_table_len;
+	props->gid_tbl_len	= to_mdev(ibdev)->dev->caps.gid_table_len[port];
+	props->max_msg_sz	= to_mdev(ibdev)->dev->caps.max_msg_sz;
+	props->pkey_tbl_len	= to_mdev(ibdev)->dev->caps.pkey_table_len[port];
 	props->bad_pkey_cntr	= be16_to_cpup((__be16 *) (out_mad->data + 46));
 	props->qkey_viol_cntr	= be16_to_cpup((__be16 *) (out_mad->data + 48));
 	props->active_width	= out_mad->data[31] & 0xf;
@@ -280,8 +280,14 @@ static int mlx4_SET_PORT(struct mlx4_ib_dev *dev, u8 port, int reset_qkey_viols,
 		return PTR_ERR(mailbox);
 
 	memset(mailbox->buf, 0, 256);
-	*(u8 *) mailbox->buf	     = !!reset_qkey_viols << 6;
-	((__be32 *) mailbox->buf)[2] = cpu_to_be32(cap_mask);
+
+	if (dev->dev->flags & MLX4_FLAG_OLD_PORT_CMDS) {
+		*(u8 *) mailbox->buf	     = !!reset_qkey_viols << 6;
+		((__be32 *) mailbox->buf)[2] = cpu_to_be32(cap_mask);
+	} else {
+		((u8 *) mailbox->buf)[3]     = !!reset_qkey_viols;
+		((__be32 *) mailbox->buf)[1] = cpu_to_be32(cap_mask);
+	}
 
 	err = mlx4_cmd(dev->dev, mailbox->dma, port, 0, MLX4_CMD_SET_PORT,
 		       MLX4_CMD_TIME_CLASS_B);
@@ -517,11 +523,13 @@ static void *mlx4_ib_add(struct mlx4_dev *dev)
 		(1ull << IB_USER_VERBS_CMD_DESTROY_CQ)		|
 		(1ull << IB_USER_VERBS_CMD_CREATE_QP)		|
 		(1ull << IB_USER_VERBS_CMD_MODIFY_QP)		|
+		(1ull << IB_USER_VERBS_CMD_QUERY_QP)		|
 		(1ull << IB_USER_VERBS_CMD_DESTROY_QP)		|
 		(1ull << IB_USER_VERBS_CMD_ATTACH_MCAST)	|
 		(1ull << IB_USER_VERBS_CMD_DETACH_MCAST)	|
 		(1ull << IB_USER_VERBS_CMD_CREATE_SRQ)		|
 		(1ull << IB_USER_VERBS_CMD_MODIFY_SRQ)		|
+		(1ull << IB_USER_VERBS_CMD_QUERY_SRQ)		|
 		(1ull << IB_USER_VERBS_CMD_DESTROY_SRQ);
 
 	ibdev->ib_dev.query_device	= mlx4_ib_query_device;
@@ -540,10 +548,12 @@ static void *mlx4_ib_add(struct mlx4_dev *dev)
 	ibdev->ib_dev.destroy_ah	= mlx4_ib_destroy_ah;
 	ibdev->ib_dev.create_srq	= mlx4_ib_create_srq;
 	ibdev->ib_dev.modify_srq	= mlx4_ib_modify_srq;
+	ibdev->ib_dev.query_srq		= mlx4_ib_query_srq;
 	ibdev->ib_dev.destroy_srq	= mlx4_ib_destroy_srq;
 	ibdev->ib_dev.post_srq_recv	= mlx4_ib_post_srq_recv;
 	ibdev->ib_dev.create_qp		= mlx4_ib_create_qp;
 	ibdev->ib_dev.modify_qp		= mlx4_ib_modify_qp;
+	ibdev->ib_dev.query_qp		= mlx4_ib_query_qp;
 	ibdev->ib_dev.destroy_qp	= mlx4_ib_destroy_qp;
 	ibdev->ib_dev.post_send		= mlx4_ib_post_send;
 	ibdev->ib_dev.post_recv		= mlx4_ib_post_recv;

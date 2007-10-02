@@ -299,7 +299,7 @@ EXPORT(sysn32_call_table)
 	PTR	sys_ni_syscall			/* res. for afs_syscall */
 	PTR	sys_ni_syscall			/* res. for security */
 	PTR	sys_gettid
-	PTR	sys32_readahead
+	PTR	sys_readahead
 	PTR	sys_setxattr			/* 6180 */
 	PTR	sys_lsetxattr
 	PTR	sys_fsetxattr
@@ -375,7 +375,7 @@ EXPORT(sysn32_call_table)
 	PTR	sys_mkdirat
 	PTR	sys_mknodat
 	PTR	sys_fchownat
-	PTR	sys_futimesat			/* 6255 */
+	PTR	compat_sys_futimesat		/* 6255 */
 	PTR	sys_newfstatat
 	PTR	sys_unlinkat
 	PTR	sys_renameat
@@ -399,4 +399,9 @@ EXPORT(sysn32_call_table)
 	PTR	compat_sys_epoll_pwait
 	PTR	sys_ioprio_set
 	PTR	sys_ioprio_get
+	PTR	compat_sys_utimensat
+	PTR	compat_sys_signalfd		/* 5280 */
+	PTR	compat_sys_timerfd
+	PTR	sys_eventfd
+	PTR	sys_fallocate
 	.size	sysn32_call_table,.-sysn32_call_table

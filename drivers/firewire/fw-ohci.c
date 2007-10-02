@@ -224,6 +224,7 @@ ohci_update_phy_reg(struct fw_card *card, int addr,
 	u32 val, old;
 
 	reg_write(ohci, OHCI1394_PhyControl, OHCI1394_PhyControl_Read(addr));
+	flush_writes(ohci);
 	msleep(2);
 	val = reg_read(ohci, OHCI1394_PhyControl);
 	if ((val & OHCI1394_PhyControl_ReadDone) == 0) {
@@ -268,7 +269,7 @@ static int ar_context_add_page(struct ar_context *ctx)
 
 	dma_sync_single_for_device(dev, ab_bus, PAGE_SIZE, DMA_BIDIRECTIONAL);
 
-	ctx->last_buffer->descriptor.branch_address = ab_bus | 1;
+	ctx->last_buffer->descriptor.branch_address = cpu_to_le32(ab_bus | 1);
 	ctx->last_buffer->next = ab;
 	ctx->last_buffer = ab;
 
@@ -373,8 +374,8 @@ static void ar_context_tasklet(unsigned long data)
 
 		offset = offsetof(struct ar_buffer, data);
 		dma_unmap_single(ohci->card.device,
-				 ab->descriptor.data_address - offset,
-				 PAGE_SIZE, DMA_BIDIRECTIONAL);
+			le32_to_cpu(ab->descriptor.data_address) - offset,
+			PAGE_SIZE, DMA_BIDIRECTIONAL);
 
 		buffer = ab;
 		ab = ab->next;
@@ -417,11 +418,21 @@ ar_context_init(struct ar_context *ctx, struct fw_ohci *ohci, u32 regs)
 	ctx->current_buffer = ab.next;
 	ctx->pointer = ctx->current_buffer->data;
 
-	reg_write(ctx->ohci, COMMAND_PTR(ctx->regs), ab.descriptor.branch_address);
+	return 0;
+}
+
+static void ar_context_run(struct ar_context *ctx)
+{
+	struct ar_buffer *ab = ctx->current_buffer;
+	dma_addr_t ab_bus;
+	size_t offset;
+
+	offset = offsetof(struct ar_buffer, data);
+	ab_bus = le32_to_cpu(ab->descriptor.data_address) - offset;
+
+	reg_write(ctx->ohci, COMMAND_PTR(ctx->regs), ab_bus | 1);
 	reg_write(ctx->ohci, CONTROL_SET(ctx->regs), CONTEXT_RUN);
 	flush_writes(ctx->ohci);
-
-	return 0;
 }
 
 static void context_tasklet(unsigned long data)
@@ -576,7 +587,7 @@ static void context_stop(struct context *ctx)
 			break;
 
 		fw_notify("context_stop: still active (0x%08x)\n", reg);
-		msleep(1);
+		mdelay(1);
 	}
 }
 
@@ -896,6 +907,8 @@ static void bus_reset_tasklet(unsigned long data)
 	int self_id_count, i, j, reg;
 	int generation, new_generation;
 	unsigned long flags;
+	void *free_rom = NULL;
+	dma_addr_t free_rom_bus = 0;
 
 	reg = reg_read(ohci, OHCI1394_NodeID);
 	if (!(reg & OHCI1394_NodeID_idValid)) {
@@ -959,8 +972,8 @@ static void bus_reset_tasklet(unsigned long data)
 	 */
 
 	if (ohci->next_config_rom != NULL) {
-		dma_free_coherent(ohci->card.device, CONFIG_ROM_SIZE,
-				  ohci->config_rom, ohci->config_rom_bus);
+		free_rom     = ohci->config_rom;
+		free_rom_bus = ohci->config_rom_bus;
 		ohci->config_rom      = ohci->next_config_rom;
 		ohci->config_rom_bus  = ohci->next_config_rom_bus;
 		ohci->next_config_rom = NULL;
@@ -979,6 +992,10 @@ static void bus_reset_tasklet(unsigned long data)
 
 	spin_unlock_irqrestore(&ohci->lock, flags);
 
+	if (free_rom)
+		dma_free_coherent(ohci->card.device, CONFIG_ROM_SIZE,
+				  free_rom, free_rom_bus);
+
 	fw_core_handle_bus_reset(&ohci->card, ohci->node_id, generation,
 				 self_id_count, ohci->self_id_buffer);
 }
@@ -991,7 +1008,7 @@ static irqreturn_t irq_handler(int irq, void *data)
 
 	event = reg_read(ohci, OHCI1394_IntEventClear);
 
-	if (!event)
+	if (!event || !~event)
 		return IRQ_NONE;
 
 	reg_write(ohci, OHCI1394_IntEventClear, event);
@@ -1038,10 +1055,77 @@ static irqreturn_t irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static int software_reset(struct fw_ohci *ohci)
+{
+	int i;
+
+	reg_write(ohci, OHCI1394_HCControlSet, OHCI1394_HCControl_softReset);
+
+	for (i = 0; i < OHCI_LOOP_COUNT; i++) {
+		if ((reg_read(ohci, OHCI1394_HCControlSet) &
+		     OHCI1394_HCControl_softReset) == 0)
+			return 0;
+		msleep(1);
+	}
+
+	return -EBUSY;
+}
+
 static int ohci_enable(struct fw_card *card, u32 *config_rom, size_t length)
 {
 	struct fw_ohci *ohci = fw_ohci(card);
 	struct pci_dev *dev = to_pci_dev(card->device);
+
+	if (software_reset(ohci)) {
+		fw_error("Failed to reset ohci card.\n");
+		return -EBUSY;
+	}
+
+	/*
+	 * Now enable LPS, which we need in order to start accessing
+	 * most of the registers.  In fact, on some cards (ALI M5251),
+	 * accessing registers in the SClk domain without LPS enabled
+	 * will lock up the machine.  Wait 50msec to make sure we have
+	 * full link enabled.
+	 */
+	reg_write(ohci, OHCI1394_HCControlSet,
+		  OHCI1394_HCControl_LPS |
+		  OHCI1394_HCControl_postedWriteEnable);
+	flush_writes(ohci);
+	msleep(50);
+
+	reg_write(ohci, OHCI1394_HCControlClear,
+		  OHCI1394_HCControl_noByteSwapData);
+
+	reg_write(ohci, OHCI1394_LinkControlSet,
+		  OHCI1394_LinkControl_rcvSelfID |
+		  OHCI1394_LinkControl_cycleTimerEnable |
+		  OHCI1394_LinkControl_cycleMaster);
+
+	reg_write(ohci, OHCI1394_ATRetries,
+		  OHCI1394_MAX_AT_REQ_RETRIES |
+		  (OHCI1394_MAX_AT_RESP_RETRIES << 4) |
+		  (OHCI1394_MAX_PHYS_RESP_RETRIES << 8));
+
+	ar_context_run(&ohci->ar_request_ctx);
+	ar_context_run(&ohci->ar_response_ctx);
+
+	reg_write(ohci, OHCI1394_SelfIDBuffer, ohci->self_id_bus);
+	reg_write(ohci, OHCI1394_PhyUpperBound, 0x00010000);
+	reg_write(ohci, OHCI1394_IntEventClear, ~0);
+	reg_write(ohci, OHCI1394_IntMaskClear, ~0);
+	reg_write(ohci, OHCI1394_IntMaskSet,
+		  OHCI1394_selfIDComplete |
+		  OHCI1394_RQPkt | OHCI1394_RSPkt |
+		  OHCI1394_reqTxComplete | OHCI1394_respTxComplete |
+		  OHCI1394_isochRx | OHCI1394_isochTx |
+		  OHCI1394_masterIntEnable |
+		  OHCI1394_cycle64Seconds);
+
+	/* Activate link_on bit and contender bit in our self ID packets.*/
+	if (ohci_update_phy_reg(card, 4, 0,
+				PHY_LINK_ACTIVE | PHY_CONTENDER) < 0)
+		return -EIO;
 
 	/*
 	 * When the link is not yet enabled, the atomic config rom
@@ -1108,7 +1192,7 @@ ohci_set_config_rom(struct fw_card *card, u32 *config_rom, size_t length)
 {
 	struct fw_ohci *ohci;
 	unsigned long flags;
-	int retval = 0;
+	int retval = -EBUSY;
 	__be32 *next_config_rom;
 	dma_addr_t next_config_rom_bus;
 
@@ -1162,10 +1246,7 @@ ohci_set_config_rom(struct fw_card *card, u32 *config_rom, size_t length)
 
 		reg_write(ohci, OHCI1394_ConfigROMmap,
 			  ohci->next_config_rom_bus);
-	} else {
-		dma_free_coherent(ohci->card.device, CONFIG_ROM_SIZE,
-				  next_config_rom, next_config_rom_bus);
-		retval = -EBUSY;
+		retval = 0;
 	}
 
 	spin_unlock_irqrestore(&ohci->lock, flags);
@@ -1179,6 +1260,9 @@ ohci_set_config_rom(struct fw_card *card, u32 *config_rom, size_t length)
 	 */
 	if (retval == 0)
 		fw_core_initiate_bus_reset(&ohci->card, 1);
+	else
+		dma_free_coherent(ohci->card.device, CONFIG_ROM_SIZE,
+				  next_config_rom, next_config_rom_bus);
 
 	return retval;
 }
@@ -1700,22 +1784,6 @@ static const struct fw_card_driver ohci_driver = {
 	.stop_iso		= ohci_stop_iso,
 };
 
-static int software_reset(struct fw_ohci *ohci)
-{
-	int i;
-
-	reg_write(ohci, OHCI1394_HCControlSet, OHCI1394_HCControl_softReset);
-
-	for (i = 0; i < OHCI_LOOP_COUNT; i++) {
-		if ((reg_read(ohci, OHCI1394_HCControlSet) &
-		     OHCI1394_HCControl_softReset) == 0)
-			return 0;
-		msleep(1);
-	}
-
-	return -EBUSY;
-}
-
 static int __devinit
 pci_probe(struct pci_dev *dev, const struct pci_device_id *ent)
 {
@@ -1761,33 +1829,6 @@ pci_probe(struct pci_dev *dev, const struct pci_device_id *ent)
 		goto fail_iomem;
 	}
 
-	if (software_reset(ohci)) {
-		fw_error("Failed to reset ohci card.\n");
-		err = -EBUSY;
-		goto fail_registers;
-	}
-
-	/*
-	 * Now enable LPS, which we need in order to start accessing
-	 * most of the registers.  In fact, on some cards (ALI M5251),
-	 * accessing registers in the SClk domain without LPS enabled
-	 * will lock up the machine.  Wait 50msec to make sure we have
-	 * full link enabled.
-	 */
-	reg_write(ohci, OHCI1394_HCControlSet,
-		  OHCI1394_HCControl_LPS |
-		  OHCI1394_HCControl_postedWriteEnable);
-	flush_writes(ohci);
-	msleep(50);
-
-	reg_write(ohci, OHCI1394_HCControlClear,
-		  OHCI1394_HCControl_noByteSwapData);
-
-	reg_write(ohci, OHCI1394_LinkControlSet,
-		  OHCI1394_LinkControl_rcvSelfID |
-		  OHCI1394_LinkControl_cycleTimerEnable |
-		  OHCI1394_LinkControl_cycleMaster);
-
 	ar_context_init(&ohci->ar_request_ctx, ohci,
 			OHCI1394_AsReqRcvContextControlSet);
 
@@ -1799,11 +1840,6 @@ pci_probe(struct pci_dev *dev, const struct pci_device_id *ent)
 
 	context_init(&ohci->at_response_ctx, ohci, AT_BUFFER_SIZE,
 		     OHCI1394_AsRspTrContextControlSet, handle_at_packet);
-
-	reg_write(ohci, OHCI1394_ATRetries,
-		  OHCI1394_MAX_AT_REQ_RETRIES |
-		  (OHCI1394_MAX_AT_RESP_RETRIES << 4) |
-		  (OHCI1394_MAX_PHYS_RESP_RETRIES << 8));
 
 	reg_write(ohci, OHCI1394_IsoRecvIntMaskSet, ~0);
 	ohci->it_context_mask = reg_read(ohci, OHCI1394_IsoRecvIntMaskSet);
@@ -1833,18 +1869,6 @@ pci_probe(struct pci_dev *dev, const struct pci_device_id *ent)
 		err = -ENOMEM;
 		goto fail_registers;
 	}
-
-	reg_write(ohci, OHCI1394_SelfIDBuffer, ohci->self_id_bus);
-	reg_write(ohci, OHCI1394_PhyUpperBound, 0x00010000);
-	reg_write(ohci, OHCI1394_IntEventClear, ~0);
-	reg_write(ohci, OHCI1394_IntMaskClear, ~0);
-	reg_write(ohci, OHCI1394_IntMaskSet,
-		  OHCI1394_selfIDComplete |
-		  OHCI1394_RQPkt | OHCI1394_RSPkt |
-		  OHCI1394_reqTxComplete | OHCI1394_respTxComplete |
-		  OHCI1394_isochRx | OHCI1394_isochTx |
-		  OHCI1394_masterIntEnable |
-		  OHCI1394_cycle64Seconds);
 
 	bus_options = reg_read(ohci, OHCI1394_BusOptions);
 	max_receive = (bus_options >> 12) & 0xf;
@@ -1907,6 +1931,43 @@ static void pci_remove(struct pci_dev *dev)
 	fw_notify("Removed fw-ohci device.\n");
 }
 
+#ifdef CONFIG_PM
+static int pci_suspend(struct pci_dev *pdev, pm_message_t state)
+{
+	struct fw_ohci *ohci = pci_get_drvdata(pdev);
+	int err;
+
+	software_reset(ohci);
+	free_irq(pdev->irq, ohci);
+	err = pci_save_state(pdev);
+	if (err) {
+		fw_error("pci_save_state failed\n");
+		return err;
+	}
+	err = pci_set_power_state(pdev, pci_choose_state(pdev, state));
+	if (err)
+		fw_error("pci_set_power_state failed with %d\n", err);
+
+	return 0;
+}
+
+static int pci_resume(struct pci_dev *pdev)
+{
+	struct fw_ohci *ohci = pci_get_drvdata(pdev);
+	int err;
+
+	pci_set_power_state(pdev, PCI_D0);
+	pci_restore_state(pdev);
+	err = pci_enable_device(pdev);
+	if (err) {
+		fw_error("pci_enable_device failed\n");
+		return err;
+	}
+
+	return ohci_enable(&ohci->card, ohci->config_rom, CONFIG_ROM_SIZE);
+}
+#endif
+
 static struct pci_device_id pci_table[] = {
 	{ PCI_DEVICE_CLASS(PCI_CLASS_SERIAL_FIREWIRE_OHCI, ~0) },
 	{ }
@@ -1919,6 +1980,10 @@ static struct pci_driver fw_ohci_pci_driver = {
 	.id_table	= pci_table,
 	.probe		= pci_probe,
 	.remove		= pci_remove,
+#ifdef CONFIG_PM
+	.resume		= pci_resume,
+	.suspend	= pci_suspend,
+#endif
 };
 
 MODULE_AUTHOR("Kristian Hoegsberg <krh@bitplanet.net>");

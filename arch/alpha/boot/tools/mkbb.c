@@ -11,6 +11,7 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 /* Minimal definition of disklabel, so we don't have to include
@@ -81,7 +82,7 @@ typedef union __bootblock {
 #define	bootblock_label		__u1.__label
 #define bootblock_checksum	__u2.__checksum
 
-main(int argc, char ** argv)
+int main(int argc, char ** argv)
 {
     bootblock		bootblock_from_disk;
     bootblock		bootloader_image;
@@ -114,7 +115,7 @@ main(int argc, char ** argv)
     nread = read(fd, &bootloader_image, sizeof(bootblock));
     if(nread != sizeof(bootblock)) {
 	perror("lxboot read");
-	fprintf(stderr, "expected %d, got %d\n", sizeof(bootblock), nread);
+	fprintf(stderr, "expected %zd, got %d\n", sizeof(bootblock), nread);
 	exit(0);
     }
 
@@ -122,7 +123,7 @@ main(int argc, char ** argv)
     nread = read(dev, &bootblock_from_disk, sizeof(bootblock));
     if(nread != sizeof(bootblock)) {
 	perror("bootblock read");
-	fprintf(stderr, "expected %d, got %d\n", sizeof(bootblock), nread);
+	fprintf(stderr, "expected %zd, got %d\n", sizeof(bootblock), nread);
 	exit(0);
     }
 

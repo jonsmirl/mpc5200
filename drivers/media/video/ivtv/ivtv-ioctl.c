@@ -285,6 +285,10 @@ static int ivtv_video_command(struct ivtv *itv, struct ivtv_open_id *id,
 
 		if (ivtv_set_output_mode(itv, OUT_MPG) != OUT_MPG)
 			return -EBUSY;
+		if (test_and_clear_bit(IVTV_F_I_DEC_PAUSED, &itv->i_flags)) {
+			/* forces ivtv_set_speed to be called */
+			itv->speed = 0;
+		}
 		return ivtv_start_decoding(id, vc->play.speed);
 	}
 
@@ -309,6 +313,7 @@ static int ivtv_video_command(struct ivtv *itv, struct ivtv_open_id *id,
 		if (atomic_read(&itv->decoding) > 0) {
 			ivtv_vapi(itv, CX2341X_DEC_PAUSE_PLAYBACK, 1,
 				(vc->flags & VIDEO_CMD_FREEZE_TO_BLACK) ? 1 : 0);
+			set_bit(IVTV_F_I_DEC_PAUSED, &itv->i_flags);
 		}
 		break;
 
@@ -317,8 +322,10 @@ static int ivtv_video_command(struct ivtv *itv, struct ivtv_open_id *id,
 		if (try) break;
 		if (itv->output_mode != OUT_MPG)
 			return -EBUSY;
-		if (atomic_read(&itv->decoding) > 0) {
-			ivtv_vapi(itv, CX2341X_DEC_START_PLAYBACK, 2, 0, 0);
+		if (test_and_clear_bit(IVTV_F_I_DEC_PAUSED, &itv->i_flags)) {
+			int speed = itv->speed;
+			itv->speed = 0;
+			return ivtv_start_decoding(id, speed);
 		}
 		break;
 
@@ -362,8 +369,6 @@ static int ivtv_get_fmt(struct ivtv *itv, int streamtype, struct v4l2_format *fm
 	case V4L2_BUF_TYPE_VIDEO_OUTPUT:
 		if (!(itv->v4l2_cap & V4L2_CAP_VIDEO_OUTPUT))
 			return -EINVAL;
-		fmt->fmt.pix.left = itv->main_rect.left;
-		fmt->fmt.pix.top = itv->main_rect.top;
 		fmt->fmt.pix.width = itv->main_rect.width;
 		fmt->fmt.pix.height = itv->main_rect.height;
 		fmt->fmt.pix.colorspace = V4L2_COLORSPACE_SMPTE170M;
@@ -402,8 +407,6 @@ static int ivtv_get_fmt(struct ivtv *itv, int streamtype, struct v4l2_format *fm
 		break;
 
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
-		fmt->fmt.pix.left = 0;
-		fmt->fmt.pix.top = 0;
 		fmt->fmt.pix.width = itv->params.width;
 		fmt->fmt.pix.height = itv->params.height;
 		fmt->fmt.pix.colorspace = V4L2_COLORSPACE_SMPTE170M;
@@ -498,15 +501,13 @@ static int ivtv_try_or_set_fmt(struct ivtv *itv, int streamtype,
 		if (!(itv->v4l2_cap & V4L2_CAP_VIDEO_OUTPUT))
 			return -EINVAL;
 		field = fmt->fmt.pix.field;
-		r.top = fmt->fmt.pix.top;
-		r.left = fmt->fmt.pix.left;
+		r.top = 0;
+		r.left = 0;
 		r.width = fmt->fmt.pix.width;
 		r.height = fmt->fmt.pix.height;
 		ivtv_get_fmt(itv, streamtype, fmt);
 		if (itv->output_mode != OUT_UDMA_YUV) {
 			/* TODO: would setting the rect also be valid for this mode? */
-			fmt->fmt.pix.top = r.top;
-			fmt->fmt.pix.left = r.left;
 			fmt->fmt.pix.width = r.width;
 			fmt->fmt.pix.height = r.height;
 		}
@@ -538,11 +539,6 @@ static int ivtv_try_or_set_fmt(struct ivtv *itv, int streamtype,
 				itv->yuv_info.yuv_forced_update = 1;
 				return 0;
 			}
-			if (!ivtv_vapi(itv, CX2341X_OSD_SET_FRAMEBUFFER_WINDOW, 4,
-				 r.width, r.height, r.left, r.top))
-				itv->main_rect = r;
-			else
-				return -EINVAL;
 		}
 		return 0;
 	}
@@ -805,9 +801,39 @@ int ivtv_v4l2_ioctls(struct ivtv *itv, struct file *filp, unsigned int cmd, void
 		return ivtv_get_fmt(itv, id->type, fmt);
 	}
 
+	case VIDIOC_CROPCAP: {
+		struct v4l2_cropcap *cropcap = arg;
+
+		if (cropcap->type != V4L2_BUF_TYPE_VIDEO_CAPTURE &&
+		    cropcap->type != V4L2_BUF_TYPE_VIDEO_OUTPUT)
+			return -EINVAL;
+		cropcap->bounds.top = cropcap->bounds.left = 0;
+		cropcap->bounds.width = 720;
+		if (cropcap->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+			cropcap->bounds.height = itv->is_50hz ? 576 : 480;
+			cropcap->pixelaspect.numerator = itv->is_50hz ? 59 : 10;
+			cropcap->pixelaspect.denominator = itv->is_50hz ? 54 : 11;
+		} else {
+			cropcap->bounds.height = itv->is_out_50hz ? 576 : 480;
+			cropcap->pixelaspect.numerator = itv->is_out_50hz ? 59 : 10;
+			cropcap->pixelaspect.denominator = itv->is_out_50hz ? 54 : 11;
+		}
+		cropcap->defrect = cropcap->bounds;
+		return 0;
+	}
+
 	case VIDIOC_S_CROP: {
 		struct v4l2_crop *crop = arg;
 
+		if (crop->type == V4L2_BUF_TYPE_VIDEO_OUTPUT &&
+		    (itv->v4l2_cap & V4L2_CAP_VIDEO_OUTPUT)) {
+			if (!ivtv_vapi(itv, CX2341X_OSD_SET_FRAMEBUFFER_WINDOW, 4,
+				 crop->c.width, crop->c.height, crop->c.left, crop->c.top)) {
+				itv->main_rect = crop->c;
+				return 0;
+			}
+			return -EINVAL;
+		}
 		if (crop->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 			return -EINVAL;
 		return itv->video_dec_func(itv, VIDIOC_S_CROP, arg);
@@ -816,6 +842,11 @@ int ivtv_v4l2_ioctls(struct ivtv *itv, struct file *filp, unsigned int cmd, void
 	case VIDIOC_G_CROP: {
 		struct v4l2_crop *crop = arg;
 
+		if (crop->type == V4L2_BUF_TYPE_VIDEO_OUTPUT &&
+		    (itv->v4l2_cap & V4L2_CAP_VIDEO_OUTPUT)) {
+			crop->c = itv->main_rect;
+			return 0;
+		}
 		if (crop->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 			return -EINVAL;
 		return itv->video_dec_func(itv, VIDIOC_G_CROP, arg);
@@ -983,7 +1014,7 @@ int ivtv_v4l2_ioctls(struct ivtv *itv, struct file *filp, unsigned int cmd, void
 		if (itv->hw_flags & IVTV_HW_CX25840) {
 			itv->vbi.sliced_decoder_line_size = itv->is_60hz ? 272 : 284;
 		}
-		IVTV_DEBUG_INFO("Switching standard to %llx.\n", itv->std);
+		IVTV_DEBUG_INFO("Switching standard to %llx.\n", (unsigned long long)itv->std);
 
 		/* Tuner */
 		ivtv_call_i2c_clients(itv, VIDIOC_S_STD, &itv->std);
@@ -1068,14 +1099,21 @@ int ivtv_v4l2_ioctls(struct ivtv *itv, struct file *filp, unsigned int cmd, void
 
 	case VIDIOC_G_ENC_INDEX: {
 		struct v4l2_enc_idx *idx = arg;
+		struct v4l2_enc_idx_entry *e = idx->entry;
+		int entries;
 		int i;
 
-		idx->entries = (itv->pgm_info_write_idx + IVTV_MAX_PGM_INDEX - itv->pgm_info_read_idx) %
+		entries = (itv->pgm_info_write_idx + IVTV_MAX_PGM_INDEX - itv->pgm_info_read_idx) %
 					IVTV_MAX_PGM_INDEX;
-		if (idx->entries > V4L2_ENC_IDX_ENTRIES)
-			idx->entries = V4L2_ENC_IDX_ENTRIES;
-		for (i = 0; i < idx->entries; i++) {
-			idx->entry[i] = itv->pgm_info[(itv->pgm_info_read_idx + i) % IVTV_MAX_PGM_INDEX];
+		if (entries > V4L2_ENC_IDX_ENTRIES)
+			entries = V4L2_ENC_IDX_ENTRIES;
+		idx->entries = 0;
+		for (i = 0; i < entries; i++) {
+			*e = itv->pgm_info[(itv->pgm_info_read_idx + i) % IVTV_MAX_PGM_INDEX];
+			if ((e->flags & V4L2_ENC_IDX_FRAME_MASK) <= V4L2_ENC_IDX_FRAME_B) {
+				idx->entries++;
+				e++;
+			}
 		}
 		itv->pgm_info_read_idx = (itv->pgm_info_read_idx + idx->entries) % IVTV_MAX_PGM_INDEX;
 		break;
@@ -1135,14 +1173,12 @@ int ivtv_v4l2_ioctls(struct ivtv *itv, struct file *filp, unsigned int cmd, void
 
 		memset(fb, 0, sizeof(*fb));
 		if (!(itv->v4l2_cap & V4L2_CAP_VIDEO_OUTPUT_OVERLAY))
-			break;
+			return -EINVAL;
 		fb->capability = V4L2_FBUF_CAP_EXTERNOVERLAY | V4L2_FBUF_CAP_CHROMAKEY |
 			V4L2_FBUF_CAP_LOCAL_ALPHA | V4L2_FBUF_CAP_GLOBAL_ALPHA;
 		fb->fmt.pixelformat = itv->osd_pixelformat;
 		fb->fmt.width = itv->osd_rect.width;
 		fb->fmt.height = itv->osd_rect.height;
-		fb->fmt.left = itv->osd_rect.left;
-		fb->fmt.top = itv->osd_rect.top;
 		fb->base = (void *)itv->osd_video_pbase;
 		if (itv->osd_global_alpha_state)
 			fb->flags |= V4L2_FBUF_FLAG_GLOBAL_ALPHA;
@@ -1157,10 +1193,11 @@ int ivtv_v4l2_ioctls(struct ivtv *itv, struct file *filp, unsigned int cmd, void
 		struct v4l2_framebuffer *fb = arg;
 
 		if (!(itv->v4l2_cap & V4L2_CAP_VIDEO_OUTPUT_OVERLAY))
-			break;
+			return -EINVAL;
 		itv->osd_global_alpha_state = (fb->flags & V4L2_FBUF_FLAG_GLOBAL_ALPHA) != 0;
 		itv->osd_local_alpha_state = (fb->flags & V4L2_FBUF_FLAG_LOCAL_ALPHA) != 0;
 		itv->osd_color_key_state = (fb->flags & V4L2_FBUF_FLAG_CHROMAKEY) != 0;
+		ivtv_set_osd_alpha(itv);
 		break;
 	}
 
@@ -1205,7 +1242,7 @@ int ivtv_v4l2_ioctls(struct ivtv *itv, struct file *filp, unsigned int cmd, void
 		IVTV_INFO("Tuner: %s\n",
 			test_bit(IVTV_F_I_RADIO_USER, &itv->i_flags) ? "Radio" : "TV");
 		cx2341x_log_status(&itv->params, itv->name);
-		IVTV_INFO("Status flags: 0x%08lx\n", itv->i_flags);
+		IVTV_INFO("Version: %s Status flags: 0x%08lx\n", IVTV_VERSION, itv->i_flags);
 		for (i = 0; i < IVTV_MAX_STREAMS; i++) {
 			struct ivtv_stream *s = &itv->streams[i];
 
@@ -1215,7 +1252,7 @@ int ivtv_v4l2_ioctls(struct ivtv *itv, struct file *filp, unsigned int cmd, void
 					(s->buffers - s->q_free.buffers) * 100 / s->buffers,
 					(s->buffers * s->buf_size) / 1024, s->buffers);
 		}
-		IVTV_INFO("Read MPEG/VBI: %lld/%lld bytes\n", itv->mpg_data_received, itv->vbi_data_inserted);
+		IVTV_INFO("Read MPEG/VBI: %lld/%lld bytes\n", (long long)itv->mpg_data_received, (long long)itv->vbi_data_inserted);
 		IVTV_INFO("==================  END STATUS CARD #%d  ==================\n", itv->num);
 		break;
 	}
@@ -1463,6 +1500,7 @@ static int ivtv_v4l2_do_ioctl(struct inode *inode, struct file *filp,
 	case VIDIOC_S_FMT:
 	case VIDIOC_TRY_FMT:
 	case VIDIOC_ENUM_FMT:
+	case VIDIOC_CROPCAP:
 	case VIDIOC_G_CROP:
 	case VIDIOC_S_CROP:
 	case VIDIOC_G_FREQUENCY:

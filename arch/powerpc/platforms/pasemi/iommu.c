@@ -31,8 +31,6 @@
 #define IOBMAP_PAGE_SIZE	(1 << IOBMAP_PAGE_SHIFT)
 #define IOBMAP_PAGE_MASK	(IOBMAP_PAGE_SIZE - 1)
 
-#define IOBMAP_PAGE_FACTOR	(PAGE_SHIFT - IOBMAP_PAGE_SHIFT)
-
 #define IOB_BASE		0xe0000000
 #define IOB_SIZE		0x3000
 /* Configuration registers */
@@ -95,10 +93,7 @@ static void iobmap_build(struct iommu_table *tbl, long index,
 
 	pr_debug("iobmap: build at: %lx, %lx, addr: %lx\n", index, npages, uaddr);
 
-	bus_addr = (tbl->it_offset + index) << PAGE_SHIFT;
-
-	npages <<= IOBMAP_PAGE_FACTOR;
-	index <<= IOBMAP_PAGE_FACTOR;
+	bus_addr = (tbl->it_offset + index) << IOBMAP_PAGE_SHIFT;
 
 	ip = ((u32 *)tbl->it_base) + index;
 
@@ -123,10 +118,7 @@ static void iobmap_free(struct iommu_table *tbl, long index,
 
 	pr_debug("iobmap: free at: %lx, %lx\n", index, npages);
 
-	bus_addr = (tbl->it_offset + index) << PAGE_SHIFT;
-
-	npages <<= IOBMAP_PAGE_FACTOR;
-	index <<= IOBMAP_PAGE_FACTOR;
+	bus_addr = (tbl->it_offset + index) << IOBMAP_PAGE_SHIFT;
 
 	ip = ((u32 *)tbl->it_base) + index;
 
@@ -145,7 +137,7 @@ static void iommu_table_iobmap_setup(void)
 	iommu_table_iobmap.it_busno = 0;
 	iommu_table_iobmap.it_offset = 0;
 	/* it_size is in number of entries */
-	iommu_table_iobmap.it_size = 0x80000000 >> PAGE_SHIFT;
+	iommu_table_iobmap.it_size = 0x80000000 >> IOBMAP_PAGE_SHIFT;
 
 	/* Initialize the common IOMMU code */
 	iommu_table_iobmap.it_base = (unsigned long)iob_l2_base;

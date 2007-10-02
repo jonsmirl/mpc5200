@@ -121,7 +121,7 @@
 							32.768 KHz Clock */
 
 /* SPI DMA Register Bit Fields & Masks */
-#define SPI_DMA_RHDMA	(0xF << 4)	/* RXFIFO Half Status */
+#define SPI_DMA_RHDMA	(0x1 << 4)	/* RXFIFO Half Status */
 #define SPI_DMA_RFDMA	(0x1 << 5)      /* RXFIFO Full Status */
 #define SPI_DMA_TEDMA	(0x1 << 6)      /* TXFIFO Empty Status */
 #define SPI_DMA_THDMA	(0x1 << 7)      /* TXFIFO Half Status */
@@ -1163,6 +1163,9 @@ msg_rejected:
 	return -EINVAL;
 }
 
+/* the spi->mode bits understood by this driver: */
+#define MODEBITS (SPI_CPOL | SPI_CPHA | SPI_CS_HIGH)
+
 /* On first setup bad values must free chip_data memory since will cause
    spi_new_device to fail. Bad value setup from protocol driver are simply not
    applied and notified to the calling driver. */
@@ -1173,6 +1176,12 @@ static int setup(struct spi_device *spi)
 	int first_setup = 0;
 	u32 tmp;
 	int status = 0;
+
+	if (spi->mode & ~MODEBITS) {
+		dev_dbg(&spi->dev, "setup: unsupported mode bits %x\n",
+			spi->mode & ~MODEBITS);
+		return -EINVAL;
+	}
 
 	/* Get controller data */
 	chip_info = spi->controller_data;
@@ -1245,21 +1254,6 @@ static int setup(struct spi_device *spi)
 
 	/* SPI mode */
 	tmp = spi->mode;
-	if (tmp & SPI_LSB_FIRST) {
-		status = -EINVAL;
-		if (first_setup) {
-			dev_err(&spi->dev,
-				"setup - "
-				"HW doesn't support LSB first transfer\n");
-			goto err_first_setup;
-		} else {
-			dev_err(&spi->dev,
-				"setup - "
-				"HW doesn't support LSB first transfer, "
-				"default to MSB first\n");
-			spi->mode &= ~SPI_LSB_FIRST;
-		}
-	}
 	if (tmp & SPI_CS_HIGH) {
 		u32_EDIT(chip->control,
 				SPI_CONTROL_SSPOL, SPI_CONTROL_SSPOL_ACT_HIGH);
@@ -1355,6 +1349,7 @@ static int setup(struct spi_device *spi)
 		spi->bits_per_word,
 		spi_speed_hz(SPI_CONTROL_DATARATE_MIN),
 		spi->max_speed_hz);
+	return status;
 
 err_first_setup:
 	kfree(chip);
@@ -1740,7 +1735,7 @@ static int spi_imx_resume(struct platform_device *pdev)
 
 static struct platform_driver driver = {
 	.driver = {
-		.name = "imx-spi",
+		.name = "spi_imx",
 		.bus = &platform_bus_type,
 		.owner = THIS_MODULE,
 	},

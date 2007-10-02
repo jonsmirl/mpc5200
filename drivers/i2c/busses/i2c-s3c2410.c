@@ -39,8 +39,8 @@
 #include <asm/io.h>
 
 #include <asm/arch/regs-gpio.h>
-#include <asm/arch/regs-iic.h>
-#include <asm/arch/iic.h>
+#include <asm/plat-s3c/regs-iic.h>
+#include <asm/plat-s3c/iic.h>
 
 /* i2c controller state */
 
@@ -830,7 +830,8 @@ static int s3c24xx_i2c_probe(struct platform_device *pdev)
 
 	i2c->irq = res;
 		
-	dev_dbg(&pdev->dev, "irq resource %p (%ld)\n", res, res->start);
+	dev_dbg(&pdev->dev, "irq resource %p (%lu)\n", res,
+		(unsigned long)res->start);
 
 	ret = i2c_add_adapter(&i2c->adap);
 	if (ret < 0) {

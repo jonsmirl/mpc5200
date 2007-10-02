@@ -82,6 +82,7 @@
 #include <linux/miscdevice.h>
 #include <linux/spinlock.h>
 #include <linux/mm.h>
+#include <linux/fs.h>
 #include <linux/mutex.h>
 #include <linux/cpu.h>
 #include <linux/firmware.h>
@@ -478,7 +479,7 @@ static int __init microcode_dev_init (void)
 	return 0;
 }
 
-static void __exit microcode_dev_exit (void)
+static void microcode_dev_exit (void)
 {
 	misc_deregister(&microcode_dev);
 }

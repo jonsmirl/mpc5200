@@ -22,6 +22,7 @@
 #include <linux/tty.h>
 #include <linux/serial.h>
 #include <linux/serial_core.h>
+#include <linux/serial_8250.h>
 
 #include <asm/cpu.h>
 #include <asm/bootinfo.h>
@@ -47,6 +48,8 @@ const char *get_system_type(void)
 {
 	return "MIPS Atlas";
 }
+
+const char display_string[] = "        LINUX ON ATLAS       ";
 
 void __init plat_mem_setup(void)
 {

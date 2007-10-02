@@ -22,7 +22,8 @@ SECTIONS
 	*(.empty_zero_page)
 	} = 0
   .text : {
-	*(.text)
+  	*(.text.head)
+	TEXT_TEXT
 	SCHED_TEXT
 	LOCK_TEXT
 	*(.fixup)
@@ -41,7 +42,7 @@ SECTIONS
   BUG_TABLE
 
   .data : {			/* Data */
-	*(.data)
+	DATA_DATA
 
  	 /* Align the initial ramdisk image (INITRD) on page boundaries. */
  	 . = ALIGN(PAGE_SIZE);
@@ -60,10 +61,7 @@ SECTIONS
   . = ALIGN(PAGE_SIZE);
   __nosave_end = .;
 
-  . = ALIGN(PAGE_SIZE);
-  __per_cpu_start = .;
-  .data.percpu : { *(.data.percpu) }
-  __per_cpu_end = .;
+  PERCPU(PAGE_SIZE)
   .data.cacheline_aligned : { *(.data.cacheline_aligned) }
 
   _edata = .;			/* End of data section */
@@ -97,18 +95,20 @@ SECTIONS
   __initramfs_end = .;
 #endif
 
+ . = ALIGN(4);
   __machvec_start = .;
-  .init.machvec : { *(.init.machvec) }
+  .machvec.init : { *(.machvec.init) }
   __machvec_end = .;
+
   . = ALIGN(PAGE_SIZE);
-  __init_end = .;
-
-  . = ALIGN(4);
-  __bss_start = .;		/* BSS */
-  .bss : { *(.bss) }
-
-  . = ALIGN(4);
-  _end = . ;
+  .bss : {
+	__init_end = .;
+	__bss_start = .;		/* BSS */
+  	*(.bss.page_aligned)
+  	*(.bss)
+	. = ALIGN(4);
+	_end = . ;
+  }
 
   /* When something in the kernel is NOT compiled as a module, the
    * module cleanup code and data are put into these segments.  Both

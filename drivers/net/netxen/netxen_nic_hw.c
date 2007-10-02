@@ -257,7 +257,7 @@ u64 ctx_addr_sig_regs[][3] = {
 #define ADDR_IN_RANGE(addr, low, high)	\
 	(((addr) <= (high)) && ((addr) >= (low)))
 
-#define NETXEN_FLASH_BASE	(BOOTLD_START)
+#define NETXEN_FLASH_BASE	(NETXEN_BOOTLD_START)
 #define NETXEN_PHANTOM_MEM_BASE	(NETXEN_FLASH_BASE)
 #define NETXEN_MAX_MTU		8000 + NETXEN_ENET_HEADER_SIZE + NETXEN_ETH_FCS_SIZE
 #define NETXEN_MIN_MTU		64
@@ -377,7 +377,7 @@ int netxen_nic_hw_resources(struct netxen_adapter *adapter)
 						   recv_crb_registers[ctx].
 						   crb_rcvpeg_state));
 		while (state != PHAN_PEG_RCV_INITIALIZED && loops < 20) {
-			udelay(100);
+			msleep(1);
 			/* Window 1 call */
 			state = readl(NETXEN_CRB_NORMALIZE(adapter,
 							   recv_crb_registers
@@ -392,7 +392,11 @@ int netxen_nic_hw_resources(struct netxen_adapter *adapter)
 			return err;
 		}
 	}
-	DPRINTK(INFO, "Recieve Peg ready too. starting stuff\n");
+	adapter->intr_scheme = readl(
+		NETXEN_CRB_NORMALIZE(adapter, CRB_NIC_CAPABILITIES_FW));
+	printk(KERN_NOTICE "%s: FW capabilities:0x%x\n", netxen_nic_driver_name,
+			adapter->intr_scheme);
+	DPRINTK(INFO, "Receive Peg ready too. starting stuff\n");
 
 	addr = netxen_alloc(adapter->ahw.pdev,
 			    sizeof(struct netxen_ring_ctx) +
@@ -611,7 +615,7 @@ int netxen_get_flash_mac_addr(struct netxen_adapter *adapter, u64 mac[])
 	u32 *pmac = (u32 *) & mac[0];
 
 	if (netxen_get_flash_block(adapter,
-				   USER_START +
+				   NETXEN_USER_START +
 				   offsetof(struct netxen_new_user_info,
 					    mac_addr),
 				   FLASH_NUM_PORTS * sizeof(u64), pmac) == -1) {
@@ -619,7 +623,7 @@ int netxen_get_flash_mac_addr(struct netxen_adapter *adapter, u64 mac[])
 	}
 	if (*mac == ~0ULL) {
 		if (netxen_get_flash_block(adapter,
-					   USER_START_OLD +
+					   NETXEN_USER_START_OLD +
 					   offsetof(struct netxen_user_old_info,
 						    mac_addr),
 					   FLASH_NUM_PORTS * sizeof(u64),
@@ -697,7 +701,7 @@ void netxen_nic_pci_change_crbwindow(struct netxen_adapter *adapter, u32 wndw)
 		adapter->curr_window = 0;
 }
 
-void netxen_load_firmware(struct netxen_adapter *adapter)
+int netxen_load_firmware(struct netxen_adapter *adapter)
 {
 	int i;
 	u32 data, size = 0;
@@ -709,15 +713,24 @@ void netxen_load_firmware(struct netxen_adapter *adapter)
 	writel(1, NETXEN_CRB_NORMALIZE(adapter, NETXEN_ROMUSB_GLB_CAS_RST));
 
 	for (i = 0; i < size; i++) {
-		if (netxen_rom_fast_read(adapter, flashaddr, (int *)&data) != 0) {
-			DPRINTK(ERR,
-				"Error in netxen_rom_fast_read(). Will skip"
-				"loading flash image\n");
-			return;
-		}
+		int retries = 10;
+		if (netxen_rom_fast_read(adapter, flashaddr, (int *)&data) != 0)
+			return -EIO;
+
 		off = netxen_nic_pci_set_window(adapter, memaddr);
 		addr = pci_base_offset(adapter, off);
 		writel(data, addr);
+		do {
+			if (readl(addr) == data)
+				break;
+			msleep(100);
+			writel(data, addr);
+		} while (--retries);
+		if (!retries) {
+			printk(KERN_ERR "%s: firmware load aborted, write failed at 0x%x\n",
+					netxen_nic_driver_name, memaddr);
+			return -EIO;
+		}
 		flashaddr += 4;
 		memaddr += 4;
 	}
@@ -727,7 +740,7 @@ void netxen_load_firmware(struct netxen_adapter *adapter)
 	       NETXEN_CRB_NORMALIZE(adapter, NETXEN_ROMUSB_GLB_CHIP_CLK_CTRL));
 	writel(0, NETXEN_CRB_NORMALIZE(adapter, NETXEN_ROMUSB_GLB_CAS_RST));
 
-	udelay(100);
+	return 0;
 }
 
 int
@@ -891,11 +904,11 @@ netxen_nic_pci_set_window(struct netxen_adapter *adapter,
 			ddr_mn_window = window;
 			writel(window, PCI_OFFSET_SECOND_RANGE(adapter,
 							       NETXEN_PCIX_PH_REG
-							       (PCIX_MN_WINDOW)));
+							       (PCIX_MN_WINDOW(adapter->ahw.pci_func))));
 			/* MUST make sure window is set before we forge on... */
 			readl(PCI_OFFSET_SECOND_RANGE(adapter,
 						      NETXEN_PCIX_PH_REG
-						      (PCIX_MN_WINDOW)));
+						      (PCIX_MN_WINDOW(adapter->ahw.pci_func))));
 		}
 		addr -= (window * NETXEN_WINDOW_ONE);
 		addr += NETXEN_PCI_DDR_NET;
@@ -916,11 +929,11 @@ netxen_nic_pci_set_window(struct netxen_adapter *adapter,
 			writel((window << 22),
 			       PCI_OFFSET_SECOND_RANGE(adapter,
 						       NETXEN_PCIX_PH_REG
-						       (PCIX_SN_WINDOW)));
+						       (PCIX_SN_WINDOW(adapter->ahw.pci_func))));
 			/* MUST make sure window is set before we forge on... */
 			readl(PCI_OFFSET_SECOND_RANGE(adapter,
 						      NETXEN_PCIX_PH_REG
-						      (PCIX_SN_WINDOW)));
+						      (PCIX_SN_WINDOW(adapter->ahw.pci_func))));
 		}
 		addr -= (window * 0x400000);
 		addr += NETXEN_PCI_QDR_NET;
@@ -942,7 +955,7 @@ netxen_nic_pci_set_window(struct netxen_adapter *adapter,
 int
 netxen_nic_erase_pxe(struct netxen_adapter *adapter)
 {
-	if (netxen_rom_fast_write(adapter, PXE_START, 0) == -1) {
+	if (netxen_rom_fast_write(adapter, NETXEN_PXE_START, 0) == -1) {
 		printk(KERN_ERR "%s: erase pxe failed\n", 
 			netxen_nic_driver_name);
 		return -1;
@@ -953,7 +966,7 @@ netxen_nic_erase_pxe(struct netxen_adapter *adapter)
 int netxen_nic_get_board_info(struct netxen_adapter *adapter)
 {
 	int rv = 0;
-	int addr = BRDCFG_START;
+	int addr = NETXEN_BRDCFG_START;
 	struct netxen_board_info *boardinfo;
 	int index;
 	u32 *ptr32;
@@ -1115,7 +1128,7 @@ void netxen_nic_flash_print(struct netxen_adapter *adapter)
 	u32 fw_build = 0;
 	char brd_name[NETXEN_MAX_SHORT_NAME];
 	struct netxen_new_user_info user_info;
-	int i, addr = USER_START;
+	int i, addr = NETXEN_USER_START;
 	__le32 *ptr32;
 
 	struct netxen_board_info *board_info = &(adapter->ahw.boardcfg);

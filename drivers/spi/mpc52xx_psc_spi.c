@@ -270,6 +270,9 @@ static void mpc52xx_psc_spi_work(struct work_struct *work)
 	spin_unlock_irq(&mps->lock);
 }
 
+/* the spi->mode bits understood by this driver: */
+#define MODEBITS (SPI_CPOL | SPI_CPHA | SPI_CS_HIGH | SPI_LSB_FIRST)
+
 static int mpc52xx_psc_spi_setup(struct spi_device *spi)
 {
 	struct mpc52xx_psc_spi *mps = spi_master_get_devdata(spi->master);
@@ -278,6 +281,12 @@ static int mpc52xx_psc_spi_setup(struct spi_device *spi)
 
 	if (spi->bits_per_word%8)
 		return -EINVAL;
+
+	if (spi->mode & ~MODEBITS) {
+		dev_dbg(&spi->dev, "setup: unsupported mode bits %x\n",
+			spi->mode & ~MODEBITS);
+		return -EINVAL;
+	}
 
 	if (!cs) {
 		cs = kzalloc(sizeof *cs, GFP_KERNEL);
@@ -329,8 +338,8 @@ static int mpc52xx_psc_spi_port_config(int psc_id, struct mpc52xx_psc_spi *mps)
 	int ret = 0;
 
 #if defined(CONFIG_PPC_MERGE)
-	cdm = mpc52xx_find_and_map("mpc52xx-cdm");
-	gpio = mpc52xx_find_and_map("mpc52xx-gpio");
+	cdm = mpc52xx_find_and_map("mpc5200-cdm");
+	gpio = mpc52xx_find_and_map("mpc5200-gpio");
 #else
 	cdm = ioremap(MPC52xx_PA(MPC52xx_CDM_OFFSET), MPC52xx_CDM_SIZE);
 	gpio = ioremap(MPC52xx_PA(MPC52xx_GPIO_OFFSET), MPC52xx_GPIO_SIZE);
@@ -444,9 +453,6 @@ static int __init mpc52xx_psc_spi_do_probe(struct device *dev, u32 regaddr,
 	struct mpc52xx_psc_spi *mps;
 	struct spi_master *master;
 	int ret;
-
-	if (pdata == NULL)
-		return -ENODEV;
 
 	master = spi_alloc_master(dev, sizeof *mps);
 	if (master == NULL)
@@ -594,17 +600,17 @@ static int __init mpc52xx_psc_spi_of_probe(struct of_device *op,
 	}
 	regaddr64 = of_translate_address(op->node, regaddr_p);
 
+	/* get PSC id (1..6, used by port_config) */
 	if (op->dev.platform_data == NULL) {
-		struct device_node *np;
-		int i = 0;
+		const u32 *psc_nump;
 
-		for_each_node_by_type(np, "spi") {
-			if (of_find_device_by_node(np) == op) {
-				id = i;
-				break;
-			}
-			i++;
+		psc_nump = of_get_property(op->node, "cell-index", NULL);
+		if (!psc_nump || *psc_nump > 5) {
+			printk(KERN_ERR "mpc52xx_psc_spi: Device node %s has invalid "
+					"cell-index property\n", op->node->full_name);
+			return -EINVAL;
 		}
+		id = *psc_nump + 1;
 	}
 
 	return mpc52xx_psc_spi_do_probe(&op->dev, (u32)regaddr64, (u32)size64,
@@ -617,7 +623,7 @@ static int __exit mpc52xx_psc_spi_of_remove(struct of_device *op)
 }
 
 static struct of_device_id mpc52xx_psc_spi_of_match[] = {
-	{ .type = "spi", .compatible = "mpc52xx-psc-spi", },
+	{ .type = "spi", .compatible = "mpc5200-psc-spi", },
 	{},
 };
 

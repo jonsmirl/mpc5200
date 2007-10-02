@@ -10,31 +10,17 @@
  */
 
 #include <linux/module.h>
-#include <asm/uaccess.h>
-#include <asm/system.h>
-#include <linux/bitops.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
 #include <linux/jiffies.h>
 #include <linux/string.h>
-#include <linux/mm.h>
-#include <linux/socket.h>
-#include <linux/sockios.h>
 #include <linux/in.h>
 #include <linux/errno.h>
-#include <linux/interrupt.h>
-#include <linux/if_ether.h>
-#include <linux/inet.h>
-#include <linux/netdevice.h>
-#include <linux/etherdevice.h>
-#include <linux/notifier.h>
 #include <linux/init.h>
+#include <linux/ipv6.h>
+#include <linux/skbuff.h>
 #include <net/ip.h>
 #include <net/netlink.h>
-#include <linux/ipv6.h>
-#include <net/route.h>
-#include <linux/skbuff.h>
-#include <net/sock.h>
 #include <net/pkt_sched.h>
 
 
@@ -284,7 +270,7 @@ sfq_enqueue(struct sk_buff *skb, struct Qdisc* sch)
 			q->tail = x;
 		}
 	}
-	if (++sch->q.qlen < q->limit-1) {
+	if (++sch->q.qlen <= q->limit) {
 		sch->bstats.bytes += skb->len;
 		sch->bstats.packets++;
 		return 0;
@@ -320,7 +306,7 @@ sfq_requeue(struct sk_buff *skb, struct Qdisc* sch)
 			q->tail = x;
 		}
 	}
-	if (++sch->q.qlen < q->limit - 1) {
+	if (++sch->q.qlen <= q->limit) {
 		sch->qstats.requeues++;
 		return 0;
 	}
@@ -405,10 +391,10 @@ static int sfq_change(struct Qdisc *sch, struct rtattr *opt)
 	q->quantum = ctl->quantum ? : psched_mtu(sch->dev);
 	q->perturb_period = ctl->perturb_period*HZ;
 	if (ctl->limit)
-		q->limit = min_t(u32, ctl->limit, SFQ_DEPTH);
+		q->limit = min_t(u32, ctl->limit, SFQ_DEPTH - 2);
 
 	qlen = sch->q.qlen;
-	while (sch->q.qlen >= q->limit-1)
+	while (sch->q.qlen > q->limit)
 		sfq_drop(sch);
 	qdisc_tree_decrease_qlen(sch, qlen - sch->q.qlen);
 
@@ -437,7 +423,7 @@ static int sfq_init(struct Qdisc *sch, struct rtattr *opt)
 		q->dep[i+SFQ_DEPTH].next = i+SFQ_DEPTH;
 		q->dep[i+SFQ_DEPTH].prev = i+SFQ_DEPTH;
 	}
-	q->limit = SFQ_DEPTH;
+	q->limit = SFQ_DEPTH - 2;
 	q->max_depth = 0;
 	q->tail = SFQ_DEPTH;
 	if (opt == NULL) {

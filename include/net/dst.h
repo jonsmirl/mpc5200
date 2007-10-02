@@ -47,7 +47,6 @@ struct dst_entry
 #define DST_NOXFRM		2
 #define DST_NOPOLICY		4
 #define DST_NOHASH		8
-#define DST_BALANCED            0x10
 	unsigned long		expires;
 
 	unsigned short		header_len;	/* more space at head required */
@@ -265,9 +264,16 @@ static inline int xfrm_lookup(struct dst_entry **dst_p, struct flowi *fl,
 {
 	return 0;
 } 
+static inline int __xfrm_lookup(struct dst_entry **dst_p, struct flowi *fl,
+				struct sock *sk, int flags)
+{
+	return 0;
+}
 #else
 extern int xfrm_lookup(struct dst_entry **dst_p, struct flowi *fl,
 		       struct sock *sk, int flags);
+extern int __xfrm_lookup(struct dst_entry **dst_p, struct flowi *fl,
+			 struct sock *sk, int flags);
 #endif
 #endif
 

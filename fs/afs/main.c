@@ -13,6 +13,7 @@
 #include <linux/moduleparam.h>
 #include <linux/init.h>
 #include <linux/completion.h>
+#include <linux/sched.h>
 #include "internal.h"
 
 MODULE_DESCRIPTION("AFS Client File System");
@@ -167,6 +168,7 @@ static void __exit afs_exit(void)
 	printk(KERN_INFO "kAFS: Red Hat AFS client v0.1 unregistering.\n");
 
 	afs_fs_exit();
+	afs_kill_lock_manager();
 	afs_close_socket();
 	afs_purge_servers();
 	afs_callback_update_kill();

@@ -312,9 +312,6 @@ static void class_dev_release(struct kobject * kobj)
 
 	pr_debug("device class '%s': release.\n", cd->class_id);
 
-	kfree(cd->devt_attr);
-	cd->devt_attr = NULL;
-
 	if (cd->release)
 		cd->release(cd);
 	else if (cls->release)
@@ -369,36 +366,6 @@ char *make_class_name(const char *name, struct kobject *kobj)
 	return class_name;
 }
 
-static int deprecated_class_uevent(char **envp, int num_envp, int *cur_index,
-				   char *buffer, int buffer_size,
-				   int *cur_len,
-				   struct class_device *class_dev)
-{
-	struct device *dev = class_dev->dev;
-	char *path;
-
-	if (!dev)
-		return 0;
-
-	/* add device, backing this class device (deprecated) */
-	path = kobject_get_path(&dev->kobj, GFP_KERNEL);
-
-	add_uevent_var(envp, num_envp, cur_index, buffer, buffer_size,
-		       cur_len, "PHYSDEVPATH=%s", path);
-	kfree(path);
-
-	if (dev->bus)
-		add_uevent_var(envp, num_envp, cur_index,
-			       buffer, buffer_size, cur_len,
-			       "PHYSDEVBUS=%s", dev->bus->name);
-
-	if (dev->driver)
-		add_uevent_var(envp, num_envp, cur_index,
-			       buffer, buffer_size, cur_len,
-			       "PHYSDEVDRIVER=%s", dev->driver->name);
-	return 0;
-}
-
 static int make_deprecated_class_device_links(struct class_device *class_dev)
 {
 	char *class_name;
@@ -430,11 +397,6 @@ static void remove_deprecated_class_device_links(struct class_device *class_dev)
 	kfree(class_name);
 }
 #else
-static inline int deprecated_class_uevent(char **envp, int num_envp,
-					  int *cur_index, char *buffer,
-					  int buffer_size, int *cur_len,
-					  struct class_device *class_dev)
-{ return 0; }
 static inline int make_deprecated_class_device_links(struct class_device *cd)
 { return 0; }
 static void remove_deprecated_class_device_links(struct class_device *cd)
@@ -445,14 +407,12 @@ static int class_uevent(struct kset *kset, struct kobject *kobj, char **envp,
 			 int num_envp, char *buffer, int buffer_size)
 {
 	struct class_device *class_dev = to_class_dev(kobj);
+	struct device *dev = class_dev->dev;
 	int i = 0;
 	int length = 0;
 	int retval = 0;
 
 	pr_debug("%s - name = %s\n", __FUNCTION__, class_dev->class_id);
-
-	deprecated_class_uevent(envp, num_envp, &i, buffer, buffer_size,
-				&length, class_dev);
 
 	if (MAJOR(class_dev->devt)) {
 		add_uevent_var(envp, num_envp, &i,
@@ -462,6 +422,26 @@ static int class_uevent(struct kset *kset, struct kobject *kobj, char **envp,
 		add_uevent_var(envp, num_envp, &i,
 			       buffer, buffer_size, &length,
 			       "MINOR=%u", MINOR(class_dev->devt));
+	}
+
+	if (dev) {
+		const char *path = kobject_get_path(&dev->kobj, GFP_KERNEL);
+		if (path) {
+			add_uevent_var(envp, num_envp, &i,
+				       buffer, buffer_size, &length,
+				       "PHYSDEVPATH=%s", path);
+			kfree(path);
+		}
+
+		if (dev->bus)
+			add_uevent_var(envp, num_envp, &i,
+				       buffer, buffer_size, &length,
+				       "PHYSDEVBUS=%s", dev->bus->name);
+
+		if (dev->driver)
+			add_uevent_var(envp, num_envp, &i,
+				       buffer, buffer_size, &length,
+				       "PHYSDEVDRIVER=%s", dev->driver->name);
 	}
 
 	/* terminate, set to next free slot, shrink available space */
@@ -564,12 +544,18 @@ static ssize_t show_dev(struct class_device *class_dev, char *buf)
 	return print_dev_t(buf, class_dev->devt);
 }
 
+static struct class_device_attribute class_devt_attr =
+	__ATTR(dev, S_IRUGO, show_dev, NULL);
+
 static ssize_t store_uevent(struct class_device *class_dev,
 			    const char *buf, size_t count)
 {
 	kobject_uevent(&class_dev->kobj, KOBJ_ADD);
 	return count;
 }
+
+static struct class_device_attribute class_uevent_attr =
+	__ATTR(uevent, S_IWUSR, NULL, store_uevent);
 
 void class_device_initialize(struct class_device *class_dev)
 {
@@ -620,32 +606,15 @@ int class_device_add(struct class_device *class_dev)
 				  &parent_class->subsys.kobj, "subsystem");
 	if (error)
 		goto out3;
-	class_dev->uevent_attr.attr.name = "uevent";
-	class_dev->uevent_attr.attr.mode = S_IWUSR;
-	class_dev->uevent_attr.attr.owner = parent_class->owner;
-	class_dev->uevent_attr.store = store_uevent;
-	error = class_device_create_file(class_dev, &class_dev->uevent_attr);
+
+	error = class_device_create_file(class_dev, &class_uevent_attr);
 	if (error)
 		goto out3;
 
 	if (MAJOR(class_dev->devt)) {
-		struct class_device_attribute *attr;
-		attr = kzalloc(sizeof(*attr), GFP_KERNEL);
-		if (!attr) {
-			error = -ENOMEM;
+		error = class_device_create_file(class_dev, &class_devt_attr);
+		if (error)
 			goto out4;
-		}
-		attr->attr.name = "dev";
-		attr->attr.mode = S_IRUGO;
-		attr->attr.owner = parent_class->owner;
-		attr->show = show_dev;
-		error = class_device_create_file(class_dev, attr);
-		if (error) {
-			kfree(attr);
-			goto out4;
-		}
-
-		class_dev->devt_attr = attr;
 	}
 
 	error = class_device_add_attrs(class_dev);
@@ -688,10 +657,10 @@ int class_device_add(struct class_device *class_dev)
  out6:
 	class_device_remove_attrs(class_dev);
  out5:
-	if (class_dev->devt_attr)
-		class_device_remove_file(class_dev, class_dev->devt_attr);
+	if (MAJOR(class_dev->devt))
+		class_device_remove_file(class_dev, &class_devt_attr);
  out4:
-	class_device_remove_file(class_dev, &class_dev->uevent_attr);
+	class_device_remove_file(class_dev, &class_uevent_attr);
  out3:
 	kobject_del(&class_dev->kobj);
  out2:
@@ -791,9 +760,9 @@ void class_device_del(struct class_device *class_dev)
 		sysfs_remove_link(&class_dev->kobj, "device");
 	}
 	sysfs_remove_link(&class_dev->kobj, "subsystem");
-	class_device_remove_file(class_dev, &class_dev->uevent_attr);
-	if (class_dev->devt_attr)
-		class_device_remove_file(class_dev, class_dev->devt_attr);
+	class_device_remove_file(class_dev, &class_uevent_attr);
+	if (MAJOR(class_dev->devt))
+		class_device_remove_file(class_dev, &class_devt_attr);
 	class_device_remove_attrs(class_dev);
 	class_device_remove_groups(class_dev);
 

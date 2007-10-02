@@ -1,10 +1,9 @@
 /*
  * USB ZyXEL omni.net LCD PLUS driver
  *
- *	This program is free software; you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation; either version 2 of the License, or
- *	(at your option) any later version.
+ *	This program is free software; you can redistribute it and/or
+ *	modify it under the terms of the GNU General Public License version
+ *	2 as published by the Free Software Foundation.
  *
  * See Documentation/usb/usb-serial.txt for more information on using this driver
  *
@@ -165,12 +164,10 @@ static int omninet_open (struct usb_serial_port *port, struct file *filp)
 {
 	struct usb_serial	*serial = port->serial;
 	struct usb_serial_port	*wport;
-	struct omninet_data	*od = usb_get_serial_port_data(port);
 	int			result = 0;
 
 	dbg("%s - port %d", __FUNCTION__, port->number);
 
-	od = kmalloc( sizeof(struct omninet_data), GFP_KERNEL );
 	wport = serial->port[1];
 	wport->tty = port->tty;
 
@@ -203,14 +200,15 @@ static void omninet_read_bulk_callback (struct urb *urb)
 	struct usb_serial_port 	*port 	= (struct usb_serial_port *)urb->context;
 	unsigned char 		*data 	= urb->transfer_buffer;
 	struct omninet_header 	*header = (struct omninet_header *) &data[0];
-
+	int status = urb->status;
 	int i;
 	int result;
 
 	dbg("%s - port %d", __FUNCTION__, port->number);
 
-	if (urb->status) {
-		dbg("%s - nonzero read bulk status received: %d", __FUNCTION__, urb->status);
+	if (status) {
+		dbg("%s - nonzero read bulk status received: %d",
+		    __FUNCTION__, status);
 		return;
 	}
 
@@ -314,12 +312,14 @@ static void omninet_write_bulk_callback (struct urb *urb)
 {
 /*	struct omninet_header	*header = (struct omninet_header  *) urb->transfer_buffer; */
 	struct usb_serial_port 	*port   = (struct usb_serial_port *) urb->context;
+	int status = urb->status;
 
 	dbg("%s - port %0x\n", __FUNCTION__, port->number);
 
 	port->write_urb_busy = 0;
-	if (urb->status) {
-		dbg("%s - nonzero write bulk status received: %d", __FUNCTION__, urb->status);
+	if (status) {
+		dbg("%s - nonzero write bulk status received: %d",
+		    __FUNCTION__, status);
 		return;
 	}
 

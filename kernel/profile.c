@@ -26,6 +26,7 @@
 #include <asm/sections.h>
 #include <asm/semaphore.h>
 #include <asm/irq_regs.h>
+#include <asm/ptrace.h>
 
 struct profile_hit {
 	u32 pc, hits;
@@ -198,11 +199,11 @@ EXPORT_SYMBOL_GPL(register_timer_hook);
 EXPORT_SYMBOL_GPL(unregister_timer_hook);
 EXPORT_SYMBOL_GPL(task_handoff_register);
 EXPORT_SYMBOL_GPL(task_handoff_unregister);
+EXPORT_SYMBOL_GPL(profile_event_register);
+EXPORT_SYMBOL_GPL(profile_event_unregister);
 
 #endif /* CONFIG_PROFILING */
 
-EXPORT_SYMBOL_GPL(profile_event_register);
-EXPORT_SYMBOL_GPL(profile_event_unregister);
 
 #ifdef CONFIG_SMP
 /*

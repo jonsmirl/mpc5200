@@ -75,7 +75,7 @@ void __init glantank_map_io(void)
 #define INTC	IRQ_IOP32X_XINT2
 #define INTD	IRQ_IOP32X_XINT3
 
-static inline int __init
+static int __init
 glantank_pci_map_irq(struct pci_dev *dev, u8 slot, u8 pin)
 {
 	static int pci_irq_table[][4] = {
@@ -180,6 +180,8 @@ static void __init glantank_init_machine(void)
 	platform_device_register(&iop3xx_i2c1_device);
 	platform_device_register(&glantank_flash_device);
 	platform_device_register(&glantank_serial_device);
+	platform_device_register(&iop3xx_dma_0_channel);
+	platform_device_register(&iop3xx_dma_1_channel);
 
 	pm_power_off = glantank_power_off;
 }
