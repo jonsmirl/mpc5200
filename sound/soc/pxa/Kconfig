@@ -6,10 +6,6 @@ config SND_PXA2XX_SOC
 	  the PXA2xx AC97, I2S or SSP interface. You will also need
 	  to select the audio interfaces to support below.
 
-config SND_PXA2XX_AC97
-	tristate
-	select SND_AC97_CODEC
-
 config SND_PXA2XX_SOC_AC97
 	tristate
 	select AC97_BUS
@@ -89,7 +85,7 @@ config SND_PXA2XX_SOC_H5000
 config SND_PXA2XX_SOC_MAINSTONE
 	tristate "SoC AC97 Audio support for Intel Mainstone"
 	depends on SND_PXA2XX_SOC && MACH_MAINSTONE
-	select SND_PXA2XX_AC97
+	select SND_PXA2XX_SOC_AC97
 	help
 	  Say Y if you want to add support for generic AC97 SoC audio on Mainstone.
 
