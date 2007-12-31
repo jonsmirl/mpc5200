@@ -15,6 +15,7 @@
 #include <linux/statfs.h>
 #include <linux/parser.h>
 #include <linux/magic.h>
+#include <linux/sched.h>
 #include "affs.h"
 
 extern struct timezone sys_tz;
@@ -98,7 +99,7 @@ static int init_inodecache(void)
 					     sizeof(struct affs_inode_info),
 					     0, (SLAB_RECLAIM_ACCOUNT|
 						SLAB_MEM_SPREAD),
-					     init_once, NULL);
+					     init_once);
 	if (affs_inode_cachep == NULL)
 		return -ENOMEM;
 	return 0;

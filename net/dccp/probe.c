@@ -112,7 +112,7 @@ static struct jprobe dccp_send_probe = {
 	.kp	= {
 		.symbol_name = "dccp_sendmsg",
 	},
-	.entry	= JPROBE_ENTRY(jdccp_sendmsg),
+	.entry	= jdccp_sendmsg,
 };
 
 static int dccpprobe_open(struct inode *inode, struct file *file)
@@ -128,7 +128,7 @@ static ssize_t dccpprobe_read(struct file *file, char __user *buf,
 	int error = 0, cnt = 0;
 	unsigned char *tbuf;
 
-	if (!buf || len < 0)
+	if (!buf)
 		return -EINVAL;
 
 	if (len == 0)

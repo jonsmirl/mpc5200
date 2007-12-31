@@ -367,24 +367,18 @@ static void sctp_add_backlog(struct sock *sk, struct sk_buff *skb)
 void sctp_icmp_frag_needed(struct sock *sk, struct sctp_association *asoc,
 			   struct sctp_transport *t, __u32 pmtu)
 {
-	if (sock_owned_by_user(sk) || !t || (t->pathmtu == pmtu))
+	if (!t || (t->pathmtu == pmtu))
 		return;
 
+	if (sock_owned_by_user(sk)) {
+		asoc->pmtu_pending = 1;
+		t->pmtu_pending = 1;
+		return;
+	}
+
 	if (t->param_flags & SPP_PMTUD_ENABLE) {
-		if (unlikely(pmtu < SCTP_DEFAULT_MINSEGMENT)) {
-			printk(KERN_WARNING "%s: Reported pmtu %d too low, "
-			       "using default minimum of %d\n",
-			       __FUNCTION__, pmtu,
-			       SCTP_DEFAULT_MINSEGMENT);
-			/* Use default minimum segment size and disable
-			 * pmtu discovery on this transport.
-			 */
-			t->pathmtu = SCTP_DEFAULT_MINSEGMENT;
-			t->param_flags = (t->param_flags & ~SPP_PMTUD) |
-				SPP_PMTUD_DISABLE;
-		} else {
-			t->pathmtu = pmtu;
-		}
+		/* Update transports view of the MTU */
+		sctp_transport_update_pmtu(t, pmtu);
 
 		/* Update association pmtu. */
 		sctp_assoc_sync_pmtu(asoc);
@@ -596,7 +590,7 @@ out_unlock:
  * Return 0 - If further processing is needed.
  * Return 1 - If the packet can be discarded right away.
  */
-int sctp_rcv_ootb(struct sk_buff *skb)
+static int sctp_rcv_ootb(struct sk_buff *skb)
 {
 	sctp_chunkhdr_t *ch;
 	__u8 *ch_end;
@@ -626,6 +620,14 @@ int sctp_rcv_ootb(struct sk_buff *skb)
 		 * and take no further action.
 		 */
 		if (SCTP_CID_SHUTDOWN_COMPLETE == ch->type)
+			goto discard;
+
+		/* RFC 4460, 2.11.2
+		 * This will discard packets with INIT chunk bundled as
+		 * subsequent chunks in the packet.  When INIT is first,
+		 * the normal INIT processing will discard the chunk.
+		 */
+		if (SCTP_CID_INIT == ch->type && (void *)ch != skb->data)
 			goto discard;
 
 		/* RFC 8.4, 7) If the packet contains a "Stale cookie" ERROR

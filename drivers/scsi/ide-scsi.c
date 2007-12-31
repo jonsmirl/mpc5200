@@ -328,17 +328,15 @@ static int idescsi_check_condition(ide_drive_t *drive, struct request *failed_co
 	u8             *buf;
 
 	/* stuff a sense request in front of our current request */
-	pc = kmalloc (sizeof (idescsi_pc_t), GFP_ATOMIC);
-	rq = kmalloc (sizeof (struct request), GFP_ATOMIC);
-	buf = kmalloc(SCSI_SENSE_BUFFERSIZE, GFP_ATOMIC);
-	if (pc == NULL || rq == NULL || buf == NULL) {
+	pc = kzalloc(sizeof(idescsi_pc_t), GFP_ATOMIC);
+	rq = kmalloc(sizeof(struct request), GFP_ATOMIC);
+	buf = kzalloc(SCSI_SENSE_BUFFERSIZE, GFP_ATOMIC);
+	if (!pc || !rq || !buf) {
 		kfree(buf);
 		kfree(rq);
 		kfree(pc);
 		return -ENOMEM;
 	}
-	memset (pc, 0, sizeof (idescsi_pc_t));
-	memset (buf, 0, SCSI_SENSE_BUFFERSIZE);
 	ide_init_drive_cmd(rq);
 	rq->special = (char *) pc;
 	pc->rq = rq;
@@ -463,7 +461,7 @@ static inline unsigned long get_timeout(idescsi_pc_t *pc)
 
 static int idescsi_expiry(ide_drive_t *drive)
 {
-	idescsi_scsi_t *scsi = drive->driver_data;
+	idescsi_scsi_t *scsi = drive_to_idescsi(drive);
 	idescsi_pc_t   *pc   = scsi->pc;
 
 #if IDESCSI_DEBUG_LOG

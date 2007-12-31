@@ -32,9 +32,9 @@
 /*
  * Define EXT4_RESERVATION to reserve data blocks for expanding files
  */
-#define EXT4_DEFAULT_RESERVE_BLOCKS     8
+#define EXT4_DEFAULT_RESERVE_BLOCKS	8
 /*max window size: 1024(direct blocks) + 3([t,d]indirect blocks) */
-#define EXT4_MAX_RESERVE_BLOCKS         1027
+#define EXT4_MAX_RESERVE_BLOCKS		1027
 #define EXT4_RESERVE_WINDOW_NOT_ALLOCATED 0
 /*
  * Always enable hashed directories
@@ -71,7 +71,7 @@
 /*
  * Maximal count of links to a file
  */
-#define EXT4_LINK_MAX		32000
+#define EXT4_LINK_MAX		65000
 
 /*
  * Macro-instructions used to manage several block sizes
@@ -102,6 +102,7 @@
 				 EXT4_GOOD_OLD_FIRST_INO : \
 				 (s)->s_first_ino)
 #endif
+#define EXT4_BLOCK_ALIGN(size, blkbits)		ALIGN((size), (1 << (blkbits)))
 
 /*
  * Macro-instructions used to manage fragments
@@ -201,15 +202,16 @@ struct ext4_group_desc
 #define EXT4_STATE_JDATA		0x00000001 /* journaled data exists */
 #define EXT4_STATE_NEW			0x00000002 /* inode is newly created */
 #define EXT4_STATE_XATTR		0x00000004 /* has in-inode xattrs */
+#define EXT4_STATE_NO_EXPAND		0x00000008 /* No space for expansion */
 
 /* Used to pass group descriptor data when online resize is done */
 struct ext4_new_group_input {
-	__u32 group;            /* Group number for this data */
-	__u64 block_bitmap;     /* Absolute block number of block bitmap */
-	__u64 inode_bitmap;     /* Absolute block number of inode bitmap */
-	__u64 inode_table;      /* Absolute block number of inode table start */
-	__u32 blocks_count;     /* Total number of blocks in this group */
-	__u16 reserved_blocks;  /* Number of reserved blocks in this group */
+	__u32 group;		/* Group number for this data */
+	__u64 block_bitmap;	/* Absolute block number of block bitmap */
+	__u64 inode_bitmap;	/* Absolute block number of inode bitmap */
+	__u64 inode_table;	/* Absolute block number of inode table start */
+	__u32 blocks_count;	/* Total number of blocks in this group */
+	__u16 reserved_blocks;	/* Number of reserved blocks in this group */
 	__u16 unused;
 };
 
@@ -225,6 +227,11 @@ struct ext4_new_group_data {
 	__u32 free_blocks_count;
 };
 
+/*
+ * Following is used by preallocation code to tell get_blocks() that we
+ * want uninitialzed extents.
+ */
+#define EXT4_CREATE_UNINITIALIZED_EXT		2
 
 /*
  * ioctl commands
@@ -237,7 +244,7 @@ struct ext4_new_group_data {
 #define EXT4_IOC_GROUP_ADD		_IOW('f', 8,struct ext4_new_group_input)
 #define	EXT4_IOC_GETVERSION_OLD		FS_IOC_GETVERSION
 #define	EXT4_IOC_SETVERSION_OLD		FS_IOC_SETVERSION
-#ifdef CONFIG_JBD_DEBUG
+#ifdef CONFIG_JBD2_DEBUG
 #define EXT4_IOC_WAIT_FOR_READONLY	_IOR('f', 99, long)
 #endif
 #define EXT4_IOC_GETRSVSZ		_IOR('f', 5, long)
@@ -253,7 +260,7 @@ struct ext4_new_group_data {
 #define EXT4_IOC32_GETRSVSZ		_IOR('f', 5, int)
 #define EXT4_IOC32_SETRSVSZ		_IOW('f', 6, int)
 #define EXT4_IOC32_GROUP_EXTEND		_IOW('f', 7, unsigned int)
-#ifdef CONFIG_JBD_DEBUG
+#ifdef CONFIG_JBD2_DEBUG
 #define EXT4_IOC32_WAIT_FOR_READONLY	_IOR('f', 99, int)
 #endif
 #define EXT4_IOC32_GETVERSION_OLD	FS_IOC32_GETVERSION
@@ -282,7 +289,7 @@ struct ext4_inode {
 	__le16	i_uid;		/* Low 16 bits of Owner Uid */
 	__le32	i_size;		/* Size in bytes */
 	__le32	i_atime;	/* Access time */
-	__le32	i_ctime;	/* Creation time */
+	__le32	i_ctime;	/* Inode Change time */
 	__le32	i_mtime;	/* Modification time */
 	__le32	i_dtime;	/* Deletion Time */
 	__le16	i_gid;		/* Low 16 bits of Group Id */
@@ -310,7 +317,7 @@ struct ext4_inode {
 			__u8	l_i_frag;	/* Fragment number */
 			__u8	l_i_fsize;	/* Fragment size */
 			__le16	l_i_file_acl_high;
-			__le16	l_i_uid_high;	/* these 2 fields    */
+			__le16	l_i_uid_high;	/* these 2 fields */
 			__le16	l_i_gid_high;	/* were reserved2[0] */
 			__u32	l_i_reserved2;
 		} linux2;
@@ -331,9 +338,84 @@ struct ext4_inode {
 	} osd2;				/* OS dependent 2 */
 	__le16	i_extra_isize;
 	__le16	i_pad1;
+	__le32  i_ctime_extra;  /* extra Change time      (nsec << 2 | epoch) */
+	__le32  i_mtime_extra;  /* extra Modification time(nsec << 2 | epoch) */
+	__le32  i_atime_extra;  /* extra Access time      (nsec << 2 | epoch) */
+	__le32  i_crtime;       /* File Creation time */
+	__le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | epoch) */
 };
 
 #define i_size_high	i_dir_acl
+
+#define EXT4_EPOCH_BITS 2
+#define EXT4_EPOCH_MASK ((1 << EXT4_EPOCH_BITS) - 1)
+#define EXT4_NSEC_MASK  (~0UL << EXT4_EPOCH_BITS)
+
+/*
+ * Extended fields will fit into an inode if the filesystem was formatted
+ * with large inodes (-I 256 or larger) and there are not currently any EAs
+ * consuming all of the available space. For new inodes we always reserve
+ * enough space for the kernel's known extended fields, but for inodes
+ * created with an old kernel this might not have been the case. None of
+ * the extended inode fields is critical for correct filesystem operation.
+ * This macro checks if a certain field fits in the inode. Note that
+ * inode-size = GOOD_OLD_INODE_SIZE + i_extra_isize
+ */
+#define EXT4_FITS_IN_INODE(ext4_inode, einode, field)	\
+	((offsetof(typeof(*ext4_inode), field) +	\
+	  sizeof((ext4_inode)->field))			\
+	<= (EXT4_GOOD_OLD_INODE_SIZE +			\
+	    (einode)->i_extra_isize))			\
+
+static inline __le32 ext4_encode_extra_time(struct timespec *time)
+{
+       return cpu_to_le32((sizeof(time->tv_sec) > 4 ?
+			   time->tv_sec >> 32 : 0) |
+			   ((time->tv_nsec << 2) & EXT4_NSEC_MASK));
+}
+
+static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
+{
+       if (sizeof(time->tv_sec) > 4)
+	       time->tv_sec |= (__u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK)
+			       << 32;
+       time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> 2;
+}
+
+#define EXT4_INODE_SET_XTIME(xtime, inode, raw_inode)			       \
+do {									       \
+	(raw_inode)->xtime = cpu_to_le32((inode)->xtime.tv_sec);	       \
+	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+		(raw_inode)->xtime ## _extra =				       \
+				ext4_encode_extra_time(&(inode)->xtime);       \
+} while (0)
+
+#define EXT4_EINODE_SET_XTIME(xtime, einode, raw_inode)			       \
+do {									       \
+	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime))		       \
+		(raw_inode)->xtime = cpu_to_le32((einode)->xtime.tv_sec);      \
+	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))	       \
+		(raw_inode)->xtime ## _extra =				       \
+				ext4_encode_extra_time(&(einode)->xtime);      \
+} while (0)
+
+#define EXT4_INODE_GET_XTIME(xtime, inode, raw_inode)			       \
+do {									       \
+	(inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);       \
+	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     \
+		ext4_decode_extra_time(&(inode)->xtime,			       \
+				       raw_inode->xtime ## _extra);	       \
+} while (0)
+
+#define EXT4_EINODE_GET_XTIME(xtime, einode, raw_inode)			       \
+do {									       \
+	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime))		       \
+		(einode)->xtime.tv_sec = 				       \
+			(signed)le32_to_cpu((raw_inode)->xtime);	       \
+	if (EXT4_FITS_IN_INODE(raw_inode, einode, xtime ## _extra))	       \
+		ext4_decode_extra_time(&(einode)->xtime,		       \
+				       raw_inode->xtime ## _extra);	       \
+} while (0)
 
 #if defined(__KERNEL__) || defined(__linux__)
 #define i_reserved1	osd1.linux1.l_i_reserved1
@@ -513,7 +595,14 @@ struct ext4_super_block {
 /*150*/	__le32	s_blocks_count_hi;	/* Blocks count */
 	__le32	s_r_blocks_count_hi;	/* Reserved blocks count */
 	__le32	s_free_blocks_count_hi;	/* Free blocks count */
-	__u32	s_reserved[169];	/* Padding to the end of the block */
+	__u16	s_min_extra_isize;	/* All inodes have at least # bytes */
+	__u16	s_want_extra_isize; 	/* New inodes should reserve # bytes */
+	__u32	s_flags;		/* Miscellaneous flags */
+	__u16   s_raid_stride;		/* RAID stride */
+	__u16   s_mmp_interval;         /* # seconds to wait in MMP checking */
+	__u64   s_mmp_block;            /* Block for multi-mount protection */
+	__u32   s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
+	__u32   s_reserved[163];        /* Padding to the end of the block */
 };
 
 #ifdef __KERNEL__
@@ -525,6 +614,13 @@ static inline struct ext4_inode_info *EXT4_I(struct inode *inode)
 {
 	return container_of(inode, struct ext4_inode_info, vfs_inode);
 }
+
+static inline struct timespec ext4_current_time(struct inode *inode)
+{
+	return (inode->i_sb->s_time_gran < NSEC_PER_SEC) ?
+		current_fs_time(inode->i_sb) : CURRENT_TIME_SEC;
+}
+
 
 static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
 {
@@ -596,6 +692,8 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
 #define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
 #define EXT4_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
 #define EXT4_FEATURE_RO_COMPAT_BTREE_DIR	0x0004
+#define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
+#define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
 
 #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
 #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
@@ -613,6 +711,8 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
 					 EXT4_FEATURE_INCOMPAT_64BIT)
 #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK | \
+					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE | \
 					 EXT4_FEATURE_RO_COMPAT_BTREE_DIR)
 
 /*
@@ -780,9 +880,9 @@ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
  * Ok, these declarations are also in <linux/kernel.h> but none of the
  * ext4 source programs needs to include it so they are duplicated here.
  */
-# define NORET_TYPE    /**/
-# define ATTRIB_NORET  __attribute__((noreturn))
-# define NORET_AND     noreturn,
+# define NORET_TYPE	/**/
+# define ATTRIB_NORET	__attribute__((noreturn))
+# define NORET_AND	noreturn,
 
 /* balloc.c */
 extern unsigned int ext4_block_group(struct super_block *sb,
@@ -855,6 +955,7 @@ extern int ext4_change_inode_journal_flag(struct inode *, int);
 extern int ext4_get_inode_loc(struct inode *, struct ext4_iloc *);
 extern void ext4_truncate (struct inode *);
 extern void ext4_set_inode_flags(struct inode *);
+extern void ext4_get_inode_flags(struct ext4_inode_info *);
 extern void ext4_set_aops(struct inode *inode);
 extern int ext4_writepage_trans_blocks(struct inode *);
 extern int ext4_block_truncate_page(handle_t *handle, struct page *page,
@@ -976,6 +1077,8 @@ extern int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
 extern void ext4_ext_truncate(struct inode *, struct page *);
 extern void ext4_ext_init(struct super_block *);
 extern void ext4_ext_release(struct super_block *);
+extern long ext4_fallocate(struct inode *inode, int mode, loff_t offset,
+			  loff_t len);
 static inline int
 ext4_get_blocks_wrap(handle_t *handle, struct inode *inode, sector_t block,
 			unsigned long max_blocks, struct buffer_head *bh,

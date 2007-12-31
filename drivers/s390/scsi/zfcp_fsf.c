@@ -156,44 +156,30 @@ zfcp_fsf_req_free(struct zfcp_fsf_req *fsf_req)
 	kfree(fsf_req);
 }
 
-/**
- * zfcp_fsf_req_dismiss - dismiss a single fsf request
- */
-static void zfcp_fsf_req_dismiss(struct zfcp_adapter *adapter,
-				 struct zfcp_fsf_req *fsf_req,
-				 unsigned int counter)
-{
-	u64 dbg_tmp[2];
-
-	dbg_tmp[0] = (u64) atomic_read(&adapter->reqs_active);
-	dbg_tmp[1] = (u64) counter;
-	debug_event(adapter->erp_dbf, 4, (void *) dbg_tmp, 16);
-	list_del(&fsf_req->list);
-	fsf_req->status |= ZFCP_STATUS_FSFREQ_DISMISSED;
-	zfcp_fsf_req_complete(fsf_req);
-}
-
-/**
- * zfcp_fsf_req_dismiss_all - dismiss all remaining fsf requests
+/*
+ * Never ever call this without shutting down the adapter first.
+ * Otherwise the adapter would continue using and corrupting s390 storage.
+ * Included BUG_ON() call to ensure this is done.
+ * ERP is supposed to be the only user of this function.
  */
 void zfcp_fsf_req_dismiss_all(struct zfcp_adapter *adapter)
 {
-	struct zfcp_fsf_req *request, *tmp;
+	struct zfcp_fsf_req *fsf_req, *tmp;
 	unsigned long flags;
 	LIST_HEAD(remove_queue);
-	unsigned int i, counter;
+	unsigned int i;
 
+	BUG_ON(atomic_test_mask(ZFCP_STATUS_ADAPTER_QDIOUP, &adapter->status));
 	spin_lock_irqsave(&adapter->req_list_lock, flags);
 	atomic_set(&adapter->reqs_active, 0);
-	for (i=0; i<REQUEST_LIST_SIZE; i++)
+	for (i = 0; i < REQUEST_LIST_SIZE; i++)
 		list_splice_init(&adapter->req_list[i], &remove_queue);
-
 	spin_unlock_irqrestore(&adapter->req_list_lock, flags);
 
-	counter = 0;
-	list_for_each_entry_safe(request, tmp, &remove_queue, list) {
-		zfcp_fsf_req_dismiss(adapter, request, counter);
-		counter++;
+	list_for_each_entry_safe(fsf_req, tmp, &remove_queue, list) {
+		list_del(&fsf_req->list);
+		fsf_req->status |= ZFCP_STATUS_FSFREQ_DISMISSED;
+		zfcp_fsf_req_complete(fsf_req);
 	}
 }
 
@@ -1944,7 +1930,7 @@ static int zfcp_fsf_send_els_handler(struct zfcp_fsf_req *fsf_req)
 skip_fsfstatus:
 	send_els->status = retval;
 
-	if (send_els->handler != 0)
+	if (send_els->handler)
 		send_els->handler(send_els->handler_data);
 
 	return retval;
@@ -4168,8 +4154,9 @@ zfcp_fsf_send_fcp_command_task_handler(struct zfcp_fsf_req *fsf_req)
 			      fcp_rsp_iu->fcp_resid,
 			      (int) zfcp_get_fcp_dl(fcp_cmnd_iu));
 
-		scpnt->resid = fcp_rsp_iu->fcp_resid;
-		if (scpnt->request_bufflen - scpnt->resid < scpnt->underflow)
+		scsi_set_resid(scpnt, fcp_rsp_iu->fcp_resid);
+		if (scsi_bufflen(scpnt) - scsi_get_resid(scpnt) <
+		    scpnt->underflow)
 			set_host_byte(&scpnt->result, DID_ERROR);
 	}
 

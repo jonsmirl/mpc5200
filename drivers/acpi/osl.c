@@ -33,6 +33,7 @@
 #include <linux/interrupt.h>
 #include <linux/kmod.h>
 #include <linux/delay.h>
+#include <linux/dmi.h>
 #include <linux/workqueue.h>
 #include <linux/nmi.h>
 #include <linux/acpi.h>
@@ -72,6 +73,15 @@ static acpi_osd_handler acpi_irq_handler;
 static void *acpi_irq_context;
 static struct workqueue_struct *kacpid_wq;
 static struct workqueue_struct *kacpi_notify_wq;
+
+#define	OSI_STRING_LENGTH_MAX 64	/* arbitrary */
+static char osi_additional_string[OSI_STRING_LENGTH_MAX];
+
+static int osi_linux;		/* disable _OSI(Linux) by default */
+
+#ifdef CONFIG_DMI
+static struct __initdata dmi_system_id acpi_osl_dmi_table[];
+#endif
 
 static void __init acpi_request_region (struct acpi_generic_address *addr,
 	unsigned int length, char *desc)
@@ -121,8 +131,9 @@ static int __init acpi_reserve_resources(void)
 }
 device_initcall(acpi_reserve_resources);
 
-acpi_status acpi_os_initialize(void)
+acpi_status __init acpi_os_initialize(void)
 {
+	dmi_check_system(acpi_osl_dmi_table);
 	return AE_OK;
 }
 
@@ -960,20 +971,38 @@ static int __init acpi_os_name_setup(char *str)
 
 __setup("acpi_os_name=", acpi_os_name_setup);
 
+static void enable_osi_linux(int enable) {
+
+	if (osi_linux != enable)
+		printk(KERN_INFO PREFIX "%sabled _OSI(Linux)\n",
+			enable ? "En": "Dis");
+
+	osi_linux = enable;
+	return;
+}
+
 /*
- * _OSI control
+ * Modify the list of "OS Interfaces" reported to BIOS via _OSI
+ *
  * empty string disables _OSI
- * TBD additional string adds to _OSI
+ * string starting with '!' disables that string
+ * otherwise string is added to list, augmenting built-in strings
  */
 static int __init acpi_osi_setup(char *str)
 {
 	if (str == NULL || *str == '\0') {
 		printk(KERN_INFO PREFIX "_OSI method disabled\n");
 		acpi_gbl_create_osi_method = FALSE;
-	} else {
-		/* TBD */
-		printk(KERN_ERR PREFIX "_OSI additional string ignored -- %s\n",
-		       str);
+	} else if (!strcmp("!Linux", str)) {
+		enable_osi_linux(0);
+	} else if (*str == '!') {
+		if (acpi_osi_invalidate(++str) == AE_OK)
+			printk(KERN_INFO PREFIX "Deleted _OSI(%s)\n", str);
+	} else if (!strcmp("Linux", str)) {
+		enable_osi_linux(1);
+	} else if (*osi_additional_string == '\0') {
+		strncpy(osi_additional_string, str, OSI_STRING_LENGTH_MAX);
+		printk(KERN_INFO PREFIX "Added _OSI(%s)\n", str);
 	}
 
 	return 1;
@@ -1063,7 +1092,7 @@ void acpi_os_release_lock(acpi_spinlock lockp, acpi_cpu_flags flags)
 acpi_status
 acpi_os_create_cache(char *name, u16 size, u16 depth, acpi_cache_t ** cache)
 {
-	*cache = kmem_cache_create(name, size, 0, 0, NULL, NULL);
+	*cache = kmem_cache_create(name, size, 0, 0, NULL);
 	if (*cache == NULL)
 		return AE_ERROR;
 	else
@@ -1143,10 +1172,20 @@ acpi_status acpi_os_release_object(acpi_cache_t * cache, void *object)
 acpi_status
 acpi_os_validate_interface (char *interface)
 {
-
-    return AE_SUPPORT;
+	if (!strncmp(osi_additional_string, interface, OSI_STRING_LENGTH_MAX))
+		return AE_OK;
+	if (!strcmp("Linux", interface)) {
+		printk(KERN_WARNING PREFIX
+			"System BIOS is requesting _OSI(Linux)\n");
+		printk(KERN_WARNING PREFIX
+			"If \"acpi_osi=Linux\" works better,\n"
+			"Please send dmidecode "
+			"to linux-acpi@vger.kernel.org\n");
+		if(osi_linux)
+			return AE_OK;
+	}
+	return AE_SUPPORT;
 }
-
 
 /******************************************************************************
  *
@@ -1174,5 +1213,28 @@ acpi_os_validate_address (
     return AE_OK;
 }
 
+#ifdef CONFIG_DMI
+static int dmi_osi_linux(struct dmi_system_id *d)
+{
+	printk(KERN_NOTICE "%s detected: enabling _OSI(Linux)\n", d->ident);
+	enable_osi_linux(1);
+	return 0;
+}
+
+static struct dmi_system_id acpi_osl_dmi_table[] __initdata = {
+	/*
+	 * Boxes that need _OSI(Linux)
+	 */
+	{
+	 .callback = dmi_osi_linux,
+	 .ident = "Intel Napa CRB",
+	 .matches = {
+		     DMI_MATCH(DMI_BOARD_VENDOR, "Intel Corporation"),
+		     DMI_MATCH(DMI_BOARD_NAME, "MPAD-MSAE Customer Reference Boards"),
+		     },
+	 },
+	{}
+};
+#endif /* CONFIG_DMI */
 
 #endif

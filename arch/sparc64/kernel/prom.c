@@ -28,74 +28,11 @@
 #include <asm/irq.h>
 #include <asm/asi.h>
 #include <asm/upa.h>
+#include <asm/smp.h>
 
-static struct device_node *allnodes;
+extern struct device_node *allnodes;	/* temporary while merging */
 
-/* use when traversing tree through the allnext, child, sibling,
- * or parent members of struct device_node.
- */
-static DEFINE_RWLOCK(devtree_lock);
-
-int of_device_is_compatible(const struct device_node *device,
-			    const char *compat)
-{
-	const char* cp;
-	int cplen, l;
-
-	cp = of_get_property(device, "compatible", &cplen);
-	if (cp == NULL)
-		return 0;
-	while (cplen > 0) {
-		if (strncmp(cp, compat, strlen(compat)) == 0)
-			return 1;
-		l = strlen(cp) + 1;
-		cp += l;
-		cplen -= l;
-	}
-
-	return 0;
-}
-EXPORT_SYMBOL(of_device_is_compatible);
-
-struct device_node *of_get_parent(const struct device_node *node)
-{
-	struct device_node *np;
-
-	if (!node)
-		return NULL;
-
-	np = node->parent;
-
-	return np;
-}
-EXPORT_SYMBOL(of_get_parent);
-
-struct device_node *of_get_next_child(const struct device_node *node,
-	struct device_node *prev)
-{
-	struct device_node *next;
-
-	next = prev ? prev->sibling : node->child;
-	for (; next != 0; next = next->sibling) {
-		break;
-	}
-
-	return next;
-}
-EXPORT_SYMBOL(of_get_next_child);
-
-struct device_node *of_find_node_by_path(const char *path)
-{
-	struct device_node *np = allnodes;
-
-	for (; np != 0; np = np->allnext) {
-		if (np->full_name != 0 && strcmp(np->full_name, path) == 0)
-			break;
-	}
-
-	return np;
-}
-EXPORT_SYMBOL(of_find_node_by_path);
+extern rwlock_t devtree_lock;	/* temporary while merging */
 
 struct device_node *of_find_node_by_phandle(phandle handle)
 {
@@ -109,81 +46,6 @@ struct device_node *of_find_node_by_phandle(phandle handle)
 }
 EXPORT_SYMBOL(of_find_node_by_phandle);
 
-struct device_node *of_find_node_by_name(struct device_node *from,
-	const char *name)
-{
-	struct device_node *np;
-
-	np = from ? from->allnext : allnodes;
-	for (; np != NULL; np = np->allnext)
-		if (np->name != NULL && strcmp(np->name, name) == 0)
-			break;
-
-	return np;
-}
-EXPORT_SYMBOL(of_find_node_by_name);
-
-struct device_node *of_find_node_by_type(struct device_node *from,
-	const char *type)
-{
-	struct device_node *np;
-
-	np = from ? from->allnext : allnodes;
-	for (; np != 0; np = np->allnext)
-		if (np->type != 0 && strcmp(np->type, type) == 0)
-			break;
-
-	return np;
-}
-EXPORT_SYMBOL(of_find_node_by_type);
-
-struct device_node *of_find_compatible_node(struct device_node *from,
-	const char *type, const char *compatible)
-{
-	struct device_node *np;
-
-	np = from ? from->allnext : allnodes;
-	for (; np != 0; np = np->allnext) {
-		if (type != NULL
-		    && !(np->type != 0 && strcmp(np->type, type) == 0))
-			continue;
-		if (of_device_is_compatible(np, compatible))
-			break;
-	}
-
-	return np;
-}
-EXPORT_SYMBOL(of_find_compatible_node);
-
-struct property *of_find_property(const struct device_node *np,
-				  const char *name,
-				  int *lenp)
-{
-	struct property *pp;
-
-	for (pp = np->properties; pp != 0; pp = pp->next) {
-		if (strcasecmp(pp->name, name) == 0) {
-			if (lenp != 0)
-				*lenp = pp->length;
-			break;
-		}
-	}
-	return pp;
-}
-EXPORT_SYMBOL(of_find_property);
-
-/*
- * Find a property with a given name for a given node
- * and return the value.
- */
-const void *of_get_property(const struct device_node *np, const char *name,
-		      int *lenp)
-{
-	struct property *pp = of_find_property(np,name,lenp);
-	return pp ? pp->value : NULL;
-}
-EXPORT_SYMBOL(of_get_property);
-
 int of_getintprop_default(struct device_node *np, const char *name, int def)
 {
 	struct property *prop;
@@ -196,36 +58,6 @@ int of_getintprop_default(struct device_node *np, const char *name, int def)
 	return *(int *) prop->value;
 }
 EXPORT_SYMBOL(of_getintprop_default);
-
-int of_n_addr_cells(struct device_node *np)
-{
-	const int* ip;
-	do {
-		if (np->parent)
-			np = np->parent;
-		ip = of_get_property(np, "#address-cells", NULL);
-		if (ip != NULL)
-			return *ip;
-	} while (np->parent);
-	/* No #address-cells property for the root node, default to 2 */
-	return 2;
-}
-EXPORT_SYMBOL(of_n_addr_cells);
-
-int of_n_size_cells(struct device_node *np)
-{
-	const int* ip;
-	do {
-		if (np->parent)
-			np = np->parent;
-		ip = of_get_property(np, "#size-cells", NULL);
-		if (ip != NULL)
-			return *ip;
-	} while (np->parent);
-	/* No #size-cells property for the root node, default to 1 */
-	return 1;
-}
-EXPORT_SYMBOL(of_n_size_cells);
 
 int of_set_property(struct device_node *dp, const char *name, void *val, int len)
 {
@@ -274,6 +106,21 @@ int of_set_property(struct device_node *dp, const char *name, void *val, int len
 	return err;
 }
 EXPORT_SYMBOL(of_set_property);
+
+int of_find_in_proplist(const char *list, const char *match, int len)
+{
+	while (len > 0) {
+		int l;
+
+		if (!strcmp(list, match))
+			return 1;
+		l = strlen(list) + 1;
+		list += l;
+		len -= l;
+	}
+	return 0;
+}
+EXPORT_SYMBOL(of_find_in_proplist);
 
 static unsigned int prom_early_allocated;
 
@@ -932,29 +779,29 @@ static void __init fire_irq_trans_init(struct device_node *dp)
  * This should conform to both Sunfire/Wildfire server and Fusion
  * desktop designs.
  */
-#define SYSIO_IMAP_SLOT0	0x2c04UL
-#define SYSIO_IMAP_SLOT1	0x2c0cUL
-#define SYSIO_IMAP_SLOT2	0x2c14UL
-#define SYSIO_IMAP_SLOT3	0x2c1cUL
-#define SYSIO_IMAP_SCSI		0x3004UL
-#define SYSIO_IMAP_ETH		0x300cUL
-#define SYSIO_IMAP_BPP		0x3014UL
-#define SYSIO_IMAP_AUDIO	0x301cUL
-#define SYSIO_IMAP_PFAIL	0x3024UL
-#define SYSIO_IMAP_KMS		0x302cUL
-#define SYSIO_IMAP_FLPY		0x3034UL
-#define SYSIO_IMAP_SHW		0x303cUL
-#define SYSIO_IMAP_KBD		0x3044UL
-#define SYSIO_IMAP_MS		0x304cUL
-#define SYSIO_IMAP_SER		0x3054UL
-#define SYSIO_IMAP_TIM0		0x3064UL
-#define SYSIO_IMAP_TIM1		0x306cUL
-#define SYSIO_IMAP_UE		0x3074UL
-#define SYSIO_IMAP_CE		0x307cUL
-#define SYSIO_IMAP_SBERR	0x3084UL
-#define SYSIO_IMAP_PMGMT	0x308cUL
-#define SYSIO_IMAP_GFX		0x3094UL
-#define SYSIO_IMAP_EUPA		0x309cUL
+#define SYSIO_IMAP_SLOT0	0x2c00UL
+#define SYSIO_IMAP_SLOT1	0x2c08UL
+#define SYSIO_IMAP_SLOT2	0x2c10UL
+#define SYSIO_IMAP_SLOT3	0x2c18UL
+#define SYSIO_IMAP_SCSI		0x3000UL
+#define SYSIO_IMAP_ETH		0x3008UL
+#define SYSIO_IMAP_BPP		0x3010UL
+#define SYSIO_IMAP_AUDIO	0x3018UL
+#define SYSIO_IMAP_PFAIL	0x3020UL
+#define SYSIO_IMAP_KMS		0x3028UL
+#define SYSIO_IMAP_FLPY		0x3030UL
+#define SYSIO_IMAP_SHW		0x3038UL
+#define SYSIO_IMAP_KBD		0x3040UL
+#define SYSIO_IMAP_MS		0x3048UL
+#define SYSIO_IMAP_SER		0x3050UL
+#define SYSIO_IMAP_TIM0		0x3060UL
+#define SYSIO_IMAP_TIM1		0x3068UL
+#define SYSIO_IMAP_UE		0x3070UL
+#define SYSIO_IMAP_CE		0x3078UL
+#define SYSIO_IMAP_SBERR	0x3080UL
+#define SYSIO_IMAP_PMGMT	0x3088UL
+#define SYSIO_IMAP_GFX		0x3090UL
+#define SYSIO_IMAP_EUPA		0x3098UL
 
 #define bogon     ((unsigned long) -1)
 static unsigned long sysio_irq_offsets[] = {
@@ -1005,10 +852,10 @@ static unsigned long sysio_irq_offsets[] = {
  * Interrupt Clear register pointer, SYSIO specific version.
  */
 #define SYSIO_ICLR_UNUSED0	0x3400UL
-#define SYSIO_ICLR_SLOT0	0x340cUL
-#define SYSIO_ICLR_SLOT1	0x344cUL
-#define SYSIO_ICLR_SLOT2	0x348cUL
-#define SYSIO_ICLR_SLOT3	0x34ccUL
+#define SYSIO_ICLR_SLOT0	0x3408UL
+#define SYSIO_ICLR_SLOT1	0x3448UL
+#define SYSIO_ICLR_SLOT2	0x3488UL
+#define SYSIO_ICLR_SLOT3	0x34c8UL
 static unsigned long sysio_imap_to_iclr(unsigned long imap)
 {
 	unsigned long diff = SYSIO_ICLR_UNUSED0 - SYSIO_IMAP_SLOT0;
@@ -1665,6 +1512,213 @@ static struct device_node * __init build_tree(struct device_node *parent, phandl
 	return ret;
 }
 
+static const char *get_mid_prop(void)
+{
+	return (tlb_type == spitfire ? "upa-portid" : "portid");
+}
+
+struct device_node *of_find_node_by_cpuid(int cpuid)
+{
+	struct device_node *dp;
+	const char *mid_prop = get_mid_prop();
+
+	for_each_node_by_type(dp, "cpu") {
+		int id = of_getintprop_default(dp, mid_prop, -1);
+		const char *this_mid_prop = mid_prop;
+
+		if (id < 0) {
+			this_mid_prop = "cpuid";
+			id = of_getintprop_default(dp, this_mid_prop, -1);
+		}
+
+		if (id < 0) {
+			prom_printf("OF: Serious problem, cpu lacks "
+				    "%s property", this_mid_prop);
+			prom_halt();
+		}
+		if (cpuid == id)
+			return dp;
+	}
+	return NULL;
+}
+
+static void __init of_fill_in_cpu_data(void)
+{
+	struct device_node *dp;
+	const char *mid_prop = get_mid_prop();
+
+	ncpus_probed = 0;
+	for_each_node_by_type(dp, "cpu") {
+		int cpuid = of_getintprop_default(dp, mid_prop, -1);
+		const char *this_mid_prop = mid_prop;
+		struct device_node *portid_parent;
+		int portid = -1;
+
+		portid_parent = NULL;
+		if (cpuid < 0) {
+			this_mid_prop = "cpuid";
+			cpuid = of_getintprop_default(dp, this_mid_prop, -1);
+			if (cpuid >= 0) {
+				int limit = 2;
+
+				portid_parent = dp;
+				while (limit--) {
+					portid_parent = portid_parent->parent;
+					if (!portid_parent)
+						break;
+					portid = of_getintprop_default(portid_parent,
+								       "portid", -1);
+					if (portid >= 0)
+						break;
+				}
+			}
+		}
+
+		if (cpuid < 0) {
+			prom_printf("OF: Serious problem, cpu lacks "
+				    "%s property", this_mid_prop);
+			prom_halt();
+		}
+
+		ncpus_probed++;
+
+#ifdef CONFIG_SMP
+		if (cpuid >= NR_CPUS) {
+			printk(KERN_WARNING "Ignoring CPU %d which is "
+			       ">= NR_CPUS (%d)\n",
+			       cpuid, NR_CPUS);
+			continue;
+		}
+#else
+		/* On uniprocessor we only want the values for the
+		 * real physical cpu the kernel booted onto, however
+		 * cpu_data() only has one entry at index 0.
+		 */
+		if (cpuid != real_hard_smp_processor_id())
+			continue;
+		cpuid = 0;
+#endif
+
+		cpu_data(cpuid).clock_tick =
+			of_getintprop_default(dp, "clock-frequency", 0);
+
+		if (portid_parent) {
+			cpu_data(cpuid).dcache_size =
+				of_getintprop_default(dp, "l1-dcache-size",
+						      16 * 1024);
+			cpu_data(cpuid).dcache_line_size =
+				of_getintprop_default(dp, "l1-dcache-line-size",
+						      32);
+			cpu_data(cpuid).icache_size =
+				of_getintprop_default(dp, "l1-icache-size",
+						      8 * 1024);
+			cpu_data(cpuid).icache_line_size =
+				of_getintprop_default(dp, "l1-icache-line-size",
+						      32);
+			cpu_data(cpuid).ecache_size =
+				of_getintprop_default(dp, "l2-cache-size", 0);
+			cpu_data(cpuid).ecache_line_size =
+				of_getintprop_default(dp, "l2-cache-line-size", 0);
+			if (!cpu_data(cpuid).ecache_size ||
+			    !cpu_data(cpuid).ecache_line_size) {
+				cpu_data(cpuid).ecache_size =
+					of_getintprop_default(portid_parent,
+							      "l2-cache-size",
+							      (4 * 1024 * 1024));
+				cpu_data(cpuid).ecache_line_size =
+					of_getintprop_default(portid_parent,
+							      "l2-cache-line-size", 64);
+			}
+
+			cpu_data(cpuid).core_id = portid + 1;
+			cpu_data(cpuid).proc_id = portid;
+#ifdef CONFIG_SMP
+			sparc64_multi_core = 1;
+#endif
+		} else {
+			cpu_data(cpuid).dcache_size =
+				of_getintprop_default(dp, "dcache-size", 16 * 1024);
+			cpu_data(cpuid).dcache_line_size =
+				of_getintprop_default(dp, "dcache-line-size", 32);
+
+			cpu_data(cpuid).icache_size =
+				of_getintprop_default(dp, "icache-size", 16 * 1024);
+			cpu_data(cpuid).icache_line_size =
+				of_getintprop_default(dp, "icache-line-size", 32);
+
+			cpu_data(cpuid).ecache_size =
+				of_getintprop_default(dp, "ecache-size",
+						      (4 * 1024 * 1024));
+			cpu_data(cpuid).ecache_line_size =
+				of_getintprop_default(dp, "ecache-line-size", 64);
+
+			cpu_data(cpuid).core_id = 0;
+			cpu_data(cpuid).proc_id = -1;
+		}
+
+#ifdef CONFIG_SMP
+		cpu_set(cpuid, cpu_present_map);
+		cpu_set(cpuid, cpu_possible_map);
+#endif
+	}
+
+	smp_fill_in_sib_core_maps();
+}
+
+struct device_node *of_console_device;
+EXPORT_SYMBOL(of_console_device);
+
+char *of_console_path;
+EXPORT_SYMBOL(of_console_path);
+
+char *of_console_options;
+EXPORT_SYMBOL(of_console_options);
+
+static void __init of_console_init(void)
+{
+	char *msg = "OF stdout device is: %s\n";
+	struct device_node *dp;
+	const char *type;
+	phandle node;
+
+	of_console_path = prom_early_alloc(256);
+	if (prom_ihandle2path(prom_stdout, of_console_path, 256) < 0) {
+		prom_printf("Cannot obtain path of stdout.\n");
+		prom_halt();
+	}
+	of_console_options = strrchr(of_console_path, ':');
+	if (of_console_options) {
+		of_console_options++;
+		if (*of_console_options == '\0')
+			of_console_options = NULL;
+	}
+
+	node = prom_inst2pkg(prom_stdout);
+	if (!node) {
+		prom_printf("Cannot resolve stdout node from "
+			    "instance %08x.\n", prom_stdout);
+		prom_halt();
+	}
+
+	dp = of_find_node_by_phandle(node);
+	type = of_get_property(dp, "device_type", NULL);
+	if (!type) {
+		prom_printf("Console stdout lacks device_type property.\n");
+		prom_halt();
+	}
+
+	if (strcmp(type, "display") && strcmp(type, "serial")) {
+		prom_printf("Console device_type is neither display "
+			    "nor serial.\n");
+		prom_halt();
+	}
+
+	of_console_device = dp;
+
+	prom_printf(msg, of_console_path);
+	printk(msg, of_console_path);
+}
+
 void __init prom_build_devicetree(void)
 {
 	struct device_node **nextp;
@@ -1677,6 +1731,11 @@ void __init prom_build_devicetree(void)
 	allnodes->child = build_tree(allnodes,
 				     prom_getchild(allnodes->node),
 				     &nextp);
+	of_console_init();
+
 	printk("PROM: Built device tree with %u bytes of memory.\n",
 	       prom_early_allocated);
+
+	if (tlb_type != hypervisor)
+		of_fill_in_cpu_data();
 }

@@ -4,7 +4,7 @@
  * Author:       Michael Hennerich
  *
  * Created:      ?
- * Description:  Set up the interupt priorities
+ * Description:  Set up the interrupt priorities
  *
  * Modified:
  *               Copyright 2004-2006 Analog Devices Inc.
@@ -28,8 +28,8 @@
  */
 
 #include <linux/module.h>
+#include <linux/irq.h>
 #include <asm/blackfin.h>
-#include <asm/irq.h>
 
 void program_IAR(void)
 {

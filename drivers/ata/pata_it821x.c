@@ -1,7 +1,8 @@
 /*
- * ata-it821x.c 	- IT821x PATA for new ATA layer
+ * pata_it821x.c 	- IT821x PATA for new ATA layer
  *			  (C) 2005 Red Hat Inc
  *			  Alan Cox <alan@redhat.com>
+ *			  (C) 2007 Bartlomiej Zolnierkiewicz
  *
  * based upon
  *
@@ -65,7 +66,6 @@
  *
  *  TODO
  *	-	ATAPI and other speed filtering
- *	-	Command filter in smart mode
  *	-	RAID configuration ioctls
  */
 
@@ -80,7 +80,7 @@
 
 
 #define DRV_NAME "pata_it821x"
-#define DRV_VERSION "0.3.6"
+#define DRV_VERSION "0.3.8"
 
 struct it821x_dev
 {
@@ -461,13 +461,7 @@ static unsigned int it821x_passthru_qc_issue_prot(struct ata_queued_cmd *qc)
 
 static int it821x_smart_set_mode(struct ata_port *ap, struct ata_device **unused)
 {
-	int dma_enabled = 0;
 	int i;
-
-	/* Bits 5 and 6 indicate if DMA is active on master/slave */
-	/* It is possible that BMDMA isn't allocated */
-	if (ap->ioaddr.bmdma_addr)
-		dma_enabled = ioread8(ap->ioaddr.bmdma_addr + ATA_DMA_CMD);
 
 	for (i = 0; i < ATA_MAX_DEVICES; i++) {
 		struct ata_device *dev = &ap->device[i];
@@ -477,7 +471,7 @@ static int it821x_smart_set_mode(struct ata_port *ap, struct ata_device **unused
 			dev->dma_mode = XFER_MW_DMA_0;
 			/* We do need the right mode information for DMA or PIO
 			   and this comes from the current configuration flags */
-			if (dma_enabled & (1 << (5 + i))) {
+			if (ata_id_has_dma(dev->id)) {
 				ata_dev_printk(dev, KERN_INFO, "configured for DMA\n");
 				dev->xfer_mode = XFER_MW_DMA_0;
 				dev->xfer_shift = ATA_SHIFT_MWDMA;
@@ -539,6 +533,10 @@ static int it821x_check_atapi_dma(struct ata_queued_cmd *qc)
 	struct ata_port *ap = qc->ap;
 	struct it821x_dev *itdev = ap->private_data;
 
+	/* Only use dma for transfers to/from the media. */
+	if (qc->nbytes < 2048)
+		return -EOPNOTSUPP;
+
 	/* No ATAPI DMA in smart mode */
 	if (itdev->smart)
 		return -EOPNOTSUPP;
@@ -593,8 +591,7 @@ static int it821x_port_start(struct ata_port *ap)
 	itdev->want[1][1] = ATA_ANY;
 	itdev->last_device = -1;
 
-	pci_read_config_byte(pdev, PCI_REVISION_ID, &conf);
-	if (conf == 0x10) {
+	if (pdev->revision == 0x10) {
 		itdev->timing10 = 1;
 		/* Need to disable ATAPI DMA for this case */
 		if (!itdev->smart)
@@ -696,7 +693,7 @@ static struct ata_port_operations it821x_passthru_port_ops = {
 	.port_start	= it821x_port_start,
 };
 
-static void __devinit it821x_disable_raid(struct pci_dev *pdev)
+static void it821x_disable_raid(struct pci_dev *pdev)
 {
 	/* Reset local CPU, and set BIOS not ready */
 	pci_write_config_byte(pdev, 0x5E, 0x01);
@@ -720,17 +717,17 @@ static int it821x_init_one(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	static const struct ata_port_info info_smart = {
 		.sht = &it821x_sht,
-		.flags = ATA_FLAG_SLAVE_POSS | ATA_FLAG_SRST,
+		.flags = ATA_FLAG_SLAVE_POSS,
 		.pio_mask = 0x1f,
 		.mwdma_mask = 0x07,
 		.port_ops = &it821x_smart_port_ops
 	};
 	static const struct ata_port_info info_passthru = {
 		.sht = &it821x_sht,
-		.flags = ATA_FLAG_SLAVE_POSS | ATA_FLAG_SRST,
+		.flags = ATA_FLAG_SLAVE_POSS,
 		.pio_mask = 0x1f,
 		.mwdma_mask = 0x07,
-		.udma_mask = 0x7f,
+		.udma_mask = ATA_UDMA6,
 		.port_ops = &it821x_passthru_port_ops
 	};
 
@@ -800,7 +797,7 @@ MODULE_VERSION(DRV_VERSION);
 
 
 module_param_named(noraid, it8212_noraid, int, S_IRUGO);
-MODULE_PARM_DESC(it8212_noraid, "Force card into bypass mode");
+MODULE_PARM_DESC(noraid, "Force card into bypass mode");
 
 module_init(it821x_init);
 module_exit(it821x_exit);

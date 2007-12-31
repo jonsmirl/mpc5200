@@ -109,6 +109,20 @@ static void *get_send_wqe(struct mlx4_ib_qp *qp, int n)
 	return get_wqe(qp, qp->sq.offset + (n << qp->sq.wqe_shift));
 }
 
+/*
+ * Stamp a SQ WQE so that it is invalid if prefetched by marking the
+ * first four bytes of every 64 byte chunk with 0xffffffff, except for
+ * the very first chunk of the WQE.
+ */
+static void stamp_send_wqe(struct mlx4_ib_qp *qp, int n)
+{
+	u32 *wqe = get_send_wqe(qp, n);
+	int i;
+
+	for (i = 16; i < 1 << (qp->sq.wqe_shift - 2); i += 16)
+		wqe[i] = 0xffffffff;
+}
+
 static void mlx4_ib_qp_event(struct mlx4_qp *qp, enum mlx4_event type)
 {
 	struct ib_event event;
@@ -178,6 +192,8 @@ static int send_wqe_overhead(enum ib_qp_type type)
 	case IB_QPT_GSI:
 		return sizeof (struct mlx4_wqe_ctrl_seg) +
 			ALIGN(MLX4_IB_UD_HEADER_SIZE +
+			      DIV_ROUND_UP(MLX4_IB_UD_HEADER_SIZE,
+					   MLX4_INLINE_ALIGN) *
 			      sizeof (struct mlx4_wqe_inline_seg),
 			      sizeof (struct mlx4_wqe_data_seg)) +
 			ALIGN(4 +
@@ -188,14 +204,42 @@ static int send_wqe_overhead(enum ib_qp_type type)
 	}
 }
 
-static int set_qp_size(struct mlx4_ib_dev *dev, struct ib_qp_cap *cap,
-		       enum ib_qp_type type, struct mlx4_ib_qp *qp)
+static int set_rq_size(struct mlx4_ib_dev *dev, struct ib_qp_cap *cap,
+		       int is_user, int has_srq, struct mlx4_ib_qp *qp)
 {
-	/* Sanity check QP size before proceeding */
+	/* Sanity check RQ size before proceeding */
+	if (cap->max_recv_wr  > dev->dev->caps.max_wqes  ||
+	    cap->max_recv_sge > dev->dev->caps.max_rq_sg)
+		return -EINVAL;
+
+	if (has_srq) {
+		/* QPs attached to an SRQ should have no RQ */
+		if (cap->max_recv_wr)
+			return -EINVAL;
+
+		qp->rq.wqe_cnt = qp->rq.max_gs = 0;
+	} else {
+		/* HW requires >= 1 RQ entry with >= 1 gather entry */
+		if (is_user && (!cap->max_recv_wr || !cap->max_recv_sge))
+			return -EINVAL;
+
+		qp->rq.wqe_cnt	 = roundup_pow_of_two(max(1U, cap->max_recv_wr));
+		qp->rq.max_gs	 = roundup_pow_of_two(max(1U, cap->max_recv_sge));
+		qp->rq.wqe_shift = ilog2(qp->rq.max_gs * sizeof (struct mlx4_wqe_data_seg));
+	}
+
+	cap->max_recv_wr  = qp->rq.max_post = qp->rq.wqe_cnt;
+	cap->max_recv_sge = qp->rq.max_gs;
+
+	return 0;
+}
+
+static int set_kernel_sq_size(struct mlx4_ib_dev *dev, struct ib_qp_cap *cap,
+			      enum ib_qp_type type, struct mlx4_ib_qp *qp)
+{
+	/* Sanity check SQ size before proceeding */
 	if (cap->max_send_wr	 > dev->dev->caps.max_wqes  ||
-	    cap->max_recv_wr	 > dev->dev->caps.max_wqes  ||
 	    cap->max_send_sge	 > dev->dev->caps.max_sq_sg ||
-	    cap->max_recv_sge	 > dev->dev->caps.max_rq_sg ||
 	    cap->max_inline_data + send_wqe_overhead(type) +
 	    sizeof (struct mlx4_wqe_inline_seg) > dev->dev->caps.max_sq_desc_sz)
 		return -EINVAL;
@@ -208,13 +252,6 @@ static int set_qp_size(struct mlx4_ib_dev *dev, struct ib_qp_cap *cap,
 	    cap->max_send_sge + 2 > dev->dev->caps.max_sq_sg)
 		return -EINVAL;
 
-	qp->rq.max = cap->max_recv_wr ? roundup_pow_of_two(cap->max_recv_wr) : 0;
-	qp->sq.max = cap->max_send_wr ? roundup_pow_of_two(cap->max_send_wr) : 0;
-
-	qp->rq.wqe_shift = ilog2(roundup_pow_of_two(cap->max_recv_sge *
-						    sizeof (struct mlx4_wqe_data_seg)));
-	qp->rq.max_gs    = (1 << qp->rq.wqe_shift) / sizeof (struct mlx4_wqe_data_seg);
-
 	qp->sq.wqe_shift = ilog2(roundup_pow_of_two(max(cap->max_send_sge *
 							sizeof (struct mlx4_wqe_data_seg),
 							cap->max_inline_data +
@@ -223,22 +260,39 @@ static int set_qp_size(struct mlx4_ib_dev *dev, struct ib_qp_cap *cap,
 	qp->sq.max_gs    = ((1 << qp->sq.wqe_shift) - send_wqe_overhead(type)) /
 		sizeof (struct mlx4_wqe_data_seg);
 
-	qp->buf_size = (qp->rq.max << qp->rq.wqe_shift) +
-		(qp->sq.max << qp->sq.wqe_shift);
+	/*
+	 * We need to leave 2 KB + 1 WQE of headroom in the SQ to
+	 * allow HW to prefetch.
+	 */
+	qp->sq_spare_wqes = (2048 >> qp->sq.wqe_shift) + 1;
+	qp->sq.wqe_cnt = roundup_pow_of_two(cap->max_send_wr + qp->sq_spare_wqes);
+
+	qp->buf_size = (qp->rq.wqe_cnt << qp->rq.wqe_shift) +
+		(qp->sq.wqe_cnt << qp->sq.wqe_shift);
 	if (qp->rq.wqe_shift > qp->sq.wqe_shift) {
 		qp->rq.offset = 0;
-		qp->sq.offset = qp->rq.max << qp->rq.wqe_shift;
+		qp->sq.offset = qp->rq.wqe_cnt << qp->rq.wqe_shift;
 	} else {
-		qp->rq.offset = qp->sq.max << qp->sq.wqe_shift;
+		qp->rq.offset = qp->sq.wqe_cnt << qp->sq.wqe_shift;
 		qp->sq.offset = 0;
 	}
 
-	cap->max_send_wr  = qp->sq.max;
-	cap->max_recv_wr  = qp->rq.max;
+	cap->max_send_wr  = qp->sq.max_post = qp->sq.wqe_cnt - qp->sq_spare_wqes;
 	cap->max_send_sge = qp->sq.max_gs;
-	cap->max_recv_sge = qp->rq.max_gs;
-	cap->max_inline_data = (1 << qp->sq.wqe_shift) - send_wqe_overhead(type) -
-		sizeof (struct mlx4_wqe_inline_seg);
+	/* We don't support inline sends for kernel QPs (yet) */
+	cap->max_inline_data = 0;
+
+	return 0;
+}
+
+static int set_user_sq_size(struct mlx4_ib_qp *qp,
+			    struct mlx4_ib_create_qp *ucmd)
+{
+	qp->sq.wqe_cnt   = 1 << ucmd->log_sq_bb_count;
+	qp->sq.wqe_shift = ucmd->log_sq_stride;
+
+	qp->buf_size = (qp->rq.wqe_cnt << qp->rq.wqe_shift) +
+		(qp->sq.wqe_cnt << qp->sq.wqe_shift);
 
 	return 0;
 }
@@ -247,9 +301,7 @@ static int create_qp_common(struct mlx4_ib_dev *dev, struct ib_pd *pd,
 			    struct ib_qp_init_attr *init_attr,
 			    struct ib_udata *udata, int sqpn, struct mlx4_ib_qp *qp)
 {
-	struct mlx4_wqe_ctrl_seg *ctrl;
 	int err;
-	int i;
 
 	mutex_init(&qp->mutex);
 	spin_lock_init(&qp->sq.lock);
@@ -264,7 +316,7 @@ static int create_qp_common(struct mlx4_ib_dev *dev, struct ib_pd *pd,
 	qp->sq.head	    = 0;
 	qp->sq.tail	    = 0;
 
-	err = set_qp_size(dev, &init_attr->cap, init_attr->qp_type, qp);
+	err = set_rq_size(dev, &init_attr->cap, !!pd->uobject, !!init_attr->srq, qp);
 	if (err)
 		goto err;
 
@@ -275,6 +327,12 @@ static int create_qp_common(struct mlx4_ib_dev *dev, struct ib_pd *pd,
 			err = -EFAULT;
 			goto err;
 		}
+
+		qp->sq_no_prefetch = ucmd.sq_no_prefetch;
+
+		err = set_user_sq_size(qp, &ucmd);
+		if (err)
+			goto err;
 
 		qp->umem = ib_umem_get(pd->uobject->context, ucmd.buf_addr,
 				       qp->buf_size, 0);
@@ -292,16 +350,26 @@ static int create_qp_common(struct mlx4_ib_dev *dev, struct ib_pd *pd,
 		if (err)
 			goto err_mtt;
 
-		err = mlx4_ib_db_map_user(to_mucontext(pd->uobject->context),
-					  ucmd.db_addr, &qp->db);
-		if (err)
-			goto err_mtt;
+		if (!init_attr->srq) {
+			err = mlx4_ib_db_map_user(to_mucontext(pd->uobject->context),
+						  ucmd.db_addr, &qp->db);
+			if (err)
+				goto err_mtt;
+		}
 	} else {
-		err = mlx4_ib_db_alloc(dev, &qp->db, 0);
+		qp->sq_no_prefetch = 0;
+
+		err = set_kernel_sq_size(dev, &init_attr->cap, init_attr->qp_type, qp);
 		if (err)
 			goto err;
 
-		*qp->db.db = 0;
+		if (!init_attr->srq) {
+			err = mlx4_ib_db_alloc(dev, &qp->db, 0);
+			if (err)
+				goto err;
+
+			*qp->db.db = 0;
+		}
 
 		if (mlx4_buf_alloc(dev->dev, qp->buf_size, PAGE_SIZE * 2, &qp->buf)) {
 			err = -ENOMEM;
@@ -317,21 +385,13 @@ static int create_qp_common(struct mlx4_ib_dev *dev, struct ib_pd *pd,
 		if (err)
 			goto err_mtt;
 
-		for (i = 0; i < qp->sq.max; ++i) {
-			ctrl = get_send_wqe(qp, i);
-			ctrl->owner_opcode = cpu_to_be32(1 << 31);
-		}
-
-		qp->sq.wrid  = kmalloc(qp->sq.max * sizeof (u64), GFP_KERNEL);
-		qp->rq.wrid  = kmalloc(qp->rq.max * sizeof (u64), GFP_KERNEL);
+		qp->sq.wrid  = kmalloc(qp->sq.wqe_cnt * sizeof (u64), GFP_KERNEL);
+		qp->rq.wrid  = kmalloc(qp->rq.wqe_cnt * sizeof (u64), GFP_KERNEL);
 
 		if (!qp->sq.wrid || !qp->rq.wrid) {
 			err = -ENOMEM;
 			goto err_wrid;
 		}
-
-		/* We don't support inline sends for kernel QPs (yet) */
-		init_attr->cap.max_inline_data = 0;
 	}
 
 	err = mlx4_qp_alloc(dev->dev, sqpn, &qp->mqp);
@@ -355,9 +415,11 @@ static int create_qp_common(struct mlx4_ib_dev *dev, struct ib_pd *pd,
 	return 0;
 
 err_wrid:
-	if (pd->uobject)
-		mlx4_ib_db_unmap_user(to_mucontext(pd->uobject->context), &qp->db);
-	else {
+	if (pd->uobject) {
+		if (!init_attr->srq)
+			mlx4_ib_db_unmap_user(to_mucontext(pd->uobject->context),
+					      &qp->db);
+	} else {
 		kfree(qp->sq.wrid);
 		kfree(qp->rq.wrid);
 	}
@@ -372,7 +434,7 @@ err_buf:
 		mlx4_buf_free(dev->dev, qp->buf_size, &qp->buf);
 
 err_db:
-	if (!pd->uobject)
+	if (!pd->uobject && !init_attr->srq)
 		mlx4_ib_db_free(dev, &qp->db);
 
 err:
@@ -450,14 +512,16 @@ static void destroy_qp_common(struct mlx4_ib_dev *dev, struct mlx4_ib_qp *qp,
 	mlx4_mtt_cleanup(dev->dev, &qp->mtt);
 
 	if (is_user) {
-		mlx4_ib_db_unmap_user(to_mucontext(qp->ibqp.uobject->context),
-				      &qp->db);
+		if (!qp->ibqp.srq)
+			mlx4_ib_db_unmap_user(to_mucontext(qp->ibqp.uobject->context),
+					      &qp->db);
 		ib_umem_release(qp->umem);
 	} else {
 		kfree(qp->sq.wrid);
 		kfree(qp->rq.wrid);
 		mlx4_buf_free(dev->dev, qp->buf_size, &qp->buf);
-		mlx4_ib_db_free(dev, &qp->db);
+		if (!qp->ibqp.srq)
+			mlx4_ib_db_free(dev, &qp->db);
 	}
 }
 
@@ -543,24 +607,6 @@ int mlx4_ib_destroy_qp(struct ib_qp *qp)
 	return 0;
 }
 
-static void init_port(struct mlx4_ib_dev *dev, int port)
-{
-	struct mlx4_init_port_param param;
-	int err;
-
-	memset(&param, 0, sizeof param);
-
-	param.port_width_cap = dev->dev->caps.port_width_cap;
-	param.vl_cap	     = dev->dev->caps.vl_cap;
-	param.mtu	     = ib_mtu_enum_to_int(dev->dev->caps.mtu_cap);
-	param.max_gid	     = dev->dev->caps.gid_table_len;
-	param.max_pkey	     = dev->dev->caps.pkey_table_len;
-
-	err = mlx4_INIT_PORT(dev->dev, &param, port);
-	if (err)
-		printk(KERN_WARNING "INIT_PORT failed, return code %d.\n", err);
-}
-
 static int to_mlx4_st(enum ib_qp_type type)
 {
 	switch (type) {
@@ -573,7 +619,7 @@ static int to_mlx4_st(enum ib_qp_type type)
 	}
 }
 
-static __be32 to_mlx4_access_flags(struct mlx4_ib_qp *qp, struct ib_qp_attr *attr,
+static __be32 to_mlx4_access_flags(struct mlx4_ib_qp *qp, const struct ib_qp_attr *attr,
 				   int attr_mask)
 {
 	u8 dest_rd_atomic;
@@ -603,7 +649,7 @@ static __be32 to_mlx4_access_flags(struct mlx4_ib_qp *qp, struct ib_qp_attr *att
 	return cpu_to_be32(hw_access_flags);
 }
 
-static void store_sqp_attrs(struct mlx4_ib_sqp *sqp, struct ib_qp_attr *attr,
+static void store_sqp_attrs(struct mlx4_ib_sqp *sqp, const struct ib_qp_attr *attr,
 			    int attr_mask)
 {
 	if (attr_mask & IB_QP_PKEY_INDEX)
@@ -619,7 +665,7 @@ static void mlx4_set_sched(struct mlx4_qp_path *path, u8 port)
 	path->sched_queue = (path->sched_queue & 0xbf) | ((port - 1) << 6);
 }
 
-static int mlx4_set_path(struct mlx4_ib_dev *dev, struct ib_ah_attr *ah,
+static int mlx4_set_path(struct mlx4_ib_dev *dev, const struct ib_ah_attr *ah,
 			 struct mlx4_qp_path *path, u8 port)
 {
 	path->grh_mylmc     = ah->src_path_bits & 0x7f;
@@ -634,9 +680,9 @@ static int mlx4_set_path(struct mlx4_ib_dev *dev, struct ib_ah_attr *ah,
 	path->counter_index = 0xff;
 
 	if (ah->ah_flags & IB_AH_GRH) {
-		if (ah->grh.sgid_index >= dev->dev->caps.gid_table_len) {
+		if (ah->grh.sgid_index >= dev->dev->caps.gid_table_len[port]) {
 			printk(KERN_ERR "sgid_index (%u) too large. max is %d\n",
-			       ah->grh.sgid_index, dev->dev->caps.gid_table_len - 1);
+			       ah->grh.sgid_index, dev->dev->caps.gid_table_len[port] - 1);
 			return -1;
 		}
 
@@ -655,48 +701,20 @@ static int mlx4_set_path(struct mlx4_ib_dev *dev, struct ib_ah_attr *ah,
 	return 0;
 }
 
-int mlx4_ib_modify_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
-		      int attr_mask, struct ib_udata *udata)
+static int __mlx4_ib_modify_qp(struct ib_qp *ibqp,
+			       const struct ib_qp_attr *attr, int attr_mask,
+			       enum ib_qp_state cur_state, enum ib_qp_state new_state)
 {
 	struct mlx4_ib_dev *dev = to_mdev(ibqp->device);
 	struct mlx4_ib_qp *qp = to_mqp(ibqp);
 	struct mlx4_qp_context *context;
 	enum mlx4_qp_optpar optpar = 0;
-	enum ib_qp_state cur_state, new_state;
 	int sqd_event;
 	int err = -EINVAL;
 
 	context = kzalloc(sizeof *context, GFP_KERNEL);
 	if (!context)
 		return -ENOMEM;
-
-	mutex_lock(&qp->mutex);
-
-	cur_state = attr_mask & IB_QP_CUR_STATE ? attr->cur_qp_state : qp->state;
-	new_state = attr_mask & IB_QP_STATE ? attr->qp_state : cur_state;
-
-	if (!ib_modify_qp_is_ok(cur_state, new_state, ibqp->qp_type, attr_mask))
-		goto out;
-
-	if ((attr_mask & IB_QP_PKEY_INDEX) &&
-	     attr->pkey_index >= dev->dev->caps.pkey_table_len) {
-		goto out;
-	}
-
-	if ((attr_mask & IB_QP_PORT) &&
-	    (attr->port_num == 0 || attr->port_num > dev->dev->caps.num_ports)) {
-		goto out;
-	}
-
-	if (attr_mask & IB_QP_MAX_QP_RD_ATOMIC &&
-	    attr->max_rd_atomic > dev->dev->caps.max_qp_init_rdma) {
-		goto out;
-	}
-
-	if (attr_mask & IB_QP_MAX_DEST_RD_ATOMIC &&
-	    attr->max_dest_rd_atomic > 1 << dev->dev->caps.max_qp_dest_rdma) {
-		goto out;
-	}
 
 	context->flags = cpu_to_be32((to_mlx4_state(new_state) << 28) |
 				     (to_mlx4_st(ibqp->qp_type) << 16));
@@ -726,18 +744,21 @@ int mlx4_ib_modify_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
 		if (attr->path_mtu < IB_MTU_256 || attr->path_mtu > IB_MTU_4096) {
 			printk(KERN_ERR "path MTU (%u) is invalid\n",
 			       attr->path_mtu);
-			return -EINVAL;
+			goto out;
 		}
 		context->mtu_msgmax = (attr->path_mtu << 5) | 31;
 	}
 
-	if (qp->rq.max)
-		context->rq_size_stride = ilog2(qp->rq.max) << 3;
+	if (qp->rq.wqe_cnt)
+		context->rq_size_stride = ilog2(qp->rq.wqe_cnt) << 3;
 	context->rq_size_stride |= qp->rq.wqe_shift - 4;
 
-	if (qp->sq.max)
-		context->sq_size_stride = ilog2(qp->sq.max) << 3;
+	if (qp->sq.wqe_cnt)
+		context->sq_size_stride = ilog2(qp->sq.wqe_cnt) << 3;
 	context->sq_size_stride |= qp->sq.wqe_shift - 4;
+
+	if (cur_state == IB_QPS_RESET && new_state == IB_QPS_INIT)
+		context->sq_size_stride |= !!qp->sq_no_prefetch << 7;
 
 	if (qp->ibqp.uobject)
 		context->usr_page = cpu_to_be32(to_mucontext(ibqp->uobject->context)->uar.index);
@@ -760,17 +781,10 @@ int mlx4_ib_modify_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
 		optpar |= MLX4_QP_OPTPAR_PKEY_INDEX;
 	}
 
-	if (attr_mask & IB_QP_RNR_RETRY) {
-		context->params1 |= cpu_to_be32(attr->rnr_retry << 13);
-		optpar |= MLX4_QP_OPTPAR_RNR_RETRY;
-	}
-
 	if (attr_mask & IB_QP_AV) {
 		if (mlx4_set_path(dev, &attr->ah_attr, &context->pri_path,
-				  attr_mask & IB_QP_PORT ? attr->port_num : qp->port)) {
-			err = -EINVAL;
+				  attr_mask & IB_QP_PORT ? attr->port_num : qp->port))
 			goto out;
-		}
 
 		optpar |= (MLX4_QP_OPTPAR_PRIMARY_ADDR_PATH |
 			   MLX4_QP_OPTPAR_SCHED_QUEUE);
@@ -782,16 +796,17 @@ int mlx4_ib_modify_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
 	}
 
 	if (attr_mask & IB_QP_ALT_PATH) {
-		if (attr->alt_pkey_index >= dev->dev->caps.pkey_table_len)
-			return -EINVAL;
-
 		if (attr->alt_port_num == 0 ||
 		    attr->alt_port_num > dev->dev->caps.num_ports)
-			return -EINVAL;
+			goto out;
+
+		if (attr->alt_pkey_index >=
+		    dev->dev->caps.pkey_table_len[attr->alt_port_num])
+			goto out;
 
 		if (mlx4_set_path(dev, &attr->alt_ah_attr, &context->alt_path,
 				  attr->alt_port_num))
-			return -EINVAL;
+			goto out;
 
 		context->alt_path.pkey_index = attr->alt_pkey_index;
 		context->alt_path.ackto = attr->alt_timeout << 3;
@@ -800,6 +815,12 @@ int mlx4_ib_modify_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
 
 	context->pd	    = cpu_to_be32(to_mpd(ibqp->pd)->pdn);
 	context->params1    = cpu_to_be32(MLX4_IB_ACK_REQ_FREQ << 28);
+
+	if (attr_mask & IB_QP_RNR_RETRY) {
+		context->params1 |= cpu_to_be32(attr->rnr_retry << 13);
+		optpar |= MLX4_QP_OPTPAR_RNR_RETRY;
+	}
+
 	if (attr_mask & IB_QP_RETRY_CNT) {
 		context->params1 |= cpu_to_be32(attr->retry_cnt << 16);
 		optpar |= MLX4_QP_OPTPAR_RETRY_COUNT;
@@ -849,7 +870,7 @@ int mlx4_ib_modify_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
 	if (ibqp->srq)
 		context->srqn = cpu_to_be32(1 << 24 | to_msrq(ibqp->srq)->msrq.srqn);
 
-	if (cur_state == IB_QPS_RESET && new_state == IB_QPS_INIT)
+	if (!ibqp->srq && cur_state == IB_QPS_RESET && new_state == IB_QPS_INIT)
 		context->db_rec_addr = cpu_to_be64(qp->db.dma);
 
 	if (cur_state == IB_QPS_INIT &&
@@ -868,6 +889,24 @@ int mlx4_ib_modify_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
 		sqd_event = 1;
 	else
 		sqd_event = 0;
+
+	/*
+	 * Before passing a kernel QP to the HW, make sure that the
+	 * ownership bits of the send queue are set and the SQ
+	 * headroom is stamped so that the hardware doesn't start
+	 * processing stale work requests.
+	 */
+	if (!ibqp->uobject && cur_state == IB_QPS_RESET && new_state == IB_QPS_INIT) {
+		struct mlx4_wqe_ctrl_seg *ctrl;
+		int i;
+
+		for (i = 0; i < qp->sq.wqe_cnt; ++i) {
+			ctrl = get_send_wqe(qp, i);
+			ctrl->owner_opcode = cpu_to_be32(1 << 31);
+
+			stamp_send_wqe(qp, i);
+		}
+	}
 
 	err = mlx4_qp_modify(dev->dev, &qp->mtt, to_mlx4_state(cur_state),
 			     to_mlx4_state(new_state), context, optpar,
@@ -895,7 +934,9 @@ int mlx4_ib_modify_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
 	 */
 	if (is_qp0(dev, qp)) {
 		if (cur_state != IB_QPS_RTR && new_state == IB_QPS_RTR)
-			init_port(dev, qp->port);
+			if (mlx4_INIT_PORT(dev->dev, qp->port))
+				printk(KERN_WARNING "INIT_PORT failed for port %d\n",
+				       qp->port);
 
 		if (cur_state != IB_QPS_RESET && cur_state != IB_QPS_ERR &&
 		    (new_state == IB_QPS_RESET || new_state == IB_QPS_ERR))
@@ -916,12 +957,87 @@ int mlx4_ib_modify_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
 		qp->rq.tail = 0;
 		qp->sq.head = 0;
 		qp->sq.tail = 0;
-		*qp->db.db  = 0;
+		if (!ibqp->srq)
+			*qp->db.db  = 0;
 	}
 
 out:
-	mutex_unlock(&qp->mutex);
 	kfree(context);
+	return err;
+}
+
+static const struct ib_qp_attr mlx4_ib_qp_attr = { .port_num = 1 };
+static const int mlx4_ib_qp_attr_mask_table[IB_QPT_UD + 1] = {
+		[IB_QPT_UD]  = (IB_QP_PKEY_INDEX		|
+				IB_QP_PORT			|
+				IB_QP_QKEY),
+		[IB_QPT_UC]  = (IB_QP_PKEY_INDEX		|
+				IB_QP_PORT			|
+				IB_QP_ACCESS_FLAGS),
+		[IB_QPT_RC]  = (IB_QP_PKEY_INDEX		|
+				IB_QP_PORT			|
+				IB_QP_ACCESS_FLAGS),
+		[IB_QPT_SMI] = (IB_QP_PKEY_INDEX		|
+				IB_QP_QKEY),
+		[IB_QPT_GSI] = (IB_QP_PKEY_INDEX		|
+				IB_QP_QKEY),
+};
+
+int mlx4_ib_modify_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
+		      int attr_mask, struct ib_udata *udata)
+{
+	struct mlx4_ib_dev *dev = to_mdev(ibqp->device);
+	struct mlx4_ib_qp *qp = to_mqp(ibqp);
+	enum ib_qp_state cur_state, new_state;
+	int err = -EINVAL;
+
+	mutex_lock(&qp->mutex);
+
+	cur_state = attr_mask & IB_QP_CUR_STATE ? attr->cur_qp_state : qp->state;
+	new_state = attr_mask & IB_QP_STATE ? attr->qp_state : cur_state;
+
+	if (!ib_modify_qp_is_ok(cur_state, new_state, ibqp->qp_type, attr_mask))
+		goto out;
+
+	if ((attr_mask & IB_QP_PORT) &&
+	    (attr->port_num == 0 || attr->port_num > dev->dev->caps.num_ports)) {
+		goto out;
+	}
+
+	if (attr_mask & IB_QP_PKEY_INDEX) {
+		int p = attr_mask & IB_QP_PORT ? attr->port_num : qp->port;
+		if (attr->pkey_index >= dev->dev->caps.pkey_table_len[p])
+			goto out;
+	}
+
+	if (attr_mask & IB_QP_MAX_QP_RD_ATOMIC &&
+	    attr->max_rd_atomic > dev->dev->caps.max_qp_init_rdma) {
+		goto out;
+	}
+
+	if (attr_mask & IB_QP_MAX_DEST_RD_ATOMIC &&
+	    attr->max_dest_rd_atomic > dev->dev->caps.max_qp_dest_rdma) {
+		goto out;
+	}
+
+	if (cur_state == new_state && cur_state == IB_QPS_RESET) {
+		err = 0;
+		goto out;
+	}
+
+	if (cur_state == IB_QPS_RESET && new_state == IB_QPS_ERR) {
+		err = __mlx4_ib_modify_qp(ibqp, &mlx4_ib_qp_attr,
+					  mlx4_ib_qp_attr_mask_table[ibqp->qp_type],
+					  IB_QPS_RESET, IB_QPS_INIT);
+		if (err)
+			goto out;
+		cur_state = IB_QPS_INIT;
+	}
+
+	err = __mlx4_ib_modify_qp(ibqp, attr, attr_mask, cur_state, new_state);
+
+out:
+	mutex_unlock(&qp->mutex);
 	return err;
 }
 
@@ -935,6 +1051,7 @@ static int build_mlx_header(struct mlx4_ib_sqp *sqp, struct ib_send_wr *wr,
 	u16 pkey;
 	int send_size;
 	int header_size;
+	int spc;
 	int i;
 
 	send_size = 0;
@@ -952,6 +1069,7 @@ static int build_mlx_header(struct mlx4_ib_sqp *sqp, struct ib_send_wr *wr,
 			(be32_to_cpu(ah->av.sl_tclass_flowlabel) >> 20) & 0xff;
 		sqp->ud_header.grh.flow_label    =
 			ah->av.sl_tclass_flowlabel & cpu_to_be32(0xfffff);
+		sqp->ud_header.grh.hop_limit     = ah->av.hop_limit;
 		ib_get_cached_gid(ib_dev, be32_to_cpu(ah->av.port_pd) >> 24,
 				  ah->av.gid_index, &sqp->ud_header.grh.source_gid);
 		memcpy(sqp->ud_header.grh.destination_gid.raw,
@@ -1009,10 +1127,43 @@ static int build_mlx_header(struct mlx4_ib_sqp *sqp, struct ib_send_wr *wr,
 		printk("\n");
 	}
 
-	inl->byte_count = cpu_to_be32(1 << 31 | header_size);
-	memcpy(inl + 1, sqp->header_buf, header_size);
+	/*
+	 * Inline data segments may not cross a 64 byte boundary.  If
+	 * our UD header is bigger than the space available up to the
+	 * next 64 byte boundary in the WQE, use two inline data
+	 * segments to hold the UD header.
+	 */
+	spc = MLX4_INLINE_ALIGN -
+		((unsigned long) (inl + 1) & (MLX4_INLINE_ALIGN - 1));
+	if (header_size <= spc) {
+		inl->byte_count = cpu_to_be32(1 << 31 | header_size);
+		memcpy(inl + 1, sqp->header_buf, header_size);
+		i = 1;
+	} else {
+		inl->byte_count = cpu_to_be32(1 << 31 | spc);
+		memcpy(inl + 1, sqp->header_buf, spc);
 
-	return ALIGN(sizeof (struct mlx4_wqe_inline_seg) + header_size, 16);
+		inl = (void *) (inl + 1) + spc;
+		memcpy(inl + 1, sqp->header_buf + spc, header_size - spc);
+		/*
+		 * Need a barrier here to make sure all the data is
+		 * visible before the byte_count field is set.
+		 * Otherwise the HCA prefetcher could grab the 64-byte
+		 * chunk with this inline segment and get a valid (!=
+		 * 0xffffffff) byte count but stale data, and end up
+		 * generating a packet with bad headers.
+		 *
+		 * The first inline segment's byte_count field doesn't
+		 * need a barrier, because it comes after a
+		 * control/MLX segment and therefore is at an offset
+		 * of 16 mod 64.
+		 */
+		wmb();
+		inl->byte_count = cpu_to_be32(1 << 31 | (header_size - spc));
+		i = 2;
+	}
+
+	return ALIGN(i * sizeof (struct mlx4_wqe_inline_seg) + header_size, 16);
 }
 
 static int mlx4_wq_overflow(struct mlx4_ib_wq *wq, int nreq, struct ib_cq *ib_cq)
@@ -1021,7 +1172,7 @@ static int mlx4_wq_overflow(struct mlx4_ib_wq *wq, int nreq, struct ib_cq *ib_cq
 	struct mlx4_ib_cq *cq;
 
 	cur = wq->head - wq->tail;
-	if (likely(cur + nreq < wq->max))
+	if (likely(cur + nreq < wq->max_post))
 		return 0;
 
 	cq = to_mcq(ib_cq);
@@ -1029,7 +1180,73 @@ static int mlx4_wq_overflow(struct mlx4_ib_wq *wq, int nreq, struct ib_cq *ib_cq
 	cur = wq->head - wq->tail;
 	spin_unlock(&cq->lock);
 
-	return cur + nreq >= wq->max;
+	return cur + nreq >= wq->max_post;
+}
+
+static __always_inline void set_raddr_seg(struct mlx4_wqe_raddr_seg *rseg,
+					  u64 remote_addr, u32 rkey)
+{
+	rseg->raddr    = cpu_to_be64(remote_addr);
+	rseg->rkey     = cpu_to_be32(rkey);
+	rseg->reserved = 0;
+}
+
+static void set_atomic_seg(struct mlx4_wqe_atomic_seg *aseg, struct ib_send_wr *wr)
+{
+	if (wr->opcode == IB_WR_ATOMIC_CMP_AND_SWP) {
+		aseg->swap_add = cpu_to_be64(wr->wr.atomic.swap);
+		aseg->compare  = cpu_to_be64(wr->wr.atomic.compare_add);
+	} else {
+		aseg->swap_add = cpu_to_be64(wr->wr.atomic.compare_add);
+		aseg->compare  = 0;
+	}
+
+}
+
+static void set_datagram_seg(struct mlx4_wqe_datagram_seg *dseg,
+			     struct ib_send_wr *wr)
+{
+	memcpy(dseg->av, &to_mah(wr->wr.ud.ah)->av, sizeof (struct mlx4_av));
+	dseg->dqpn = cpu_to_be32(wr->wr.ud.remote_qpn);
+	dseg->qkey = cpu_to_be32(wr->wr.ud.remote_qkey);
+}
+
+static void set_mlx_icrc_seg(void *dseg)
+{
+	u32 *t = dseg;
+	struct mlx4_wqe_inline_seg *iseg = dseg;
+
+	t[1] = 0;
+
+	/*
+	 * Need a barrier here before writing the byte_count field to
+	 * make sure that all the data is visible before the
+	 * byte_count field is set.  Otherwise, if the segment begins
+	 * a new cacheline, the HCA prefetcher could grab the 64-byte
+	 * chunk and get a valid (!= * 0xffffffff) byte count but
+	 * stale data, and end up sending the wrong data.
+	 */
+	wmb();
+
+	iseg->byte_count = cpu_to_be32((1 << 31) | 4);
+}
+
+static void set_data_seg(struct mlx4_wqe_data_seg *dseg, struct ib_sge *sg)
+{
+	dseg->lkey       = cpu_to_be32(sg->lkey);
+	dseg->addr       = cpu_to_be64(sg->addr);
+
+	/*
+	 * Need a barrier here before writing the byte_count field to
+	 * make sure that all the data is visible before the
+	 * byte_count field is set.  Otherwise, if the segment begins
+	 * a new cacheline, the HCA prefetcher could grab the 64-byte
+	 * chunk and get a valid (!= * 0xffffffff) byte count but
+	 * stale data, and end up sending the wrong data.
+	 */
+	wmb();
+
+	dseg->byte_count = cpu_to_be32(sg->length);
 }
 
 int mlx4_ib_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
@@ -1038,6 +1255,7 @@ int mlx4_ib_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
 	struct mlx4_ib_qp *qp = to_mqp(ibqp);
 	void *wqe;
 	struct mlx4_wqe_ctrl_seg *ctrl;
+	struct mlx4_wqe_data_seg *dseg;
 	unsigned long flags;
 	int nreq;
 	int err = 0;
@@ -1062,8 +1280,8 @@ int mlx4_ib_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
 			goto out;
 		}
 
-		ctrl = wqe = get_send_wqe(qp, ind & (qp->sq.max - 1));
-		qp->sq.wrid[ind & (qp->sq.max - 1)] = wr->wr_id;
+		ctrl = wqe = get_send_wqe(qp, ind & (qp->sq.wqe_cnt - 1));
+		qp->sq.wrid[ind & (qp->sq.wqe_cnt - 1)] = wr->wr_id;
 
 		ctrl->srcrb_flags =
 			(wr->send_flags & IB_SEND_SIGNALED ?
@@ -1087,26 +1305,13 @@ int mlx4_ib_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
 			switch (wr->opcode) {
 			case IB_WR_ATOMIC_CMP_AND_SWP:
 			case IB_WR_ATOMIC_FETCH_AND_ADD:
-				((struct mlx4_wqe_raddr_seg *) wqe)->raddr =
-					cpu_to_be64(wr->wr.atomic.remote_addr);
-				((struct mlx4_wqe_raddr_seg *) wqe)->rkey =
-					cpu_to_be32(wr->wr.atomic.rkey);
-				((struct mlx4_wqe_raddr_seg *) wqe)->reserved = 0;
-
+				set_raddr_seg(wqe, wr->wr.atomic.remote_addr,
+					      wr->wr.atomic.rkey);
 				wqe  += sizeof (struct mlx4_wqe_raddr_seg);
 
-				if (wr->opcode == IB_WR_ATOMIC_CMP_AND_SWP) {
-					((struct mlx4_wqe_atomic_seg *) wqe)->swap_add =
-						cpu_to_be64(wr->wr.atomic.swap);
-					((struct mlx4_wqe_atomic_seg *) wqe)->compare =
-						cpu_to_be64(wr->wr.atomic.compare_add);
-				} else {
-					((struct mlx4_wqe_atomic_seg *) wqe)->swap_add =
-						cpu_to_be64(wr->wr.atomic.compare_add);
-					((struct mlx4_wqe_atomic_seg *) wqe)->compare = 0;
-				}
-
+				set_atomic_seg(wqe, wr);
 				wqe  += sizeof (struct mlx4_wqe_atomic_seg);
+
 				size += (sizeof (struct mlx4_wqe_raddr_seg) +
 					 sizeof (struct mlx4_wqe_atomic_seg)) / 16;
 
@@ -1115,15 +1320,10 @@ int mlx4_ib_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
 			case IB_WR_RDMA_READ:
 			case IB_WR_RDMA_WRITE:
 			case IB_WR_RDMA_WRITE_WITH_IMM:
-				((struct mlx4_wqe_raddr_seg *) wqe)->raddr =
-					cpu_to_be64(wr->wr.rdma.remote_addr);
-				((struct mlx4_wqe_raddr_seg *) wqe)->rkey =
-					cpu_to_be32(wr->wr.rdma.rkey);
-				((struct mlx4_wqe_raddr_seg *) wqe)->reserved = 0;
-
+				set_raddr_seg(wqe, wr->wr.rdma.remote_addr,
+					      wr->wr.rdma.rkey);
 				wqe  += sizeof (struct mlx4_wqe_raddr_seg);
 				size += sizeof (struct mlx4_wqe_raddr_seg) / 16;
-
 				break;
 
 			default:
@@ -1133,13 +1333,7 @@ int mlx4_ib_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
 			break;
 
 		case IB_QPT_UD:
-			memcpy(((struct mlx4_wqe_datagram_seg *) wqe)->av,
-			       &to_mah(wr->wr.ud.ah)->av, sizeof (struct mlx4_av));
-			((struct mlx4_wqe_datagram_seg *) wqe)->dqpn =
-				cpu_to_be32(wr->wr.ud.remote_qpn);
-			((struct mlx4_wqe_datagram_seg *) wqe)->qkey =
-				cpu_to_be32(wr->wr.ud.remote_qkey);
-
+			set_datagram_seg(wqe, wr);
 			wqe  += sizeof (struct mlx4_wqe_datagram_seg);
 			size += sizeof (struct mlx4_wqe_datagram_seg) / 16;
 			break;
@@ -1161,26 +1355,26 @@ int mlx4_ib_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
 			break;
 		}
 
-		for (i = 0; i < wr->num_sge; ++i) {
-			((struct mlx4_wqe_data_seg *) wqe)->byte_count =
-				cpu_to_be32(wr->sg_list[i].length);
-			((struct mlx4_wqe_data_seg *) wqe)->lkey =
-				cpu_to_be32(wr->sg_list[i].lkey);
-			((struct mlx4_wqe_data_seg *) wqe)->addr =
-				cpu_to_be64(wr->sg_list[i].addr);
+		/*
+		 * Write data segments in reverse order, so as to
+		 * overwrite cacheline stamp last within each
+		 * cacheline.  This avoids issues with WQE
+		 * prefetching.
+		 */
 
-			wqe  += sizeof (struct mlx4_wqe_data_seg);
-			size += sizeof (struct mlx4_wqe_data_seg) / 16;
-		}
+		dseg = wqe;
+		dseg += wr->num_sge - 1;
+		size += wr->num_sge * (sizeof (struct mlx4_wqe_data_seg) / 16);
 
 		/* Add one more inline data segment for ICRC for MLX sends */
-		if (qp->ibqp.qp_type == IB_QPT_SMI || qp->ibqp.qp_type == IB_QPT_GSI) {
-			((struct mlx4_wqe_inline_seg *) wqe)->byte_count =
-				cpu_to_be32((1 << 31) | 4);
-			((u32 *) wqe)[1] = 0;
-			wqe  += sizeof (struct mlx4_wqe_data_seg);
+		if (unlikely(qp->ibqp.qp_type == IB_QPT_SMI ||
+			     qp->ibqp.qp_type == IB_QPT_GSI)) {
+			set_mlx_icrc_seg(dseg + 1);
 			size += sizeof (struct mlx4_wqe_data_seg) / 16;
 		}
+
+		for (i = wr->num_sge - 1; i >= 0; --i, --dseg)
+			set_data_seg(dseg, wr->sg_list + i);
 
 		ctrl->fence_size = (wr->send_flags & IB_SEND_FENCE ?
 				    MLX4_WQE_CTRL_FENCE : 0) | size;
@@ -1192,13 +1386,22 @@ int mlx4_ib_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
 		 */
 		wmb();
 
-		if (wr->opcode < 0 || wr->opcode > ARRAY_SIZE(mlx4_ib_opcode)) {
+		if (wr->opcode < 0 || wr->opcode >= ARRAY_SIZE(mlx4_ib_opcode)) {
 			err = -EINVAL;
 			goto out;
 		}
 
 		ctrl->owner_opcode = mlx4_ib_opcode[wr->opcode] |
-			(ind & qp->sq.max ? cpu_to_be32(1 << 31) : 0);
+			(ind & qp->sq.wqe_cnt ? cpu_to_be32(1 << 31) : 0);
+
+		/*
+		 * We can improve latency by not stamping the last
+		 * send queue WQE until after ringing the doorbell, so
+		 * only stamp here if there are still more WQEs to post.
+		 */
+		if (wr->next)
+			stamp_send_wqe(qp, (ind + qp->sq_spare_wqes) &
+				       (qp->sq.wqe_cnt - 1));
 
 		++ind;
 	}
@@ -1221,6 +1424,9 @@ out:
 		 * and reach the HCA out of order.
 		 */
 		mmiowb();
+
+		stamp_send_wqe(qp, (ind + qp->sq_spare_wqes - 1) &
+			       (qp->sq.wqe_cnt - 1));
 	}
 
 	spin_unlock_irqrestore(&qp->rq.lock, flags);
@@ -1241,7 +1447,7 @@ int mlx4_ib_post_recv(struct ib_qp *ibqp, struct ib_recv_wr *wr,
 
 	spin_lock_irqsave(&qp->rq.lock, flags);
 
-	ind = qp->rq.head & (qp->rq.max - 1);
+	ind = qp->rq.head & (qp->rq.wqe_cnt - 1);
 
 	for (nreq = 0; wr; ++nreq, wr = wr->next) {
 		if (mlx4_wq_overflow(&qp->rq, nreq, qp->ibqp.send_cq)) {
@@ -1272,7 +1478,7 @@ int mlx4_ib_post_recv(struct ib_qp *ibqp, struct ib_recv_wr *wr,
 
 		qp->rq.wrid[ind] = wr->wr_id;
 
-		ind = (ind + 1) & (qp->rq.max - 1);
+		ind = (ind + 1) & (qp->rq.wqe_cnt - 1);
 	}
 
 out:
@@ -1292,3 +1498,151 @@ out:
 
 	return err;
 }
+
+static inline enum ib_qp_state to_ib_qp_state(enum mlx4_qp_state mlx4_state)
+{
+	switch (mlx4_state) {
+	case MLX4_QP_STATE_RST:      return IB_QPS_RESET;
+	case MLX4_QP_STATE_INIT:     return IB_QPS_INIT;
+	case MLX4_QP_STATE_RTR:      return IB_QPS_RTR;
+	case MLX4_QP_STATE_RTS:      return IB_QPS_RTS;
+	case MLX4_QP_STATE_SQ_DRAINING:
+	case MLX4_QP_STATE_SQD:      return IB_QPS_SQD;
+	case MLX4_QP_STATE_SQER:     return IB_QPS_SQE;
+	case MLX4_QP_STATE_ERR:      return IB_QPS_ERR;
+	default:		     return -1;
+	}
+}
+
+static inline enum ib_mig_state to_ib_mig_state(int mlx4_mig_state)
+{
+	switch (mlx4_mig_state) {
+	case MLX4_QP_PM_ARMED:		return IB_MIG_ARMED;
+	case MLX4_QP_PM_REARM:		return IB_MIG_REARM;
+	case MLX4_QP_PM_MIGRATED:	return IB_MIG_MIGRATED;
+	default: return -1;
+	}
+}
+
+static int to_ib_qp_access_flags(int mlx4_flags)
+{
+	int ib_flags = 0;
+
+	if (mlx4_flags & MLX4_QP_BIT_RRE)
+		ib_flags |= IB_ACCESS_REMOTE_READ;
+	if (mlx4_flags & MLX4_QP_BIT_RWE)
+		ib_flags |= IB_ACCESS_REMOTE_WRITE;
+	if (mlx4_flags & MLX4_QP_BIT_RAE)
+		ib_flags |= IB_ACCESS_REMOTE_ATOMIC;
+
+	return ib_flags;
+}
+
+static void to_ib_ah_attr(struct mlx4_dev *dev, struct ib_ah_attr *ib_ah_attr,
+				struct mlx4_qp_path *path)
+{
+	memset(ib_ah_attr, 0, sizeof *ib_ah_attr);
+	ib_ah_attr->port_num	  = path->sched_queue & 0x40 ? 2 : 1;
+
+	if (ib_ah_attr->port_num == 0 || ib_ah_attr->port_num > dev->caps.num_ports)
+		return;
+
+	ib_ah_attr->dlid	  = be16_to_cpu(path->rlid);
+	ib_ah_attr->sl		  = (path->sched_queue >> 2) & 0xf;
+	ib_ah_attr->src_path_bits = path->grh_mylmc & 0x7f;
+	ib_ah_attr->static_rate   = path->static_rate ? path->static_rate - 5 : 0;
+	ib_ah_attr->ah_flags      = (path->grh_mylmc & (1 << 7)) ? IB_AH_GRH : 0;
+	if (ib_ah_attr->ah_flags) {
+		ib_ah_attr->grh.sgid_index = path->mgid_index;
+		ib_ah_attr->grh.hop_limit  = path->hop_limit;
+		ib_ah_attr->grh.traffic_class =
+			(be32_to_cpu(path->tclass_flowlabel) >> 20) & 0xff;
+		ib_ah_attr->grh.flow_label =
+			be32_to_cpu(path->tclass_flowlabel) & 0xfffff;
+		memcpy(ib_ah_attr->grh.dgid.raw,
+			path->rgid, sizeof ib_ah_attr->grh.dgid.raw);
+	}
+}
+
+int mlx4_ib_query_qp(struct ib_qp *ibqp, struct ib_qp_attr *qp_attr, int qp_attr_mask,
+		     struct ib_qp_init_attr *qp_init_attr)
+{
+	struct mlx4_ib_dev *dev = to_mdev(ibqp->device);
+	struct mlx4_ib_qp *qp = to_mqp(ibqp);
+	struct mlx4_qp_context context;
+	int mlx4_state;
+	int err;
+
+	if (qp->state == IB_QPS_RESET) {
+		qp_attr->qp_state = IB_QPS_RESET;
+		goto done;
+	}
+
+	err = mlx4_qp_query(dev->dev, &qp->mqp, &context);
+	if (err)
+		return -EINVAL;
+
+	mlx4_state = be32_to_cpu(context.flags) >> 28;
+
+	qp_attr->qp_state	     = to_ib_qp_state(mlx4_state);
+	qp_attr->path_mtu	     = context.mtu_msgmax >> 5;
+	qp_attr->path_mig_state	     =
+		to_ib_mig_state((be32_to_cpu(context.flags) >> 11) & 0x3);
+	qp_attr->qkey		     = be32_to_cpu(context.qkey);
+	qp_attr->rq_psn		     = be32_to_cpu(context.rnr_nextrecvpsn) & 0xffffff;
+	qp_attr->sq_psn		     = be32_to_cpu(context.next_send_psn) & 0xffffff;
+	qp_attr->dest_qp_num	     = be32_to_cpu(context.remote_qpn) & 0xffffff;
+	qp_attr->qp_access_flags     =
+		to_ib_qp_access_flags(be32_to_cpu(context.params2));
+
+	if (qp->ibqp.qp_type == IB_QPT_RC || qp->ibqp.qp_type == IB_QPT_UC) {
+		to_ib_ah_attr(dev->dev, &qp_attr->ah_attr, &context.pri_path);
+		to_ib_ah_attr(dev->dev, &qp_attr->alt_ah_attr, &context.alt_path);
+		qp_attr->alt_pkey_index = context.alt_path.pkey_index & 0x7f;
+		qp_attr->alt_port_num	= qp_attr->alt_ah_attr.port_num;
+	}
+
+	qp_attr->pkey_index = context.pri_path.pkey_index & 0x7f;
+	if (qp_attr->qp_state == IB_QPS_INIT)
+		qp_attr->port_num = qp->port;
+	else
+		qp_attr->port_num = context.pri_path.sched_queue & 0x40 ? 2 : 1;
+
+	/* qp_attr->en_sqd_async_notify is only applicable in modify qp */
+	qp_attr->sq_draining = mlx4_state == MLX4_QP_STATE_SQ_DRAINING;
+
+	qp_attr->max_rd_atomic = 1 << ((be32_to_cpu(context.params1) >> 21) & 0x7);
+
+	qp_attr->max_dest_rd_atomic =
+		1 << ((be32_to_cpu(context.params2) >> 21) & 0x7);
+	qp_attr->min_rnr_timer	    =
+		(be32_to_cpu(context.rnr_nextrecvpsn) >> 24) & 0x1f;
+	qp_attr->timeout	    = context.pri_path.ackto >> 3;
+	qp_attr->retry_cnt	    = (be32_to_cpu(context.params1) >> 16) & 0x7;
+	qp_attr->rnr_retry	    = (be32_to_cpu(context.params1) >> 13) & 0x7;
+	qp_attr->alt_timeout	    = context.alt_path.ackto >> 3;
+
+done:
+	qp_attr->cur_qp_state	     = qp_attr->qp_state;
+	qp_attr->cap.max_recv_wr     = qp->rq.wqe_cnt;
+	qp_attr->cap.max_recv_sge    = qp->rq.max_gs;
+
+	if (!ibqp->uobject) {
+		qp_attr->cap.max_send_wr  = qp->sq.wqe_cnt;
+		qp_attr->cap.max_send_sge = qp->sq.max_gs;
+	} else {
+		qp_attr->cap.max_send_wr  = 0;
+		qp_attr->cap.max_send_sge = 0;
+	}
+
+	/*
+	 * We don't support inline sends for kernel QPs (yet), and we
+	 * don't know what userspace's value should be.
+	 */
+	qp_attr->cap.max_inline_data = 0;
+
+	qp_init_attr->cap	     = qp_attr->cap;
+
+	return 0;
+}
+

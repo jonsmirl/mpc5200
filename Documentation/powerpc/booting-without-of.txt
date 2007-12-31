@@ -1,13 +1,69 @@
            Booting the Linux/ppc kernel without Open Firmware
            --------------------------------------------------
 
-
 (c) 2005 Benjamin Herrenschmidt <benh at kernel.crashing.org>,
     IBM Corp.
 (c) 2005 Becky Bruce <becky.bruce at freescale.com>,
     Freescale Semiconductor, FSL SOC and 32-bit additions
 (c) 2006 MontaVista Software, Inc.
     Flash chip node definition
+
+Table of Contents
+=================
+
+  I - Introduction
+    1) Entry point for arch/powerpc
+    2) Board support
+
+  II - The DT block format
+    1) Header
+    2) Device tree generalities
+    3) Device tree "structure" block
+    4) Device tree "strings" block
+
+  III - Required content of the device tree
+    1) Note about cells and address representation
+    2) Note about "compatible" properties
+    3) Note about "name" properties
+    4) Note about node and property names and character set
+    5) Required nodes and properties
+      a) The root node
+      b) The /cpus node
+      c) The /cpus/* nodes
+      d) the /memory node(s)
+      e) The /chosen node
+      f) the /soc<SOCname> node
+
+  IV - "dtc", the device tree compiler
+
+  V - Recommendations for a bootloader
+
+  VI - System-on-a-chip devices and nodes
+    1) Defining child nodes of an SOC
+    2) Representing devices without a current OF specification
+      a) MDIO IO device
+      b) Gianfar-compatible ethernet nodes
+      c) PHY nodes
+      d) Interrupt controllers
+      e) I2C
+      f) Freescale SOC USB controllers
+      g) Freescale SOC SEC Security Engines
+      h) Board Control and Status (BCSR)
+      i) Freescale QUICC Engine module (QE)
+      j) Flash chip nodes
+      k) Global Utilities Block
+
+  VII - Specifying interrupt information for devices
+    1) interrupts property
+    2) interrupt-parent property
+    3) OpenPIC Interrupt Controllers
+    4) ISA Interrupt Controllers
+
+  Appendix A - Sample SOC node for MPC8540
+
+
+Revision Information
+====================
 
    May 18, 2005: Rev 0.1 - Initial draft, no chapter III yet.
 
@@ -570,6 +626,14 @@ Here's the basic structure of a single node:
 So the node content can be summarized as a start token, a full path,
 a list of properties, a list of child nodes, and an end token. Every
 child node is a full node structure itself as defined above.
+
+NOTE: The above definition requires that all property definitions for
+a particular node MUST precede any subnode definitions for that node.
+Although the structure would not be ambiguous if properties and
+subnodes were intermingled, the kernel parser requires that the
+properties come first (up until at least 2.6.22).  Any tools
+manipulating a flattened tree must take care to preserve this
+constraint.
 
 4) Device tree "strings" block
 
@@ -1186,6 +1250,12 @@ platforms are moved over to use the flattened-device-tree model.
       network device.  This is used by the bootwrapper to interpret
       MAC addresses passed by the firmware when no information other
       than indices is available to associate an address with a device.
+    - phy-connection-type : a string naming the controller/PHY interface type,
+      i.e., "mii" (default), "rmii", "gmii", "rgmii", "rgmii-id", "sgmii",
+      "tbi", or "rtbi".  This property is only really needed if the connection
+      is of type "rgmii-id", as all other connection types are detected by
+      hardware.
+
 
   Example:
 
@@ -1687,7 +1757,7 @@ platforms are moved over to use the flattened-device-tree model.
 		};
 	};
 
-    g) Flash chip nodes
+    j) Flash chip nodes
 
     Flash chips (Memory Technology Devices) are often used for solid state
     file systems on embedded devices.
@@ -1726,6 +1796,33 @@ platforms are moved over to use the flattened-device-tree model.
  			      00f80000 00080001>;
  		partition-names = "fs\0firmware";
  	};
+
+   k) Global Utilities Block
+
+   The global utilities block controls power management, I/O device
+   enabling, power-on-reset configuration monitoring, general-purpose
+   I/O signal configuration, alternate function selection for multiplexed
+   signals, and clock control.
+
+   Required properties:
+
+    - compatible : Should define the compatible device type for
+      global-utilities.
+    - reg : Offset and length of the register set for the device.
+
+  Recommended properties:
+
+    - fsl,has-rstcr : Indicates that the global utilities register set
+      contains a functioning "reset control register" (i.e. the board
+      is wired to reset upon setting the HRESET_REQ bit in this register).
+
+    Example:
+
+	global-utilities@e0000 {	/* global utilities block */
+		compatible = "fsl,mpc8548-guts";
+		reg = <e0000 1000>;
+		fsl,has-rstcr;
+	};
 
    More devices will be defined as this spec matures.
 

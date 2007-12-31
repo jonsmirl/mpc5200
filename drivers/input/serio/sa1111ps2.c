@@ -170,7 +170,7 @@ static void ps2_close(struct serio *io)
 /*
  * Clear the input buffer.
  */
-static void __init ps2_clear_input(struct ps2if *ps2if)
+static void __devinit ps2_clear_input(struct ps2if *ps2if)
 {
 	int maxread = 100;
 
@@ -228,21 +228,19 @@ static int __init ps2_test(struct ps2if *ps2if)
 /*
  * Add one device to this driver.
  */
-static int ps2_probe(struct sa1111_dev *dev)
+static int __devinit ps2_probe(struct sa1111_dev *dev)
 {
 	struct ps2if *ps2if;
 	struct serio *serio;
 	int ret;
 
-	ps2if = kmalloc(sizeof(struct ps2if), GFP_KERNEL);
-	serio = kmalloc(sizeof(struct serio), GFP_KERNEL);
+	ps2if = kzalloc(sizeof(struct ps2if), GFP_KERNEL);
+	serio = kzalloc(sizeof(struct serio), GFP_KERNEL);
 	if (!ps2if || !serio) {
 		ret = -ENOMEM;
 		goto free;
 	}
 
-	memset(ps2if, 0, sizeof(struct ps2if));
-	memset(serio, 0, sizeof(struct serio));
 
 	serio->id.type		= SERIO_8042;
 	serio->write		= ps2_write;

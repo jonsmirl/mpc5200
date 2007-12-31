@@ -192,8 +192,11 @@ int tcp_v4_connect(struct sock *sk, struct sockaddr *uaddr, int addr_len)
 			       RT_CONN_FLAGS(sk), sk->sk_bound_dev_if,
 			       IPPROTO_TCP,
 			       inet->sport, usin->sin_port, sk, 1);
-	if (tmp < 0)
+	if (tmp < 0) {
+		if (tmp == -ENETUNREACH)
+			IP_INC_STATS_BH(IPSTATS_MIB_OUTNOROUTES);
 		return tmp;
+	}
 
 	if (rt->rt_flags & (RTCF_MULTICAST | RTCF_BROADCAST)) {
 		ip_rt_put(rt);
@@ -702,6 +705,8 @@ static void tcp_v4_send_ack(struct tcp_timewait_sock *twsk,
 				      ip_hdr(skb)->saddr, /* XXX */
 				      arg.iov[0].iov_len, IPPROTO_TCP, 0);
 	arg.csumoffset = offsetof(struct tcphdr, check) / 2;
+	if (twsk)
+		arg.bound_dev_if = twsk->tw_sk.tw_bound_dev_if;
 
 	ip_send_reply(tcp_socket->sk, skb, &arg, arg.iov[0].iov_len);
 
@@ -828,8 +833,7 @@ static struct tcp_md5sig_key *
 		return NULL;
 	for (i = 0; i < tp->md5sig_info->entries4; i++) {
 		if (tp->md5sig_info->keys4[i].addr == addr)
-			return (struct tcp_md5sig_key *)
-						&tp->md5sig_info->keys4[i];
+			return &tp->md5sig_info->keys4[i].base;
 	}
 	return NULL;
 }
@@ -860,9 +864,9 @@ int tcp_v4_md5_do_add(struct sock *sk, __be32 addr,
 	key = (struct tcp4_md5sig_key *)tcp_v4_md5_do_lookup(sk, addr);
 	if (key) {
 		/* Pre-existing entry - just update that one. */
-		kfree(key->key);
-		key->key = newkey;
-		key->keylen = newkeylen;
+		kfree(key->base.key);
+		key->base.key = newkey;
+		key->base.keylen = newkeylen;
 	} else {
 		struct tcp_md5sig_info *md5sig;
 
@@ -873,6 +877,7 @@ int tcp_v4_md5_do_add(struct sock *sk, __be32 addr,
 				kfree(newkey);
 				return -ENOMEM;
 			}
+			sk->sk_route_caps &= ~NETIF_F_GSO_MASK;
 		}
 		if (tcp_alloc_md5sig_pool() == NULL) {
 			kfree(newkey);
@@ -900,9 +905,9 @@ int tcp_v4_md5_do_add(struct sock *sk, __be32 addr,
 			md5sig->alloced4++;
 		}
 		md5sig->entries4++;
-		md5sig->keys4[md5sig->entries4 - 1].addr   = addr;
-		md5sig->keys4[md5sig->entries4 - 1].key    = newkey;
-		md5sig->keys4[md5sig->entries4 - 1].keylen = newkeylen;
+		md5sig->keys4[md5sig->entries4 - 1].addr        = addr;
+		md5sig->keys4[md5sig->entries4 - 1].base.key    = newkey;
+		md5sig->keys4[md5sig->entries4 - 1].base.keylen = newkeylen;
 	}
 	return 0;
 }
@@ -924,7 +929,7 @@ int tcp_v4_md5_do_del(struct sock *sk, __be32 addr)
 	for (i = 0; i < tp->md5sig_info->entries4; i++) {
 		if (tp->md5sig_info->keys4[i].addr == addr) {
 			/* Free the key */
-			kfree(tp->md5sig_info->keys4[i].key);
+			kfree(tp->md5sig_info->keys4[i].base.key);
 			tp->md5sig_info->entries4--;
 
 			if (tp->md5sig_info->entries4 == 0) {
@@ -958,7 +963,7 @@ static void tcp_v4_clear_md5_list(struct sock *sk)
 	if (tp->md5sig_info->entries4) {
 		int i;
 		for (i = 0; i < tp->md5sig_info->entries4; i++)
-			kfree(tp->md5sig_info->keys4[i].key);
+			kfree(tp->md5sig_info->keys4[i].base.key);
 		tp->md5sig_info->entries4 = 0;
 		tcp_free_md5sig_pool();
 	}
@@ -1002,7 +1007,7 @@ static int tcp_v4_parse_md5_keys(struct sock *sk, char __user *optval,
 			return -EINVAL;
 
 		tp->md5sig_info = p;
-
+		sk->sk_route_caps &= ~NETIF_F_GSO_MASK;
 	}
 
 	newkey = kmemdup(cmd.tcpm_key, cmd.tcpm_keylen, GFP_KERNEL);
@@ -2039,10 +2044,7 @@ static void *established_get_first(struct seq_file *seq)
 		struct hlist_node *node;
 		struct inet_timewait_sock *tw;
 
-		/* We can reschedule _before_ having picked the target: */
-		cond_resched_softirq();
-
-		read_lock(&tcp_hashinfo.ehash[st->bucket].lock);
+		read_lock_bh(&tcp_hashinfo.ehash[st->bucket].lock);
 		sk_for_each(sk, node, &tcp_hashinfo.ehash[st->bucket].chain) {
 			if (sk->sk_family != st->family) {
 				continue;
@@ -2059,7 +2061,7 @@ static void *established_get_first(struct seq_file *seq)
 			rc = tw;
 			goto out;
 		}
-		read_unlock(&tcp_hashinfo.ehash[st->bucket].lock);
+		read_unlock_bh(&tcp_hashinfo.ehash[st->bucket].lock);
 		st->state = TCP_SEQ_STATE_ESTABLISHED;
 	}
 out:
@@ -2086,14 +2088,11 @@ get_tw:
 			cur = tw;
 			goto out;
 		}
-		read_unlock(&tcp_hashinfo.ehash[st->bucket].lock);
+		read_unlock_bh(&tcp_hashinfo.ehash[st->bucket].lock);
 		st->state = TCP_SEQ_STATE_ESTABLISHED;
 
-		/* We can reschedule between buckets: */
-		cond_resched_softirq();
-
 		if (++st->bucket < tcp_hashinfo.ehash_size) {
-			read_lock(&tcp_hashinfo.ehash[st->bucket].lock);
+			read_lock_bh(&tcp_hashinfo.ehash[st->bucket].lock);
 			sk = sk_head(&tcp_hashinfo.ehash[st->bucket].chain);
 		} else {
 			cur = NULL;
@@ -2138,7 +2137,6 @@ static void *tcp_get_idx(struct seq_file *seq, loff_t pos)
 
 	if (!rc) {
 		inet_listen_unlock(&tcp_hashinfo);
-		local_bh_disable();
 		st->state = TCP_SEQ_STATE_ESTABLISHED;
 		rc	  = established_get_idx(seq, pos);
 	}
@@ -2171,7 +2169,6 @@ static void *tcp_seq_next(struct seq_file *seq, void *v, loff_t *pos)
 		rc = listening_get_next(seq, v);
 		if (!rc) {
 			inet_listen_unlock(&tcp_hashinfo);
-			local_bh_disable();
 			st->state = TCP_SEQ_STATE_ESTABLISHED;
 			rc	  = established_get_first(seq);
 		}
@@ -2203,8 +2200,7 @@ static void tcp_seq_stop(struct seq_file *seq, void *v)
 	case TCP_SEQ_STATE_TIME_WAIT:
 	case TCP_SEQ_STATE_ESTABLISHED:
 		if (v)
-			read_unlock(&tcp_hashinfo.ehash[st->bucket].lock);
-		local_bh_enable();
+			read_unlock_bh(&tcp_hashinfo.ehash[st->bucket].lock);
 		break;
 	}
 }
@@ -2428,7 +2424,6 @@ struct proto tcp_prot = {
 	.shutdown		= tcp_shutdown,
 	.setsockopt		= tcp_setsockopt,
 	.getsockopt		= tcp_getsockopt,
-	.sendmsg		= tcp_sendmsg,
 	.recvmsg		= tcp_recvmsg,
 	.backlog_rcv		= tcp_v4_do_rcv,
 	.hash			= tcp_v4_hash,

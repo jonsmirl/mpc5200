@@ -481,6 +481,16 @@ static inline int idedisk_supports_lba48(const struct hd_driveid *id)
 	       && id->lba_capacity_2;
 }
 
+/*
+ * Some disks report total number of sectors instead of
+ * maximum sector address.  We list them here.
+ */
+static const struct drive_list_entry hpa_list[] = {
+	{ "ST340823A",	NULL },
+	{ "ST320413A",	NULL },
+	{ NULL,		NULL }
+};
+
 static void idedisk_check_hpa(ide_drive_t *drive)
 {
 	unsigned long long capacity, set_max;
@@ -491,6 +501,15 @@ static void idedisk_check_hpa(ide_drive_t *drive)
 		set_max = idedisk_read_native_max_address_ext(drive);
 	else
 		set_max = idedisk_read_native_max_address(drive);
+
+	if (ide_in_drive_list(drive->id, hpa_list)) {
+		/*
+		 * Since we are inclusive wrt to firmware revisions do this
+		 * extra check and apply the workaround only when needed.
+		 */
+		if (set_max == capacity + 1)
+			set_max--;
+	}
 
 	if (set_max <= capacity)
 		return;
@@ -679,7 +698,7 @@ static ide_proc_entry_t idedisk_proc[] = {
 };
 #endif	/* CONFIG_IDE_PROC_FS */
 
-static void idedisk_prepare_flush(request_queue_t *q, struct request *rq)
+static void idedisk_prepare_flush(struct request_queue *q, struct request *rq)
 {
 	ide_drive_t *drive = q->queuedata;
 
@@ -697,7 +716,7 @@ static void idedisk_prepare_flush(request_queue_t *q, struct request *rq)
 	rq->buffer = rq->cmd;
 }
 
-static int idedisk_issue_flush(request_queue_t *q, struct gendisk *disk,
+static int idedisk_issue_flush(struct request_queue *q, struct gendisk *disk,
 			       sector_t *error_sector)
 {
 	ide_drive_t *drive = q->queuedata;
@@ -1037,6 +1056,17 @@ static void ide_disk_release(struct kref *kref)
 
 static int ide_disk_probe(ide_drive_t *drive);
 
+/*
+ * On HPA drives the capacity needs to be
+ * reinitilized on resume otherwise the disk
+ * can not be used and a hard reset is required
+ */
+static void ide_disk_resume(ide_drive_t *drive)
+{
+	if (idedisk_supports_hpa(drive->id))
+		init_idedisk_capacity(drive);
+}
+
 static void ide_device_shutdown(ide_drive_t *drive)
 {
 #ifdef	CONFIG_ALPHA
@@ -1071,6 +1101,7 @@ static ide_driver_t idedisk_driver = {
 	},
 	.probe			= ide_disk_probe,
 	.remove			= ide_disk_remove,
+	.resume			= ide_disk_resume,
 	.shutdown		= ide_device_shutdown,
 	.version		= IDEDISK_VERSION,
 	.media			= ide_disk,
@@ -1178,11 +1209,11 @@ static int idedisk_ioctl(struct inode *inode, struct file *file,
 	return generic_ide_ioctl(drive, file, bdev, cmd, arg);
 
 read_val:
-	down(&ide_setting_sem);
+	mutex_lock(&ide_setting_mtx);
 	spin_lock_irqsave(&ide_lock, flags);
 	err = *val;
 	spin_unlock_irqrestore(&ide_lock, flags);
-	up(&ide_setting_sem);
+	mutex_unlock(&ide_setting_mtx);
 	return err >= 0 ? put_user(err, (long __user *)arg) : err;
 
 set_val:
@@ -1192,9 +1223,9 @@ set_val:
 		if (!capable(CAP_SYS_ADMIN))
 			err = -EACCES;
 		else {
-			down(&ide_setting_sem);
+			mutex_lock(&ide_setting_mtx);
 			err = setfunc(drive, arg);
-			up(&ide_setting_sem);
+			mutex_unlock(&ide_setting_mtx);
 		}
 	}
 	return err;

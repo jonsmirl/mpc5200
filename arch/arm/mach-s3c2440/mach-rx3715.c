@@ -19,6 +19,7 @@
 #include <linux/init.h>
 #include <linux/tty.h>
 #include <linux/console.h>
+#include <linux/sysdev.h>
 #include <linux/platform_device.h>
 #include <linux/serial_core.h>
 #include <linux/serial.h>
@@ -37,12 +38,12 @@
 #include <asm/irq.h>
 #include <asm/mach-types.h>
 
-#include <asm/arch/regs-serial.h>
+#include <asm/plat-s3c/regs-serial.h>
 #include <asm/arch/regs-gpio.h>
 #include <asm/arch/regs-lcd.h>
 
 #include <asm/arch/h1940.h>
-#include <asm/arch/nand.h>
+#include <asm/plat-s3c/nand.h>
 #include <asm/arch/fb.h>
 
 #include <asm/plat-s3c24xx/clock.h>

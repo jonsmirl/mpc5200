@@ -82,7 +82,7 @@ int show_interrupts(struct seq_file *p, void *v)
 			seq_printf(p, ", %s", action->name);
 
 		seq_putc(p, '\n');
-	      unlock:
+ unlock:
 		spin_unlock_irqrestore(&irq_desc[i].lock, flags);
 	} else if (i == NR_IRQS) {
 		seq_printf(p, "Err: %10lu\n", irq_err_count);
@@ -91,7 +91,7 @@ int show_interrupts(struct seq_file *p, void *v)
 }
 
 /*
- * do_IRQ handles all hardware IRQ's.  Decoded IRQs should not
+ * do_IRQ handles all hardware IRQs.  Decoded IRQs should not
  * come via this function.  Instead, they should provide their
  * own 'handler'
  */

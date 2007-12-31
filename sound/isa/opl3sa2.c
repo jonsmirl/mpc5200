@@ -164,6 +164,8 @@ static struct pnp_card_device_id snd_opl3sa2_pnpids[] = {
 	{ .id = "YMH0801", .devs = { { "YMH0021" } } },
 	/* NeoMagic MagicWave 3DX */
 	{ .id = "NMX2200", .devs = { { "YMH2210" } } },
+	/* NeoMagic MagicWave 3D */
+	{ .id = "NMX2200", .devs = { { "NMX2210" } } },
 	/* --- */
 	{ .id = "" }	/* end */
 };
@@ -953,7 +955,7 @@ static int snd_opl3sa2_isa_resume(struct device *dev, unsigned int n)
 static struct isa_driver snd_opl3sa2_isa_driver = {
 	.match		= snd_opl3sa2_isa_match,
 	.probe		= snd_opl3sa2_isa_probe,
-	.remove		= __devexit( snd_opl3sa2_isa_remove),
+	.remove		= __devexit_p(snd_opl3sa2_isa_remove),
 #ifdef CONFIG_PM
 	.suspend	= snd_opl3sa2_isa_suspend,
 	.resume		= snd_opl3sa2_isa_resume,

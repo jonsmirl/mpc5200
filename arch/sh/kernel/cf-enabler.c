@@ -12,6 +12,7 @@
 #include <linux/init.h>
 #include <linux/mm.h>
 #include <linux/vmalloc.h>
+#include <linux/interrupt.h>
 #include <asm/io.h>
 #include <asm/irq.h>
 
@@ -31,7 +32,7 @@
  */
 #if defined(CONFIG_CPU_SH4)
 /* SH4 can't access PCMCIA interface through P2 area.
- * we must remap it with appropreate attribute bit of the page set.
+ * we must remap it with appropriate attribute bit of the page set.
  * this part is based on Greg Banks' hd64465_ss.c implementation - Masahiro Abe */
 
 #if defined(CONFIG_CF_AREA6)
@@ -74,11 +75,7 @@ static int __init cf_init_default(void)
 #if defined(CONFIG_CPU_SH4)
 	allocate_cf_area();
 #endif
-#if defined(CONFIG_SH_UNKNOWN)
-	/* This should be done in each board's init_xxx_irq. */
-	make_imask_irq(14);
-	disable_irq(14);
-#endif
+
 	return 0;
 }
 
@@ -148,6 +145,11 @@ static int __init cf_init_se(void)
 	ctrl_outb(0x00, PA_MRSHPC_MW2 + 0x206);
 	ctrl_outb(0x42, PA_MRSHPC_MW2 + 0x200);
 	return 0;
+}
+#else
+static int __init cf_init_se(void)
+{
+	return -1;
 }
 #endif
 

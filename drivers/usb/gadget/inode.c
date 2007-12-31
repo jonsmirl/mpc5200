@@ -37,7 +37,7 @@
 #include <linux/device.h>
 #include <linux/moduleparam.h>
 
-#include <linux/usb_gadgetfs.h>
+#include <linux/usb/gadgetfs.h>
 #include <linux/usb_gadget.h>
 
 
@@ -923,7 +923,7 @@ static void clean_req (struct usb_ep *ep, struct usb_request *req)
 	struct dev_data		*dev = ep->driver_data;
 
 	if (req->buf != dev->rbuf) {
-		usb_ep_free_buffer (ep, req->buf, req->dma, req->length);
+		kfree(req->buf);
 		req->buf = dev->rbuf;
 		req->dma = DMA_ADDR_INVALID;
 	}
@@ -963,8 +963,8 @@ static int setup_req (struct usb_ep *ep, struct usb_request *req, u16 len)
 		return -EBUSY;
 	}
 	if (len > sizeof (dev->rbuf))
-		req->buf = usb_ep_alloc_buffer (ep, len, &req->dma, GFP_ATOMIC);
-	if (req->buf == 0) {
+		req->buf = kmalloc(len, GFP_ATOMIC);
+	if (req->buf == NULL) {
 		req->buf = dev->rbuf;
 		return -ENOMEM;
 	}
@@ -1369,12 +1369,12 @@ config_buf (struct dev_data *dev, u8 type, unsigned index)
 		hs = !hs;
 	if (hs) {
 		dev->req->buf = dev->hs_config;
-		len = le16_to_cpup (&dev->hs_config->wTotalLength);
+		len = le16_to_cpu(dev->hs_config->wTotalLength);
 	} else
 #endif
 	{
 		dev->req->buf = dev->config;
-		len = le16_to_cpup (&dev->config->wTotalLength);
+		len = le16_to_cpu(dev->config->wTotalLength);
 	}
 	((u8 *)dev->req->buf) [1] = type;
 	return len;
@@ -1394,7 +1394,7 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 	dev->setup_abort = 0;
 	if (dev->state == STATE_DEV_UNCONNECTED) {
 #ifdef	CONFIG_USB_GADGET_DUALSPEED
-		if (gadget->speed == USB_SPEED_HIGH && dev->hs_config == 0) {
+		if (gadget->speed == USB_SPEED_HIGH && dev->hs_config == NULL) {
 			spin_unlock(&dev->lock);
 			ERROR (dev, "no high speed config??\n");
 			return -EINVAL;
@@ -1505,7 +1505,7 @@ gadgetfs_setup (struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 		}
 		break;
 
-#ifndef	CONFIG_USB_GADGETFS_PXA2XX
+#ifndef	CONFIG_USB_GADGET_PXA2XX
 	/* PXA automagically handles this request too */
 	case USB_REQ_GET_CONFIGURATION:
 		if (ctrl->bRequestType != 0x80)
@@ -1885,7 +1885,7 @@ dev_config (struct file *fd, const char __user *buf, size_t len, loff_t *ptr)
 
 	/* full or low speed config */
 	dev->config = (void *) kbuf;
-	total = le16_to_cpup (&dev->config->wTotalLength);
+	total = le16_to_cpu(dev->config->wTotalLength);
 	if (!is_valid_config (dev->config) || total >= length)
 		goto fail;
 	kbuf += total;
@@ -1894,7 +1894,7 @@ dev_config (struct file *fd, const char __user *buf, size_t len, loff_t *ptr)
 	/* optional high speed config */
 	if (kbuf [1] == USB_DT_CONFIG) {
 		dev->hs_config = (void *) kbuf;
-		total = le16_to_cpup (&dev->hs_config->wTotalLength);
+		total = le16_to_cpu(dev->hs_config->wTotalLength);
 		if (!is_valid_config (dev->hs_config) || total >= length)
 			goto fail;
 		kbuf += total;

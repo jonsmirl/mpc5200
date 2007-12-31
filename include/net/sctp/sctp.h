@@ -123,6 +123,7 @@
  * sctp/protocol.c
  */
 extern struct sock *sctp_get_ctl_sock(void);
+extern void sctp_local_addr_free(struct rcu_head *head);
 extern int sctp_copy_local_addr_list(struct sctp_bind_addr *,
 				     sctp_scope_t, gfp_t gfp,
 				     int flags);
@@ -188,6 +189,16 @@ void sctp_eps_proc_exit(void);
 int sctp_assocs_proc_init(void);
 void sctp_assocs_proc_exit(void);
 
+
+/*
+ * Module global variables
+ */
+
+ /*
+  * sctp/protocol.c
+  */
+extern struct kmem_cache *sctp_chunk_cachep __read_mostly;
+extern struct kmem_cache *sctp_bucket_cachep __read_mostly;
 
 /*
  *  Section:  Macros, externs, and inlines
@@ -501,6 +512,13 @@ static inline int sctp_frag_point(const struct sctp_sock *sp, int pmtu)
 	frag = min_t(int, frag, SCTP_MAX_CHUNK_LEN);
 
 	return frag;
+}
+
+static inline void sctp_assoc_pending_pmtu(struct sctp_association *asoc)
+{
+
+	sctp_assoc_sync_pmtu(asoc);
+	asoc->pmtu_pending = 0;
 }
 
 /* Walk through a list of TLV parameters.  Don't trust the

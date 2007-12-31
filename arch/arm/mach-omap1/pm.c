@@ -57,7 +57,6 @@
 #include <asm/arch/tc.h>
 #include <asm/arch/pm.h>
 #include <asm/arch/mux.h>
-#include <asm/arch/tps65010.h>
 #include <asm/arch/dma.h>
 #include <asm/arch/dsp_common.h>
 #include <asm/arch/dmtimer.h>
@@ -250,11 +249,6 @@ void omap_pm_suspend(void)
 
 	omap_serial_wake_trigger(1);
 
-	if (machine_is_omap_osk()) {
-		/* Stop LED1 (D9) blink */
-		tps65010_set_led(LED1, OFF);
-	}
-
 	if (!cpu_is_omap15xx())
 		omap_writew(0xffff, ULPD_SOFT_DISABLE_REQ_REG);
 
@@ -438,7 +432,7 @@ void omap_pm_suspend(void)
 		omap_writew(0, ULPD_SOFT_DISABLE_REQ_REG);
 
 	/*
-	 * Reenable interrupts
+	 * Re-enable interrupts
 	 */
 
 	local_irq_enable();
@@ -447,11 +441,6 @@ void omap_pm_suspend(void)
 	omap_serial_wake_trigger(0);
 
 	printk("PM: OMAP%x is re-starting from deep sleep...\n", system_rev);
-
-	if (machine_is_omap_osk()) {
-		/* Let LED1 (D9) blink again */
-		tps65010_set_led(LED1, BLINK);
-	}
 }
 
 #if defined(DEBUG) && defined(CONFIG_PROC_FS)

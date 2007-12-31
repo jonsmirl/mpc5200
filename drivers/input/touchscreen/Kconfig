@@ -12,17 +12,17 @@ menuconfig INPUT_TOUCHSCREEN
 if INPUT_TOUCHSCREEN
 
 config TOUCHSCREEN_ADS7846
-	tristate "ADS 7846/7843 based touchscreens"
+	tristate "ADS7846/TSC2046 and ADS7843 based touchscreens"
 	depends on SPI_MASTER
 	depends on HWMON = n || HWMON
 	help
 	  Say Y here if you have a touchscreen interface using the
-	  ADS7846 or ADS7843 controller, and your board-specific setup
-	  code includes that in its table of SPI devices.
+	  ADS7846/TSC2046 or ADS7843 controller, and your board-specific
+	  setup code includes that in its table of SPI devices.
 
 	  If HWMON is selected, and the driver is told the reference voltage
 	  on your board, you will also get hwmon interfaces for the voltage
-	  (and on ads7846, temperature) sensors of this chip.
+	  (and on ads7846/tsc2046, temperature) sensors of this chip.
 
 	  If unsure, say N (but it's safe to say "Y").
 
@@ -53,6 +53,19 @@ config TOUCHSCREEN_CORGI
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called corgi_ts.
+
+config TOUCHSCREEN_FUJITSU
+	tristate "Fujitsu serial touchscreen"
+	select SERIO
+	help
+	  Say Y here if you have the Fujitsu touchscreen (such as one
+	  installed in Lifebook P series laptop) connected to your
+	  system.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called fujitsu-ts.
 
 config TOUCHSCREEN_GUNZE
 	tristate "Gunze AHL-51S touchscreen"
@@ -177,6 +190,7 @@ config TOUCHSCREEN_USB_COMPOSITE
 	  - some other eTurboTouch
 	  - Gunze AHL61
 	  - DMC TSC-10/25
+	  - IRTOUCHSYSTEMS/UNITOP
 
 	  Have a look at <http://linux.chapter7.ch/touchkit/> for
 	  a usage description and the required user-space stuff.
@@ -217,6 +231,11 @@ config TOUCHSCREEN_USB_GUNZE
 config TOUCHSCREEN_USB_DMC_TSC10
 	default y
 	bool "DMC TSC-10/25 device support" if EMBEDDED
+	depends on TOUCHSCREEN_USB_COMPOSITE
+
+config TOUCHSCREEN_USB_IRTOUCH
+	default y
+	bool "IRTOUCHSYSTEMS/UNITOP device support" if EMBEDDED
 	depends on TOUCHSCREEN_USB_COMPOSITE
 
 endif

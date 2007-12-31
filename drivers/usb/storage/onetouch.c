@@ -57,9 +57,10 @@ static void usb_onetouch_irq(struct urb *urb)
 	struct usb_onetouch *onetouch = urb->context;
 	signed char *data = onetouch->data;
 	struct input_dev *dev = onetouch->dev;
-	int status;
+	int status = urb->status;
+	int retval;
 
-	switch (urb->status) {
+	switch (status) {
 	case 0:			/* success */
 		break;
 	case -ECONNRESET:	/* unlink */
@@ -75,16 +76,16 @@ static void usb_onetouch_irq(struct urb *urb)
 	input_sync(dev);
 
 resubmit:
-	status = usb_submit_urb (urb, GFP_ATOMIC);
-	if (status)
-		err ("can't resubmit intr, %s-%s/input0, status %d",
+	retval = usb_submit_urb (urb, GFP_ATOMIC);
+	if (retval)
+		err ("can't resubmit intr, %s-%s/input0, retval %d",
 			onetouch->udev->bus->bus_name,
-			onetouch->udev->devpath, status);
+			onetouch->udev->devpath, retval);
 }
 
 static int usb_onetouch_open(struct input_dev *dev)
 {
-	struct usb_onetouch *onetouch = dev->private;
+	struct usb_onetouch *onetouch = input_get_drvdata(dev);
 
 	onetouch->is_open = 1;
 	onetouch->irq->dev = onetouch->udev;
@@ -98,7 +99,7 @@ static int usb_onetouch_open(struct input_dev *dev)
 
 static void usb_onetouch_close(struct input_dev *dev)
 {
-	struct usb_onetouch *onetouch = dev->private;
+	struct usb_onetouch *onetouch = input_get_drvdata(dev);
 
 	usb_kill_urb(onetouch->irq);
 	onetouch->is_open = 0;
@@ -185,13 +186,14 @@ int onetouch_connect_input(struct us_data *ss)
 	input_dev->name = onetouch->name;
 	input_dev->phys = onetouch->phys;
 	usb_to_input_id(udev, &input_dev->id);
-	input_dev->cdev.dev = &udev->dev;
+	input_dev->dev.parent = &udev->dev;
 
 	set_bit(EV_KEY, input_dev->evbit);
 	set_bit(ONETOUCH_BUTTON, input_dev->keybit);
 	clear_bit(0, input_dev->keybit);
 
-	input_dev->private = onetouch;
+	input_set_drvdata(input_dev, onetouch);
+
 	input_dev->open = usb_onetouch_open;
 	input_dev->close = usb_onetouch_close;
 

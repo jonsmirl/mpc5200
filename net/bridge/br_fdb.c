@@ -36,7 +36,7 @@ int __init br_fdb_init(void)
 	br_fdb_cache = kmem_cache_create("bridge_fdb_cache",
 					 sizeof(struct net_bridge_fdb_entry),
 					 0,
-					 SLAB_HWCACHE_ALIGN, NULL, NULL);
+					 SLAB_HWCACHE_ALIGN, NULL);
 	if (!br_fdb_cache)
 		return -ENOMEM;
 
@@ -121,6 +121,7 @@ void br_fdb_cleanup(unsigned long _data)
 {
 	struct net_bridge *br = (struct net_bridge *)_data;
 	unsigned long delay = hold_time(br);
+	unsigned long next_timer = jiffies + br->forward_delay;
 	int i;
 
 	spin_lock_bh(&br->hash_lock);
@@ -129,14 +130,21 @@ void br_fdb_cleanup(unsigned long _data)
 		struct hlist_node *h, *n;
 
 		hlist_for_each_entry_safe(f, h, n, &br->hash[i], hlist) {
-			if (!f->is_static &&
-			    time_before_eq(f->ageing_timer + delay, jiffies))
+			unsigned long this_timer;
+			if (f->is_static)
+				continue;
+			this_timer = f->ageing_timer + delay;
+			if (time_before_eq(this_timer, jiffies))
 				fdb_delete(f);
+			else if (this_timer < next_timer)
+				next_timer = this_timer;
 		}
 	}
 	spin_unlock_bh(&br->hash_lock);
 
-	mod_timer(&br->gc_timer, jiffies + HZ/10);
+	/* Add HZ/4 to ensure we round the jiffies upwards to be after the next
+	 * timer, otherwise we might round down and will have no-op run. */
+	mod_timer(&br->gc_timer, round_jiffies(next_timer + HZ/4));
 }
 
 /* Completely flush all dynamic entries in forwarding database.*/
@@ -374,6 +382,11 @@ void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,
 
 	/* some users want to always flood. */
 	if (hold_time(br) == 0)
+		return;
+
+	/* ignore packets unless we are using this port */
+	if (!(source->state == BR_STATE_LEARNING ||
+	      source->state == BR_STATE_FORWARDING))
 		return;
 
 	fdb = fdb_find(head, addr);

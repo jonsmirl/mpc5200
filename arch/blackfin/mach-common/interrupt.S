@@ -34,6 +34,7 @@
 #include <linux/linkage.h>
 #include <asm/entry.h>
 #include <asm/asm-offsets.h>
+#include <asm/trace.h>
 
 #include <asm/mach-common/context.S>
 
@@ -66,6 +67,7 @@ ENTRY(_evt_emulation)
 	SP += 12;
 	/* - GDB stub fills this in by itself (if defined) */
 	rte;
+ENDPROC(_evt_emulation)
 #endif
 
 /* Common interrupt entry code.	 First we do CLI, then push
@@ -138,7 +140,7 @@ __common_int_entry:
 	fp = 0;
 #endif
 
-#ifdef	ANOMALY_05000283
+#if defined (ANOMALY_05000283) || defined (ANOMALY_05000315)
 	cc = r7 == r7;
 	p5.h = 0xffc0;
 	p5.l = 0x0014;
@@ -169,10 +171,9 @@ ENTRY(_evt_ivhw)
 	r7.l = W[p5];
 1:
 #endif
-	p0.l = lo(TBUFCTL);
-	p0.h = hi(TBUFCTL);
-	r0 = 1;
-	[p0] = r0;
+
+	trace_buffer_stop(p0, r0);
+
 	r0 = IRQ_HWERR;
 	r1 = sp;
 
@@ -251,3 +252,4 @@ ENTRY(_evt_system_call)
 #endif
 	call _system_call;
 	jump .Lcommon_restore_context;
+ENDPROC(_evt_system_call)

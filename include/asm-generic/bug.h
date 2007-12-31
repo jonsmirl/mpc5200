@@ -28,14 +28,14 @@ struct bug_entry {
 #endif
 
 #ifndef HAVE_ARCH_BUG_ON
-#define BUG_ON(condition) do { if (unlikely((condition)!=0)) BUG(); } while(0)
+#define BUG_ON(condition) do { if (unlikely(condition)) BUG(); } while(0)
 #endif
 
 #ifndef HAVE_ARCH_WARN_ON
 #define WARN_ON(condition) ({						\
-	typeof(condition) __ret_warn_on = (condition);			\
+	int __ret_warn_on = !!(condition);				\
 	if (unlikely(__ret_warn_on)) {					\
-		printk("BUG: at %s:%d %s()\n", __FILE__,		\
+		printk("WARNING: at %s:%d %s()\n", __FILE__,		\
 			__LINE__, __FUNCTION__);			\
 		dump_stack();						\
 	}								\
@@ -54,7 +54,7 @@ struct bug_entry {
 
 #ifndef HAVE_ARCH_WARN_ON
 #define WARN_ON(condition) ({						\
-	typeof(condition) __ret_warn_on = (condition);			\
+	int __ret_warn_on = !!(condition);				\
 	unlikely(__ret_warn_on);					\
 })
 #endif
@@ -62,7 +62,7 @@ struct bug_entry {
 
 #define WARN_ON_ONCE(condition)	({				\
 	static int __warned;					\
-	typeof(condition) __ret_warn_once = (condition);	\
+	int __ret_warn_once = !!(condition);			\
 								\
 	if (unlikely(__ret_warn_once))				\
 		if (WARN_ON(!__warned)) 			\

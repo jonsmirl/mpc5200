@@ -1475,6 +1475,7 @@ static void top_off_fp (struct fs_dev *dev, struct freepool *fp,
 	struct FS_BPENTRY *qe, *ne;
 	struct sk_buff *skb;
 	int n = 0;
+	u32 qe_tmp;
 
 	fs_dprintk (FS_DEBUG_QUEUE, "Topping off queue at %x (%d-%d/%d)\n", 
 		    fp->offset, read_fs (dev, FP_CNT (fp->offset)), fp->n, 
@@ -1502,10 +1503,16 @@ static void top_off_fp (struct fs_dev *dev, struct freepool *fp,
 		ne->skb = skb;
 		ne->fp = fp;
 
-		qe = (struct FS_BPENTRY *) (read_fs (dev, FP_EA(fp->offset)));
-		fs_dprintk (FS_DEBUG_QUEUE, "link at %p\n", qe);
-		if (qe) {
-			qe = bus_to_virt ((long) qe);
+		/*
+		 * FIXME: following code encodes and decodes
+		 * machine pointers (could be 64-bit) into a
+		 * 32-bit register.
+		 */
+
+		qe_tmp = read_fs (dev, FP_EA(fp->offset));
+		fs_dprintk (FS_DEBUG_QUEUE, "link at %x\n", qe_tmp);
+		if (qe_tmp) {
+			qe = bus_to_virt ((long) qe_tmp);
 			qe->next = virt_to_bus(ne);
 			qe->flags &= ~FP_FLAGS_EPI;
 		} else
@@ -1647,7 +1654,7 @@ static void fs_poll (unsigned long data)
 {
 	struct fs_dev *dev = (struct fs_dev *) data;
   
-	fs_irq (0, dev, NULL);
+	fs_irq (0, dev);
 	dev->timer.expires = jiffies + FS_POLL_FREQ;
 	add_timer (&dev->timer);
 }
@@ -1703,7 +1710,7 @@ static int __devinit fs_init (struct fs_dev *dev)
 		/* This bit is documented as "RESERVED" */
 		if (isr & ISR_INIT_ERR) {
 			printk (KERN_ERR "Error initializing the FS... \n");
-			return 1;
+			goto unmap;
 		}
 		if (isr & ISR_INIT) {
 			fs_dprintk (FS_DEBUG_INIT, "Ha! Initialized OK!\n");
@@ -1716,7 +1723,7 @@ static int __devinit fs_init (struct fs_dev *dev)
 
 	if (!to) {
 		printk (KERN_ERR "timeout initializing the FS... \n");
-		return 1;
+		goto unmap;
 	}
 
 	/* XXX fix for fs155 */
@@ -1796,7 +1803,7 @@ static int __devinit fs_init (struct fs_dev *dev)
 	if (!dev->atm_vccs) {
 		printk (KERN_WARNING "Couldn't allocate memory for VCC buffers. Woops!\n");
 		/* XXX Clean up..... */
-		return 1;
+		goto unmap;
 	}
 
 	dev->tx_inuse = kzalloc (dev->nchannels / 8 /* bits/byte */ , GFP_KERNEL);
@@ -1806,7 +1813,7 @@ static int __devinit fs_init (struct fs_dev *dev)
 	if (!dev->tx_inuse) {
 		printk (KERN_WARNING "Couldn't allocate memory for tx_inuse bits!\n");
 		/* XXX Clean up..... */
-		return 1;
+		goto unmap;
 	}
 	/* -- RAS1 : FS155 and 50 differ. Default (0) should be OK for both */
 	/* -- RAS2 : FS50 only: Default is OK. */
@@ -1833,7 +1840,7 @@ static int __devinit fs_init (struct fs_dev *dev)
 	if (request_irq (dev->irq, fs_irq, IRQF_SHARED, "firestream", dev)) {
 		printk (KERN_WARNING "couldn't get irq %d for firestream.\n", pci_dev->irq);
 		/* XXX undo all previous stuff... */
-		return 1;
+		goto unmap;
 	}
 	fs_dprintk (FS_DEBUG_INIT, "Grabbed irq %d for dev at %p.\n", dev->irq, dev);
   
@@ -1883,6 +1890,9 @@ static int __devinit fs_init (struct fs_dev *dev)
   
 	func_exit ();
 	return 0;
+unmap:
+	iounmap(dev->base);
+	return 1;
 }
 
 static int __devinit firestream_init_one (struct pci_dev *pci_dev,
@@ -2005,6 +2015,7 @@ static void __devexit firestream_remove_one (struct pci_dev *pdev)
 		for (i=0;i < FS_NR_RX_QUEUES;i++)
 			free_queue (dev, &dev->rx_rq[i]);
 
+		iounmap(dev->base);
 		fs_dprintk (FS_DEBUG_ALLOC, "Free fs-dev: %p\n", dev);
 		nxtdev = dev->next;
 		kfree (dev);

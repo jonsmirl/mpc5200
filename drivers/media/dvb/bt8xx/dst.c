@@ -1652,7 +1652,7 @@ static int dst_set_frontend(struct dvb_frontend *fe, struct dvb_frontend_paramet
 static int dst_tune_frontend(struct dvb_frontend* fe,
 			    struct dvb_frontend_parameters* p,
 			    unsigned int mode_flags,
-			    int *delay,
+			    unsigned int *delay,
 			    fe_status_t *status)
 {
 	struct dst_state *state = fe->demodulator_priv;
@@ -1721,9 +1721,6 @@ static void dst_release(struct dvb_frontend *fe)
 		symbol_put(dst_ca_attach);
 #endif
 	}
-#ifdef CONFIG_DVB_CORE_ATTACH
-	symbol_put(dst_attach);
-#endif
 	kfree(state);
 }
 

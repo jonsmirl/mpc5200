@@ -188,7 +188,7 @@ static int ixp4xx_set_irq_type(unsigned int irq, unsigned int type)
 	*int_reg |= (int_style << (line * IXP4XX_GPIO_STYLE_SIZE));
 
 	/* Configure the line as an input */
-	gpio_line_config(line, IXP4XX_GPIO_IN);
+	gpio_line_config(irq2gpio[irq], IXP4XX_GPIO_IN);
 
 	return 0;
 }
@@ -283,7 +283,7 @@ static struct irqaction ixp4xx_timer_irq = {
 	.handler	= ixp4xx_timer_interrupt,
 };
 
-static void __init ixp4xx_timer_init(void)
+void __init ixp4xx_timer_init(void)
 {
 	/* Reset/disable counter */
 	*IXP4XX_OSRT1 = 0;
@@ -458,6 +458,8 @@ static void ixp4xx_set_mode(enum clock_event_mode mode,
 	case CLOCK_EVT_MODE_UNUSED:
 	default:
 		osrt = opts = 0;
+		break;
+	case CLOCK_EVT_MODE_RESUME:
 		break;
 	}
 

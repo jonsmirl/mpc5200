@@ -17,12 +17,6 @@
 
 #include "rtmutex_common.h"
 
-#ifdef CONFIG_DEBUG_RT_MUTEXES
-# include "rtmutex-debug.h"
-#else
-# include "rtmutex.h"
-#endif
-
 /*
  * lock->owner state tracking:
  *
@@ -56,7 +50,7 @@
  * state.
  */
 
-void
+static void
 rt_mutex_set_owner(struct rt_mutex *lock, struct task_struct *owner,
 		   unsigned long mask)
 {
@@ -81,6 +75,29 @@ static void fixup_rt_mutex_waiters(struct rt_mutex *lock)
 }
 
 /*
+ * We can speed up the acquire/release, if the architecture
+ * supports cmpxchg and if there's no debugging state to be set up
+ */
+#if defined(__HAVE_ARCH_CMPXCHG) && !defined(CONFIG_DEBUG_RT_MUTEXES)
+# define rt_mutex_cmpxchg(l,c,n)	(cmpxchg(&l->owner, c, n) == c)
+static inline void mark_rt_mutex_waiters(struct rt_mutex *lock)
+{
+	unsigned long owner, *p = (unsigned long *) &lock->owner;
+
+	do {
+		owner = *p;
+	} while (cmpxchg(p, owner, owner | RT_MUTEX_HAS_WAITERS) != owner);
+}
+#else
+# define rt_mutex_cmpxchg(l,c,n)	(0)
+static inline void mark_rt_mutex_waiters(struct rt_mutex *lock)
+{
+	lock->owner = (struct task_struct *)
+			((unsigned long)lock->owner | RT_MUTEX_HAS_WAITERS);
+}
+#endif
+
+/*
  * Calculate task priority from the waiter list priority
  *
  * Return task->normal_prio when the waiter list is empty or when
@@ -100,7 +117,7 @@ int rt_mutex_getprio(struct task_struct *task)
  *
  * This can be both boosting and unboosting. task->pi_lock must be held.
  */
-void __rt_mutex_adjust_prio(struct task_struct *task)
+static void __rt_mutex_adjust_prio(struct task_struct *task)
 {
 	int prio = rt_mutex_getprio(task);
 
@@ -136,11 +153,11 @@ int max_lock_depth = 1024;
  * Decreases task's usage by one - may thus free the task.
  * Returns 0 or -EDEADLK.
  */
-int rt_mutex_adjust_prio_chain(struct task_struct *task,
-			       int deadlock_detect,
-			       struct rt_mutex *orig_lock,
-			       struct rt_mutex_waiter *orig_waiter,
-			       struct task_struct *top_task)
+static int rt_mutex_adjust_prio_chain(struct task_struct *task,
+				      int deadlock_detect,
+				      struct rt_mutex *orig_lock,
+				      struct rt_mutex_waiter *orig_waiter,
+				      struct task_struct *top_task)
 {
 	struct rt_mutex *lock;
 	struct rt_mutex_waiter *waiter, *top_waiter = orig_waiter;
@@ -189,6 +206,19 @@ int rt_mutex_adjust_prio_chain(struct task_struct *task,
 	if (!waiter || !waiter->task)
 		goto out_unlock_pi;
 
+	/*
+	 * Check the orig_waiter state. After we dropped the locks,
+	 * the previous owner of the lock might have released the lock
+	 * and made us the pending owner:
+	 */
+	if (orig_waiter && !orig_waiter->task)
+		goto out_unlock_pi;
+
+	/*
+	 * Drop out, when the task has no waiters. Note,
+	 * top_waiter can be NULL, when we are in the deboosting
+	 * mode!
+	 */
 	if (top_waiter && (!task_has_pi_waiters(task) ||
 			   top_waiter != task_top_pi_waiter(task)))
 		goto out_unlock_pi;
@@ -501,8 +531,8 @@ static void wakeup_next_waiter(struct rt_mutex *lock)
  *
  * Must be called with lock->wait_lock held
  */
-void remove_waiter(struct rt_mutex *lock,
-		   struct rt_mutex_waiter *waiter)
+static void remove_waiter(struct rt_mutex *lock,
+			  struct rt_mutex_waiter *waiter)
 {
 	int first = (waiter == rt_mutex_top_waiter(lock));
 	struct task_struct *owner = rt_mutex_owner(lock);
@@ -636,9 +666,16 @@ rt_mutex_slowlock(struct rt_mutex *lock, int state,
 			 * all over without going into schedule to try
 			 * to get the lock now:
 			 */
-			if (unlikely(!waiter.task))
+			if (unlikely(!waiter.task)) {
+				/*
+				 * Reset the return value. We might
+				 * have returned with -EDEADLK and the
+				 * owner released the lock while we
+				 * were walking the pi chain.
+				 */
+				ret = 0;
 				continue;
-
+			}
 			if (unlikely(ret))
 				break;
 		}

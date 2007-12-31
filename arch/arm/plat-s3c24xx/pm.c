@@ -40,7 +40,7 @@
 #include <asm/hardware.h>
 #include <asm/io.h>
 
-#include <asm/arch/regs-serial.h>
+#include <asm/plat-s3c/regs-serial.h>
 #include <asm/arch/regs-clock.h>
 #include <asm/arch/regs-gpio.h>
 #include <asm/arch/regs-mem.h>
@@ -555,7 +555,7 @@ static int s3c2410_pm_enter(suspend_state_t state)
 	__raw_writel(__raw_readl(S3C2410_INTPND), S3C2410_INTPND);
 	__raw_writel(__raw_readl(S3C2410_SRCPND), S3C2410_SRCPND);
 
-	/* call cpu specific preperation */
+	/* call cpu specific preparation */
 
 	pm_cpu_prep();
 

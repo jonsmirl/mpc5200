@@ -138,13 +138,13 @@ static unsigned int sic_iwr_irqs[gpio_bank(MAX_BLACKFIN_GPIOS)] = {IRQ_PROG0_INT
 
 inline int check_gpio(unsigned short gpio)
 {
-	if (gpio > MAX_BLACKFIN_GPIOS)
+	if (gpio >= MAX_BLACKFIN_GPIOS)
 		return -EINVAL;
 	return 0;
 }
 
 #ifdef BF537_FAMILY
-void port_setup(unsigned short gpio, unsigned short usage)
+static void port_setup(unsigned short gpio, unsigned short usage)
 {
 	if (usage == GPIO_USAGE) {
 		if (*port_fer[gpio_bank(gpio)] & gpio_bit(gpio))
@@ -160,9 +160,9 @@ void port_setup(unsigned short gpio, unsigned short usage)
 #endif
 
 
-void default_gpio(unsigned short gpio)
+static void default_gpio(unsigned short gpio)
 {
-	unsigned short bank,bitmask;
+	unsigned short bank, bitmask;
 
 	bank = gpio_bank(gpio);
 	bitmask = gpio_bit(gpio);
@@ -177,21 +177,20 @@ void default_gpio(unsigned short gpio)
 	gpio_bankb[bank]->edge &= ~bitmask;
 }
 
-
-int __init bfin_gpio_init(void)
+static int __init bfin_gpio_init(void)
 {
 	int i;
 
 	printk(KERN_INFO "Blackfin GPIO Controller\n");
 
-	for (i = 0; i < MAX_BLACKFIN_GPIOS; i+=GPIO_BANKSIZE)
+	for (i = 0; i < MAX_BLACKFIN_GPIOS; i += GPIO_BANKSIZE)
 		reserved_map[gpio_bank(i)] = 0;
 
 #if defined(BF537_FAMILY) && (defined(CONFIG_BFIN_MAC) || defined(CONFIG_BFIN_MAC_MODULE))
 # if defined(CONFIG_BFIN_MAC_RMII)
-	reserved_map[PORT_H] = 0xC373;
+	reserved_map[gpio_bank(PORT_H)] = 0xC373;
 # else
-	reserved_map[PORT_H] = 0xFFFF;
+	reserved_map[gpio_bank(PORT_H)] = 0xFFFF;
 # endif
 #endif
 
@@ -479,7 +478,7 @@ u32 gpio_pm_setup(void)
 	u32 sic_iwr = 0;
 	u16 bank, mask, i, gpio;
 
-	for (i = 0; i < MAX_BLACKFIN_GPIOS; i+=GPIO_BANKSIZE) {
+	for (i = 0; i < MAX_BLACKFIN_GPIOS; i += GPIO_BANKSIZE) {
 		mask = wakeup_map[gpio_bank(i)];
 		bank = gpio_bank(i);
 
@@ -495,19 +494,24 @@ u32 gpio_pm_setup(void)
 			gpio_bank_saved[bank].dir   = gpio_bankb[bank]->dir;
 			gpio_bank_saved[bank].edge  = gpio_bankb[bank]->edge;
 			gpio_bank_saved[bank].both  = gpio_bankb[bank]->both;
+			gpio_bank_saved[bank].reserved = reserved_map[bank];
 
 			gpio = i;
 
 			while (mask) {
 				if (mask & 1) {
-					bfin_gpio_wakeup_type(gpio, wakeup_flags_map[gpio]);
+					reserved_map[gpio_bank(gpio)] |=
+							gpio_bit(gpio);
+					bfin_gpio_wakeup_type(gpio,
+						wakeup_flags_map[gpio]);
 					set_gpio_data(gpio, 0); /*Clear*/
 				}
 				gpio++;
 				mask >>= 1;
 			}
 
-			sic_iwr |= 1 << (sic_iwr_irqs[bank] - (IRQ_CORETMR + 1));
+			sic_iwr |= 1 <<
+				(sic_iwr_irqs[bank] - (IRQ_CORETMR + 1));
 			gpio_bankb[bank]->maskb_set = wakeup_map[gpio_bank(i)];
 		}
 	}
@@ -518,12 +522,11 @@ u32 gpio_pm_setup(void)
 		return IWR_ENABLE_ALL;
 }
 
-
 void gpio_pm_restore(void)
 {
 	u16 bank, mask, i;
 
-	for (i = 0; i < MAX_BLACKFIN_GPIOS; i+=GPIO_BANKSIZE) {
+	for (i = 0; i < MAX_BLACKFIN_GPIOS; i += GPIO_BANKSIZE) {
 		mask = wakeup_map[gpio_bank(i)];
 		bank = gpio_bank(i);
 
@@ -536,6 +539,9 @@ void gpio_pm_restore(void)
 			gpio_bankb[bank]->polar = gpio_bank_saved[bank].polar;
 			gpio_bankb[bank]->edge  = gpio_bank_saved[bank].edge;
 			gpio_bankb[bank]->both  = gpio_bank_saved[bank].both;
+
+			reserved_map[bank] = gpio_bank_saved[bank].reserved;
+
 		}
 
 		gpio_bankb[bank]->maskb = gpio_bank_saved[bank].maskb;
@@ -584,7 +590,6 @@ int gpio_request(unsigned short gpio, const char *label)
 }
 EXPORT_SYMBOL(gpio_request);
 
-
 void gpio_free(unsigned short gpio)
 {
 	unsigned long flags;
@@ -608,7 +613,6 @@ void gpio_free(unsigned short gpio)
 	local_irq_restore(flags);
 }
 EXPORT_SYMBOL(gpio_free);
-
 
 void gpio_direction_input(unsigned short gpio)
 {

@@ -21,6 +21,7 @@
 #include <linux/bug.h>
 #include <linux/debug_locks.h>
 #include <linux/kdebug.h>
+#include <linux/kexec.h>
 #include <linux/limits.h>
 #include <asm/system.h>
 #include <asm/uaccess.h>
@@ -82,6 +83,8 @@ void die(const char * str, struct pt_regs * regs, long err)
 {
 	static int die_counter;
 
+	oops_enter();
+
 	console_verbose();
 	spin_lock_irq(&die_lock);
 	bust_spinlocks(1);
@@ -100,7 +103,19 @@ void die(const char * str, struct pt_regs * regs, long err)
 			 (unsigned long)task_stack_page(current));
 
 	bust_spinlocks(0);
+	add_taint(TAINT_DIE);
 	spin_unlock_irq(&die_lock);
+
+	if (kexec_should_crash(current))
+		crash_kexec(regs);
+
+	if (in_interrupt())
+		panic("Fatal exception in interrupt");
+
+	if (panic_on_oops)
+		panic("Fatal exception");
+
+	oops_exit();
 	do_exit(SIGSEGV);
 }
 
@@ -513,7 +528,7 @@ static int handle_unaligned_access(u16 instruction, struct pt_regs *regs)
  *       misaligned data access
  *       access to >= 0x80000000 is user mode
  * Unfortuntaly we can't distinguish between instruction address error
- * and data address errors caused by read acceses.
+ * and data address errors caused by read accesses.
  */
 asmlinkage void do_address_error(struct pt_regs *regs,
 				 unsigned long writeaccess,
@@ -570,7 +585,7 @@ uspace_segv:
 		info.si_signo = SIGBUS;
 		info.si_errno = 0;
 		info.si_code = si_code;
-		info.si_addr = (void *) address;
+		info.si_addr = (void __user *)address;
 		force_sig_info(SIGBUS, &info, current);
 	} else {
 		if (regs->pc & 1)
@@ -603,7 +618,7 @@ uspace_segv:
  */
 int is_dsp_inst(struct pt_regs *regs)
 {
-	unsigned short inst;
+	unsigned short inst = 0;
 
 	/*
 	 * Safe guard if DSP mode is already enabled or we're lacking
@@ -631,7 +646,6 @@ asmlinkage void do_divide_error(unsigned long r4, unsigned long r5,
 				unsigned long r6, unsigned long r7,
 				struct pt_regs __regs)
 {
-	struct pt_regs *regs = RELOC_HIDE(&__regs, 0);
 	siginfo_t info;
 
 	switch (r4) {
@@ -840,8 +854,13 @@ void __init trap_init(void)
 	set_exception_table_evt(0x800, do_reserved_inst);
 	set_exception_table_evt(0x820, do_illegal_slot_inst);
 #elif defined(CONFIG_SH_FPU)
+#ifdef CONFIG_CPU_SUBTYPE_SHX3
+	set_exception_table_evt(0xd80, do_fpu_state_restore);
+	set_exception_table_evt(0xda0, do_fpu_state_restore);
+#else
 	set_exception_table_evt(0x800, do_fpu_state_restore);
 	set_exception_table_evt(0x820, do_fpu_state_restore);
+#endif
 #endif
 
 #ifdef CONFIG_CPU_SH2
@@ -860,7 +879,7 @@ void __init trap_init(void)
 void handle_BUG(struct pt_regs *regs)
 {
 	enum bug_trap_type tt;
-	tt = report_bug(regs->pc);
+	tt = report_bug(regs->pc, regs);
 	if (tt == BUG_TRAP_TYPE_WARN) {
 		regs->pc += 2;
 		return;

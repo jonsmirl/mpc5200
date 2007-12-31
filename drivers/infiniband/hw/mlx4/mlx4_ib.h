@@ -35,6 +35,7 @@
 
 #include <linux/compiler.h>
 #include <linux/list.h>
+#include <linux/mutex.h>
 
 #include <rdma/ib_verbs.h>
 #include <rdma/ib_umem.h>
@@ -95,7 +96,8 @@ struct mlx4_ib_mr {
 struct mlx4_ib_wq {
 	u64		       *wrid;
 	spinlock_t		lock;
-	int			max;
+	int			wqe_cnt;
+	int			max_post;
 	int			max_gs;
 	int			offset;
 	int			wqe_shift;
@@ -113,6 +115,7 @@ struct mlx4_ib_qp {
 
 	u32			doorbell_qpn;
 	__be32			sq_signal_bits;
+	int			sq_spare_wqes;
 	struct mlx4_ib_wq	sq;
 
 	struct ib_umem	       *umem;
@@ -123,6 +126,7 @@ struct mlx4_ib_qp {
 	u8			alt_port;
 	u8			atomic_rd_en;
 	u8			resp_depth;
+	u8			sq_no_prefetch;
 	u8			state;
 };
 
@@ -252,6 +256,7 @@ struct ib_srq *mlx4_ib_create_srq(struct ib_pd *pd,
 				  struct ib_udata *udata);
 int mlx4_ib_modify_srq(struct ib_srq *ibsrq, struct ib_srq_attr *attr,
 		       enum ib_srq_attr_mask attr_mask, struct ib_udata *udata);
+int mlx4_ib_query_srq(struct ib_srq *srq, struct ib_srq_attr *srq_attr);
 int mlx4_ib_destroy_srq(struct ib_srq *srq);
 void mlx4_ib_free_srq_wqe(struct mlx4_ib_srq *srq, int wqe_index);
 int mlx4_ib_post_srq_recv(struct ib_srq *ibsrq, struct ib_recv_wr *wr,
@@ -263,6 +268,8 @@ struct ib_qp *mlx4_ib_create_qp(struct ib_pd *pd,
 int mlx4_ib_destroy_qp(struct ib_qp *qp);
 int mlx4_ib_modify_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
 		      int attr_mask, struct ib_udata *udata);
+int mlx4_ib_query_qp(struct ib_qp *ibqp, struct ib_qp_attr *qp_attr, int qp_attr_mask,
+		     struct ib_qp_init_attr *qp_init_attr);
 int mlx4_ib_post_send(struct ib_qp *ibqp, struct ib_send_wr *wr,
 		      struct ib_send_wr **bad_wr);
 int mlx4_ib_post_recv(struct ib_qp *ibqp, struct ib_recv_wr *wr,

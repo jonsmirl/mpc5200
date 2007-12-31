@@ -241,7 +241,7 @@ static __init int init_posix_timers(void)
 	register_posix_clock(CLOCK_MONOTONIC, &clock_monotonic);
 
 	posix_timers_cache = kmem_cache_create("posix_timers_cache",
-					sizeof (struct k_itimer), 0, 0, NULL, NULL);
+					sizeof (struct k_itimer), 0, 0, NULL);
 	idr_init(&posix_timers_id);
 	return 0;
 }
@@ -353,9 +353,40 @@ static enum hrtimer_restart posix_timer_fn(struct hrtimer *timer)
 		 * it should be restarted.
 		 */
 		if (timr->it.real.interval.tv64 != 0) {
+			ktime_t now = hrtimer_cb_get_time(timer);
+
+			/*
+			 * FIXME: What we really want, is to stop this
+			 * timer completely and restart it in case the
+			 * SIG_IGN is removed. This is a non trivial
+			 * change which involves sighand locking
+			 * (sigh !), which we don't want to do late in
+			 * the release cycle.
+			 *
+			 * For now we just let timers with an interval
+			 * less than a jiffie expire every jiffie to
+			 * avoid softirq starvation in case of SIG_IGN
+			 * and a very small interval, which would put
+			 * the timer right back on the softirq pending
+			 * list. By moving now ahead of time we trick
+			 * hrtimer_forward() to expire the timer
+			 * later, while we still maintain the overrun
+			 * accuracy, but have some inconsistency in
+			 * the timer_gettime() case. This is at least
+			 * better than a starved softirq. A more
+			 * complex fix which solves also another related
+			 * inconsistency is already in the pipeline.
+			 */
+#ifdef CONFIG_HIGH_RES_TIMERS
+			{
+				ktime_t kj = ktime_set(0, NSEC_PER_SEC / HZ);
+
+				if (timr->it.real.interval.tv64 < kj.tv64)
+					now = ktime_add(now, kj);
+			}
+#endif
 			timr->it_overrun +=
-				hrtimer_forward(timer,
-						hrtimer_cb_get_time(timer),
+				hrtimer_forward(timer, now,
 						timr->it.real.interval);
 			ret = HRTIMER_RESTART;
 			++timr->it_requeue_pending;
@@ -516,9 +547,9 @@ sys_timer_create(const clockid_t which_clock,
 				new_timer->it_process = process;
 				list_add(&new_timer->list,
 					 &process->signal->posix_timers);
-				spin_unlock_irqrestore(&process->sighand->siglock, flags);
 				if (new_timer->it_sigev_notify == (SIGEV_SIGNAL|SIGEV_THREAD_ID))
 					get_task_struct(process);
+				spin_unlock_irqrestore(&process->sighand->siglock, flags);
 			} else {
 				spin_unlock_irqrestore(&process->sighand->siglock, flags);
 				process = NULL;
@@ -574,13 +605,14 @@ static struct k_itimer * lock_timer(timer_t timer_id, unsigned long *flags)
 	timr = (struct k_itimer *) idr_find(&posix_timers_id, (int) timer_id);
 	if (timr) {
 		spin_lock(&timr->it_lock);
-		spin_unlock(&idr_lock);
 
 		if ((timr->it_id != timer_id) || !(timr->it_process) ||
 				timr->it_process->tgid != current->tgid) {
-			unlock_timer(timr, *flags);
+			spin_unlock(&timr->it_lock);
+			spin_unlock_irqrestore(&idr_lock, *flags);
 			timr = NULL;
-		}
+		} else
+			spin_unlock(&idr_lock);
 	} else
 		spin_unlock_irqrestore(&idr_lock, *flags);
 

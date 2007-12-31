@@ -190,6 +190,7 @@ struct agp_bridge_data {
 #define INTEL_I830_ERRSTS	0x92
 
 /* Intel 855GM/852GM registers */
+#define I855_GMCH_GMS_MASK		0xF0
 #define I855_GMCH_GMS_STOLEN_0M		0x0
 #define I855_GMCH_GMS_STOLEN_1M		(0x1 << 4)
 #define I855_GMCH_GMS_STOLEN_4M		(0x2 << 4)
@@ -231,6 +232,10 @@ struct agp_bridge_data {
 #define I965_PGETBL_SIZE_512KB	(0 << 1)
 #define I965_PGETBL_SIZE_256KB	(1 << 1)
 #define I965_PGETBL_SIZE_128KB	(2 << 1)
+#define G33_PGETBL_SIZE_MASK    (3 << 8)
+#define G33_PGETBL_SIZE_1M      (1 << 8)
+#define G33_PGETBL_SIZE_2M      (2 << 8)
+
 #define I810_DRAM_CTL		0x3000
 #define I810_DRAM_ROW_0		0x00000001
 #define I810_DRAM_ROW_0_SDRAM	0x00000001

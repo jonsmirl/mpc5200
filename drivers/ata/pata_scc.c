@@ -43,7 +43,7 @@
 #include <linux/libata.h>
 
 #define DRV_NAME		"pata_scc"
-#define DRV_VERSION		"0.1"
+#define DRV_VERSION		"0.3"
 
 #define PCI_DEVICE_ID_TOSHIBA_SCC_ATA		0x01b4
 
@@ -258,6 +258,17 @@ static void scc_set_dmamode (struct ata_port *ap, struct ata_device *adev)
 		 JCTSStbl[offset][idx] << 16 | JCENVTtbl[offset][idx]);
 }
 
+unsigned long scc_mode_filter(struct ata_device *adev, unsigned long mask)
+{
+	/* errata A308 workaround: limit ATAPI UDMA mode to UDMA4 */
+	if (adev->class == ATA_DEV_ATAPI &&
+	    (mask & (0xE0 << ATA_SHIFT_UDMA))) {
+		printk(KERN_INFO "%s: limit ATAPI UDMA to UDMA4\n", DRV_NAME);
+		mask &= ~(0xE0 << ATA_SHIFT_UDMA);
+	}
+	return ata_pci_default_filter(adev, mask);
+}
+
 /**
  *	scc_tf_load - send taskfile registers to host controller
  *	@ap: Port to which output is sent
@@ -352,6 +363,8 @@ static void scc_tf_read (struct ata_port *ap, struct ata_taskfile *tf)
 		tf->hob_lbal = in_be32(ioaddr->lbal_addr);
 		tf->hob_lbam = in_be32(ioaddr->lbam_addr);
 		tf->hob_lbah = in_be32(ioaddr->lbah_addr);
+		out_be32(ioaddr->ctl_addr, tf->ctl);
+		ap->last_ctl = tf->ctl;
 	}
 }
 
@@ -489,23 +502,26 @@ static unsigned int scc_devchk (struct ata_port *ap,
  *	Note: Original code is ata_bus_post_reset().
  */
 
-static void scc_bus_post_reset (struct ata_port *ap, unsigned int devmask)
+static int scc_bus_post_reset(struct ata_port *ap, unsigned int devmask,
+                              unsigned long deadline)
 {
 	struct ata_ioports *ioaddr = &ap->ioaddr;
 	unsigned int dev0 = devmask & (1 << 0);
 	unsigned int dev1 = devmask & (1 << 1);
-	unsigned long timeout;
+	int rc;
 
 	/* if device 0 was found in ata_devchk, wait for its
 	 * BSY bit to clear
 	 */
-	if (dev0)
-		ata_busy_sleep(ap, ATA_TMOUT_BOOT_QUICK, ATA_TMOUT_BOOT);
+	if (dev0) {
+		rc = ata_wait_ready(ap, deadline);
+		if (rc && rc != -ENODEV)
+			return rc;
+	}
 
 	/* if device 1 was found in ata_devchk, wait for
 	 * register access, then wait for BSY to clear
 	 */
-	timeout = jiffies + ATA_TMOUT_BOOT;
 	while (dev1) {
 		u8 nsect, lbal;
 
@@ -514,14 +530,15 @@ static void scc_bus_post_reset (struct ata_port *ap, unsigned int devmask)
 		lbal = in_be32(ioaddr->lbal_addr);
 		if ((nsect == 1) && (lbal == 1))
 			break;
-		if (time_after(jiffies, timeout)) {
-			dev1 = 0;
-			break;
-		}
+		if (time_after(jiffies, deadline))
+			return -EBUSY;
 		msleep(50);	/* give drive a breather */
 	}
-	if (dev1)
-		ata_busy_sleep(ap, ATA_TMOUT_BOOT_QUICK, ATA_TMOUT_BOOT);
+	if (dev1) {
+		rc = ata_wait_ready(ap, deadline);
+		if (rc && rc != -ENODEV)
+			return rc;
+	}
 
 	/* is all this really necessary? */
 	ap->ops->dev_select(ap, 0);
@@ -529,6 +546,8 @@ static void scc_bus_post_reset (struct ata_port *ap, unsigned int devmask)
 		ap->ops->dev_select(ap, 1);
 	if (dev0)
 		ap->ops->dev_select(ap, 0);
+
+	return 0;
 }
 
 /**
@@ -537,8 +556,8 @@ static void scc_bus_post_reset (struct ata_port *ap, unsigned int devmask)
  *	Note: Original code is ata_bus_softreset().
  */
 
-static unsigned int scc_bus_softreset (struct ata_port *ap,
-				       unsigned int devmask)
+static unsigned int scc_bus_softreset(struct ata_port *ap, unsigned int devmask,
+                                      unsigned long deadline)
 {
 	struct ata_ioports *ioaddr = &ap->ioaddr;
 
@@ -570,7 +589,7 @@ static unsigned int scc_bus_softreset (struct ata_port *ap,
 	if (scc_check_status(ap) == 0xFF)
 		return 0;
 
-	scc_bus_post_reset(ap, devmask);
+	scc_bus_post_reset(ap, devmask, deadline);
 
 	return 0;
 }
@@ -579,11 +598,13 @@ static unsigned int scc_bus_softreset (struct ata_port *ap,
  *	scc_std_softreset - reset host port via ATA SRST
  *	@ap: port to reset
  *	@classes: resulting classes of attached devices
+ *	@deadline: deadline jiffies for the operation
  *
  *	Note: Original code is ata_std_softreset().
  */
 
-static int scc_std_softreset (struct ata_port *ap, unsigned int *classes)
+static int scc_std_softreset (struct ata_port *ap, unsigned int *classes,
+                              unsigned long deadline)
 {
 	unsigned int slave_possible = ap->flags & ATA_FLAG_SLAVE_POSS;
 	unsigned int devmask = 0, err_mask;
@@ -607,7 +628,7 @@ static int scc_std_softreset (struct ata_port *ap, unsigned int *classes)
 
 	/* issue bus reset */
 	DPRINTK("about to softreset, devmask=%x\n", devmask);
-	err_mask = scc_bus_softreset(ap, devmask);
+	err_mask = scc_bus_softreset(ap, devmask, deadline);
 	if (err_mask) {
 		ata_port_printk(ap, KERN_ERR, "SRST failed (err_mask=0x%x)\n",
 				err_mask);
@@ -676,10 +697,11 @@ static void scc_bmdma_stop (struct ata_queued_cmd *qc)
 
 		if (reg & INTSTS_BMSINT) {
 			unsigned int classes;
+			unsigned long deadline = jiffies + ATA_TMOUT_BOOT;
 			printk(KERN_WARNING "%s: Internal Bus Error\n", DRV_NAME);
 			out_be32(bmid_base + SCC_DMA_INTST, INTSTS_BMSINT);
 			/* TBD: SW reset */
-			scc_std_softreset(ap, &classes);
+			scc_std_softreset(ap, &classes, deadline);
 			continue;
 		}
 
@@ -715,22 +737,36 @@ static void scc_bmdma_stop (struct ata_queued_cmd *qc)
 
 static u8 scc_bmdma_status (struct ata_port *ap)
 {
-	u8 host_stat;
 	void __iomem *mmio = ap->ioaddr.bmdma_addr;
+	u8 host_stat = in_be32(mmio + SCC_DMA_STATUS);
+	u32 int_status = in_be32(mmio + SCC_DMA_INTST);
+	struct ata_queued_cmd *qc = ata_qc_from_tag(ap, ap->active_tag);
+	static int retry = 0;
 
-	host_stat = in_be32(mmio + SCC_DMA_STATUS);
+	/* return if IOS_SS is cleared */
+	if (!(in_be32(mmio + SCC_DMA_CMD) & ATA_DMA_START))
+		return host_stat;
 
-	/* Workaround for PTERADD: emulate DMA_INTR when
-	 * - IDE_STATUS[ERR] = 1
-	 * - INT_STATUS[INTRQ] = 1
-	 * - DMA_STATUS[IORACTA] = 1
-	 */
-	if (!(host_stat & ATA_DMA_INTR)) {
-		u32 int_status = in_be32(mmio + SCC_DMA_INTST);
-		if (ata_altstatus(ap) & ATA_ERR &&
-		    int_status & INTSTS_INTRQ &&
-		    host_stat & ATA_DMA_ACTIVE)
-			host_stat |= ATA_DMA_INTR;
+	/* errata A252,A308 workaround: Step4 */
+	if ((ata_altstatus(ap) & ATA_ERR) && (int_status & INTSTS_INTRQ))
+		return (host_stat | ATA_DMA_INTR);
+
+	/* errata A308 workaround Step5 */
+	if (int_status & INTSTS_IOIRQS) {
+		host_stat |= ATA_DMA_INTR;
+
+		/* We don't check ATAPI DMA because it is limited to UDMA4 */
+		if ((qc->tf.protocol == ATA_PROT_DMA &&
+		     qc->dev->xfer_mode > XFER_UDMA_4)) {
+			if (!(int_status & INTSTS_ACTEINT)) {
+				printk(KERN_WARNING "ata%u: operation failed (transfer data loss)\n",
+				       ap->print_id);
+				host_stat |= ATA_DMA_ERR;
+				if (retry++)
+					ap->udma_mask &= ~(1 << qc->dev->xfer_mode);
+			} else
+				retry = 0;
+		}
 	}
 
 	return host_stat;
@@ -862,9 +898,10 @@ static void scc_bmdma_freeze (struct ata_port *ap)
 /**
  *	scc_pata_prereset - prepare for reset
  *	@ap: ATA port to be reset
+ *	@deadline: deadline jiffies for the operation
  */
 
-static int scc_pata_prereset (struct ata_port *ap, unsigned long deadline)
+static int scc_pata_prereset(struct ata_port *ap, unsigned long deadline)
 {
 	ap->cbl = ATA_CBL_PATA80;
 	return ata_std_prereset(ap, deadline);
@@ -881,10 +918,6 @@ static int scc_pata_prereset (struct ata_port *ap, unsigned long deadline)
 static void scc_std_postreset (struct ata_port *ap, unsigned int *classes)
 {
 	DPRINTK("ENTER\n");
-
-	/* re-enable interrupts */
-	if (!ap->ops->error_handler)
-		ap->ops->irq_on(ap);
 
 	/* is double-select really necessary? */
 	if (classes[0] != ATA_DEV_NONE)
@@ -990,7 +1023,7 @@ static const struct ata_port_operations scc_pata_ops = {
 	.port_disable		= ata_port_disable,
 	.set_piomode		= scc_set_piomode,
 	.set_dmamode		= scc_set_dmamode,
-	.mode_filter		= ata_pci_default_filter,
+	.mode_filter		= scc_mode_filter,
 
 	.tf_load		= scc_tf_load,
 	.tf_read		= scc_tf_read,

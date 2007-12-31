@@ -241,7 +241,6 @@ static struct scsi_driver sd_template = {
 	},
 	.rescan			= sd_rescan,
 	.init_command		= sd_init_command,
-	.issue_flush		= sd_issue_flush,
 };
 
 /*
@@ -684,7 +683,7 @@ static int sd_ioctl(struct inode * inode, struct file * filp,
 		case SCSI_IOCTL_GET_BUS_NUMBER:
 			return scsi_ioctl(sdp, cmd, p);
 		default:
-			error = scsi_cmd_ioctl(filp, disk, cmd, p);
+			error = scsi_cmd_ioctl(filp, disk->queue, disk, cmd, p);
 			if (error != -ENOTTY)
 				return error;
 	}
@@ -800,10 +799,17 @@ static int sd_sync_cache(struct scsi_disk *sdkp)
 	return 0;
 }
 
-static int sd_issue_flush(struct device *dev, sector_t *error_sector)
+static int sd_issue_flush(struct request_queue *q, struct gendisk *disk,
+			  sector_t *error_sector)
 {
 	int ret = 0;
-	struct scsi_disk *sdkp = scsi_disk_get_from_dev(dev);
+	struct scsi_device *sdp = q->queuedata;
+	struct scsi_disk *sdkp;
+
+	if (sdp->sdev_state != SDEV_RUNNING)
+		return -ENXIO;
+
+	sdkp = scsi_disk_get_from_dev(&sdp->sdev_gendev);
 
 	if (!sdkp)
                return -ENODEV;
@@ -814,7 +820,7 @@ static int sd_issue_flush(struct device *dev, sector_t *error_sector)
 	return ret;
 }
 
-static void sd_prepare_flush(request_queue_t *q, struct request *rq)
+static void sd_prepare_flush(struct request_queue *q, struct request *rq)
 {
 	memset(rq->cmd, 0, sizeof(rq->cmd));
 	rq->cmd_type = REQ_TYPE_BLOCK_PC;
@@ -1285,7 +1291,7 @@ got_data:
 		 */
 		int hard_sector = sector_size;
 		sector_t sz = (sdkp->capacity/2) * (hard_sector/256);
-		request_queue_t *queue = sdp->request_queue;
+		struct request_queue *queue = sdp->request_queue;
 		sector_t mb = sz;
 
 		blk_queue_hardsect_size(queue, hard_sector);
@@ -1515,7 +1521,7 @@ static int sd_revalidate_disk(struct gendisk *disk)
 	if (!scsi_device_online(sdp))
 		goto out;
 
-	buffer = kmalloc(SD_BUF_SIZE, GFP_KERNEL | __GFP_DMA);
+	buffer = kmalloc(SD_BUF_SIZE, GFP_KERNEL);
 	if (!buffer) {
 		sd_printk(KERN_WARNING, sdkp, "sd_revalidate_disk: Memory "
 			  "allocation failure.\n");
@@ -1663,6 +1669,8 @@ static int sd_probe(struct device *dev)
 
 	sd_revalidate_disk(gd);
 
+	blk_queue_issue_flush_fn(sdp->request_queue, sd_issue_flush);
+
 	gd->driverfs_dev = &sdp->sdev_gendev;
 	gd->flags = GENHD_FL_DRIVERFS;
 	if (sdp->removable)
@@ -1789,7 +1797,7 @@ static void sd_shutdown(struct device *dev)
 static int sd_suspend(struct device *dev, pm_message_t mesg)
 {
 	struct scsi_disk *sdkp = scsi_disk_get_from_dev(dev);
-	int ret;
+	int ret = 0;
 
 	if (!sdkp)
 		return 0;	/* this can happen */
@@ -1798,30 +1806,34 @@ static int sd_suspend(struct device *dev, pm_message_t mesg)
 		sd_printk(KERN_NOTICE, sdkp, "Synchronizing SCSI cache\n");
 		ret = sd_sync_cache(sdkp);
 		if (ret)
-			return ret;
+			goto done;
 	}
 
 	if (mesg.event == PM_EVENT_SUSPEND &&
 	    sdkp->device->manage_start_stop) {
 		sd_printk(KERN_NOTICE, sdkp, "Stopping disk\n");
 		ret = sd_start_stop_device(sdkp, 0);
-		if (ret)
-			return ret;
 	}
 
-	return 0;
+done:
+	scsi_disk_put(sdkp);
+	return ret;
 }
 
 static int sd_resume(struct device *dev)
 {
 	struct scsi_disk *sdkp = scsi_disk_get_from_dev(dev);
+	int ret = 0;
 
 	if (!sdkp->device->manage_start_stop)
-		return 0;
+		goto done;
 
 	sd_printk(KERN_NOTICE, sdkp, "Starting disk\n");
+	ret = sd_start_stop_device(sdkp, 1);
 
-	return sd_start_stop_device(sdkp, 1);
+done:
+	scsi_disk_put(sdkp);
+	return ret;
 }
 
 /**

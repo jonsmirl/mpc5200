@@ -201,13 +201,6 @@ int smp_call_function_map(void (*func) (void *info), void *info, int nonatomic,
 	/* Can deadlock when called with interrupts disabled */
 	WARN_ON(irqs_disabled());
 
-	/* remove 'self' from the map */
-	if (cpu_isset(smp_processor_id(), map))
-		cpu_clear(smp_processor_id(), map);
-
-	/* sanity check the map, remove any non-online processors. */
-	cpus_and(map, map, cpu_online_map);
-
 	if (unlikely(smp_ops == NULL))
 		return ret;
 
@@ -219,13 +212,17 @@ int smp_call_function_map(void (*func) (void *info), void *info, int nonatomic,
 		atomic_set(&data.finished, 0);
 
 	spin_lock(&call_lock);
-	/* Must grab online cpu count with preempt disabled, otherwise
-	 * it can change. */
-	num_cpus = num_online_cpus() - 1;
-	if (!num_cpus || cpus_empty(map)) {
-		ret = 0;
-		goto out;
-	}
+
+	/* remove 'self' from the map */
+	if (cpu_isset(smp_processor_id(), map))
+		cpu_clear(smp_processor_id(), map);
+
+	/* sanity check the map, remove any non-online processors. */
+	cpus_and(map, map, cpu_online_map);
+
+	num_cpus = cpus_weight(map);
+	if (!num_cpus)
+		goto done;
 
 	call_data = &data;
 	smp_wmb();
@@ -263,6 +260,7 @@ int smp_call_function_map(void (*func) (void *info), void *info, int nonatomic,
 		}
 	}
 
+ done:
 	ret = 0;
 
  out:
@@ -282,16 +280,22 @@ EXPORT_SYMBOL(smp_call_function);
 int smp_call_function_single(int cpu, void (*func) (void *info), void *info, int nonatomic,
 			int wait)
 {
-	cpumask_t map=CPU_MASK_NONE;
+	cpumask_t map = CPU_MASK_NONE;
+	int ret = 0;
 
 	if (!cpu_online(cpu))
 		return -EINVAL;
 
-	if (cpu == smp_processor_id())
-		return -EBUSY;
-
 	cpu_set(cpu, map);
-	return smp_call_function_map(func,info,nonatomic,wait,map);
+	if (cpu != get_cpu())
+		ret = smp_call_function_map(func,info,nonatomic,wait,map);
+	else {
+		local_irq_disable();
+		func(info);
+		local_irq_enable();
+	}
+	put_cpu();
+	return ret;
 }
 EXPORT_SYMBOL(smp_call_function_single);
 

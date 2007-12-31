@@ -24,14 +24,14 @@
 #include <asm/plat-s3c24xx/dma.h>
 #include <asm/plat-s3c24xx/cpu.h>
 
-#include <asm/arch/regs-serial.h>
+#include <asm/plat-s3c/regs-serial.h>
 #include <asm/arch/regs-gpio.h>
-#include <asm/arch/regs-ac97.h>
+#include <asm/plat-s3c/regs-ac97.h>
 #include <asm/arch/regs-mem.h>
 #include <asm/arch/regs-lcd.h>
 #include <asm/arch/regs-sdi.h>
-#include <asm/arch/regs-iis.h>
-#include <asm/arch/regs-spi.h>
+#include <asm/plat-s3c24xx/regs-iis.h>
+#include <asm/plat-s3c24xx/regs-spi.h>
 
 #define MAP(x) { (x)| DMA_CH_VALID, (x)| DMA_CH_VALID, (x)| DMA_CH_VALID, (x)| DMA_CH_VALID }
 
@@ -59,8 +59,8 @@ static struct s3c24xx_dma_map __initdata s3c2412_dma_mappings[] = {
 	[DMACH_SPI1] = {
 		.name		= "spi1",
 		.channels	= MAP(S3C2412_DMAREQSEL_SPI1TX),
-		.hw_addr.to	= S3C2410_PA_SPI + 0x20 + S3C2410_SPTDAT,
-		.hw_addr.from	= S3C2410_PA_SPI + 0x20 + S3C2410_SPRDAT,
+		.hw_addr.to	= S3C2410_PA_SPI + S3C2412_SPI1 + S3C2410_SPTDAT,
+		.hw_addr.from	= S3C2410_PA_SPI + S3C2412_SPI1  + S3C2410_SPRDAT,
 	},
 	[DMACH_UART0] = {
 		.name		= "uart0",

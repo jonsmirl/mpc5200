@@ -569,6 +569,9 @@ zfcp_adapter_scsi_register(struct zfcp_adapter *adapter)
 	int retval = 0;
 	static unsigned int unique_id = 0;
 
+	if (adapter->scsi_host)
+		goto out;
+
 	/* register adapter as SCSI host with mid layer of SCSI stack */
 	adapter->scsi_host = scsi_host_alloc(&zfcp_data.scsi_host_template,
 					     sizeof (struct zfcp_adapter *));
@@ -761,7 +764,9 @@ zfcp_reset_fc_host_stats(struct Scsi_Host *shost)
 		return;
 
 	ret = zfcp_fsf_exchange_port_data(NULL, adapter, data);
-	if (ret == 0) {
+	if (ret) {
+		kfree(data);
+	} else {
 		adapter->stats_reset = jiffies/HZ;
 		old_data = adapter->stats_reset_data;
 		adapter->stats_reset_data = data; /* finally freed in

@@ -79,11 +79,15 @@
 
 /*
  * Temperature sensors keys (sp78 - 2 bytes).
- * First set for Macbook(Pro), second for Macmini.
  */
 static const char* temperature_sensors_sets[][13] = {
+/* Set 0: Macbook Pro */
 	{ "TA0P", "TB0T", "TC0D", "TC0P", "TG0H", "TG0P", "TG0T", "Th0H",
 	  "Th1H", "Tm0P", "Ts0P", "Ts1P", NULL },
+/* Set 1: Macbook set */
+	{ "TB0T", "TC0D", "TC0P", "TM0P", "TN0P", "TN1P", "Th0H", "Th0S",
+	  "Th1H", "Ts0P", NULL },
+/* Set 2: Macmini set */
 	{ "TC0D", "TC0P", NULL }
 };
 
@@ -490,6 +494,12 @@ out:
 }
 
 /* Sysfs Files */
+
+static ssize_t applesmc_name_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "applesmc\n");
+}
 
 static ssize_t applesmc_position_show(struct device *dev,
 				   struct device_attribute *attr, char *buf)
@@ -913,6 +923,8 @@ static struct led_classdev applesmc_backlight = {
 	.brightness_set		= applesmc_brightness_set,
 };
 
+static DEVICE_ATTR(name, 0444, applesmc_name_show, NULL);
+
 static DEVICE_ATTR(position, 0444, applesmc_position_show, NULL);
 static DEVICE_ATTR(calibrate, 0644,
 			applesmc_calibrate_show, applesmc_calibrate_store);
@@ -1142,10 +1154,10 @@ static void applesmc_release_accelerometer(void)
 static __initdata struct dmi_match_data applesmc_dmi_data[] = {
 /* MacBook Pro: accelerometer, backlight and temperature set 0 */
 	{ .accelerometer = 1, .light = 1, .temperature_set = 0 },
-/* MacBook: accelerometer and temperature set 0 */
-	{ .accelerometer = 1, .light = 0, .temperature_set = 0 },
-/* MacBook: temperature set 1 */
-	{ .accelerometer = 0, .light = 0, .temperature_set = 1 }
+/* MacBook: accelerometer and temperature set 1 */
+	{ .accelerometer = 1, .light = 0, .temperature_set = 1 },
+/* MacMini: temperature set 2 */
+	{ .accelerometer = 0, .light = 0, .temperature_set = 2 },
 };
 
 /* Note that DMI_MATCH(...,"MacBook") will match "MacBookPro1,1".
@@ -1197,10 +1209,14 @@ static int __init applesmc_init(void)
 		goto out_driver;
 	}
 
+	ret = sysfs_create_file(&pdev->dev.kobj, &dev_attr_name.attr);
+	if (ret)
+		goto out_device;
+
 	/* Create key enumeration sysfs files */
 	ret = sysfs_create_group(&pdev->dev.kobj, &key_enumeration_group);
 	if (ret)
-		goto out_device;
+		goto out_name;
 
 	/* create fan files */
 	count = applesmc_get_fan_count();
@@ -1300,6 +1316,8 @@ out_fan_1:
 	sysfs_remove_group(&pdev->dev.kobj, &fan_attribute_groups[1]);
 out_key_enumeration:
 	sysfs_remove_group(&pdev->dev.kobj, &key_enumeration_group);
+out_name:
+	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_name.attr);
 out_device:
 	platform_device_unregister(pdev);
 out_driver:
@@ -1325,6 +1343,7 @@ static void __exit applesmc_exit(void)
 	sysfs_remove_group(&pdev->dev.kobj, &fan_attribute_groups[0]);
 	sysfs_remove_group(&pdev->dev.kobj, &fan_attribute_groups[1]);
 	sysfs_remove_group(&pdev->dev.kobj, &key_enumeration_group);
+	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_name.attr);
 	platform_device_unregister(pdev);
 	platform_driver_unregister(&applesmc_driver);
 	release_region(APPLESMC_DATA_PORT, APPLESMC_NR_PORTS);

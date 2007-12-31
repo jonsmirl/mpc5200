@@ -15,7 +15,7 @@
 
 #ifdef CONFIG_SMP
 
-#include <asm/spinlock.h>
+#include <linux/spinlock.h>
 #include <asm/atomic.h>
 #include <asm/current.h>
 
@@ -38,5 +38,7 @@ extern struct smp_fn_call_struct smp_fn_call;
 #define SMP_MSG_RESCHEDULE	0x0001
 
 #endif /* CONFIG_SMP */
+
+#define hard_smp_processor_id()	(0)
 
 #endif /* __ASM_SH_SMP_H */

@@ -38,6 +38,7 @@
 #include <linux/errno.h>
 #include <linux/kernel.h>
 #include <linux/mm.h>
+#include <linux/fs.h>
 #include <linux/module.h>
 #include <linux/personality.h>
 #include <linux/ptrace.h>
@@ -381,6 +382,10 @@ get_wchan(struct task_struct *p)
 	struct unwind_frame_info info;
 	unsigned long ip;
 	int count = 0;
+
+	if (!p || p == current || p->state == TASK_RUNNING)
+		return 0;
+
 	/*
 	 * These bracket the sleeping functions..
 	 */

@@ -13,6 +13,7 @@
 
 #include <linux/pagemap.h>
 #include <linux/mpage.h>
+#include <linux/sched.h>
 
 #include "hfs_fs.h"
 #include "btree.h"
@@ -606,7 +607,7 @@ static const struct file_operations hfs_file_operations = {
 	.write		= do_sync_write,
 	.aio_write	= generic_file_aio_write,
 	.mmap		= generic_file_mmap,
-	.sendfile	= generic_file_sendfile,
+	.splice_read	= generic_file_splice_read,
 	.fsync		= file_fsync,
 	.open		= hfs_file_open,
 	.release	= hfs_file_release,

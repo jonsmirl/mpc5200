@@ -37,6 +37,7 @@
 #include <linux/vmalloc.h>
 #include <linux/dma-mapping.h>
 #include <linux/mm.h>
+#include <linux/sched.h>
 #include <asm/io.h>
 #include <asm/cacheflush.h>
 #include <asm/pgtable.h>
@@ -1169,7 +1170,6 @@ void *agp_generic_alloc_page(struct agp_bridge_data *bridge)
 	map_page_into_agp(page);
 
 	get_page(page);
-	SetPageLocked(page);
 	atomic_inc(&agp_bridge->current_memory_agp);
 	return page_address(page);
 }
@@ -1186,7 +1186,6 @@ void agp_generic_destroy_page(void *addr)
 	page = virt_to_page(addr);
 	unmap_page_from_agp(page);
 	put_page(page);
-	unlock_page(page);
 	free_page((unsigned long)addr);
 	atomic_dec(&agp_bridge->current_memory_agp);
 }

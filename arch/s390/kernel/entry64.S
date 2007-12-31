@@ -99,6 +99,11 @@ _TIF_WORK_INT = (_TIF_SIGPENDING | _TIF_RESTORE_SIGMASK | _TIF_NEED_RESCHED | \
 	larl	%r13,system_call
 	.endm
 
+	.macro	SAVE_ALL_SVC psworg,savearea
+	la	%r12,\psworg
+	lg	%r15,__LC_KERNEL_STACK	# problem state -> load ksp
+	.endm
+
 	.macro	SAVE_ALL_SYNC psworg,savearea
 	la	%r12,\psworg
 	tm	\psworg+1,0x01		# test problem state bit
@@ -207,7 +212,7 @@ system_call:
 	STORE_TIMER __LC_SYNC_ENTER_TIMER
 sysc_saveall:
 	SAVE_ALL_BASE __LC_SAVE_AREA
-	SAVE_ALL_SYNC __LC_SVC_OLD_PSW,__LC_SAVE_AREA
+	SAVE_ALL_SVC __LC_SVC_OLD_PSW,__LC_SAVE_AREA
 	CREATE_STACK_FRAME __LC_SVC_OLD_PSW,__LC_SAVE_AREA
 	llgh	%r7,__LC_SVC_INT_CODE	# get svc number from lowcore
 #ifdef CONFIG_VIRT_CPU_ACCOUNTING
@@ -606,8 +611,10 @@ io_work_loop:
 # _TIF_MCCK_PENDING is set, call handler
 #
 io_mcck_pending:
-	larl	%r14,io_work_loop
-	jg	s390_handle_mcck	# TIF bit will be cleared by handler
+	TRACE_IRQS_OFF
+	brasl	%r14,s390_handle_mcck	# TIF bit will be cleared by handler
+	TRACE_IRQS_ON
+	j	io_work_loop
 
 #
 # _TIF_NEED_RESCHED is set, call schedule
@@ -745,10 +752,13 @@ mcck_return:
 #endif
 	lpswe	__LC_RETURN_MCCK_PSW	# back to caller
 
-#ifdef CONFIG_SMP
 /*
  * Restart interruption handler, kick starter for additional CPUs
  */
+#ifdef CONFIG_SMP
+#ifndef CONFIG_HOTPLUG_CPU
+	.section .init.text,"ax"
+#endif
 	.globl restart_int_handler
 restart_int_handler:
 	lg	%r15,__LC_SAVE_AREA+120 # load ksp
@@ -759,6 +769,9 @@ restart_int_handler:
 	lmg	%r6,%r15,__SF_GPRS(%r15) # load registers from clone
 	stosm	__SF_EMPTY(%r15),0x04	# now we can turn dat on
 	jg	start_secondary
+#ifndef CONFIG_HOTPLUG_CPU
+	.previous
+#endif
 #else
 /*
  * If we do not run with SMP enabled, let the new CPU crash ...

@@ -1,7 +1,7 @@
 /*
  * firmware_sample_firmware_class.c -
  *
- * Copyright (c) 2003 Manuel Estrada Sainz <ranty@debian.org>
+ * Copyright (c) 2003 Manuel Estrada Sainz
  *
  * NOTE: This is just a probe of concept, if you think that your driver would
  * be well served by this mechanism please contact me first.
@@ -19,7 +19,7 @@
 #include <linux/firmware.h>
 
 
-MODULE_AUTHOR("Manuel Estrada Sainz <ranty@debian.org>");
+MODULE_AUTHOR("Manuel Estrada Sainz");
 MODULE_DESCRIPTION("Hackish sample for using firmware class directly");
 MODULE_LICENSE("GPL");
 
@@ -78,6 +78,7 @@ static CLASS_DEVICE_ATTR(loading, 0644,
 			 firmware_loading_show, firmware_loading_store);
 
 static ssize_t firmware_data_read(struct kobject *kobj,
+				  struct bin_attribute *bin_attr,
 				  char *buffer, loff_t offset, size_t count)
 {
 	struct class_device *class_dev = to_class_dev(kobj);
@@ -88,6 +89,7 @@ static ssize_t firmware_data_read(struct kobject *kobj,
 	return count;
 }
 static ssize_t firmware_data_write(struct kobject *kobj,
+				   struct bin_attribute *bin_attr,
 				   char *buffer, loff_t offset, size_t count)
 {
 	struct class_device *class_dev = to_class_dev(kobj);

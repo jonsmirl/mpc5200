@@ -235,7 +235,7 @@ static int cmos_set_alarm(struct device *dev, struct rtc_wkalrm *t)
 	return 0;
 }
 
-static int cmos_set_freq(struct device *dev, int freq)
+static int cmos_irq_set_freq(struct device *dev, int freq)
 {
 	struct cmos_rtc	*cmos = dev_get_drvdata(dev);
 	int		f;
@@ -256,6 +256,34 @@ static int cmos_set_freq(struct device *dev, int freq)
 	CMOS_WRITE(RTC_REF_CLCK_32KHZ | f, RTC_FREQ_SELECT);
 	spin_unlock_irqrestore(&rtc_lock, flags);
 
+	return 0;
+}
+
+static int cmos_irq_set_state(struct device *dev, int enabled)
+{
+	struct cmos_rtc	*cmos = dev_get_drvdata(dev);
+	unsigned char	rtc_control, rtc_intr;
+	unsigned long	flags;
+
+	if (!is_valid_irq(cmos->irq))
+		return -ENXIO;
+
+	spin_lock_irqsave(&rtc_lock, flags);
+	rtc_control = CMOS_READ(RTC_CONTROL);
+
+	if (enabled)
+		rtc_control |= RTC_PIE;
+	else
+		rtc_control &= ~RTC_PIE;
+
+	CMOS_WRITE(rtc_control, RTC_CONTROL);
+
+	rtc_intr = CMOS_READ(RTC_INTR_FLAGS);
+	rtc_intr &= (rtc_control & RTC_IRQMASK) | RTC_IRQF;
+	if (is_intr(rtc_intr))
+		rtc_update_irq(cmos->rtc, 1, rtc_intr);
+
+	spin_unlock_irqrestore(&rtc_lock, flags);
 	return 0;
 }
 
@@ -360,7 +388,8 @@ static const struct rtc_class_ops cmos_rtc_ops = {
 	.read_alarm	= cmos_read_alarm,
 	.set_alarm	= cmos_set_alarm,
 	.proc		= cmos_procfs,
-	.irq_set_freq	= cmos_set_freq,
+	.irq_set_freq	= cmos_irq_set_freq,
+	.irq_set_state	= cmos_irq_set_state,
 };
 
 /*----------------------------------------------------------------*/
@@ -641,9 +670,16 @@ cmos_pnp_probe(struct pnp_dev *pnp, const struct pnp_device_id *id)
 	 * drivers can't provide shutdown() methods to disable IRQs.
 	 * Or better yet, fix PNP to allow those methods...
 	 */
-	return cmos_do_probe(&pnp->dev,
-			&pnp->res.port_resource[0],
-			pnp->res.irq_resource[0].start);
+	if (pnp_port_start(pnp,0) == 0x70 && !pnp_irq_valid(pnp,0))
+		/* Some machines contain a PNP entry for the RTC, but
+		 * don't define the IRQ. It should always be safe to
+		 * hardcode it in these cases
+		 */
+		return cmos_do_probe(&pnp->dev, &pnp->res.port_resource[0], 8);
+	else
+		return cmos_do_probe(&pnp->dev,
+				     &pnp->res.port_resource[0],
+				     pnp->res.irq_resource[0].start);
 }
 
 static void __exit cmos_pnp_remove(struct pnp_dev *pnp)

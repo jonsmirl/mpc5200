@@ -28,7 +28,10 @@
  */
 
 #include <linux/linkage.h>
+#include <linux/init.h>
 #include <asm/blackfin.h>
+#include <asm/trace.h>
+
 #if CONFIG_BFIN_KERNEL_CLOCK
 #include <asm/mach/mem_init.h>
 #endif
@@ -42,18 +45,19 @@
 
 #define INITIAL_STACK	0xFFB01000
 
-.text
+__INIT
 
 ENTRY(__start)
-ENTRY(__stext)
-	/*  R0: argument of command line string, passed from uboot, save it */
+	/* R0: argument of command line string, passed from uboot, save it */
 	R7 = R0;
-	/* Set the SYSCFG register */
+	/* Set the SYSCFG register:
+	 * Enable Cycle Counter and Nesting Of Interrupts (3rd Bit)
+	 */
 	R0 = 0x36;
-	SYSCFG = R0; /*Enable Cycle Counter and Nesting Of Interrupts(3rd Bit)*/
+	SYSCFG = R0;
 	R0 = 0;
 
-	/*Clear Out All the data and pointer  Registers*/
+	/* Clear Out All the data and pointer Registers */
 	R1 = R0;
 	R2 = R0;
 	R3 = R0;
@@ -75,7 +79,7 @@ ENTRY(__stext)
 	L2 = r0;
 	L3 = r0;
 
-	/* Clear Out All the DAG Registers*/
+	/* Clear Out All the DAG Registers */
 	B0 = r0;
 	B1 = r0;
 	B2 = r0;
@@ -90,6 +94,10 @@ ENTRY(__stext)
 	M1 = r0;
 	M2 = r0;
 	M3 = r0;
+
+	trace_buffer_start(p0,r0);
+	P0 = R1;
+	R0 = R1;
 
 	/* Turn off the icache */
 	p0.l = (IMEM_CONTROL & 0xFFFF);
@@ -127,7 +135,8 @@ ENTRY(__stext)
 	STI R2;
 #endif
 
-	/* Initialise UART*/
+	/* Initialise UART - when booting from u-boot, the UART is not disabled
+	 * so if we dont initalize here, our serial console gets hosed */
 	p0.h = hi(UART_LCR);
 	p0.l = lo(UART_LCR);
 	r0 = 0x0(Z);
@@ -218,6 +227,7 @@ ENTRY(__stext)
 
 .LWAIT_HERE:
 	jump .LWAIT_HERE;
+ENDPROC(__start)
 
 ENTRY(_real_start)
 	[ -- sp ] = reti;
@@ -237,7 +247,7 @@ ENTRY(_real_start)
 	p2.h = ___bss_stop;
 	r0 = 0;
 	p2 -= p1;
-	lsetup (.L_clear_bss, .L_clear_bss ) lc0 = p2;
+	lsetup (.L_clear_bss, .L_clear_bss) lc0 = p2;
 .L_clear_bss:
 	B[p1++] = r0;
 
@@ -252,11 +262,11 @@ ENTRY(_real_start)
 	r0 = r0 >> 1;
 	p2 = r0;
 	r0 = 0;
-	lsetup (.L_clear_zero, .L_clear_zero ) lc0 = p2;
+	lsetup (.L_clear_zero, .L_clear_zero) lc0 = p2;
 .L_clear_zero:
 	W[p1++] = r0;
 
-/* pass the uboot arguments to the global value command line */
+	/* pass the uboot arguments to the global value command line */
 	R0 = R7;
 	call _cmdline_init;
 
@@ -286,9 +296,10 @@ ENTRY(_real_start)
 	sp = r1;
 	usp = sp;
 	fp = sp;
-	call _start_kernel;
-.L_exit:
-	jump.s	.L_exit;
+	jump.l _start_kernel;
+ENDPROC(_real_start)
+
+__FINIT
 
 .section .l1.text
 #if CONFIG_BFIN_KERNEL_CLOCK
@@ -349,7 +360,7 @@ ENTRY(_start_dma_code)
 	if ! CC jump .Lcheck_again;
 
 	/* Configure SCLK & CCLK Dividers */
-	   	r0 = (CONFIG_CCLK_ACT_DIV | CONFIG_SCLK_DIV);
+	r0 = (CONFIG_CCLK_ACT_DIV | CONFIG_SCLK_DIV);
 	p0.h = hi(PLL_DIV);
 	p0.l = lo(PLL_DIV);
 	w[p0] = r0.l;
@@ -390,6 +401,7 @@ ENTRY(_start_dma_code)
 	SSYNC;
 
 	RTS;
+ENDPROC(_start_dma_code)
 #endif /* CONFIG_BFIN_KERNEL_CLOCK */
 
 ENTRY(_bfin_reset)
@@ -414,12 +426,6 @@ ENTRY(_bfin_reset)
 	w[p0] = r0.l;
 #endif
 
-	/* Clear the bits 13-15 in SWRST if they werent cleared */
-	p0.h = hi(SICA_SWRST);
-	p0.l = lo(SICA_SWRST);
-	csync;
-	r0.l = w[p0];
-
 	/* Clear the IMASK register */
 	p0.h = hi(IMASK);
 	p0.l = lo(IMASK);
@@ -433,68 +439,30 @@ ENTRY(_bfin_reset)
 	[p0] = r0;
 	SSYNC;
 
-	/* Disable the WDOG TIMER */
-	p0.h = hi(WDOGA_CTL);
-	p0.l = lo(WDOGA_CTL);
-	r0.l = 0xAD6;
-	w[p0] = r0.l;
+	/* make sure SYSCR is set to use BMODE */
+	P0.h = hi(SYSCR);
+	P0.l = lo(SYSCR);
+	R0.l = 0x20;		/* on BF561, disable core b */
+	W[P0] = R0.l;
 	SSYNC;
 
-	/* Clear the sticky bit incase it is already set */
-	p0.h = hi(WDOGA_CTL);
-	p0.l = lo(WDOGA_CTL);
-	r0.l = 0x8AD6;
-	w[p0] = r0.l;
+	/* issue a system soft reset */
+	P1.h = hi(SWRST);
+	P1.l = lo(SWRST);
+	R1.l = 0x0007;
+	W[P1] = R1;
 	SSYNC;
 
-	/* Program the count value */
-	R0.l = 0x100;
-	R0.h = 0x0;
-	P0.h = hi(WDOGA_CNT);
-	P0.l = lo(WDOGA_CNT);
-	[P0] = R0;
+	/* clear system soft reset */
+	R0.l = 0x0000;
+	W[P0] = R0;
 	SSYNC;
 
-	/* Program WDOG_STAT if necessary */
-	P0.h = hi(WDOGA_CTL);
-	P0.l = lo(WDOGA_CTL);
-	R0 = W[P0](Z);
-	CC = BITTST(R0,1);
-	if !CC JUMP .LWRITESTAT;
-	CC = BITTST(R0,2);
-	if !CC JUMP .LWRITESTAT;
-	JUMP .LSKIP_WRITE;
-
-.LWRITESTAT:
-	/* When watch dog timer is enabled,
-	 * a write to STAT will load the contents of CNT to STAT
-	 */
-	R0 = 0x0000(z);
-	P0.h = hi(WDOGA_STAT);
-	P0.l = lo(WDOGA_STAT)
-	[P0] = R0;
-	SSYNC;
-
-.LSKIP_WRITE:
-	/* Enable the reset event */
-	P0.h = hi(WDOGA_CTL);
-	P0.l = lo(WDOGA_CTL);
-	R0 = W[P0](Z);
-	BITCLR(R0,1);
-	BITCLR(R0,2);
-	W[P0] = R0.L;
-	SSYNC;
-	NOP;
-
-	/* Enable the wdog counter */
-	R0 = W[P0](Z);
-	BITCLR(R0,4);
-	W[P0] = R0.L;
-	SSYNC;
-
-	IDLE;
+	/* issue core reset */
+	raise 1;
 
 	RTS;
+ENDPROC(_bfin_reset)
 
 .data
 

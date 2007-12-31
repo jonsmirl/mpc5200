@@ -53,25 +53,19 @@ static inline int mips_pcibios_iack(void)
 	 * Determine highest priority pending interrupt by performing
 	 * a PCI Interrupt Acknowledge cycle.
 	 */
-	switch(mips_revision_corid) {
-	case MIPS_REVISION_CORID_CORE_MSC:
-	case MIPS_REVISION_CORID_CORE_FPGA2:
-	case MIPS_REVISION_CORID_CORE_FPGA3:
-	case MIPS_REVISION_CORID_CORE_24K:
-	case MIPS_REVISION_CORID_CORE_EMUL_MSC:
+	switch (mips_revision_sconid) {
+	case MIPS_REVISION_SCON_SOCIT:
+	case MIPS_REVISION_SCON_ROCIT:
+	case MIPS_REVISION_SCON_SOCITSC:
+	case MIPS_REVISION_SCON_SOCITSCP:
 	        MSC_READ(MSC01_PCI_IACK, irq);
 		irq &= 0xff;
 		break;
-	case MIPS_REVISION_CORID_QED_RM5261:
-	case MIPS_REVISION_CORID_CORE_LV:
-	case MIPS_REVISION_CORID_CORE_FPGA:
-	case MIPS_REVISION_CORID_CORE_FPGAR2:
+	case MIPS_REVISION_SCON_GT64120:
 		irq = GT_READ(GT_PCI0_IACK_OFS);
 		irq &= 0xff;
 		break;
-	case MIPS_REVISION_CORID_BONITO64:
-	case MIPS_REVISION_CORID_CORE_20K:
-	case MIPS_REVISION_CORID_CORE_EMUL_BON:
+	case MIPS_REVISION_SCON_BONITO:
 		/* The following will generate a PCI IACK cycle on the
 		 * Bonito controller. It's a little bit kludgy, but it
 		 * was the easiest way to implement it in hardware at
@@ -89,7 +83,7 @@ static inline int mips_pcibios_iack(void)
 		BONITO_PCIMAP_CFG = 0;
 		break;
 	default:
-	        printk("Unknown Core card, don't know the system controller.\n");
+	        printk("Unknown system controller.\n");
 		return -1;
 	}
 	return irq;
@@ -144,27 +138,21 @@ static void corehi_irqdispatch(void)
 	   Do it for the others too.
 	*/
 
-        switch(mips_revision_corid) {
-        case MIPS_REVISION_CORID_CORE_MSC:
-        case MIPS_REVISION_CORID_CORE_FPGA2:
-        case MIPS_REVISION_CORID_CORE_FPGA3:
-        case MIPS_REVISION_CORID_CORE_24K:
-        case MIPS_REVISION_CORID_CORE_EMUL_MSC:
+	switch (mips_revision_sconid) {
+        case MIPS_REVISION_SCON_SOCIT:
+	case MIPS_REVISION_SCON_ROCIT:
+	case MIPS_REVISION_SCON_SOCITSC:
+	case MIPS_REVISION_SCON_SOCITSCP:
                 ll_msc_irq();
                 break;
-        case MIPS_REVISION_CORID_QED_RM5261:
-        case MIPS_REVISION_CORID_CORE_LV:
-        case MIPS_REVISION_CORID_CORE_FPGA:
-        case MIPS_REVISION_CORID_CORE_FPGAR2:
+        case MIPS_REVISION_SCON_GT64120:
                 intrcause = GT_READ(GT_INTRCAUSE_OFS);
                 datalo = GT_READ(GT_CPUERR_ADDRLO_OFS);
                 datahi = GT_READ(GT_CPUERR_ADDRHI_OFS);
                 printk("GT_INTRCAUSE = %08x\n", intrcause);
                 printk("GT_CPUERR_ADDR = %02x%08x\n", datahi, datalo);
                 break;
-        case MIPS_REVISION_CORID_BONITO64:
-        case MIPS_REVISION_CORID_CORE_20K:
-        case MIPS_REVISION_CORID_CORE_EMUL_BON:
+        case MIPS_REVISION_SCON_BONITO:
                 pcibadaddr = BONITO_PCIBADADDR;
                 pcimstat = BONITO_PCIMSTAT;
                 intisr = BONITO_INTISR;
@@ -268,8 +256,8 @@ asmlinkage void plat_irq_dispatch(void)
 
 	if (irq == MIPSCPU_INT_I8259A)
 		malta_hw0_irqdispatch();
-	else if (irq > 0)
-		do_IRQ(MIPSCPU_INT_BASE + irq);
+	else if (irq >= 0)
+		do_IRQ(MIPS_CPU_IRQ_BASE + irq);
 	else
 		spurious_interrupt();
 }
@@ -338,17 +326,29 @@ void __init arch_init_irq(void)
 		set_vi_handler (MIPSCPU_INT_I8259A, malta_hw0_irqdispatch);
 		set_vi_handler (MIPSCPU_INT_COREHI, corehi_irqdispatch);
 #ifdef CONFIG_MIPS_MT_SMTC
-		setup_irq_smtc (MIPSCPU_INT_BASE+MIPSCPU_INT_I8259A, &i8259irq,
+		setup_irq_smtc (MIPS_CPU_IRQ_BASE+MIPSCPU_INT_I8259A, &i8259irq,
 			(0x100 << MIPSCPU_INT_I8259A));
-		setup_irq_smtc (MIPSCPU_INT_BASE+MIPSCPU_INT_COREHI,
+		setup_irq_smtc (MIPS_CPU_IRQ_BASE+MIPSCPU_INT_COREHI,
 			&corehi_irqaction, (0x100 << MIPSCPU_INT_COREHI));
+		/*
+		 * Temporary hack to ensure that the subsidiary device
+		 * interrupts coing in via the i8259A, but associated
+		 * with low IRQ numbers, will restore the Status.IM
+		 * value associated with the i8259A.
+		 */
+		{
+			int i;
+
+			for (i = 0; i < 16; i++)
+				irq_hwmask[i] = (0x100 << MIPSCPU_INT_I8259A);
+		}
 #else /* Not SMTC */
-		setup_irq (MIPSCPU_INT_BASE+MIPSCPU_INT_I8259A, &i8259irq);
-		setup_irq (MIPSCPU_INT_BASE+MIPSCPU_INT_COREHI, &corehi_irqaction);
+		setup_irq (MIPS_CPU_IRQ_BASE+MIPSCPU_INT_I8259A, &i8259irq);
+		setup_irq (MIPS_CPU_IRQ_BASE+MIPSCPU_INT_COREHI, &corehi_irqaction);
 #endif /* CONFIG_MIPS_MT_SMTC */
 	}
 	else {
-		setup_irq (MIPSCPU_INT_BASE+MIPSCPU_INT_I8259A, &i8259irq);
-		setup_irq (MIPSCPU_INT_BASE+MIPSCPU_INT_COREHI, &corehi_irqaction);
+		setup_irq (MIPS_CPU_IRQ_BASE+MIPSCPU_INT_I8259A, &i8259irq);
+		setup_irq (MIPS_CPU_IRQ_BASE+MIPSCPU_INT_COREHI, &corehi_irqaction);
 	}
 }

@@ -255,10 +255,8 @@ int mlx4_mr_alloc(struct mlx4_dev *dev, u32 pd, u64 iova, u64 size, u32 access,
 	int err;
 
 	index = mlx4_bitmap_alloc(&priv->mr_table.mpt_bitmap);
-	if (index == -1) {
-		err = -ENOMEM;
-		goto err;
-	}
+	if (index == -1)
+		return -ENOMEM;
 
 	mr->iova       = iova;
 	mr->size       = size;
@@ -269,15 +267,8 @@ int mlx4_mr_alloc(struct mlx4_dev *dev, u32 pd, u64 iova, u64 size, u32 access,
 
 	err = mlx4_mtt_init(dev, npages, page_shift, &mr->mtt);
 	if (err)
-		goto err_index;
+		mlx4_bitmap_free(&priv->mr_table.mpt_bitmap, index);
 
-	return 0;
-
-err_index:
-	mlx4_bitmap_free(&priv->mr_table.mpt_bitmap, index);
-
-err:
-	kfree(mr);
 	return err;
 }
 EXPORT_SYMBOL_GPL(mlx4_mr_alloc);
@@ -324,15 +315,17 @@ int mlx4_mr_enable(struct mlx4_dev *dev, struct mlx4_mr *mr)
 				       MLX4_MPT_FLAG_MIO	 |
 				       MLX4_MPT_FLAG_REGION	 |
 				       mr->access);
-	if (mr->mtt.order < 0)
-		mpt_entry->flags |= cpu_to_be32(MLX4_MPT_FLAG_PHYSICAL);
 
 	mpt_entry->key	       = cpu_to_be32(key_to_hw_index(mr->key));
 	mpt_entry->pd	       = cpu_to_be32(mr->pd);
 	mpt_entry->start       = cpu_to_be64(mr->iova);
 	mpt_entry->length      = cpu_to_be64(mr->size);
 	mpt_entry->entity_size = cpu_to_be32(mr->mtt.page_shift);
-	mpt_entry->mtt_seg     = cpu_to_be64(mlx4_mtt_addr(dev, &mr->mtt));
+	if (mr->mtt.order < 0) {
+		mpt_entry->flags |= cpu_to_be32(MLX4_MPT_FLAG_PHYSICAL);
+		mpt_entry->mtt_seg = 0;
+	} else
+		mpt_entry->mtt_seg = cpu_to_be64(mlx4_mtt_addr(dev, &mr->mtt));
 
 	err = mlx4_SW2HW_MPT(dev, mailbox,
 			     key_to_hw_index(mr->key) & (dev->caps.num_mpts - 1));

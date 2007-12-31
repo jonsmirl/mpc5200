@@ -77,7 +77,7 @@ static void shm_destroy (struct ipc_namespace *ns, struct shmid_kernel *shp);
 static int sysvipc_shm_proc_show(struct seq_file *s, void *it);
 #endif
 
-static void __ipc_init __shm_init_ns(struct ipc_namespace *ns, struct ipc_ids *ids)
+static void __shm_init_ns(struct ipc_namespace *ns, struct ipc_ids *ids)
 {
 	ns->ids[IPC_SHM_IDS] = ids;
 	ns->shm_ctlmax = SHMMAX;
@@ -98,7 +98,6 @@ static void do_shm_rmid(struct ipc_namespace *ns, struct shmid_kernel *shp)
 		shm_destroy(ns, shp);
 }
 
-#ifdef CONFIG_IPC_NS
 int shm_init_ns(struct ipc_namespace *ns)
 {
 	struct ipc_ids *ids;
@@ -130,7 +129,6 @@ void shm_exit_ns(struct ipc_namespace *ns)
 	kfree(ns->ids[IPC_SHM_IDS]);
 	ns->ids[IPC_SHM_IDS] = NULL;
 }
-#endif
 
 void __init shm_init (void)
 {
@@ -226,13 +224,12 @@ static void shm_close(struct vm_area_struct *vma)
 	mutex_unlock(&shm_ids(ns).mutex);
 }
 
-static struct page *shm_nopage(struct vm_area_struct *vma,
-			       unsigned long address, int *type)
+static int shm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 {
 	struct file *file = vma->vm_file;
 	struct shm_file_data *sfd = shm_file_data(file);
 
-	return sfd->vm_ops->nopage(vma, address, type);
+	return sfd->vm_ops->fault(vma, vmf);
 }
 
 #ifdef CONFIG_NUMA
@@ -254,8 +251,10 @@ struct mempolicy *shm_get_policy(struct vm_area_struct *vma, unsigned long addr)
 
 	if (sfd->vm_ops->get_policy)
 		pol = sfd->vm_ops->get_policy(vma, addr);
-	else
+	else if (vma->vm_policy)
 		pol = vma->vm_policy;
+	else
+		pol = current->mempolicy;
 	return pol;
 }
 #endif
@@ -269,6 +268,9 @@ static int shm_mmap(struct file * file, struct vm_area_struct * vma)
 	if (ret != 0)
 		return ret;
 	sfd->vm_ops = vma->vm_ops;
+#ifdef CONFIG_MMU
+	BUG_ON(!sfd->vm_ops->fault);
+#endif
 	vma->vm_ops = &shm_vm_ops;
 	shm_open(vma);
 
@@ -327,7 +329,7 @@ static const struct file_operations shm_file_operations = {
 static struct vm_operations_struct shm_vm_ops = {
 	.open	= shm_open,	/* callback for a new vm-area open */
 	.close	= shm_close,	/* callback for when the vm-area is released */
-	.nopage	= shm_nopage,
+	.fault	= shm_fault,
 #if defined(CONFIG_NUMA)
 	.set_policy = shm_set_policy,
 	.get_policy = shm_get_policy,
@@ -364,9 +366,10 @@ static int newseg (struct ipc_namespace *ns, key_t key, int shmflg, size_t size)
 		return error;
 	}
 
+	sprintf (name, "SYSV%08x", key);
 	if (shmflg & SHM_HUGETLB) {
-		/* hugetlb_zero_setup takes care of mlock user accounting */
-		file = hugetlb_zero_setup(size);
+		/* hugetlb_file_setup takes care of mlock user accounting */
+		file = hugetlb_file_setup(name, size);
 		shp->mlock_user = current->user;
 	} else {
 		int acctflag = VM_ACCOUNT;
@@ -377,7 +380,6 @@ static int newseg (struct ipc_namespace *ns, key_t key, int shmflg, size_t size)
 		if  ((shmflg & SHM_NORESERVE) &&
 				sysctl_overcommit_memory != OVERCOMMIT_NEVER)
 			acctflag = 0;
-		sprintf (name, "SYSV%08x", key);
 		file = shmem_file_setup(name, size, acctflag);
 	}
 	error = PTR_ERR(file);
@@ -397,6 +399,11 @@ static int newseg (struct ipc_namespace *ns, key_t key, int shmflg, size_t size)
 	shp->shm_nattch = 0;
 	shp->id = shm_buildid(ns, id, shp->shm_perm.seq);
 	shp->shm_file = file;
+	/*
+	 * shmid gets reported as "inode#" in /proc/pid/maps.
+	 * proc-ps tools use this. Changing this will break them.
+	 */
+	file->f_dentry->d_inode->i_ino = shp->id;
 
 	ns->shm_tot += numpages;
 	shm_unlock(shp);
@@ -709,7 +716,7 @@ asmlinkage long sys_shmctl (int shmid, int cmd, struct shmid_ds __user *buf)
 			struct user_struct * user = current->user;
 			if (!is_file_hugepages(shp->shm_file)) {
 				err = shmem_lock(shp->shm_file, 1, user);
-				if (!err) {
+				if (!err && !(shp->shm_perm.mode & SHM_LOCKED)){
 					shp->shm_perm.mode |= SHM_LOCKED;
 					shp->mlock_user = user;
 				}

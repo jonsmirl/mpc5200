@@ -37,6 +37,10 @@ config TIME_LOW_RES
 	bool
 	default y
 
+config GENERIC_IOMAP
+	bool
+	default y
+
 config ARCH_MAY_HAVE_PC_FDC
 	bool
 	depends on Q40 || (BROKEN && SUN3X)
@@ -44,6 +48,9 @@ config ARCH_MAY_HAVE_PC_FDC
 
 config NO_IOPORT
 	def_bool y
+
+config NO_DMA
+	def_bool SUN3
 
 mainmenu "Linux/68k Kernel Configuration"
 
@@ -355,8 +362,9 @@ config RMW_INSNS
 	  adventurous.
 
 config SINGLE_MEMORY_CHUNK
-	bool "Use one physical chunk of memory only"
-	depends on ADVANCED && !SUN3
+	bool "Use one physical chunk of memory only" if ADVANCED && !SUN3
+	default y if SUN3
+	select NEED_MULTIPLE_NODES
 	help
 	  Ignore all but the first contiguous chunk of physical memory for VM
 	  purposes.  This will save a few bytes kernel size and may speed up
@@ -376,6 +384,14 @@ config 060_WRITETHROUGH
 	  drivers on 68060 based systems where the 68060 bus snooping signal
 	  is hardwired on.  The 53c710 SCSI driver is known to suffer from
 	  this problem.
+
+config ARCH_DISCONTIGMEM_ENABLE
+	def_bool !SINGLE_MEMORY_CHUNK
+
+config NODES_SHIFT
+	int
+	default "3"
+	depends on !SINGLE_MEMORY_CHUNK
 
 source "mm/Kconfig"
 
@@ -408,9 +424,6 @@ config STRAM_PROC
 	depends on ATARI
 	help
 	  Say Y here to report ST-RAM usage statistics in /proc/stram.
-
-config ATARI_KBD_CORE
-	bool
 
 config HEARTBEAT
 	bool "Use power LED as a heartbeat" if AMIGA || APOLLO || ATARI || MAC ||Q40

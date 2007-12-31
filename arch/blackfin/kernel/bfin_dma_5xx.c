@@ -34,6 +34,7 @@
 #include <linux/kernel.h>
 #include <linux/param.h>
 
+#include <asm/blackfin.h>
 #include <asm/dma.h>
 #include <asm/cacheflush.h>
 
@@ -45,67 +46,6 @@
 ***************************************************************************/
 
 static struct dma_channel dma_ch[MAX_BLACKFIN_DMA_CHANNEL];
-#if defined (CONFIG_BF561)
-static struct dma_register *base_addr[MAX_BLACKFIN_DMA_CHANNEL] = {
-	(struct dma_register *) DMA1_0_NEXT_DESC_PTR,
-	(struct dma_register *) DMA1_1_NEXT_DESC_PTR,
-	(struct dma_register *) DMA1_2_NEXT_DESC_PTR,
-	(struct dma_register *) DMA1_3_NEXT_DESC_PTR,
-	(struct dma_register *) DMA1_4_NEXT_DESC_PTR,
-	(struct dma_register *) DMA1_5_NEXT_DESC_PTR,
-	(struct dma_register *) DMA1_6_NEXT_DESC_PTR,
-	(struct dma_register *) DMA1_7_NEXT_DESC_PTR,
-	(struct dma_register *) DMA1_8_NEXT_DESC_PTR,
-	(struct dma_register *) DMA1_9_NEXT_DESC_PTR,
-	(struct dma_register *) DMA1_10_NEXT_DESC_PTR,
-	(struct dma_register *) DMA1_11_NEXT_DESC_PTR,
-	(struct dma_register *) DMA2_0_NEXT_DESC_PTR,
-	(struct dma_register *) DMA2_1_NEXT_DESC_PTR,
-	(struct dma_register *) DMA2_2_NEXT_DESC_PTR,
-	(struct dma_register *) DMA2_3_NEXT_DESC_PTR,
-	(struct dma_register *) DMA2_4_NEXT_DESC_PTR,
-	(struct dma_register *) DMA2_5_NEXT_DESC_PTR,
-	(struct dma_register *) DMA2_6_NEXT_DESC_PTR,
-	(struct dma_register *) DMA2_7_NEXT_DESC_PTR,
-	(struct dma_register *) DMA2_8_NEXT_DESC_PTR,
-	(struct dma_register *) DMA2_9_NEXT_DESC_PTR,
-	(struct dma_register *) DMA2_10_NEXT_DESC_PTR,
-	(struct dma_register *) DMA2_11_NEXT_DESC_PTR,
-	(struct dma_register *) MDMA1_D0_NEXT_DESC_PTR,
-	(struct dma_register *) MDMA1_S0_NEXT_DESC_PTR,
-	(struct dma_register *) MDMA1_D1_NEXT_DESC_PTR,
-	(struct dma_register *) MDMA1_S1_NEXT_DESC_PTR,
-	(struct dma_register *) MDMA2_D0_NEXT_DESC_PTR,
-	(struct dma_register *) MDMA2_S0_NEXT_DESC_PTR,
-	(struct dma_register *) MDMA2_D1_NEXT_DESC_PTR,
-	(struct dma_register *) MDMA2_S1_NEXT_DESC_PTR,
-	(struct dma_register *) IMDMA_D0_NEXT_DESC_PTR,
-	(struct dma_register *) IMDMA_S0_NEXT_DESC_PTR,
-	(struct dma_register *) IMDMA_D1_NEXT_DESC_PTR,
-	(struct dma_register *) IMDMA_S1_NEXT_DESC_PTR,
-};
-#else
-static struct dma_register *base_addr[MAX_BLACKFIN_DMA_CHANNEL] = {
-	(struct dma_register *) DMA0_NEXT_DESC_PTR,
-	(struct dma_register *) DMA1_NEXT_DESC_PTR,
-	(struct dma_register *) DMA2_NEXT_DESC_PTR,
-	(struct dma_register *) DMA3_NEXT_DESC_PTR,
-	(struct dma_register *) DMA4_NEXT_DESC_PTR,
-	(struct dma_register *) DMA5_NEXT_DESC_PTR,
-	(struct dma_register *) DMA6_NEXT_DESC_PTR,
-	(struct dma_register *) DMA7_NEXT_DESC_PTR,
-#if (defined(CONFIG_BF537) || defined(CONFIG_BF534) || defined(CONFIG_BF536))
-	(struct dma_register *) DMA8_NEXT_DESC_PTR,
-	(struct dma_register *) DMA9_NEXT_DESC_PTR,
-	(struct dma_register *) DMA10_NEXT_DESC_PTR,
-	(struct dma_register *) DMA11_NEXT_DESC_PTR,
-#endif
-	(struct dma_register *) MDMA_D0_NEXT_DESC_PTR,
-	(struct dma_register *) MDMA_S0_NEXT_DESC_PTR,
-	(struct dma_register *) MDMA_D1_NEXT_DESC_PTR,
-	(struct dma_register *) MDMA_S1_NEXT_DESC_PTR,
-};
-#endif
 
 /*------------------------------------------------------------------------------
  *       Set the Buffer Clear bit in the Configuration register of specific DMA
@@ -119,7 +59,7 @@ static void clear_dma_buffer(unsigned int channel)
 	SSYNC();
 }
 
-int __init blackfin_dma_init(void)
+static int __init blackfin_dma_init(void)
 {
 	int i;
 
@@ -130,154 +70,13 @@ int __init blackfin_dma_init(void)
 		dma_ch[i].regs = base_addr[i];
 		mutex_init(&(dma_ch[i].dmalock));
 	}
-
+	/* Mark MEMDMA Channel 0 as requested since we're using it internally */
+	dma_ch[CH_MEM_STREAM0_DEST].chan_status = DMA_CHANNEL_REQUESTED;
+	dma_ch[CH_MEM_STREAM0_SRC].chan_status = DMA_CHANNEL_REQUESTED;
 	return 0;
 }
 
 arch_initcall(blackfin_dma_init);
-
-/*
- *	Form the channel find the irq number for that channel.
- */
-#if !defined(CONFIG_BF561)
-
-static int bf533_channel2irq(unsigned int channel)
-{
-	int ret_irq = -1;
-
-	switch (channel) {
-	case CH_PPI:
-		ret_irq = IRQ_PPI;
-		break;
-
-#if (defined(CONFIG_BF537) || defined(CONFIG_BF534) || defined(CONFIG_BF536))
-	case CH_EMAC_RX:
-		ret_irq = IRQ_MAC_RX;
-		break;
-
-	case CH_EMAC_TX:
-		ret_irq = IRQ_MAC_TX;
-		break;
-
-	case CH_UART1_RX:
-		ret_irq = IRQ_UART1_RX;
-		break;
-
-	case CH_UART1_TX:
-		ret_irq = IRQ_UART1_TX;
-		break;
-#endif
-
-	case CH_SPORT0_RX:
-		ret_irq = IRQ_SPORT0_RX;
-		break;
-
-	case CH_SPORT0_TX:
-		ret_irq = IRQ_SPORT0_TX;
-		break;
-
-	case CH_SPORT1_RX:
-		ret_irq = IRQ_SPORT1_RX;
-		break;
-
-	case CH_SPORT1_TX:
-		ret_irq = IRQ_SPORT1_TX;
-		break;
-
-	case CH_SPI:
-		ret_irq = IRQ_SPI;
-		break;
-
-	case CH_UART_RX:
-		ret_irq = IRQ_UART_RX;
-		break;
-
-	case CH_UART_TX:
-		ret_irq = IRQ_UART_TX;
-		break;
-
-	case CH_MEM_STREAM0_SRC:
-	case CH_MEM_STREAM0_DEST:
-		ret_irq = IRQ_MEM_DMA0;
-		break;
-
-	case CH_MEM_STREAM1_SRC:
-	case CH_MEM_STREAM1_DEST:
-		ret_irq = IRQ_MEM_DMA1;
-		break;
-	}
-	return ret_irq;
-}
-
-# define channel2irq(channel) bf533_channel2irq(channel)
-
-#else
-
-static int bf561_channel2irq(unsigned int channel)
-{
-	int ret_irq = -1;
-
-	switch (channel) {
-	case CH_PPI0:
-		ret_irq = IRQ_PPI0;
-		break;
-	case CH_PPI1:
-		ret_irq = IRQ_PPI1;
-		break;
-	case CH_SPORT0_RX:
-		ret_irq = IRQ_SPORT0_RX;
-		break;
-	case CH_SPORT0_TX:
-		ret_irq = IRQ_SPORT0_TX;
-		break;
-	case CH_SPORT1_RX:
-		ret_irq = IRQ_SPORT1_RX;
-		break;
-	case CH_SPORT1_TX:
-		ret_irq = IRQ_SPORT1_TX;
-		break;
-	case CH_SPI:
-		ret_irq = IRQ_SPI;
-		break;
-	case CH_UART_RX:
-		ret_irq = IRQ_UART_RX;
-		break;
-	case CH_UART_TX:
-		ret_irq = IRQ_UART_TX;
-		break;
-
-	case CH_MEM_STREAM0_SRC:
-	case CH_MEM_STREAM0_DEST:
-		ret_irq = IRQ_MEM_DMA0;
-		break;
-	case CH_MEM_STREAM1_SRC:
-	case CH_MEM_STREAM1_DEST:
-		ret_irq = IRQ_MEM_DMA1;
-		break;
-	case CH_MEM_STREAM2_SRC:
-	case CH_MEM_STREAM2_DEST:
-		ret_irq = IRQ_MEM_DMA2;
-		break;
-	case CH_MEM_STREAM3_SRC:
-	case CH_MEM_STREAM3_DEST:
-		ret_irq = IRQ_MEM_DMA3;
-		break;
-
-	case CH_IMEM_STREAM0_SRC:
-	case CH_IMEM_STREAM0_DEST:
-		ret_irq = IRQ_IMEM_DMA0;
-		break;
-	case CH_IMEM_STREAM1_SRC:
-	case CH_IMEM_STREAM1_DEST:
-		ret_irq = IRQ_IMEM_DMA1;
-		break;
-	}
-	return ret_irq;
-}
-
-# define channel2irq(channel) bf561_channel2irq(channel)
-
-#endif
 
 /*------------------------------------------------------------------------------
  *	Request the specific DMA channel from the system.
@@ -533,7 +332,7 @@ set_bfin_dma_config(char direction, char flow_mode,
 }
 EXPORT_SYMBOL(set_bfin_dma_config);
 
-void set_dma_sg(unsigned int channel, struct dmasg * sg, int nr_sg)
+void set_dma_sg(unsigned int channel, struct dmasg *sg, int nr_sg)
 {
 	BUG_ON(!(dma_ch[channel].chan_status != DMA_CHANNEL_FREE
 	       && channel < MAX_BLACKFIN_DMA_CHANNEL));
@@ -593,14 +392,17 @@ unsigned short get_dma_curr_ycount(unsigned int channel)
 }
 EXPORT_SYMBOL(get_dma_curr_ycount);
 
-void *dma_memcpy(void *dest, const void *src, size_t size)
+static void *__dma_memcpy(void *dest, const void *src, size_t size)
 {
 	int direction;	/* 1 - address decrease, 0 - address increase */
 	int flag_align;	/* 1 - address aligned,  0 - address unaligned */
 	int flag_2D;	/* 1 - 2D DMA needed,	 0 - 1D DMA needed */
+	unsigned long flags;
 
 	if (size <= 0)
 		return NULL;
+
+	local_irq_save(flags);
 
 	if ((unsigned long)src < memory_end)
 		blackfin_dcache_flush_range((unsigned int)src,
@@ -725,18 +527,222 @@ void *dma_memcpy(void *dest, const void *src, size_t size)
 	if ((unsigned long)dest < memory_end)
 		blackfin_dcache_invalidate_range((unsigned int)dest,
 						 (unsigned int)(dest + size));
+	local_irq_restore(flags);
 
 	return dest;
+}
+
+void *dma_memcpy(void *dest, const void *src, size_t size)
+{
+	size_t bulk;
+	size_t rest;
+	void * addr;
+
+	bulk = (size >> 16) << 16;
+	rest = size - bulk;
+	if (bulk)
+		__dma_memcpy(dest, src, bulk);
+	addr = __dma_memcpy(dest+bulk, src+bulk, rest);
+	return addr;
 }
 EXPORT_SYMBOL(dma_memcpy);
 
 void *safe_dma_memcpy(void *dest, const void *src, size_t size)
 {
-	int flags = 0;
 	void *addr;
-	local_irq_save(flags);
 	addr = dma_memcpy(dest, src, size);
-	local_irq_restore(flags);
 	return addr;
 }
 EXPORT_SYMBOL(safe_dma_memcpy);
+
+void dma_outsb(void __iomem *addr, const void *buf, unsigned short len)
+{
+	unsigned long flags;
+
+	local_irq_save(flags);
+
+	blackfin_dcache_flush_range((unsigned int)buf, (unsigned int)(buf) + len);
+
+	bfin_write_MDMA_D0_START_ADDR(addr);
+	bfin_write_MDMA_D0_X_COUNT(len);
+	bfin_write_MDMA_D0_X_MODIFY(0);
+	bfin_write_MDMA_D0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_START_ADDR(buf);
+	bfin_write_MDMA_S0_X_COUNT(len);
+	bfin_write_MDMA_S0_X_MODIFY(1);
+	bfin_write_MDMA_S0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_CONFIG(DMAEN | WDSIZE_8);
+	bfin_write_MDMA_D0_CONFIG(WNR | DI_EN | DMAEN | WDSIZE_8);
+
+	while (!(bfin_read_MDMA_D0_IRQ_STATUS() & DMA_DONE));
+
+	bfin_write_MDMA_D0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_CONFIG(0);
+	bfin_write_MDMA_D0_CONFIG(0);
+	local_irq_restore(flags);
+
+}
+EXPORT_SYMBOL(dma_outsb);
+
+
+void dma_insb(const void __iomem *addr, void *buf, unsigned short len)
+{
+	unsigned long flags;
+
+	local_irq_save(flags);
+	bfin_write_MDMA_D0_START_ADDR(buf);
+	bfin_write_MDMA_D0_X_COUNT(len);
+	bfin_write_MDMA_D0_X_MODIFY(1);
+	bfin_write_MDMA_D0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_START_ADDR(addr);
+	bfin_write_MDMA_S0_X_COUNT(len);
+	bfin_write_MDMA_S0_X_MODIFY(0);
+	bfin_write_MDMA_S0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_CONFIG(DMAEN | WDSIZE_8);
+	bfin_write_MDMA_D0_CONFIG(WNR | DI_EN | DMAEN | WDSIZE_8);
+
+	blackfin_dcache_invalidate_range((unsigned int)buf, (unsigned int)(buf) + len);
+
+	while (!(bfin_read_MDMA_D0_IRQ_STATUS() & DMA_DONE));
+
+	bfin_write_MDMA_D0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_CONFIG(0);
+	bfin_write_MDMA_D0_CONFIG(0);
+	local_irq_restore(flags);
+
+}
+EXPORT_SYMBOL(dma_insb);
+
+void dma_outsw(void __iomem *addr, const void  *buf, unsigned short len)
+{
+	unsigned long flags;
+
+	local_irq_save(flags);
+
+	blackfin_dcache_flush_range((unsigned int)buf, (unsigned int)(buf) + len);
+
+	bfin_write_MDMA_D0_START_ADDR(addr);
+	bfin_write_MDMA_D0_X_COUNT(len);
+	bfin_write_MDMA_D0_X_MODIFY(0);
+	bfin_write_MDMA_D0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_START_ADDR(buf);
+	bfin_write_MDMA_S0_X_COUNT(len);
+	bfin_write_MDMA_S0_X_MODIFY(2);
+	bfin_write_MDMA_S0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_CONFIG(DMAEN | WDSIZE_16);
+	bfin_write_MDMA_D0_CONFIG(WNR | DI_EN | DMAEN | WDSIZE_16);
+
+	while (!(bfin_read_MDMA_D0_IRQ_STATUS() & DMA_DONE));
+
+	bfin_write_MDMA_D0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_CONFIG(0);
+	bfin_write_MDMA_D0_CONFIG(0);
+	local_irq_restore(flags);
+
+}
+EXPORT_SYMBOL(dma_outsw);
+
+void dma_insw(const void __iomem *addr, void *buf, unsigned short len)
+{
+	unsigned long flags;
+
+	local_irq_save(flags);
+
+	bfin_write_MDMA_D0_START_ADDR(buf);
+	bfin_write_MDMA_D0_X_COUNT(len);
+	bfin_write_MDMA_D0_X_MODIFY(2);
+	bfin_write_MDMA_D0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_START_ADDR(addr);
+	bfin_write_MDMA_S0_X_COUNT(len);
+	bfin_write_MDMA_S0_X_MODIFY(0);
+	bfin_write_MDMA_S0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_CONFIG(DMAEN | WDSIZE_16);
+	bfin_write_MDMA_D0_CONFIG(WNR | DI_EN | DMAEN | WDSIZE_16);
+
+	blackfin_dcache_invalidate_range((unsigned int)buf, (unsigned int)(buf) + len);
+
+	while (!(bfin_read_MDMA_D0_IRQ_STATUS() & DMA_DONE));
+
+	bfin_write_MDMA_D0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_CONFIG(0);
+	bfin_write_MDMA_D0_CONFIG(0);
+	local_irq_restore(flags);
+
+}
+EXPORT_SYMBOL(dma_insw);
+
+void dma_outsl(void __iomem *addr, const void *buf, unsigned short len)
+{
+	unsigned long flags;
+
+	local_irq_save(flags);
+
+	blackfin_dcache_flush_range((unsigned int)buf, (unsigned int)(buf) + len);
+
+	bfin_write_MDMA_D0_START_ADDR(addr);
+	bfin_write_MDMA_D0_X_COUNT(len);
+	bfin_write_MDMA_D0_X_MODIFY(0);
+	bfin_write_MDMA_D0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_START_ADDR(buf);
+	bfin_write_MDMA_S0_X_COUNT(len);
+	bfin_write_MDMA_S0_X_MODIFY(4);
+	bfin_write_MDMA_S0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_CONFIG(DMAEN | WDSIZE_32);
+	bfin_write_MDMA_D0_CONFIG(WNR | DI_EN | DMAEN | WDSIZE_32);
+
+	while (!(bfin_read_MDMA_D0_IRQ_STATUS() & DMA_DONE));
+
+	bfin_write_MDMA_D0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_CONFIG(0);
+	bfin_write_MDMA_D0_CONFIG(0);
+	local_irq_restore(flags);
+
+}
+EXPORT_SYMBOL(dma_outsl);
+
+void dma_insl(const void __iomem *addr, void *buf, unsigned short len)
+{
+	unsigned long flags;
+
+	local_irq_save(flags);
+
+	bfin_write_MDMA_D0_START_ADDR(buf);
+	bfin_write_MDMA_D0_X_COUNT(len);
+	bfin_write_MDMA_D0_X_MODIFY(4);
+	bfin_write_MDMA_D0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_START_ADDR(addr);
+	bfin_write_MDMA_S0_X_COUNT(len);
+	bfin_write_MDMA_S0_X_MODIFY(0);
+	bfin_write_MDMA_S0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_CONFIG(DMAEN | WDSIZE_32);
+	bfin_write_MDMA_D0_CONFIG(WNR | DI_EN | DMAEN | WDSIZE_32);
+
+	blackfin_dcache_invalidate_range((unsigned int)buf, (unsigned int)(buf) + len);
+
+	while (!(bfin_read_MDMA_D0_IRQ_STATUS() & DMA_DONE));
+
+	bfin_write_MDMA_D0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+
+	bfin_write_MDMA_S0_CONFIG(0);
+	bfin_write_MDMA_D0_CONFIG(0);
+	local_irq_restore(flags);
+
+}
+EXPORT_SYMBOL(dma_insl);

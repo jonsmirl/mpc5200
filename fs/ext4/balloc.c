@@ -30,15 +30,15 @@
 void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
 		unsigned long *blockgrpp, ext4_grpblk_t *offsetp)
 {
-        struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
 	ext4_grpblk_t offset;
 
-        blocknr = blocknr - le32_to_cpu(es->s_first_data_block);
+	blocknr = blocknr - le32_to_cpu(es->s_first_data_block);
 	offset = do_div(blocknr, EXT4_BLOCKS_PER_GROUP(sb));
 	if (offsetp)
 		*offsetp = offset;
 	if (blockgrpp)
-	        *blockgrpp = blocknr;
+		*blockgrpp = blocknr;
 
 }
 
@@ -517,7 +517,7 @@ do_more:
 		/*
 		 * An HJ special.  This is expensive...
 		 */
-#ifdef CONFIG_JBD_DEBUG
+#ifdef CONFIG_JBD2_DEBUG
 		jbd_unlock_bh_state(bitmap_bh);
 		{
 			struct buffer_head *debug_bh;
@@ -1585,7 +1585,7 @@ allocated:
 	ret_block = grp_alloc_blk + ext4_group_first_block_no(sb, group_no);
 
 	if (in_range(ext4_block_bitmap(sb, gdp), ret_block, num) ||
-	    in_range(ext4_block_bitmap(sb, gdp), ret_block, num) ||
+	    in_range(ext4_inode_bitmap(sb, gdp), ret_block, num) ||
 	    in_range(ret_block, ext4_inode_table(sb, gdp),
 		     EXT4_SB(sb)->s_itb_per_group) ||
 	    in_range(ret_block + num - 1, ext4_inode_table(sb, gdp),
@@ -1597,7 +1597,7 @@ allocated:
 
 	performed_allocation = 1;
 
-#ifdef CONFIG_JBD_DEBUG
+#ifdef CONFIG_JBD2_DEBUG
 	{
 		struct buffer_head *debug_bh;
 

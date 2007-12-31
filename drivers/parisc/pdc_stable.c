@@ -121,14 +121,14 @@ struct pdcspath_entry pdcspath_entry_##_name = { \
 
 #define PDCS_ATTR(_name, _mode, _show, _store) \
 struct subsys_attribute pdcs_attr_##_name = { \
-	.attr = {.name = __stringify(_name), .mode = _mode, .owner = THIS_MODULE}, \
+	.attr = {.name = __stringify(_name), .mode = _mode}, \
 	.show = _show, \
 	.store = _store, \
 };
 
 #define PATHS_ATTR(_name, _mode, _show, _store) \
 struct pdcspath_attribute paths_attr_##_name = { \
-	.attr = {.name = __stringify(_name), .mode = _mode, .owner = THIS_MODULE}, \
+	.attr = {.name = __stringify(_name), .mode = _mode}, \
 	.show = _show, \
 	.store = _store, \
 };
@@ -1067,7 +1067,7 @@ pdc_stable_init(void)
 			error = subsys_create_file(&stable_subsys, attr);
 	
 	/* register the paths subsys as a subsystem of stable subsys */
-	kset_set_kset_s(&paths_subsys, stable_subsys);
+	kobj_set_kset_s(&paths_subsys, stable_subsys);
 	if ((rc = subsystem_register(&paths_subsys)))
 		goto fail_subsysreg;
 

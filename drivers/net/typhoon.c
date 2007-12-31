@@ -741,15 +741,6 @@ typhoon_vlan_rx_register(struct net_device *dev, struct vlan_group *grp)
 	spin_unlock_bh(&tp->state_lock);
 }
 
-static void
-typhoon_vlan_rx_kill_vid(struct net_device *dev, unsigned short vid)
-{
-	struct typhoon *tp = netdev_priv(dev);
-	spin_lock_bh(&tp->state_lock);
-	vlan_group_set_device(tp->vlgrp, vid, NULL);
-	spin_unlock_bh(&tp->state_lock);
-}
-
 static inline void
 typhoon_tso_fill(struct sk_buff *skb, struct transmit_ring *txRing,
 			u32 ring_dma)
@@ -1712,7 +1703,7 @@ typhoon_rx(struct typhoon *tp, struct basic_ring *rxRing, volatile u32 * ready,
 			pci_dma_sync_single_for_cpu(tp->pdev, dma_addr,
 						    PKT_BUF_SZ,
 						    PCI_DMA_FROMDEVICE);
-			eth_copy_and_sum(new_skb, skb->data, pkt_len, 0);
+			skb_copy_to_linear_data(new_skb, skb->data, pkt_len);
 			pci_dma_sync_single_for_device(tp->pdev, dma_addr,
 						       PKT_BUF_SZ,
 						       PCI_DMA_FROMDEVICE);
@@ -2276,12 +2267,6 @@ need_resume:
 	typhoon_resume(pdev);
 	return -EBUSY;
 }
-
-static int
-typhoon_enable_wake(struct pci_dev *pdev, pci_power_t state, int enable)
-{
-	return pci_enable_wake(pdev, state, enable);
-}
 #endif
 
 static int __devinit
@@ -2542,7 +2527,7 @@ typhoon_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	dev->get_stats		= typhoon_get_stats;
 	dev->set_mac_address	= typhoon_set_mac_address;
 	dev->vlan_rx_register	= typhoon_vlan_rx_register;
-	dev->vlan_rx_kill_vid	= typhoon_vlan_rx_kill_vid;
+
 	SET_ETHTOOL_OPS(dev, &typhoon_ethtool_ops);
 
 	/* We can handle scatter gather, up to 16 entries, and
@@ -2645,7 +2630,6 @@ static struct pci_driver typhoon_driver = {
 #ifdef CONFIG_PM
 	.suspend	= typhoon_suspend,
 	.resume		= typhoon_resume,
-	.enable_wake	= typhoon_enable_wake,
 #endif
 };
 

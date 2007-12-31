@@ -610,7 +610,9 @@ tioca_bus_fixup(struct pcibus_bussoft *prom_bussoft, struct pci_controller *cont
 		return NULL;
 
 	memcpy(tioca_common, prom_bussoft, sizeof(struct tioca_common));
-	tioca_common->ca_common.bs_base |= __IA64_UNCACHED_OFFSET;
+	tioca_common->ca_common.bs_base = (unsigned long)
+		ioremap(REGION_OFFSET(tioca_common->ca_common.bs_base),
+			sizeof(struct tioca_common));
 
 	/* init kernel-private area */
 
@@ -651,6 +653,8 @@ tioca_bus_fixup(struct pcibus_bussoft *prom_bussoft, struct pci_controller *cont
 		       "Error interrupts won't be routed for TIOCA bus %d\n",
 		       __FUNCTION__, SGI_TIOCA_ERROR,
 		       (int)tioca_common->ca_common.bs_persist_busnum);
+
+	sn_set_err_irq_affinity(SGI_TIOCA_ERROR);
 
 	/* Setup locality information */
 	controller->node = tioca_kern->ca_closest_node;

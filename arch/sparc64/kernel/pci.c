@@ -283,12 +283,6 @@ int __init pcic_present(void)
 	return pci_controller_scan(pci_is_controller);
 }
 
-const struct pci_iommu_ops *pci_iommu_ops;
-EXPORT_SYMBOL(pci_iommu_ops);
-
-extern const struct pci_iommu_ops pci_sun4u_iommu_ops,
-	pci_sun4v_iommu_ops;
-
 /* Find each controller in the system, attach and initialize
  * software state structure for each and link into the
  * pci_pbm_root.  Setup the controller enough such
@@ -296,15 +290,24 @@ extern const struct pci_iommu_ops pci_sun4u_iommu_ops,
  */
 static void __init pci_controller_probe(void)
 {
-	if (tlb_type == hypervisor)
-		pci_iommu_ops = &pci_sun4v_iommu_ops;
-	else
-		pci_iommu_ops = &pci_sun4u_iommu_ops;
-
 	printk("PCI: Probing for controllers.\n");
 
 	pci_controller_scan(pci_controller_init);
 }
+
+static int ofpci_verbose;
+
+static int __init ofpci_debug(char *str)
+{
+	int val = 0;
+
+	get_option(&str, &val);
+	if (val)
+		ofpci_verbose = 1;
+	return 1;
+}
+
+__setup("ofpci_debug=", ofpci_debug);
 
 static unsigned long pci_parse_of_flags(u32 addr0)
 {
@@ -337,7 +340,9 @@ static void pci_parse_of_addrs(struct of_device *op,
 	addrs = of_get_property(node, "assigned-addresses", &proplen);
 	if (!addrs)
 		return;
-	printk("    parse addresses (%d bytes) @ %p\n", proplen, addrs);
+	if (ofpci_verbose)
+		printk("    parse addresses (%d bytes) @ %p\n",
+		       proplen, addrs);
 	op_res = &op->resource[0];
 	for (; proplen >= 20; proplen -= 20, addrs += 5, op_res++) {
 		struct resource *res;
@@ -348,8 +353,9 @@ static void pci_parse_of_addrs(struct of_device *op,
 		if (!flags)
 			continue;
 		i = addrs[0] & 0xff;
-		printk("  start: %lx, end: %lx, i: %x\n",
-		       op_res->start, op_res->end, i);
+		if (ofpci_verbose)
+			printk("  start: %lx, end: %lx, i: %x\n",
+			       op_res->start, op_res->end, i);
 
 		if (PCI_BASE_ADDRESS_0 <= i && i <= PCI_BASE_ADDRESS_5) {
 			res = &dev->resource[(i - PCI_BASE_ADDRESS_0) >> 2];
@@ -387,14 +393,18 @@ struct pci_dev *of_create_pci_dev(struct pci_pbm_info *pbm,
 	sd->host_controller = pbm;
 	sd->prom_node = node;
 	sd->op = of_find_device_by_node(node);
-	sd->msi_num = 0xffffffff;
+
+	sd = &sd->op->dev.archdata;
+	sd->iommu = pbm->iommu;
+	sd->stc = &pbm->stc;
 
 	type = of_get_property(node, "device_type", NULL);
 	if (type == NULL)
 		type = "";
 
-	printk("    create device, devfn: %x, type: %s hostcontroller(%d)\n",
-	       devfn, type, host_controller);
+	if (ofpci_verbose)
+		printk("    create device, devfn: %x, type: %s\n",
+		       devfn, type);
 
 	dev->bus = bus;
 	dev->sysdata = node;
@@ -404,10 +414,15 @@ struct pci_dev *of_create_pci_dev(struct pci_pbm_info *pbm,
 	dev->multifunction = 0;		/* maybe a lie? */
 
 	if (host_controller) {
-		dev->vendor = 0x108e;
-		dev->device = 0x8000;
-		dev->subsystem_vendor = 0x0000;
-		dev->subsystem_device = 0x0000;
+		if (tlb_type != hypervisor) {
+			pci_read_config_word(dev, PCI_VENDOR_ID,
+					     &dev->vendor);
+			pci_read_config_word(dev, PCI_DEVICE_ID,
+					     &dev->device);
+		} else {
+			dev->vendor = PCI_VENDOR_ID_SUN;
+			dev->device = 0x80f0;
+		}
 		dev->cfg_size = 256;
 		dev->class = PCI_CLASS_BRIDGE_HOST << 8;
 		sprintf(pci_name(dev), "%04x:%02x:%02x.%d", pci_domain_nr(bus),
@@ -430,12 +445,14 @@ struct pci_dev *of_create_pci_dev(struct pci_pbm_info *pbm,
 		 */
 		pci_read_config_dword(dev, PCI_CLASS_REVISION, &class);
 		dev->class = class >> 8;
+		dev->revision = class & 0xff;
 
 		sprintf(pci_name(dev), "%04x:%02x:%02x.%d", pci_domain_nr(bus),
 			dev->bus->number, PCI_SLOT(devfn), PCI_FUNC(devfn));
 	}
-	printk("    class: 0x%x device name: %s\n",
-	       dev->class, pci_name(dev));
+	if (ofpci_verbose)
+		printk("    class: 0x%x device name: %s\n",
+		       dev->class, pci_name(dev));
 
 	/* I have seen IDE devices which will not respond to
 	 * the bmdma simplex check reads if bus mastering is
@@ -469,7 +486,8 @@ struct pci_dev *of_create_pci_dev(struct pci_pbm_info *pbm,
 	}
 	pci_parse_of_addrs(sd->op, node, dev);
 
-	printk("    adding to system ...\n");
+	if (ofpci_verbose)
+		printk("    adding to system ...\n");
 
 	pci_device_add(dev, bus);
 
@@ -500,6 +518,89 @@ static void pci_resource_adjust(struct resource *res,
 {
 	res->start += root->start;
 	res->end += root->start;
+}
+
+/* For PCI bus devices which lack a 'ranges' property we interrogate
+ * the config space values to set the resources, just like the generic
+ * Linux PCI probing code does.
+ */
+static void __devinit pci_cfg_fake_ranges(struct pci_dev *dev,
+					  struct pci_bus *bus,
+					  struct pci_pbm_info *pbm)
+{
+	struct resource *res;
+	u8 io_base_lo, io_limit_lo;
+	u16 mem_base_lo, mem_limit_lo;
+	unsigned long base, limit;
+
+	pci_read_config_byte(dev, PCI_IO_BASE, &io_base_lo);
+	pci_read_config_byte(dev, PCI_IO_LIMIT, &io_limit_lo);
+	base = (io_base_lo & PCI_IO_RANGE_MASK) << 8;
+	limit = (io_limit_lo & PCI_IO_RANGE_MASK) << 8;
+
+	if ((io_base_lo & PCI_IO_RANGE_TYPE_MASK) == PCI_IO_RANGE_TYPE_32) {
+		u16 io_base_hi, io_limit_hi;
+
+		pci_read_config_word(dev, PCI_IO_BASE_UPPER16, &io_base_hi);
+		pci_read_config_word(dev, PCI_IO_LIMIT_UPPER16, &io_limit_hi);
+		base |= (io_base_hi << 16);
+		limit |= (io_limit_hi << 16);
+	}
+
+	res = bus->resource[0];
+	if (base <= limit) {
+		res->flags = (io_base_lo & PCI_IO_RANGE_TYPE_MASK) | IORESOURCE_IO;
+		if (!res->start)
+			res->start = base;
+		if (!res->end)
+			res->end = limit + 0xfff;
+		pci_resource_adjust(res, &pbm->io_space);
+	}
+
+	pci_read_config_word(dev, PCI_MEMORY_BASE, &mem_base_lo);
+	pci_read_config_word(dev, PCI_MEMORY_LIMIT, &mem_limit_lo);
+	base = (mem_base_lo & PCI_MEMORY_RANGE_MASK) << 16;
+	limit = (mem_limit_lo & PCI_MEMORY_RANGE_MASK) << 16;
+
+	res = bus->resource[1];
+	if (base <= limit) {
+		res->flags = ((mem_base_lo & PCI_MEMORY_RANGE_TYPE_MASK) |
+			      IORESOURCE_MEM);
+		res->start = base;
+		res->end = limit + 0xfffff;
+		pci_resource_adjust(res, &pbm->mem_space);
+	}
+
+	pci_read_config_word(dev, PCI_PREF_MEMORY_BASE, &mem_base_lo);
+	pci_read_config_word(dev, PCI_PREF_MEMORY_LIMIT, &mem_limit_lo);
+	base = (mem_base_lo & PCI_PREF_RANGE_MASK) << 16;
+	limit = (mem_limit_lo & PCI_PREF_RANGE_MASK) << 16;
+
+	if ((mem_base_lo & PCI_PREF_RANGE_TYPE_MASK) == PCI_PREF_RANGE_TYPE_64) {
+		u32 mem_base_hi, mem_limit_hi;
+
+		pci_read_config_dword(dev, PCI_PREF_BASE_UPPER32, &mem_base_hi);
+		pci_read_config_dword(dev, PCI_PREF_LIMIT_UPPER32, &mem_limit_hi);
+
+		/*
+		 * Some bridges set the base > limit by default, and some
+		 * (broken) BIOSes do not initialize them.  If we find
+		 * this, just assume they are not being used.
+		 */
+		if (mem_base_hi <= mem_limit_hi) {
+			base |= ((long) mem_base_hi) << 32;
+			limit |= ((long) mem_limit_hi) << 32;
+		}
+	}
+
+	res = bus->resource[2];
+	if (base <= limit) {
+		res->flags = ((mem_base_lo & PCI_MEMORY_RANGE_TYPE_MASK) |
+			      IORESOURCE_MEM | IORESOURCE_PREFETCH);
+		res->start = base;
+		res->end = limit + 0xfffff;
+		pci_resource_adjust(res, &pbm->mem_space);
+	}
 }
 
 /* Cook up fake bus resources for SUNW,simba PCI bridges which lack
@@ -547,7 +648,8 @@ static void __devinit of_scan_pci_bridge(struct pci_pbm_info *pbm,
 	unsigned int flags;
 	u64 size;
 
-	printk("of_scan_pci_bridge(%s)\n", node->full_name);
+	if (ofpci_verbose)
+		printk("of_scan_pci_bridge(%s)\n", node->full_name);
 
 	/* parse bus-range property */
 	busrange = of_get_property(node, "bus-range", &len);
@@ -560,13 +662,8 @@ static void __devinit of_scan_pci_bridge(struct pci_pbm_info *pbm,
 	simba = 0;
 	if (ranges == NULL) {
 		const char *model = of_get_property(node, "model", NULL);
-		if (model && !strcmp(model, "SUNW,simba")) {
+		if (model && !strcmp(model, "SUNW,simba"))
 			simba = 1;
-		} else {
-			printk(KERN_DEBUG "Can't get ranges for PCI-PCI bridge %s\n",
-			       node->full_name);
-			return;
-		}
 	}
 
 	bus = pci_add_new_bus(dev->bus, dev, busrange[0]);
@@ -590,7 +687,10 @@ static void __devinit of_scan_pci_bridge(struct pci_pbm_info *pbm,
 	}
 	if (simba) {
 		apb_fake_ranges(dev, bus, pbm);
-		goto simba_cont;
+		goto after_ranges;
+	} else if (ranges == NULL) {
+		pci_cfg_fake_ranges(dev, bus, pbm);
+		goto after_ranges;
 	}
 	i = 1;
 	for (; len >= 32; len -= 32, ranges += 8) {
@@ -629,10 +729,11 @@ static void __devinit of_scan_pci_bridge(struct pci_pbm_info *pbm,
 		 */
 		pci_resource_adjust(res, root);
 	}
-simba_cont:
+after_ranges:
 	sprintf(bus->name, "PCI Bus %04x:%02x", pci_domain_nr(bus),
 		bus->number);
-	printk("    bus name: %s\n", bus->name);
+	if (ofpci_verbose)
+		printk("    bus name: %s\n", bus->name);
 
 	pci_of_scan_bus(pbm, node, bus);
 }
@@ -643,25 +744,40 @@ static void __devinit pci_of_scan_bus(struct pci_pbm_info *pbm,
 {
 	struct device_node *child;
 	const u32 *reg;
-	int reglen, devfn;
+	int reglen, devfn, prev_devfn;
 	struct pci_dev *dev;
 
-	printk("PCI: scan_bus[%s] bus no %d\n",
-	       node->full_name, bus->number);
+	if (ofpci_verbose)
+		printk("PCI: scan_bus[%s] bus no %d\n",
+		       node->full_name, bus->number);
 
 	child = NULL;
+	prev_devfn = -1;
 	while ((child = of_get_next_child(node, child)) != NULL) {
-		printk("  * %s\n", child->full_name);
+		if (ofpci_verbose)
+			printk("  * %s\n", child->full_name);
 		reg = of_get_property(child, "reg", &reglen);
 		if (reg == NULL || reglen < 20)
 			continue;
+
 		devfn = (reg[0] >> 8) & 0xff;
+
+		/* This is a workaround for some device trees
+		 * which list PCI devices twice.  On the V100
+		 * for example, device number 3 is listed twice.
+		 * Once as "pm" and once again as "lomp".
+		 */
+		if (devfn == prev_devfn)
+			continue;
+		prev_devfn = devfn;
 
 		/* create a new pci_dev for this device */
 		dev = of_create_pci_dev(pbm, child, bus, devfn, 0);
 		if (!dev)
 			continue;
-		printk("PCI: dev header type: %x\n", dev->hdr_type);
+		if (ofpci_verbose)
+			printk("PCI: dev header type: %x\n",
+			       dev->hdr_type);
 
 		if (dev->hdr_type == PCI_HEADER_TYPE_BRIDGE ||
 		    dev->hdr_type == PCI_HEADER_TYPE_CARDBUS)
@@ -710,7 +826,7 @@ int pci_host_bridge_read_pci_cfg(struct pci_bus *bus_dev,
 {
 	static u8 fake_pci_config[] = {
 		0x8e, 0x10, /* Vendor: 0x108e (Sun) */
-		0x00, 0x80, /* Device: 0x8000 (PBM) */
+		0xf0, 0x80, /* Device: 0x80f0 (Fire) */
 		0x46, 0x01, /* Command: 0x0146 (SERR, PARITY, MASTER, MEM) */
 		0xa0, 0x22, /* Status: 0x02a0 (DEVSEL_MED, FB2B, 66MHZ) */
 		0x00, 0x00, 0x00, 0x06, /* Class: 0x06000000 host bridge */
@@ -1112,5 +1228,52 @@ struct device_node *pci_device_to_OF_node(struct pci_dev *pdev)
 	return pdev->dev.archdata.prom_node;
 }
 EXPORT_SYMBOL(pci_device_to_OF_node);
+
+static void ali_sound_dma_hack(struct pci_dev *pdev, int set_bit)
+{
+	struct pci_dev *ali_isa_bridge;
+	u8 val;
+
+	/* ALI sound chips generate 31-bits of DMA, a special register
+	 * determines what bit 31 is emitted as.
+	 */
+	ali_isa_bridge = pci_get_device(PCI_VENDOR_ID_AL,
+					 PCI_DEVICE_ID_AL_M1533,
+					 NULL);
+
+	pci_read_config_byte(ali_isa_bridge, 0x7e, &val);
+	if (set_bit)
+		val |= 0x01;
+	else
+		val &= ~0x01;
+	pci_write_config_byte(ali_isa_bridge, 0x7e, val);
+	pci_dev_put(ali_isa_bridge);
+}
+
+int pci_dma_supported(struct pci_dev *pdev, u64 device_mask)
+{
+	u64 dma_addr_mask;
+
+	if (pdev == NULL) {
+		dma_addr_mask = 0xffffffff;
+	} else {
+		struct iommu *iommu = pdev->dev.archdata.iommu;
+
+		dma_addr_mask = iommu->dma_addr_mask;
+
+		if (pdev->vendor == PCI_VENDOR_ID_AL &&
+		    pdev->device == PCI_DEVICE_ID_AL_M5451 &&
+		    device_mask == 0x7fffffff) {
+			ali_sound_dma_hack(pdev,
+					   (dma_addr_mask & 0x80000000) != 0);
+			return 1;
+		}
+	}
+
+	if (device_mask >= (1UL << 32UL))
+		return 0;
+
+	return (device_mask & dma_addr_mask) == dma_addr_mask;
+}
 
 #endif /* !(CONFIG_PCI) */

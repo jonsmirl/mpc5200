@@ -599,7 +599,6 @@ enum fsg_buffer_state {
 
 struct fsg_buffhd {
 	void				*buf;
-	dma_addr_t			dma;
 	enum fsg_buffer_state		state;
 	struct fsg_buffhd		*next;
 
@@ -686,7 +685,6 @@ struct fsg_dev {
 	int			thread_wakeup_needed;
 	struct completion	thread_notifier;
 	struct task_struct	*thread_task;
-	sigset_t		thread_signal_mask;
 
 	int			cmnd_size;
 	u8			cmnd[MAX_COMMAND_SIZE];
@@ -1296,6 +1294,7 @@ static int class_setup_req(struct fsg_dev *fsg,
 	struct usb_request	*req = fsg->ep0req;
 	int			value = -EOPNOTSUPP;
 	u16			w_index = le16_to_cpu(ctrl->wIndex);
+	u16                     w_value = le16_to_cpu(ctrl->wValue);
 	u16			w_length = le16_to_cpu(ctrl->wLength);
 
 	if (!fsg->config)
@@ -1309,7 +1308,7 @@ static int class_setup_req(struct fsg_dev *fsg,
 			if (ctrl->bRequestType != (USB_DIR_OUT |
 					USB_TYPE_CLASS | USB_RECIP_INTERFACE))
 				break;
-			if (w_index != 0) {
+			if (w_index != 0 || w_value != 0) {
 				value = -EDOM;
 				break;
 			}
@@ -1325,7 +1324,7 @@ static int class_setup_req(struct fsg_dev *fsg,
 			if (ctrl->bRequestType != (USB_DIR_IN |
 					USB_TYPE_CLASS | USB_RECIP_INTERFACE))
 				break;
-			if (w_index != 0) {
+			if (w_index != 0 || w_value != 0) {
 				value = -EDOM;
 				break;
 			}
@@ -1344,7 +1343,7 @@ static int class_setup_req(struct fsg_dev *fsg,
 			if (ctrl->bRequestType != (USB_DIR_OUT |
 					USB_TYPE_CLASS | USB_RECIP_INTERFACE))
 				break;
-			if (w_index != 0) {
+			if (w_index != 0 || w_value != 0) {
 				value = -EDOM;
 				break;
 			}
@@ -2612,7 +2611,6 @@ static int send_status(struct fsg_dev *fsg)
 
 		fsg->intr_buffhd = bh;		// Point to the right buffhd
 		fsg->intreq->buf = bh->inreq->buf;
-		fsg->intreq->dma = bh->inreq->dma;
 		fsg->intreq->context = bh;
 		start_transfer(fsg, fsg->intr_in, fsg->intreq,
 				&fsg->intreq_busy, &bh->state);
@@ -3201,7 +3199,6 @@ reset:
 		if ((rc = alloc_request(fsg, fsg->bulk_out, &bh->outreq)) != 0)
 			goto reset;
 		bh->inreq->buf = bh->outreq->buf = bh->buf;
-		bh->inreq->dma = bh->outreq->dma = bh->dma;
 		bh->inreq->context = bh->outreq->context = bh;
 		bh->inreq->complete = bulk_in_complete;
 		bh->outreq->complete = bulk_out_complete;
@@ -3277,8 +3274,7 @@ static void handle_exception(struct fsg_dev *fsg)
 	/* Clear the existing signals.  Anything but SIGUSR1 is converted
 	 * into a high-priority EXIT exception. */
 	for (;;) {
-		sig = dequeue_signal_lock(current, &fsg->thread_signal_mask,
-				&info);
+		sig = dequeue_signal_lock(current, &current->blocked, &info);
 		if (!sig)
 			break;
 		if (sig != SIGUSR1) {
@@ -3431,10 +3427,13 @@ static int fsg_main_thread(void *fsg_)
 
 	/* Allow the thread to be killed by a signal, but set the signal mask
 	 * to block everything but INT, TERM, KILL, and USR1. */
-	siginitsetinv(&fsg->thread_signal_mask, sigmask(SIGINT) |
-			sigmask(SIGTERM) | sigmask(SIGKILL) |
-			sigmask(SIGUSR1));
-	sigprocmask(SIG_SETMASK, &fsg->thread_signal_mask, NULL);
+	allow_signal(SIGINT);
+	allow_signal(SIGTERM);
+	allow_signal(SIGKILL);
+	allow_signal(SIGUSR1);
+
+	/* Allow the thread to be frozen */
+	set_freezable();
 
 	/* Arrange for userspace references to be interpreted as kernel
 	 * pointers.  That way we can pass a kernel pointer to a routine
@@ -3735,19 +3734,12 @@ static void /* __init_or_exit */ fsg_unbind(struct usb_gadget *gadget)
 	}
 
 	/* Free the data buffers */
-	for (i = 0; i < NUM_BUFFERS; ++i) {
-		struct fsg_buffhd	*bh = &fsg->buffhds[i];
-
-		if (bh->buf)
-			usb_ep_free_buffer(fsg->bulk_in, bh->buf, bh->dma,
-					mod_data.buflen);
-	}
+	for (i = 0; i < NUM_BUFFERS; ++i)
+		kfree(fsg->buffhds[i].buf);
 
 	/* Free the request and buffer for endpoint 0 */
 	if (req) {
-		if (req->buf)
-			usb_ep_free_buffer(fsg->ep0, req->buf,
-					req->dma, EP0_BUFSIZE);
+		kfree(req->buf);
 		usb_ep_free_request(fsg->ep0, req);
 	}
 
@@ -3965,8 +3957,7 @@ static int __init fsg_bind(struct usb_gadget *gadget)
 #endif
 
 	if (gadget->is_otg) {
-		otg_desc.bmAttributes |= USB_OTG_HNP,
-		config_desc.bmAttributes |= USB_CONFIG_ATT_WAKEUP;
+		otg_desc.bmAttributes |= USB_OTG_HNP;
 	}
 
 	rc = -ENOMEM;
@@ -3975,8 +3966,7 @@ static int __init fsg_bind(struct usb_gadget *gadget)
 	fsg->ep0req = req = usb_ep_alloc_request(fsg->ep0, GFP_KERNEL);
 	if (!req)
 		goto out;
-	req->buf = usb_ep_alloc_buffer(fsg->ep0, EP0_BUFSIZE,
-			&req->dma, GFP_KERNEL);
+	req->buf = kmalloc(EP0_BUFSIZE, GFP_KERNEL);
 	if (!req->buf)
 		goto out;
 	req->complete = ep0_complete;
@@ -3988,8 +3978,7 @@ static int __init fsg_bind(struct usb_gadget *gadget)
 		/* Allocate for the bulk-in endpoint.  We assume that
 		 * the buffer will also work with the bulk-out (and
 		 * interrupt-in) endpoint. */
-		bh->buf = usb_ep_alloc_buffer(fsg->bulk_in, mod_data.buflen,
-				&bh->dma, GFP_KERNEL);
+		bh->buf = kmalloc(mod_data.buflen, GFP_KERNEL);
 		if (!bh->buf)
 			goto out;
 		bh->next = bh + 1;

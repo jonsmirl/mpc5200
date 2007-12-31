@@ -966,6 +966,7 @@ N: Pekka Enberg
 E: penberg@cs.helsinki.fi
 W: http://www.cs.helsinki.fi/u/penberg/
 D: Various kernel hacks, fixes, and cleanups.
+D: Slab allocators
 S: Finland
 
 N: David Engebretsen
@@ -1939,8 +1940,8 @@ D: for Menuconfig's lxdialog.
 N: Christoph Lameter
 E: christoph@lameter.com
 D: Digiboard PC/Xe and PC/Xi, Digiboard EPCA
-D: Early protocol filter for bridging code
-D: Bug fixes
+D: NUMA support, Slab allocators, Page migration
+D: Scalability, Time subsystem
 
 N: Paul Laufer
 E: paul@laufernet.com
@@ -2212,13 +2213,13 @@ S: 2300 Copenhagen S
 S: Denmark
 
 N: Claudio S. Matsuoka
-E: claudio@conectiva.com
-E: claudio@helllabs.org
+E: cmatsuoka@gmail.com
+E: claudio@mandriva.com
 W: http://helllabs.org/~claudio
-D: V4L, OV511 driver hacks
+D: V4L, OV511 and HDA-codec hacks
 S: Conectiva S.A.
-S: R. Tocantins 89
-S: 80050-430  Curitiba PR
+S: Souza Naves 1250
+S: 80050-040  Curitiba PR
 S: Brazil
 
 N: Heinz Mauelshagen
@@ -3301,14 +3302,6 @@ S: 12725 SW Millikan Way, Suite 400
 S: Beaverton, Oregon 97005
 S: USA
 
-N: Li Yang
-E: leoli@freescale.com
-D: Freescale Highspeed USB device driver
-D: Freescale QE SoC support and Ethernet driver
-S: B-1206 Jingmao Guojigongyu
-S: 16 Baliqiao Nanjie, Beijing 101100
-S: People's Repulic of China
-
 N: Marcelo Tosatti
 E: marcelo@kvack.org
 D: v2.4 kernel maintainer
@@ -3725,6 +3718,14 @@ D: Xiafs filesystem [defunct]
 S: 542 West 112th Street, 5N
 S: New York, New York 10025
 S: USA
+
+N: Li Yang
+E: leoli@freescale.com
+D: Freescale Highspeed USB device driver
+D: Freescale QE SoC support and Ethernet driver
+S: B-1206 Jingmao Guojigongyu
+S: 16 Baliqiao Nanjie, Beijing 101100
+S: People's Repulic of China
 
 N: Victor Yodaiken
 E: yodaiken@fsmlabs.com

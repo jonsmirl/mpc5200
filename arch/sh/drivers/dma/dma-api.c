@@ -16,6 +16,7 @@
 #include <linux/list.h>
 #include <linux/platform_device.h>
 #include <linux/mm.h>
+#include <linux/sched.h>
 #include <asm/dma.h>
 
 DEFINE_SPINLOCK(dma_spin_lock);
@@ -30,8 +31,8 @@ struct dma_info *get_dma_info(unsigned int chan)
 	 * the channel is.
 	 */
 	list_for_each_entry(info, &registered_dmac_list, list) {
-		if ((chan <  info->first_channel_nr) ||
-		    (chan >= info->first_channel_nr + info->nr_channels))
+		if ((chan <  info->first_vchannel_nr) ||
+		    (chan >= info->first_vchannel_nr + info->nr_channels))
 			continue;
 
 		return info;
@@ -81,7 +82,7 @@ struct dma_channel *get_dma_channel(unsigned int chan)
 
 	for (i = 0; i < info->nr_channels; i++) {
 		channel = &info->channels[i];
-		if (channel->chan == chan)
+		if (channel->vchan == chan)
 			return channel;
 	}
 
@@ -115,7 +116,7 @@ static int search_cap(const char **haystack, const char *needle)
 /**
  * request_dma_bycap - Allocate a DMA channel based on its capabilities
  * @dmac: List of DMA controllers to search
- * @caps: List of capabilites
+ * @caps: List of capabilities
  *
  * Search all channels of all DMA controllers to find a channel which
  * matches the requested capabilities. The result is the channel
@@ -368,6 +369,7 @@ int register_dmac(struct dma_info *info)
 	}
 
 	total_channels = get_nr_channels();
+	info->first_vchannel_nr = total_channels;
 	for (i = 0; i < info->nr_channels; i++) {
 		struct dma_channel *chan = &info->channels[i];
 

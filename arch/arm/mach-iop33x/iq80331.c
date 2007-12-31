@@ -55,7 +55,7 @@ static struct sys_timer iq80331_timer = {
 /*
  * IQ80331 PCI.
  */
-static inline int __init
+static int __init
 iq80331_pci_map_irq(struct pci_dev *dev, u8 slot, u8 pin)
 {
 	int irq;
@@ -136,6 +136,9 @@ static void __init iq80331_init_machine(void)
 	platform_device_register(&iop33x_uart0_device);
 	platform_device_register(&iop33x_uart1_device);
 	platform_device_register(&iq80331_flash_device);
+	platform_device_register(&iop3xx_dma_0_channel);
+	platform_device_register(&iop3xx_dma_1_channel);
+	platform_device_register(&iop3xx_aau_channel);
 }
 
 MACHINE_START(IQ80331, "Intel IQ80331")

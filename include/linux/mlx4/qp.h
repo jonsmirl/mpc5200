@@ -269,6 +269,10 @@ struct mlx4_wqe_data_seg {
 	__be64			addr;
 };
 
+enum {
+	MLX4_INLINE_ALIGN	= 64,
+};
+
 struct mlx4_wqe_inline_seg {
 	__be32			byte_count;
 };
@@ -277,6 +281,9 @@ int mlx4_qp_modify(struct mlx4_dev *dev, struct mlx4_mtt *mtt,
 		   enum mlx4_qp_state cur_state, enum mlx4_qp_state new_state,
 		   struct mlx4_qp_context *context, enum mlx4_qp_optpar optpar,
 		   int sqd_event, struct mlx4_qp *qp);
+
+int mlx4_qp_query(struct mlx4_dev *dev, struct mlx4_qp *qp,
+		  struct mlx4_qp_context *context);
 
 static inline struct mlx4_qp *__mlx4_qp_lookup(struct mlx4_dev *dev, u32 qpn)
 {

@@ -33,7 +33,7 @@ static ssize_t _show_permaddr(struct device *dev,
 			      struct device_attribute *attr,
 			      char *buf)
 {
-	char *addr = dev_to_rdev(dev)->wiphy.perm_addr;
+	unsigned char *addr = dev_to_rdev(dev)->wiphy.perm_addr;
 
 	return sprintf(buf, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n",
 		       addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
@@ -52,12 +52,14 @@ static void wiphy_dev_release(struct device *dev)
 	cfg80211_dev_free(rdev);
 }
 
+#ifdef CONFIG_HOTPLUG
 static int wiphy_uevent(struct device *dev, char **envp,
 			int num_envp, char *buf, int size)
 {
 	/* TODO, we probably need stuff here */
 	return 0;
 }
+#endif
 
 struct class ieee80211_class = {
 	.name = "ieee80211",

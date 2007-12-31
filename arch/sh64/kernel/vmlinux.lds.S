@@ -54,7 +54,8 @@ SECTIONS
 	} = 0
 
   .text : C_PHYS(.text) {
-	*(.text)
+  	*(.text.head)
+	TEXT_TEXT
 	*(.text64)
         *(.text..SHmedia32)
 	SCHED_TEXT
@@ -78,7 +79,7 @@ SECTIONS
   _etext = .;			/* End of text section */
 
   .data : C_PHYS(.data) {			/* Data */
-	*(.data)
+	DATA_DATA
 	CONSTRUCTORS
 	}
 
@@ -87,7 +88,10 @@ SECTIONS
 
   . = ALIGN(PAGE_SIZE);
   __per_cpu_start = .;
-  .data.percpu : C_PHYS(.data.percpu) { *(.data.percpu) }
+  .data.percpu : C_PHYS(.data.percpu) {
+	*(.data.percpu)
+	*(.data.percpu.shared_aligned)
+  }
   __per_cpu_end = . ;
   .data.cacheline_aligned : C_PHYS(.data.cacheline_aligned) { *(.data.cacheline_aligned) }
 

@@ -768,7 +768,7 @@ static void ata_scsi_dev_config(struct scsi_device *sdev,
 	 * Decrement max hw segments accordingly.
 	 */
 	if (dev->class == ATA_DEV_ATAPI) {
-		request_queue_t *q = sdev->request_queue;
+		struct request_queue *q = sdev->request_queue;
 		blk_queue_max_hw_segments(q, q->max_hw_segments - 1);
 	}
 
@@ -1050,14 +1050,15 @@ static unsigned int ata_scsi_flush_xlat(struct ata_queued_cmd *qc)
 static void scsi_6_lba_len(const u8 *cdb, u64 *plba, u32 *plen)
 {
 	u64 lba = 0;
-	u32 len = 0;
+	u32 len;
 
 	VPRINTK("six-byte command\n");
 
+	lba |= ((u64)(cdb[1] & 0x1f)) << 16;
 	lba |= ((u64)cdb[2]) << 8;
 	lba |= ((u64)cdb[3]);
 
-	len |= ((u32)cdb[4]);
+	len = cdb[4];
 
 	*plba = lba;
 	*plen = len;
@@ -1362,12 +1363,22 @@ static void ata_scsi_qc_complete(struct ata_queued_cmd *qc)
 	 * schedule EH_REVALIDATE operation to update the IDENTIFY DEVICE
 	 * cache
 	 */
-	if (ap->ops->error_handler &&
-	    !need_sense && (qc->tf.command == ATA_CMD_SET_FEATURES) &&
-	    ((qc->tf.feature == SETFEATURES_WC_ON) ||
-	     (qc->tf.feature == SETFEATURES_WC_OFF))) {
-		ap->eh_info.action |= ATA_EH_REVALIDATE;
-		ata_port_schedule_eh(ap);
+	if (ap->ops->error_handler && !need_sense) {
+		switch (qc->tf.command) {
+		case ATA_CMD_SET_FEATURES:
+			if ((qc->tf.feature == SETFEATURES_WC_ON) ||
+			    (qc->tf.feature == SETFEATURES_WC_OFF)) {
+				ap->eh_info.action |= ATA_EH_REVALIDATE;
+				ata_port_schedule_eh(ap);
+			}
+			break;
+
+		case ATA_CMD_INIT_DEV_PARAMS: /* CHS translation changed */
+		case ATA_CMD_SET_MULTI: /* multi_count changed */
+			ap->eh_info.action |= ATA_EH_REVALIDATE;
+			ata_port_schedule_eh(ap);
+			break;
+		}
 	}
 
 	/* For ATA pass thru (SAT) commands, generate a sense block if
@@ -2373,11 +2384,6 @@ static unsigned int atapi_xlat(struct ata_queued_cmd *qc)
 	int using_pio = (dev->flags & ATA_DFLAG_PIO);
 	int nodata = (scmd->sc_data_direction == DMA_NONE);
 
-	if (!using_pio)
-		/* Check whether ATAPI DMA is safe */
-		if (ata_check_atapi_dma(qc))
-			using_pio = 1;
-
 	memset(qc->cdb, 0, dev->cdb_len);
 	memcpy(qc->cdb, scmd->cmnd, scmd->cmd_len);
 
@@ -2390,19 +2396,22 @@ static unsigned int atapi_xlat(struct ata_queued_cmd *qc)
 	}
 
 	qc->tf.command = ATA_CMD_PACKET;
+	qc->nbytes = scmd->request_bufflen;
 
-	/* no data, or PIO data xfer */
+	/* check whether ATAPI DMA is safe */
+	if (!using_pio && ata_check_atapi_dma(qc))
+		using_pio = 1;
+
 	if (using_pio || nodata) {
+		/* no data, or PIO data xfer */
 		if (nodata)
 			qc->tf.protocol = ATA_PROT_ATAPI_NODATA;
 		else
 			qc->tf.protocol = ATA_PROT_ATAPI;
 		qc->tf.lbam = (8 * 1024) & 0xff;
 		qc->tf.lbah = (8 * 1024) >> 8;
-	}
-
-	/* DMA data xfer */
-	else {
+	} else {
+		/* DMA data xfer */
 		qc->tf.protocol = ATA_PROT_ATAPI_DMA;
 		qc->tf.feature |= ATAPI_PKT_DMA;
 
@@ -2410,8 +2419,6 @@ static unsigned int atapi_xlat(struct ata_queued_cmd *qc)
 			/* some SATA bridges need us to indicate data xfer direction */
 			qc->tf.feature |= ATAPI_DMADIR;
 	}
-
-	qc->nbytes = scmd->request_bufflen;
 
 	return 0;
 }
@@ -2505,22 +2512,21 @@ ata_scsi_map_proto(u8 byte1)
 			return ATA_PROT_NODATA;
 
 		case 6:		/* DMA */
+		case 10:	/* UDMA Data-in */
+		case 11:	/* UDMA Data-Out */
 			return ATA_PROT_DMA;
 
 		case 4:		/* PIO Data-in */
 		case 5:		/* PIO Data-out */
 			return ATA_PROT_PIO;
 
-		case 10:	/* Device Reset */
 		case 0:		/* Hard Reset */
 		case 1:		/* SRST */
-		case 2:		/* Bus Idle */
-		case 7:		/* Packet */
-		case 8:		/* DMA Queued */
-		case 9:		/* Device Diagnostic */
-		case 11:	/* UDMA Data-in */
-		case 12:	/* UDMA Data-Out */
-		case 13:	/* FPDMA */
+		case 8:		/* Device Diagnostic */
+		case 9:		/* Device Reset */
+		case 7:		/* DMA Queued */
+		case 12:	/* FPDMA */
+		case 15:	/* Return Response Info */
 		default:	/* Reserved */
 			break;
 	}
@@ -2549,10 +2555,6 @@ static unsigned int ata_scsi_pass_thru(struct ata_queued_cmd *qc)
 
 	/* We may not issue DMA commands if no DMA mode is set */
 	if (tf->protocol == ATA_PROT_DMA && dev->dma_mode == 0)
-		goto invalid_fld;
-
-	if (cdb[1] & 0xe0)
-		/* PIO multi not supported yet */
 		goto invalid_fld;
 
 	/*
@@ -2599,12 +2601,26 @@ static unsigned int ata_scsi_pass_thru(struct ata_queued_cmd *qc)
 		tf->device = cdb[8];
 		tf->command = cdb[9];
 	}
-	/*
-	 * If slave is possible, enforce correct master/slave bit
-	*/
-	if (qc->ap->flags & ATA_FLAG_SLAVE_POSS)
-		tf->device = qc->dev->devno ?
-			tf->device | ATA_DEV1 : tf->device & ~ATA_DEV1;
+
+	/* enforce correct master/slave bit */
+	tf->device = dev->devno ?
+		tf->device | ATA_DEV1 : tf->device & ~ATA_DEV1;
+
+	/* sanity check for pio multi commands */
+	if ((cdb[1] & 0xe0) && !is_multi_taskfile(tf))
+		goto invalid_fld;
+
+	if (is_multi_taskfile(tf)) {
+		unsigned int multi_count = 1 << (cdb[1] >> 5);
+
+		/* compare the passed through multi_count
+		 * with the cached multi_count of libata
+		 */
+		if (multi_count != dev->multi_count)
+			ata_dev_printk(dev, KERN_WARNING,
+				       "invalid multi_count %u ignored\n",
+				       multi_count);
+	}
 
 	/* READ/WRITE LONG use a non-standard sect_size */
 	qc->sect_size = ATA_SECT_SIZE;
@@ -2931,16 +2947,21 @@ int ata_scsi_add_hosts(struct ata_host *host, struct scsi_host_template *sht)
 	return rc;
 }
 
-void ata_scsi_scan_host(struct ata_port *ap)
+void ata_scsi_scan_host(struct ata_port *ap, int sync)
 {
+	int tries = 5;
+	struct ata_device *last_failed_dev = NULL;
+	struct ata_device *dev;
 	unsigned int i;
 
 	if (ap->flags & ATA_FLAG_DISABLED)
 		return;
 
+ repeat:
 	for (i = 0; i < ATA_MAX_DEVICES; i++) {
-		struct ata_device *dev = &ap->device[i];
 		struct scsi_device *sdev;
+
+		dev = &ap->device[i];
 
 		if (!ata_dev_enabled(dev) || dev->sdev)
 			continue;
@@ -2951,6 +2972,45 @@ void ata_scsi_scan_host(struct ata_port *ap)
 			scsi_device_put(sdev);
 		}
 	}
+
+	/* If we scanned while EH was in progress or allocation
+	 * failure occurred, scan would have failed silently.  Check
+	 * whether all devices are attached.
+	 */
+	for (i = 0; i < ATA_MAX_DEVICES; i++) {
+		dev = &ap->device[i];
+		if (ata_dev_enabled(dev) && !dev->sdev)
+			break;
+	}
+	if (i == ATA_MAX_DEVICES)
+		return;
+
+	/* we're missing some SCSI devices */
+	if (sync) {
+		/* If caller requested synchrnous scan && we've made
+		 * any progress, sleep briefly and repeat.
+		 */
+		if (dev != last_failed_dev) {
+			msleep(100);
+			last_failed_dev = dev;
+			goto repeat;
+		}
+
+		/* We might be failing to detect boot device, give it
+		 * a few more chances.
+		 */
+		if (--tries) {
+			msleep(100);
+			goto repeat;
+		}
+
+		ata_port_printk(ap, KERN_ERR, "WARNING: synchronous SCSI scan "
+				"failed without making any progress,\n"
+				"                  switching to async\n");
+	}
+
+	queue_delayed_work(ata_aux_wq, &ap->hotplug_task,
+			   round_jiffies_relative(HZ));
 }
 
 /**
@@ -3077,20 +3137,7 @@ void ata_scsi_hotplug(struct work_struct *work)
 	}
 
 	/* scan for new ones */
-	ata_scsi_scan_host(ap);
-
-	/* If we scanned while EH was in progress, scan would have
-	 * failed silently.  Requeue if there are enabled but
-	 * unattached devices.
-	 */
-	for (i = 0; i < ATA_MAX_DEVICES; i++) {
-		struct ata_device *dev = &ap->device[i];
-		if (ata_dev_enabled(dev) && !dev->sdev) {
-			queue_delayed_work(ata_aux_wq, &ap->hotplug_task,
-				round_jiffies_relative(HZ));
-			break;
-		}
-	}
+	ata_scsi_scan_host(ap, 0);
 
 	DPRINTK("EXIT\n");
 }

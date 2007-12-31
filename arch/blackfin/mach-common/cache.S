@@ -70,6 +70,7 @@ ENTRY(_cache_invalidate)
 .Lno_dcache_b:
 	R7 = [SP++];
 	RTS;
+ENDPROC(_cache_invalidate)
 
 /* Invalidate the Entire Instruction cache by
  * disabling IMC bit
@@ -106,6 +107,8 @@ ENTRY(_invalidate_entire_icache)
 
 	( R7:5) = [SP++];
 	RTS;
+ENDPROC(_invalidate_entire_icache)
+ENDPROC(_icache_invalidate)
 
 /*
  * blackfin_cache_flush_range(start, end)
@@ -120,15 +123,16 @@ ENTRY(_blackfin_icache_flush_range)
 	R2 = R0 & R2;
 	P0 = R2;
 	P1 = R1;
-	CSYNC;
+	CSYNC(R3);
 	IFLUSH [P0];
 1:
 	IFLUSH [P0++];
 	CC = P0 < P1 (iu);
 	IF CC JUMP 1b (bp);
 	IFLUSH [P0];
-	SSYNC;
+	SSYNC(R3);
 	RTS;
+ENDPROC(_blackfin_icache_flush_range)
 
 /*
  * blackfin_icache_dcache_flush_range(start, end)
@@ -144,7 +148,7 @@ ENTRY(_blackfin_icache_dcache_flush_range)
 	R2 = R0 & R2;
 	P0 = R2;
 	P1 = R1;
-	CSYNC;
+	CSYNC(R3);
 	IFLUSH [P0];
 1:
 	FLUSH [P0];
@@ -153,8 +157,9 @@ ENTRY(_blackfin_icache_dcache_flush_range)
 	IF CC JUMP 1b (bp);
 	IFLUSH [P0];
 	FLUSH [P0];
-	SSYNC;
+	SSYNC(R3);
 	RTS;
+ENDPROC(_blackfin_icache_dcache_flush_range)
 
 /* Throw away all D-cached data in specified region without any obligation to
  * write them back. However, we must clean the D-cached entries around the
@@ -169,7 +174,7 @@ ENTRY(_blackfin_dcache_invalidate_range)
 	R2 = R0 & R2;
 	P0 = R2;
 	P1 = R1;
-	CSYNC;
+	CSYNC(R3);
 	FLUSHINV[P0];
 1:
 	FLUSHINV[P0++];
@@ -181,8 +186,9 @@ ENTRY(_blackfin_dcache_invalidate_range)
 	 * so do one more.
 	 */
 	FLUSHINV[P0];
-	SSYNC;
+	SSYNC(R3);
 	RTS;
+ENDPROC(_blackfin_dcache_invalidate_range)
 
 /* Invalidate the Entire Data cache by
  * clearing DMC[1:0] bits
@@ -221,13 +227,15 @@ ENTRY(_dcache_invalidate)
 
 	( R7:6) = [SP++];
 	RTS;
+ENDPROC(_dcache_invalidate)
+ENDPROC(_invalidate_entire_dcache)
 
 ENTRY(_blackfin_dcache_flush_range)
 	R2 = -L1_CACHE_BYTES;
 	R2 = R0 & R2;
 	P0 = R2;
 	P1 = R1;
-	CSYNC;
+	CSYNC(R3);
 	FLUSH[P0];
 1:
 	FLUSH[P0++];
@@ -239,15 +247,17 @@ ENTRY(_blackfin_dcache_flush_range)
 	 * one more.
 	 */
 	FLUSH[P0];
-	SSYNC;
+	SSYNC(R3);
 	RTS;
+ENDPROC(_blackfin_dcache_flush_range)
 
 ENTRY(_blackfin_dflush_page)
 	P1 = 1 << (PAGE_SHIFT - L1_CACHE_SHIFT);
 	P0 = R0;
-	CSYNC;
+	CSYNC(R3);
 	FLUSH[P0];
 	LSETUP (.Lfl1, .Lfl1) LC0 = P1;
 .Lfl1:	FLUSH [P0++];
-	SSYNC;
+	SSYNC(R3);
 	RTS;
+ENDPROC(_blackfin_dflush_page)

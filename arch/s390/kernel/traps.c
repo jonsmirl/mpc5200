@@ -253,19 +253,23 @@ void die(const char * str, struct pt_regs * regs, long err)
 {
 	static int die_counter;
 
+	oops_enter();
 	debug_stop_all();
 	console_verbose();
 	spin_lock_irq(&die_lock);
 	bust_spinlocks(1);
 	printk("%s: %04lx [#%d]\n", str, err & 0xffff, ++die_counter);
-        show_regs(regs);
+	print_modules();
+	show_regs(regs);
 	bust_spinlocks(0);
-        spin_unlock_irq(&die_lock);
+	add_taint(TAINT_DIE);
+	spin_unlock_irq(&die_lock);
 	if (in_interrupt())
 		panic("Fatal exception in interrupt");
 	if (panic_on_oops)
 		panic("Fatal exception: panic_on_oops");
-        do_exit(SIGSEGV);
+	oops_exit();
+	do_exit(SIGSEGV);
 }
 
 static void inline
@@ -316,7 +320,7 @@ static void __kprobes inline do_trap(long interruption_code, int signr,
 		else {
 			enum bug_trap_type btt;
 
-			btt = report_bug(regs->psw.addr & PSW_ADDR_INSN);
+			btt = report_bug(regs->psw.addr & PSW_ADDR_INSN, regs);
 			if (btt == BUG_TRAP_TYPE_WARN)
 				return;
 			die(str, regs, interruption_code);

@@ -220,32 +220,6 @@ static int hpt36x_cable_detect(struct ata_port *ap)
 	return ATA_CBL_PATA80;
 }
 
-static int hpt36x_pre_reset(struct ata_port *ap, unsigned long deadline)
-{
-	static const struct pci_bits hpt36x_enable_bits[] = {
-		{ 0x50, 1, 0x04, 0x04 },
-		{ 0x54, 1, 0x04, 0x04 }
-	};
-	struct pci_dev *pdev = to_pci_dev(ap->host->dev);
-
-	if (!pci_test_config_bits(pdev, &hpt36x_enable_bits[ap->port_no]))
-		return -ENOENT;
-
-	return ata_std_prereset(ap, deadline);
-}
-
-/**
- *	hpt36x_error_handler	-	reset the hpt36x bus
- *	@ap: ATA port to reset
- *
- *	Perform the reset handling for the 366/368
- */
-
-static void hpt36x_error_handler(struct ata_port *ap)
-{
-	ata_bmdma_drive_eh(ap, hpt36x_pre_reset, ata_std_softreset, NULL, ata_std_postreset);
-}
-
 /**
  *	hpt366_set_piomode		-	PIO setup
  *	@ap: ATA interface
@@ -351,7 +325,7 @@ static struct ata_port_operations hpt366_port_ops = {
 
 	.freeze		= ata_bmdma_freeze,
 	.thaw		= ata_bmdma_thaw,
-	.error_handler	= hpt36x_error_handler,
+	.error_handler	= ata_bmdma_error_handler,
 	.post_internal_cmd = ata_bmdma_post_internal_cmd,
 	.cable_detect	= hpt36x_cable_detect,
 
@@ -419,10 +393,10 @@ static int hpt36x_init_one(struct pci_dev *dev, const struct pci_device_id *id)
 {
 	static const struct ata_port_info info_hpt366 = {
 		.sht = &hpt36x_sht,
-		.flags = ATA_FLAG_SLAVE_POSS | ATA_FLAG_SRST,
+		.flags = ATA_FLAG_SLAVE_POSS,
 		.pio_mask = 0x1f,
 		.mwdma_mask = 0x07,
-		.udma_mask = 0x1f,
+		.udma_mask = ATA_UDMA4,
 		.port_ops = &hpt366_port_ops
 	};
 	struct ata_port_info info = info_hpt366;
