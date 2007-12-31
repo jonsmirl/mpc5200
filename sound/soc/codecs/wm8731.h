@@ -31,10 +31,9 @@
 
 #define WM8731_CACHEREGNUM 	10
 
-#define WM8731_SYSCLK	0
+#define WM8731_SYSCLK		0
 #define WM8731_DAI		0
 
-extern const char wm8731_hifi_dai[SND_SOC_DAI_NAME_SIZE];
-extern const char wm8731_codec[SND_SOC_CODEC_NAME_SIZE];
+extern const char wm8731_codec_id[];
 
 #endif

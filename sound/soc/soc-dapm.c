@@ -48,6 +48,7 @@
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc-dapm.h>
+#include <sound/soc.h>
 #include <sound/initval.h>
 
 /* debug */
@@ -761,20 +762,17 @@ static ssize_t dapm_widget_show(struct device *dev,
 	}
 
 	switch(machine->dapm_state){
-	case SNDRV_CTL_POWER_D0:
-		state = "D0";
+	case SND_SOC_BIAS_ON:
+		state = "On";
 		break;
-	case SNDRV_CTL_POWER_D1:
-		state = "D1";
+	case SND_SOC_BIAS_PREPARE:
+		state = "Prepare";
 		break;
-	case SNDRV_CTL_POWER_D2:
-		state = "D2";
+	case SND_SOC_BIAS_STANDBY:
+		state = "Standby";
 		break;
-	case SNDRV_CTL_POWER_D3hot:
-		state = "D3hot";
-		break;
-	case SNDRV_CTL_POWER_D3cold:
-		state = "D3cold";
+	case SND_SOC_BIAS_OFF:
+		state = "Off";
 		break;
 	}
 	count += sprintf(buf + count, "PM State: %s\n", state);
@@ -819,7 +817,7 @@ static void dapm_free_widgets(struct snd_soc_machine *machine)
 }
 
 /**
- * snd_soc_dapm_sync_endpoints - scan and power dapm paths
+ * snd_soc_dapm_resync - scan and power dapm paths
  * @codec: audio codec
  *
  * Walks all dapm audio paths and powers widgets according to their
@@ -827,14 +825,14 @@ static void dapm_free_widgets(struct snd_soc_machine *machine)
  *
  * Returns 0 for success.
  */
-int snd_soc_dapm_sync_endpoints(struct snd_soc_machine *machine)
+int snd_soc_dapm_resync(struct snd_soc_machine *machine)
 {
 	return dapm_power_widgets(machine, SND_SOC_DAPM_STREAM_NOP);
 }
-EXPORT_SYMBOL_GPL(snd_soc_dapm_sync_endpoints);
+EXPORT_SYMBOL_GPL(snd_soc_dapm_resync);
 
 /**
- * snd_soc_dapm_connect_input - connect dapm widgets
+ * snd_soc_dapm_add_route - Add a DAPM route between dapm widgets
  * @codec: audio codec
  * @sink: name of target widget
  * @control: mixer control name
@@ -846,7 +844,7 @@ EXPORT_SYMBOL_GPL(snd_soc_dapm_sync_endpoints);
  *
  * Returns 0 for success else error.
  */
-int snd_soc_dapm_connect_input(struct snd_soc_machine *machine, const char *sink,
+int snd_soc_dapm_add_route(struct snd_soc_machine *machine, const char *sink,
 	const char * control, const char *source)
 {
 	struct snd_soc_dapm_path *path;
@@ -949,7 +947,7 @@ err:
 	kfree(path);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(snd_soc_dapm_connect_input);
+EXPORT_SYMBOL_GPL(snd_soc_dapm_add_route);
 
 /**
  * snd_soc_dapm_new_widgets - add new dapm widgets
@@ -1234,7 +1232,7 @@ EXPORT_SYMBOL_GPL(snd_soc_dapm_new_control);
  * Returns 0 for success else error.
  */
 int snd_soc_dapm_stream_event(struct snd_soc_machine *machine,
-	char *stream, int event)
+	char *stream, enum snd_soc_dapm_stream_event event)
 {
 	struct snd_soc_dapm_widget *w;
 
@@ -1268,8 +1266,8 @@ int snd_soc_dapm_stream_event(struct snd_soc_machine *machine,
 				}
 				break;
 			case SND_SOC_DAPM_STREAM_PAUSE_PUSH:
-				break;
 			case SND_SOC_DAPM_STREAM_PAUSE_RELEASE:
+			case SND_SOC_DAPM_STREAM_NOP:
 				break;
 			}
 		}
@@ -1292,43 +1290,63 @@ EXPORT_SYMBOL_GPL(snd_soc_dapm_stream_event);
  *
  * Returns 0 for success else error.
  */
-int snd_soc_dapm_device_event(struct snd_soc_pcm_link *pcm_link, int event)
+int snd_soc_dapm_device_event(struct snd_soc_pcm_runtime *pcm_runtime, 
+	enum snd_soc_dapm_bias_power level)
 {
-	struct snd_soc_codec *codec = pcm_link->codec;
-	struct snd_soc_machine *machine = pcm_link->machine;
+	struct snd_soc_codec *codec = pcm_runtime->codec;
+	struct snd_soc_machine *machine = pcm_runtime->machine;
 	
-	if (machine->ops && machine->ops->dapm_event)
-		machine->ops->dapm_event(machine, event);
-	if (codec->ops && codec->ops->dapm_event)
-		codec->ops->dapm_event(codec, event);
+	if (machine->dapm_event)
+		machine->dapm_event(machine, level);
+	if (codec->set_bias_power)
+		codec->set_bias_power(codec, level);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_dapm_device_event);
 
-/**
- * snd_soc_dapm_set_endpoint - set audio endpoint status
- * @codec: audio codec
- * @endpoint: audio signal endpoint (or start point)
- * @status: point status
- *
- * Set audio endpoint status - connected or disconnected.
- *
- * Returns 0 for success else error.
- */
-int snd_soc_dapm_set_endpoint(struct snd_soc_machine *machine,
-	char *endpoint, int status)
+static int snd_soc_dapm_set_pin(struct snd_soc_machine *machine,
+	char *pin, int status)
 {
 	struct snd_soc_dapm_widget *w;
 
 	list_for_each_entry(w, &machine->dapm_widgets, list) {
-		if (!strcmp(w->name, endpoint)) {
+		if (!strcmp(w->name, pin)) {
 			w->connected = status;
 		}
 	}
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(snd_soc_dapm_set_endpoint);
+
+/**
+ * snd_soc_dapm_enable_pin - enable audio pin and it's parents/children
+ * @machine: audio machine
+ * @pin: audio signal endpoint (or start point)
+ *
+ * Set audio endpoint status - connected or disconnected.
+ *
+ * Returns 0 for success else error.
+ */
+int snd_soc_dapm_enable_pin(struct snd_soc_machine *machine, char *pin)
+{
+	return snd_soc_dapm_set_pin(machine, pin, 1);
+}
+EXPORT_SYMBOL_GPL(snd_soc_dapm_enable_pin);
+
+/**
+ * snd_soc_dapm_disable_pin - disable audio pin and it's parents/children
+ * @machine: audio machine
+ * @endpoint: audio signal endpoint (or start point)
+ *
+ * Set audio endpoint status - connected or disconnected.
+ *
+ * Returns 0 for success else error.
+ */
+int snd_soc_dapm_disable_pin(struct snd_soc_machine *machine, char *pin)
+{
+	return snd_soc_dapm_set_pin(machine, pin, 0);
+}
+EXPORT_SYMBOL_GPL(snd_soc_dapm_disable_pin);
 
 /**
  * snd_soc_dapm_free - free dapm resources
@@ -1338,7 +1356,7 @@ EXPORT_SYMBOL_GPL(snd_soc_dapm_set_endpoint);
  */
 void snd_soc_dapm_free(struct snd_soc_machine *machine)
 {
-	snd_soc_dapm_sys_remove(&machine->pdev->dev);
+	snd_soc_dapm_sys_remove(machine->dev);
 	dapm_free_widgets(machine);
 }
 EXPORT_SYMBOL_GPL(snd_soc_dapm_free);

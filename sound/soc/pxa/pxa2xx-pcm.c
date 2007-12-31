@@ -74,8 +74,8 @@ static int pxa2xx_pcm_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct pxa2xx_runtime_data *prtd = runtime->private_data;
-	struct snd_soc_pcm_link *pcm_link = substream->private_data;
-	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
+	struct snd_soc_pcm_runtime *pcm_link = substream->private_data;
+	struct snd_soc_dai_runtime *cpu_dai = pcm_link->cpu_dai;
 	struct pxa2xx_pcm_dma_params *dma = cpu_dai->dma_data;
 	size_t totsize = params_buffer_bytes(params);
 	size_t period = params_period_bytes(params);
@@ -361,48 +361,60 @@ static int pxa2xx_pcm_new(struct snd_soc_platform *platform,
 	return ret;
 }
 
-static const struct snd_soc_platform_ops pxa2xx_platform_ops = {
-	.pcm_new	= pxa2xx_pcm_new,
-	.pcm_free	= pxa2xx_pcm_free_dma_buffers,
-};
-
 static int pxa2xx_pcm_probe(struct device *dev)
 {
 	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	int ret;
 	
 	platform->pcm_ops = &pxa2xx_pcm_ops;
-	platform->platform_ops = &pxa2xx_platform_ops;
-	snd_soc_register_platform(platform);
-	return 0;
+	platform->pcm_new = pxa2xx_pcm_new,
+	platform->pcm_free = pxa2xx_pcm_free_dma_buffers,
+#if defined(CONFIG_SND_PXA2XX_SOC_I2S)	
+	ret = snd_soc_platform_add_dai(platform, &pxa2xx_i2s, 1);
+	if (ret < 0)
+		return ret;
+#endif
+#if defined(CONFIG_SND_PXA2XX_SOC_AC97)	
+	ret = snd_soc_platform_add_dai(platform, pxa2xx_ac97, 3);
+	if (ret < 0)
+		return ret;
+#endif
+#if defined(CONFIG_SND_PXA2XX_SOC_SSP)	
+	ret = snd_soc_platform_add_dai(platform, pxa2xx_ssp, 3);
+	if (ret < 0)
+		return ret;
+#endif	
+	ret = snd_soc_register_platform(platform);
+	return ret;
 }
 
 static int pxa2xx_pcm_remove(struct device *dev)
 {
+	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	
+	snd_soc_unregister_platform(platform);
 	return 0;
 }
 
-const char pxa2xx_pcm[SND_SOC_PLATFORM_NAME_SIZE] = "pxa2xx-pcm";
-EXPORT_SYMBOL_GPL(pxa2xx_pcm);
+const char pxa_platform_id[] = "pxa2xx-pcm";
+EXPORT_SYMBOL_GPL(pxa_platform_id);
 
-static struct snd_soc_device_driver pxa2xx_pcm_driver = {
-	.type	= SND_SOC_BUS_TYPE_DMA,
-	.driver	= {
-		.name 		= pxa2xx_pcm,
-		.owner		= THIS_MODULE,
-		.bus 		= &asoc_bus_type,
-		.probe		= pxa2xx_pcm_probe,
-		.remove		= __devexit_p(pxa2xx_pcm_remove),
-	},
+static struct device_driver pxa2xx_pcm_driver = {
+	.name 		= pxa_platform_id,
+	.owner		= THIS_MODULE,
+	.bus 		= &asoc_bus_type,
+	.probe		= pxa2xx_pcm_probe,
+	.remove		= __devexit_p(pxa2xx_pcm_remove),
 };
 
 static __init int pxa2xx_pcm_init(void)
 {
-	return driver_register(&pxa2xx_pcm_driver.driver);
+	return driver_register(&pxa2xx_pcm_driver);
 }
 
 static __exit void pxa2xx_pcm_exit(void)
 {
-	driver_unregister(&pxa2xx_pcm_driver.driver);
+	driver_unregister(&pxa2xx_pcm_driver);
 }
 
 module_init(pxa2xx_pcm_init);

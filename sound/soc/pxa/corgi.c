@@ -39,7 +39,6 @@
 
 #include "../codecs/wm8731.h"
 #include "pxa2xx-pcm.h"
-#include "pxa2xx-i2s.h"
 
 #define CORGI_HP        0
 #define CORGI_MIC       1
@@ -54,56 +53,60 @@
 
 static int corgi_jack_func;
 static int corgi_spk_func;
-static struct snd_soc_machine *corgi_mach;
 
 static void corgi_ext_control(struct snd_soc_machine *machine)
 {
-	int spk = 0, mic = 0, line = 0, hp = 0, hs = 0;
 
 	/* set up jack connection */
 	switch (corgi_jack_func) {
 	case CORGI_HP:
-		hp = 1;
 		/* set = unmute headphone */
 		set_scoop_gpio(&corgiscoop_device.dev, CORGI_SCP_MUTE_L);
 		set_scoop_gpio(&corgiscoop_device.dev, CORGI_SCP_MUTE_R);
+		snd_soc_dapm_enable_headphone(machine, "Headphone Jack");
+		snd_soc_dapm_disable_mic(machine, "Mic Jack");
+		snd_soc_dapm_disable_line(machine, "Line Jack");
+		snd_soc_dapm_disable_headset(machine, "Headset Jack");
 		break;
 	case CORGI_MIC:
-		mic = 1;
 		/* reset = mute headphone */
 		reset_scoop_gpio(&corgiscoop_device.dev, CORGI_SCP_MUTE_L);
 		reset_scoop_gpio(&corgiscoop_device.dev, CORGI_SCP_MUTE_R);
+		snd_soc_dapm_enable_mic(machine, "Mic Jack");
+		snd_soc_dapm_disable_line(machine, "Line Jack");
+		snd_soc_dapm_disable_headphone(machine, "Headphone Jack");
+		snd_soc_dapm_disable_headset(machine, "Headset Jack");
 		break;
 	case CORGI_LINE:
-		line = 1;
 		reset_scoop_gpio(&corgiscoop_device.dev, CORGI_SCP_MUTE_L);
 		reset_scoop_gpio(&corgiscoop_device.dev, CORGI_SCP_MUTE_R);
+		snd_soc_dapm_enable_line(machine, "Line Jack");
+		snd_soc_dapm_disable_mic(machine, "Mic Jack");
+		snd_soc_dapm_disable_headphone(machine, "Headphone Jack");
+		snd_soc_dapm_disable_headset(machine, "Headset Jack");
 		break;
 	case CORGI_HEADSET:
-		hs = 1;
-		mic = 1;
 		reset_scoop_gpio(&corgiscoop_device.dev, CORGI_SCP_MUTE_L);
 		set_scoop_gpio(&corgiscoop_device.dev, CORGI_SCP_MUTE_R);
+		snd_soc_dapm_enable_headset(machine, "Headset Jack");
+		snd_soc_dapm_enable_mic(machine, "Mic Jack");
+		snd_soc_dapm_disable_line(machine, "Line Jack");
+		snd_soc_dapm_disable_headphone(machine, "Headphone Jack");
 		break;
 	}
 
 	if (corgi_spk_func == CORGI_SPK_ON)
-		spk = 1;
-
-	/* set the enpoints to their new connetion states */
-	snd_soc_dapm_set_endpoint(machine, "Ext Spk", spk);
-	snd_soc_dapm_set_endpoint(machine, "Mic Jack", mic);
-	snd_soc_dapm_set_endpoint(machine, "Line Jack", line);
-	snd_soc_dapm_set_endpoint(machine, "Headphone Jack", hp);
-	snd_soc_dapm_set_endpoint(machine, "Headset Jack", hs);
-
+		snd_soc_dapm_enable_speaker(machine, "Ext Spk");
+	else
+		snd_soc_dapm_disable_speaker(machine, "Ext Spk");
+		
 	/* signal a DAPM event */
-	snd_soc_dapm_sync_endpoints(machine);
+	snd_soc_dapm_resync(machine);
 }
 
 static int corgi_startup(struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_link *pcm_link = substream->private_data;
+	struct snd_soc_pcm_runtime *pcm_link = substream->private_data;
 	struct snd_soc_machine *machine = pcm_link->machine;
 
 	/* check the jack status at stream startup */
@@ -122,9 +125,9 @@ static void corgi_shutdown(struct snd_pcm_substream *substream)
 static int corgi_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_link *pcm_link = substream->private_data;
-	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
-	struct snd_soc_dai *codec_dai = pcm_link->codec_dai;
+	struct snd_soc_pcm_runtime *pcm_link = substream->private_data;
+	struct snd_soc_dai_runtime *cpu_dai = pcm_link->cpu_dai;
+	struct snd_soc_dai_runtime *codec_dai = pcm_link->codec_dai;
 	unsigned int clk = 0;
 	int ret = 0;
 
@@ -143,25 +146,25 @@ static int corgi_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* set codec DAI configuration */
-	ret = codec_dai->ops->set_fmt(codec_dai, SND_SOC_DAIFMT_I2S |
+	ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_I2S |
 		SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0)
 		return ret;
 
 	/* set cpu DAI configuration */
-	ret = cpu_dai->ops->set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S |
+	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S |
 		SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0)
 		return ret;
 
 	/* set the codec system clock for DAC and ADC */
-	ret = codec_dai->ops->set_sysclk(codec_dai, WM8731_SYSCLK, clk,
+	ret = snd_soc_dai_set_sysclk(codec_dai, WM8731_SYSCLK, clk,
 		SND_SOC_CLOCK_IN);
 	if (ret < 0)
 		return ret;
 
 	/* set the I2S system clock as input (unused) */
-	ret = cpu_dai->ops->set_sysclk(cpu_dai, PXA2XX_I2S_SYSCLK, 0,
+	ret = snd_soc_dai_set_sysclk(cpu_dai, PXA2XX_I2S_SYSCLK, 0,
 		SND_SOC_CLOCK_IN);
 	if (ret < 0)
 		return ret;
@@ -173,16 +176,6 @@ static struct snd_soc_ops corgi_ops = {
 	.startup = corgi_startup,
 	.hw_params = corgi_hw_params,
 	.shutdown = corgi_shutdown,
-};
-
-static int corgi_pcm_new(struct snd_soc_pcm_link *pcm_link)
-{
-	pcm_link->audio_ops = &corgi_ops;
-	return snd_soc_pcm_new(pcm_link, 1, 1);
-}
-
-struct snd_soc_pcm_link_ops corgi_pcm = {
-	.new	= corgi_pcm_new,
 };
 
 static int corgi_get_jack(struct snd_kcontrol *kcontrol,
@@ -316,19 +309,18 @@ static int corgi_wm8731_write(void *control_data, long data, int size)
 /*
  * Logic for a wm8731 as connected on a Sharp SL-C7x0 Device
  */
-static int corgi_mach_probe(struct snd_soc_machine *machine)
+static int corgi_init(struct snd_soc_machine *machine)
 {
 	struct snd_soc_codec *codec;
-	struct snd_soc_pcm_link *pcm_link;
 	int i, ret;
 	
-	pcm_link = list_first_entry(&machine->active_list, 
-		struct snd_soc_pcm_link, active_list);
-	codec = pcm_link->codec;
+	codec = snd_soc_get_codec(machine, wm8731_codec_id);
+	if (codec == NULL)
+		return -ENODEV;
 		
 	/* set up corgi codec pins */
-	snd_soc_dapm_set_endpoint(machine, "LLINEIN", 0);
-	snd_soc_dapm_set_endpoint(machine, "RLINEIN", 0);
+	snd_soc_dapm_disable_pin(machine, "LLINEIN");
+	snd_soc_dapm_disable_pin(machine, "RLINEIN");
 
 	/* add corgi specific controls */
 	for (i = 0; i < ARRAY_SIZE(wm8731_corgi_controls); i++) {
@@ -346,35 +338,24 @@ static int corgi_mach_probe(struct snd_soc_machine *machine)
 
 	/* Set up corgi specific audio path audio_map */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(machine, audio_map[i][0],
+		snd_soc_dapm_add_route(machine, audio_map[i][0],
 			audio_map[i][1], audio_map[i][2]);
 	}
 	
-	snd_soc_dapm_sync_endpoints(machine);
+	snd_soc_dapm_resync(machine);
 	
-	codec->control_data = corgi_mach->private_data;
-	codec->mach_write = corgi_wm8731_write;
-	codec->ops->probe_codec(codec, corgi_mach);
+	snd_soc_codec_set_io(codec, NULL, corgi_wm8731_write, 
+		machine->private_data);
 	
-	/* register card with ALSA upper layers */
-	ret = snd_soc_register_card(corgi_mach);
-	if (ret < 0) {
-		printk(KERN_ERR "%s: failed to register sound card\n",
-			__FUNCTION__);
-		return ret;
-	}
+	snd_soc_codec_init(codec, machine);
 	
 	return 0;
 }
 
-struct snd_soc_machine_ops corgi_mach_ops = {
-	.mach_probe = corgi_mach_probe,	
-};
-
 static int wm8731_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 {
+	struct snd_soc_machine *machine;
 	struct i2c_client *i2c;
-	struct snd_soc_pcm_link *hifi;
 	int ret;
 
 	if (addr != WM8731_I2C_ADDR)
@@ -386,8 +367,6 @@ static int wm8731_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	i2c = kmemdup(&client_template, sizeof(client_template), GFP_KERNEL);
 	if (i2c == NULL)
 		return -ENOMEM;
-	i2c_set_clientdata(i2c, corgi_mach);
-	corgi_mach->private_data = i2c;
 	
 	ret = i2c_attach_client(i2c);
 	if (ret < 0) {
@@ -395,22 +374,34 @@ static int wm8731_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 		goto attach_err;
 	}
 	
-	/* corgi wm8731 hifi interface */
-	hifi = snd_soc_pcm_link_new(corgi_mach, "corgi-hifi", 
-		&corgi_pcm, pxa2xx_pcm, wm8731_codec, wm8731_hifi_dai, 
-		pxa2xx_i2s);
-	if (hifi == NULL) {
-		printk("failed to create HiFi PCM link\n");
-		goto attach_err;
-	}
-	ret =  snd_soc_pcm_link_attach(hifi);
-	if (ret < 0) 
-		goto link_err;
+	machine = snd_soc_machine_create("corgi", &i2c->dev, 
+		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
+	if (machine == NULL)
+		return -ENOMEM;
+
+	machine->longname = "WM8731";
+	machine->init = corgi_init;
+	machine->private_data = i2c;
+	i2c_set_clientdata(i2c, machine);
 	
+	ret = snd_soc_codec_create(machine, wm8731_codec_id);
+	if (ret < 0)
+		goto err;
+
+	ret = snd_soc_platform_create(machine, pxa_platform_id);
+	if (ret < 0)
+		goto err;
+
+	ret = snd_soc_pcm_create(machine, &corgi_ops, 
+		WM8731_DAI, PXA2XX_DAI_I2S, 1, 1);
+	if (ret < 0)
+		goto err;
+	
+	ret = snd_soc_machine_register(machine);
 	return ret;
 
-link_err:
-	snd_soc_machine_free(corgi_mach);
+err:
+	snd_soc_machine_free(machine);
 attach_err:
 	i2c_detach_client(i2c);
 	kfree(i2c);
@@ -419,7 +410,9 @@ attach_err:
 
 static int wm8731_i2c_detach(struct i2c_client *client)
 {
-	snd_soc_machine_free(corgi_mach);
+	struct snd_soc_machine *machine = i2c_get_clientdata(client);
+	 
+	snd_soc_machine_free(machine);
 	i2c_detach_client(client);
 	kfree(client);
 	return 0;
@@ -448,54 +441,22 @@ static struct i2c_client client_template = {
 
 static int __init corgi_wm8731_probe(struct platform_device *pdev)
 {
-	struct snd_soc_machine *machine;
 	int ret;
 
 	if (!(machine_is_corgi() || machine_is_shepherd() || machine_is_husky()))
 		return -ENODEV;
 
-	machine = kzalloc(sizeof(struct snd_soc_machine), GFP_KERNEL);
-	if (machine == NULL)
-		return -ENOMEM;
-
-	machine->owner = THIS_MODULE;
-	machine->pdev = pdev;
-	machine->name = "corgi";
-	machine->longname = "wm8731";
-	machine->ops = &corgi_mach_ops;
-	pdev->dev.driver_data = machine;
-
-	/* register card */
-	corgi_mach = machine;
-	ret = snd_soc_new_card(machine, 1, SNDRV_DEFAULT_IDX1, 
-		SNDRV_DEFAULT_STR1);
-	if (ret < 0) {
-		printk(KERN_ERR "%s: failed to create pcms\n", __func__);
-		kfree(machine);
-		return ret;
-	}
-	
 	/* register I2C driver for WM8731 codec control */
 	ret = i2c_add_driver(&wm8731_i2c_driver);
-	if (ret < 0) { 
+	if (ret < 0)
 		printk (KERN_ERR "%s: failed to add i2c driver\n",
 			__FUNCTION__);
-		goto err;
-	}
-	return ret;
-	
-err:
-	kfree(machine);
 	return ret;
 }
 
 static int __exit corgi_wm8731_remove(struct platform_device *pdev)
-{
-	struct snd_soc_machine *machine = pdev->dev.driver_data;
-	
+{	
 	i2c_del_driver(&wm8731_i2c_driver);
-	corgi_mach = NULL;
-	kfree(machine);
 	return 0;
 }
 

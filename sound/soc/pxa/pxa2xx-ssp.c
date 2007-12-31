@@ -34,7 +34,6 @@
 #include <asm/arch/ssp.h>
 
 #include "pxa2xx-pcm.h"
-#include "pxa2xx-ssp.h"
 
 #define PXA_SSP_DEBUG 0
 
@@ -161,15 +160,19 @@ static struct pxa2xx_pcm_dma_params *ssp_dma_params[3][4] = {
 	&pxa2xx_ssp3_pcm_stereo_out,&pxa2xx_ssp3_pcm_stereo_in,},
 };
 
-static int pxa2xx_ssp_startup(struct snd_pcm_substream *substream)
+static inline int dai_to_port(struct snd_soc_dai_runtime *cpu_dai)
 {
-	struct snd_soc_pcm_link *pcm_link = substream->private_data;
-	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
-	struct ssp_priv *ssp = cpu_dai->private_data;
+	return (cpu_dai->dai->id - PXA2XX_DAI_SSP1) + 1;
+}
+
+static int pxa2xx_ssp_startup(struct snd_pcm_substream *substream,
+	struct snd_soc_dai_runtime *dai)
+{
+	struct ssp_priv *ssp = dai->private_data;
 	int ret = 0;
 
-	if (!cpu_dai->active) {
-		ret = ssp_init (&ssp->dev, cpu_dai->id + 1, SSP_NO_IRQ);
+	if (!dai->active) {
+		ret = ssp_init (&ssp->dev, dai_to_port(dai), SSP_NO_IRQ);
 		if (ret < 0)
 			return ret;
 		ssp_disable(&ssp->dev);
@@ -177,13 +180,12 @@ static int pxa2xx_ssp_startup(struct snd_pcm_substream *substream)
 	return ret;
 }
 
-static void pxa2xx_ssp_shutdown(struct snd_pcm_substream *substream)
+static void pxa2xx_ssp_shutdown(struct snd_pcm_substream *substream,
+	struct snd_soc_dai_runtime *dai)
 {
-	struct snd_soc_pcm_link *pcm_link = substream->private_data;
-	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
-	struct ssp_priv *ssp = cpu_dai->private_data;
+	struct ssp_priv *ssp = dai->private_data;
 
-	if (!cpu_dai->active) {
+	if (!dai->active) {
 		ssp_disable(&ssp->dev);
 		ssp_exit(&ssp->dev);
 	}
@@ -199,7 +201,7 @@ static int cken[3] = {CKEN_SSP, CKEN_NSSP, CKEN_ASSP};
 
 static int pxa2xx_ssp_suspend(struct device *dev, pm_message_t state)
 {
-	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
+	struct snd_soc_dai_runtime *dai = to_snd_soc_dai_runtime(dev);
 	struct ssp_priv *ssp = dai->private_data;
 	
 	if (!dai->active)
@@ -212,7 +214,7 @@ static int pxa2xx_ssp_suspend(struct device *dev, pm_message_t state)
 
 static int pxa2xx_ssp_resume(struct device *dev)
 {
-	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
+	struct snd_soc_dai_runtime *dai = to_snd_soc_dai_runtime(dev);
 	struct ssp_priv *ssp = dai->private_data;
 	
 	if (!dai->active)
@@ -233,17 +235,17 @@ static int pxa2xx_ssp_resume(struct device *dev)
 /*
  * Set the SSP ports SYSCLK.
  */
-static int pxa2xx_ssp_set_dai_sysclk(struct snd_soc_dai *cpu_dai,
+static int pxa2xx_ssp_set_dai_sysclk(struct snd_soc_dai_runtime *cpu_dai,
 	int clk_id, unsigned int freq, int dir)
 {
 	struct ssp_priv *ssp = cpu_dai->private_data;
-	int port = cpu_dai->id + 1;
+	int port = dai_to_port(cpu_dai);
 	
 	u32 sscr0 = SSCR0_P(port) &
 		~(SSCR0_ECS |  SSCR0_NCS | SSCR0_MOD | SSCR0_ADC);
 
 	dbg("pxa2xx_ssp_set_dai_sysclk id: %d, clk_id %d, freq %d",
-		cpu_dai->id, clk_id, freq);
+		cpu_dai->dai->id, clk_id, freq);
 
 	switch (clk_id) {
 	case PXA2XX_SSP_CLK_NET_PLL:
@@ -274,19 +276,19 @@ static int pxa2xx_ssp_set_dai_sysclk(struct snd_soc_dai *cpu_dai,
 	}
 
 	/* the SSP CKEN clock must be disabled when changing SSP clock mode */
-	pxa_set_cken(cken[cpu_dai->id], 0);
+	pxa_set_cken(cken[cpu_dai->dai->id], 0);
 	SSCR0_P(port) |= sscr0;
-	pxa_set_cken(cken[cpu_dai->id], 1);
+	pxa_set_cken(cken[cpu_dai->dai->id], 1);
 	return 0;
 }
 
 /*
  * Set the SSP clock dividers.
  */
-static int pxa2xx_ssp_set_dai_clkdiv(struct snd_soc_dai *cpu_dai,
+static int pxa2xx_ssp_set_dai_clkdiv(struct snd_soc_dai_runtime *cpu_dai,
 	int div_id, int div)
 {
-	int port = cpu_dai->id + 1;
+	int port = dai_to_port(cpu_dai);
 
 	switch (div_id) {
 	case PXA2XX_SSP_AUDIO_DIV_ACDS:
@@ -312,10 +314,10 @@ static int pxa2xx_ssp_set_dai_clkdiv(struct snd_soc_dai *cpu_dai,
 /*
  * Configure the PLL frequency pxa27x and (afaik - pxa320 only)
  */
-static int pxa2xx_ssp_set_dai_pll(struct snd_soc_dai *cpu_dai,
+static int pxa2xx_ssp_set_dai_pll(struct snd_soc_dai_runtime *cpu_dai,
 	int pll_id, unsigned int freq_in, unsigned int freq_out)
 {
-	int port = cpu_dai->id + 1;
+	int port = dai_to_port(cpu_dai);
 
 	SSACD_P(port) &= ~0x70;
 	switch (freq_out) {
@@ -343,10 +345,10 @@ static int pxa2xx_ssp_set_dai_pll(struct snd_soc_dai *cpu_dai,
 /*
  * Set the active slots in TDM/Network mode
  */
-static int pxa2xx_ssp_set_dai_tdm_slot(struct snd_soc_dai *cpu_dai,
+static int pxa2xx_ssp_set_dai_tdm_slot(struct snd_soc_dai_runtime *cpu_dai,
 	unsigned int mask, int slots)
 {
-	int port = cpu_dai->id + 1;
+	int port = dai_to_port(cpu_dai);
 
 	SSCR0_P(port) &= ~SSCR0_SlotsPerFrm(7);
 
@@ -362,10 +364,10 @@ static int pxa2xx_ssp_set_dai_tdm_slot(struct snd_soc_dai *cpu_dai,
 /*
  * Tristate the SSP DAI lines
  */
-static int pxa2xx_ssp_set_dai_tristate(struct snd_soc_dai *cpu_dai,
+static int pxa2xx_ssp_set_dai_tristate(struct snd_soc_dai_runtime *cpu_dai,
 	int tristate)
 {
-	int port = cpu_dai->id + 1;
+	int port = dai_to_port(cpu_dai);
 
 	if (tristate)
 		SSCR1_P(port) &= ~SSCR1_TTE;
@@ -380,10 +382,10 @@ static int pxa2xx_ssp_set_dai_tristate(struct snd_soc_dai *cpu_dai,
  * The SSP Port must be inactive before calling this function as the
  * physical interface format is changed.
  */
-static int pxa2xx_ssp_set_dai_fmt(struct snd_soc_dai *cpu_dai,
+static int pxa2xx_ssp_set_dai_fmt(struct snd_soc_dai_runtime *cpu_dai,
 		unsigned int fmt)
 {
-	int port = cpu_dai->id + 1;
+	int port = dai_to_port(cpu_dai);
 
 	/* we can only change the settings if the port is not in use */
 	if (SSCR0_P(port) & SSCR0_SSE)
@@ -472,19 +474,17 @@ master:
  * Can be called multiple times by oss emulation.
  */
 static int pxa2xx_ssp_hw_params(struct snd_pcm_substream *substream,
-				struct snd_pcm_hw_params *params)
+	struct snd_pcm_hw_params *params, struct snd_soc_dai_runtime *dai)
 {
-	struct snd_soc_pcm_link *pcm_link = substream->private_data;
-	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
 	int dma = 0, chn = params_channels(params);
-	int port = cpu_dai->id + 1;
+	int port = dai_to_port(dai);
 
 	/* select correct DMA params */
 	if (substream->stream != SNDRV_PCM_STREAM_PLAYBACK)
 		dma = 1; /* capture DMA offset is 1,3 */
 	if (chn == 2)
 		dma += 2; /* stereo DMA offset is 2, mono is 0 */
-	cpu_dai->dma_data = ssp_dma_params[cpu_dai->id][dma];
+	dai->dma_data = ssp_dma_params[dai->dai->id][dma];
 
 	dbg("pxa2xx_ssp_hw_params: dma %d", dma);
 
@@ -518,13 +518,12 @@ static int pxa2xx_ssp_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int pxa2xx_ssp_trigger(struct snd_pcm_substream *substream, int cmd)
+static int pxa2xx_ssp_trigger(struct snd_pcm_substream *substream, int cmd,
+	struct snd_soc_dai_runtime *dai)
 {
-	struct snd_soc_pcm_link *pcm_link = substream->private_data;
-	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
-	struct ssp_priv *ssp = cpu_dai->private_data;
+	struct ssp_priv *ssp = dai->private_data;
 	int ret = 0;
-	int port = cpu_dai->id + 1;
+	int port = dai_to_port(dai);
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_RESUME:
@@ -579,121 +578,131 @@ static int pxa2xx_ssp_trigger(struct snd_pcm_substream *substream, int cmd)
 #define PXA2XX_SSP_FORMATS (SNDRV_PCM_FMTBIT_S16_LE |\
 	SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
-static const struct snd_soc_pcm_stream pxa2xx_ssp_playback = {
-	.stream_name	= "Playback",
-	.channels_min	= 1,
-	.channels_max	= 2,
-	.rates		= PXA2XX_SSP_RATES,
-	.formats	= PXA2XX_SSP_FORMATS,
-};
-
-static const struct snd_soc_pcm_stream pxa2xx_ssp_capture = {
-	.stream_name	= "Capture",
-	.channels_min	= 1,
-	.channels_max	= 2,
-	.rates		= PXA2XX_SSP_RATES,
-	.formats	= PXA2XX_SSP_FORMATS,
-};
-
-/* dai ops, called by machine drivers */
-static const struct snd_soc_dai_ops pxa2xx_ssp_dai_ops = {
-	.set_sysclk	= pxa2xx_ssp_set_dai_sysclk,
-	.set_clkdiv	= pxa2xx_ssp_set_dai_clkdiv,
-	.set_pll	= pxa2xx_ssp_set_dai_pll,
-	.set_fmt	= pxa2xx_ssp_set_dai_fmt,
-	.set_tdm_slot	= pxa2xx_ssp_set_dai_tdm_slot,
-	.set_tristate	= pxa2xx_ssp_set_dai_tristate,
-};
-
-/* audio ops, called by alsa */
-static const struct snd_soc_ops pxa2xx_ssp_audio_ops = {
-	.startup = pxa2xx_ssp_startup,
-	.shutdown = pxa2xx_ssp_shutdown,
-	.trigger = pxa2xx_ssp_trigger,
-	.hw_params = pxa2xx_ssp_hw_params,
-};
-
-const char pxa2xx_ssp_1[SND_SOC_DAI_NAME_SIZE] = {
-	"pxa2xx-ssp-1"
-};
-EXPORT_SYMBOL_GPL(pxa2xx_ssp_1);
-
-const char pxa2xx_ssp_2[SND_SOC_DAI_NAME_SIZE] = {
-	"pxa2xx-ssp-2"
-};
-EXPORT_SYMBOL_GPL(pxa2xx_ssp_2);
-
-const char pxa2xx_ssp_3[SND_SOC_DAI_NAME_SIZE] = {
-	"pxa2xx-ssp-3"
-};
-EXPORT_SYMBOL_GPL(pxa2xx_ssp_3);
-
-static int pxa2xx_ssp_probe(struct device *dev)
+static int pxa2xx_ssp_new(struct snd_soc_dai_runtime *dai)
 {
-	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
 	struct ssp_priv *ssp;
 	
 	ssp = kzalloc(sizeof(struct ssp_priv), GFP_KERNEL);
 	if (ssp == NULL)
 		return -ENOMEM;
 	
-	if (!strcmp(pxa2xx_ssp_1, dai->name))
-		dai->id = 0;
-	else if (!strcmp(pxa2xx_ssp_2, dai->name))
-		dai->id = 1;
-	else if (!strcmp(pxa2xx_ssp_3, dai->name))
-		dai->id = 2;
-	else {
-		printk(KERN_ERR "%s: invalid device %s\n", __func__, 
-			dai->name);
-		kfree(ssp);
-		return -ENODEV;
-	}
-	
-	dai->type = SND_SOC_DAI_PCM;
-	dai->ops = &pxa2xx_ssp_dai_ops;
-	dai->audio_ops = &pxa2xx_ssp_audio_ops;
-	dai->capture = &pxa2xx_ssp_capture;
-	dai->playback = &pxa2xx_ssp_playback;
 	dai->private_data = ssp;
-	snd_soc_register_cpu_dai(dai);
 	return 0;
 }
 
-static int pxa2xx_ssp_remove(struct device *dev)
+static void pxa2xx_ssp_free(struct snd_soc_dai_runtime *dai)
 {
-	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
 	kfree(dai->private_data);
-	return 0;
 }
 
-static struct snd_soc_device_driver pxa2xx_ssp_driver = {
-	.type	= SND_SOC_BUS_TYPE_DAI,
-	.driver	= {
-		.name 		= "pxa2xx-ssp",
-		.owner		= THIS_MODULE,
-		.bus 		= &asoc_bus_type,
-		.probe		= pxa2xx_ssp_probe,
-		.remove		= __devexit_p(pxa2xx_ssp_remove),
-		.suspend	= pxa2xx_ssp_suspend,
-		.resume		= pxa2xx_ssp_resume,
+struct snd_soc_dai pxa2xx_ssp[] = {
+{	
+	.name	= "pxa2xx-ssp1",
+	.id	= PXA2XX_DAI_SSP1,
+
+	.new	= pxa2xx_ssp_new,
+	.free	= pxa2xx_ssp_free,
+	
+	.playback = {
+		.stream_name	= "Playback",
+		.channels_min	= 1,
+		.channels_max	= 2,
+		.rates		= PXA2XX_SSP_RATES,
+		.formats	= PXA2XX_SSP_FORMATS,
 	},
+	.capture = {
+		.stream_name	= "Capture",
+		.channels_min	= 1,
+		.channels_max	= 2,
+		.rates		= PXA2XX_SSP_RATES,
+		.formats	= PXA2XX_SSP_FORMATS,
+	},
+	
+	/* alsa ops */
+	.startup 	= pxa2xx_ssp_startup,
+	.shutdown 	= pxa2xx_ssp_shutdown,
+	.trigger 	= pxa2xx_ssp_trigger,
+	.hw_params 	= pxa2xx_ssp_hw_params,
+	
+	/* dai ops */
+	.set_sysclk	= pxa2xx_ssp_set_dai_sysclk,
+	.set_clkdiv	= pxa2xx_ssp_set_dai_clkdiv,
+	.set_pll	= pxa2xx_ssp_set_dai_pll,
+	.set_fmt	= pxa2xx_ssp_set_dai_fmt,
+	.set_tdm_slot	= pxa2xx_ssp_set_dai_tdm_slot,
+	.set_tristate	= pxa2xx_ssp_set_dai_tristate,
+},
+{	
+	.name	= "pxa2xx-ssp2",
+	.id	= PXA2XX_DAI_SSP2,
+
+	.new	= pxa2xx_ssp_new,
+	.free	= pxa2xx_ssp_free,
+	
+	.playback = {
+		.stream_name	= "Playback",
+		.channels_min	= 1,
+		.channels_max	= 2,
+		.rates		= PXA2XX_SSP_RATES,
+		.formats	= PXA2XX_SSP_FORMATS,
+	},
+	.capture = {
+		.stream_name	= "Capture",
+		.channels_min	= 1,
+		.channels_max	= 2,
+		.rates		= PXA2XX_SSP_RATES,
+		.formats	= PXA2XX_SSP_FORMATS,
+	},
+	
+	/* alsa ops */
+	.startup 	= pxa2xx_ssp_startup,
+	.shutdown 	= pxa2xx_ssp_shutdown,
+	.trigger 	= pxa2xx_ssp_trigger,
+	.hw_params 	= pxa2xx_ssp_hw_params,
+	
+	/* dai ops */
+	.set_sysclk	= pxa2xx_ssp_set_dai_sysclk,
+	.set_clkdiv	= pxa2xx_ssp_set_dai_clkdiv,
+	.set_pll	= pxa2xx_ssp_set_dai_pll,
+	.set_fmt	= pxa2xx_ssp_set_dai_fmt,
+	.set_tdm_slot	= pxa2xx_ssp_set_dai_tdm_slot,
+	.set_tristate	= pxa2xx_ssp_set_dai_tristate,
+},
+{	
+	.name	= "pxa2xx-ssp3",
+	.id	= PXA2XX_DAI_SSP3,
+
+	.new	= pxa2xx_ssp_new,
+	.free	= pxa2xx_ssp_free,
+	
+	.playback = {
+		.stream_name	= "Playback",
+		.channels_min	= 1,
+		.channels_max	= 2,
+		.rates		= PXA2XX_SSP_RATES,
+		.formats	= PXA2XX_SSP_FORMATS,
+	},
+	.capture = {
+		.stream_name	= "Capture",
+		.channels_min	= 1,
+		.channels_max	= 2,
+		.rates		= PXA2XX_SSP_RATES,
+		.formats	= PXA2XX_SSP_FORMATS,
+	},
+	
+	/* alsa ops */
+	.startup 	= pxa2xx_ssp_startup,
+	.shutdown 	= pxa2xx_ssp_shutdown,
+	.trigger 	= pxa2xx_ssp_trigger,
+	.hw_params 	= pxa2xx_ssp_hw_params,
+	
+	/* dai ops */
+	.set_sysclk	= pxa2xx_ssp_set_dai_sysclk,
+	.set_clkdiv	= pxa2xx_ssp_set_dai_clkdiv,
+	.set_pll	= pxa2xx_ssp_set_dai_pll,
+	.set_fmt	= pxa2xx_ssp_set_dai_fmt,
+	.set_tdm_slot	= pxa2xx_ssp_set_dai_tdm_slot,
+	.set_tristate	= pxa2xx_ssp_set_dai_tristate,
+},
 };
-
-static int __init pxa2xx_ssp_init(void)
-{
-	return driver_register(&pxa2xx_ssp_driver.driver);
-}
-
-static void __exit pxa2xx_ssp_exit(void)
-{
-	driver_unregister(&pxa2xx_ssp_driver.driver);
-}
-
-module_init(pxa2xx_ssp_init);
-module_exit(pxa2xx_ssp_exit);
-
-/* Module information */
-MODULE_AUTHOR("Liam Girdwood, liam.girdwood@wolfsonmicro.com, www.wolfsonmicro.com");
-MODULE_DESCRIPTION("pxa2xx SSP/PCM SoC Interface");
-MODULE_LICENSE("GPL");
+EXPORT_SYMBOL_GPL(pxa2xx_ssp);

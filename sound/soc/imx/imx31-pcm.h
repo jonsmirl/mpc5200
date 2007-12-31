@@ -62,7 +62,6 @@ struct mxc_pcm_dma_params {
 	dma_channel_params params;
 };
 
-/* platform data */
-extern const char imx31_pcm[SND_SOC_PLATFORM_NAME_SIZE];
+extern const char imx31_platform_id[];
 
 #endif

@@ -5,7 +5,7 @@
 #ifndef _WM9713_H
 #define _WM9713_H
 
-/* clock inputs */
+/* MCLK clock inputs */
 #define WM9713_CLKA_PIN			0
 #define WM9713_CLKB_PIN			1
 
@@ -17,35 +17,33 @@
 #define WM9713_PCMBCLK_DIV		4
 
 /* PCM clk div */
-#define WM9713_PCMDIV(x)	((x - 1) << 8)
+#define WM9713_PCMDIV(x)		((x - 1) << 8)
 
 /* HiFi Div */
-#define WM9713_HIFIDIV(x)	((x - 1) << 12)
+#define WM9713_HIFIDIV(x)		((x - 1) << 12)
 
 /* MCLK clock mulitipliers */
-#define WM9713_CLKA_X1		(0 << 1)
-#define WM9713_CLKA_X2		(1 << 1)
-#define WM9713_CLKB_X1		(0 << 2)
-#define WM9713_CLKB_X2		(1 << 2)
+#define WM9713_CLKA_X1			(0 << 1)
+#define WM9713_CLKA_X2			(1 << 1)
+#define WM9713_CLKB_X1			(0 << 2)
+#define WM9713_CLKB_X2			(1 << 2)
 
 /* MCLK clock MUX */
 #define WM9713_CLK_MUX_A		(0 << 0)
 #define WM9713_CLK_MUX_B		(1 << 0)
 
 /* Voice DAI BCLK divider */
-#define WM9713_PCMBCLK_DIV_1	(0 << 9)
-#define WM9713_PCMBCLK_DIV_2	(1 << 9)
-#define WM9713_PCMBCLK_DIV_4	(2 << 9)
-#define WM9713_PCMBCLK_DIV_8	(3 << 9)
-#define WM9713_PCMBCLK_DIV_16	(4 << 9)
+#define WM9713_PCMBCLK_DIV_1		(0 << 9)
+#define WM9713_PCMBCLK_DIV_2		(1 << 9)
+#define WM9713_PCMBCLK_DIV_4		(2 << 9)
+#define WM9713_PCMBCLK_DIV_8		(3 << 9)
+#define WM9713_PCMBCLK_DIV_16		(4 << 9)
 
-#define WM9713_DAI_AC97_HIFI	0
+/* WM9713 DAI ID's */
+#define WM9713_DAI_AC97_HIFI		0
 #define WM9713_DAI_AC97_AUX		1
-#define WM9713_DAI_PCM_VOICE	2
+#define WM9713_DAI_PCM_VOICE		2
 
-extern const char wm9713_hifi_dai[SND_SOC_DAI_NAME_SIZE];
-extern const char wm9713_aux_dai[SND_SOC_DAI_NAME_SIZE];
-extern const char wm9713_voice_dai[SND_SOC_DAI_NAME_SIZE];
-extern const char wm9713_codec[SND_SOC_CODEC_NAME_SIZE];
+extern const char wm9713_codec_id[];
 
 #endif

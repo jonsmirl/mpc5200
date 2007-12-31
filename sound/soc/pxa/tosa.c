@@ -23,7 +23,7 @@
 
 #include <linux/module.h>
 #include <linux/moduleparam.h>
-#include <linux/device.h>
+#include <linux/platform_device.h>
 
 #include <sound/driver.h>
 #include <sound/core.h>
@@ -41,9 +41,6 @@
 
 #include "../codecs/wm9712.h"
 #include "pxa2xx-pcm.h"
-#include "pxa2xx-ac97.h"
-
-static struct snd_soc_machine tosa;
 
 #define TOSA_HP        0
 #define TOSA_MIC_INT   1
@@ -57,34 +54,36 @@ static int tosa_spk_func;
 
 static void tosa_ext_control(struct snd_soc_machine *machine)
 {
-	int spk = 0, mic_int = 0, hp = 0, hs = 0;
-
 	/* set up jack connection */
 	switch (tosa_jack_func) {
 	case TOSA_HP:
-		hp = 1;
+		snd_soc_dapm_disable_headset(machine, "Headset Jack");
+		snd_soc_dapm_disable_mic(machine, "Mic (Internal)");
+		snd_soc_dapm_enable_headphone(machine, "Headphone Jack");
 		break;
 	case TOSA_MIC_INT:
-		mic_int = 1;
+		snd_soc_dapm_disable_headset(machine, "Headset Jack");
+		snd_soc_dapm_disable_headphone(machine, "Headphone Jack");
+		snd_soc_dapm_enable_mic(machine, "Mic (Internal)");
 		break;
 	case TOSA_HEADSET:
-		hs = 1;
+		snd_soc_dapm_disable_headphone(machine, "Headphone Jack");
+		snd_soc_dapm_disable_mic(machine, "Mic (Internal)");
+		snd_soc_dapm_enable_headset(machine, "Headset Jack");
 		break;
 	}
 
 	if (tosa_spk_func == TOSA_SPK_ON)
-		spk = 1;
+		snd_soc_dapm_enable_speaker(machine, "Speaker");
+	else
+		snd_soc_dapm_disable_speaker(machine, "Speaker");
 
-	snd_soc_dapm_set_endpoint(machine, "Speaker", spk);
-	snd_soc_dapm_set_endpoint(machine, "Mic (Internal)", mic_int);
-	snd_soc_dapm_set_endpoint(machine, "Headphone Jack", hp);
-	snd_soc_dapm_set_endpoint(machine, "Headset Jack", hs);
-	snd_soc_dapm_sync_endpoints(machine);
+	snd_soc_dapm_resync(machine);
 }
 
 static int tosa_startup(struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_link *pcm_link = substream->private_data;
+	struct snd_soc_pcm_runtime *pcm_link = substream->private_data;
 	struct snd_soc_machine *machine = pcm_link->machine;
 
 	/* check the jack status at stream startup */
@@ -94,26 +93,6 @@ static int tosa_startup(struct snd_pcm_substream *substream)
 
 static struct snd_soc_ops tosa_ops = {
 	.startup = tosa_startup,
-};
-
-static int tosa_hifi_pcm_new(struct snd_soc_pcm_link *pcm_link)
-{
-	pcm_link->audio_ops = &tosa_ops;
-	return snd_soc_pcm_new(pcm_link, 1, 1);
-}
-
-struct snd_soc_pcm_link_ops tosa_hifi_pcm = {
-	.new	= tosa_hifi_pcm_new,
-};
-
-static int tosa_aux_pcm_new(struct snd_soc_pcm_link *pcm_link)
-{
-	pcm_link->audio_ops = &tosa_ops;
-	return snd_soc_pcm_new(pcm_link, 1, 0);
-}
-
-struct snd_soc_pcm_link_ops tosa_aux_pcm = {
-	.new	= tosa_aux_pcm_new,
 };
 
 static int tosa_get_jack(struct snd_kcontrol *kcontrol,
@@ -227,24 +206,23 @@ static int tosa_wm9712_read(void *control_data, long val, int reg)
 	return 0;
 }
 
-static int tosa_mach_probe(struct snd_soc_machine *machine)
+static int tosa_init(struct snd_soc_machine *machine)
 {
 	struct snd_soc_codec *codec;
-	struct snd_soc_pcm_link *pcm_link;
 	struct snd_ac97_bus_ops *ac97_ops;
 	int i, ret;
 
-	pcm_link = list_first_entry(&machine->active_list, 
-		struct snd_soc_pcm_link, active_list);
-	codec = pcm_link->codec;
+	codec = snd_soc_get_codec(machine, wm9712_codec_id);
+	if (codec == NULL)
+		return -ENODEV;
 	
-	codec->control_data = codec->ac97;
-	codec->mach_write = tosa_wm9712_write;
-	codec->mach_read = tosa_wm9712_read;
-	ac97_ops = pcm_link->cpu_dai->ac97_ops;
+	snd_soc_codec_set_io(codec, tosa_wm9712_read, 
+		tosa_wm9712_write, codec->ac97);
+		
+	ac97_ops = snd_soc_get_ac97_ops(machine, PXA2XX_DAI_AC97_HIFI);
 	
 	/* register with AC97 bus for ad-hoc driver access */
-	ret = snd_soc_new_ac97_codec(pcm_link, ac97_ops, 0);
+	ret = snd_soc_new_ac97_codec(codec, ac97_ops, machine->card, 0, 0);
 	if (ret < 0)
 		return ret;
 		
@@ -252,15 +230,16 @@ static int tosa_mach_probe(struct snd_soc_machine *machine)
 	 * a warm reset followed by an optional cold reset for codec */
 	ac97_ops->reset(codec->ac97);
 	ac97_ops->warm_reset(codec->ac97);
-	if (ac97_ops->read(codec->ac97, AC97_VENDOR_ID1) == 0) { //lg
+	if (ac97_ops->read(codec->ac97, AC97_VENDOR_ID1) == 0) {
 		printk(KERN_ERR "AC97 link error\n");
 		return ret;
-	}	
-	codec->ops->probe_codec(codec, machine);
+	}
+
+	snd_soc_codec_init(codec, machine);
 
 	/* set up tosa codec pins */
-	snd_soc_dapm_set_endpoint(machine, "OUT3", 0);
-	snd_soc_dapm_set_endpoint(machine, "MONOOUT", 0);
+	snd_soc_dapm_disable_pin(machine, "OUT3");
+	snd_soc_dapm_disable_pin(machine, "MONOOUT");
 
 	/* Add test specific controls */
 	for (i = 0; i < ARRAY_SIZE(tosa_controls); i++) {
@@ -278,26 +257,14 @@ static int tosa_mach_probe(struct snd_soc_machine *machine)
 
 	/* set up tosa specific audio path audio_mapnects */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(machine, audio_map[i][0], 
+		snd_soc_dapm_add_route(machine, audio_map[i][0], 
 			audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_sync_endpoints(machine);
-	
-	/* register card with ALSA upper layers */
-	ret = snd_soc_register_card(machine);
-	if (ret < 0) {
-		printk(KERN_ERR "%s: failed to register sound card\n",
-			__FUNCTION__);
-		return ret;
-	}
+	snd_soc_dapm_resync(machine);
 	
 	return 0;
 }
-
-struct snd_soc_machine_ops tosa_mach_ops = {
-	.mach_probe = tosa_mach_probe,	
-};
 
 /*
  * This is an example machine initialisation for a wm9712 connected to a
@@ -307,69 +274,52 @@ struct snd_soc_machine_ops tosa_mach_ops = {
 static int tosa_wm9712_probe(struct platform_device *pdev)
 {
 	struct snd_soc_machine *machine;
-	struct snd_soc_pcm_link * hifi, *aux;
 	int ret;
 
 	if (!machine_is_tosa())
 		return -ENODEV;
-
-	machine = kzalloc(sizeof(struct snd_soc_machine), GFP_KERNEL);
+	
+	machine = snd_soc_machine_create("tosa", &pdev->dev, 
+		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
 	if (machine == NULL)
 		return -ENOMEM;
 
-	machine->owner = THIS_MODULE;
-	machine->pdev = pdev;
-	machine->name = "Mainstone";
 	machine->longname = "WM9712";
-	machine->ops = &tosa_mach_ops;
-	pdev->dev.driver_data = machine;
+	machine->init = tosa_init,
+	machine->private_data = pdev;
+	platform_set_drvdata(pdev, machine);
 	
-	/* register card */
-	ret = snd_soc_new_card(machine, 2, SNDRV_DEFAULT_IDX1, 
-		SNDRV_DEFAULT_STR1);
-	if (ret < 0) {
-		printk(KERN_ERR "%s: failed to create sound card\n", __func__);
-		goto card_err;
-	}
+	ret = snd_soc_codec_create(machine, wm9712_codec_id);
+	if (ret < 0)
+		goto err;
 
-	/* tosa wm9712 hifi interface */
-	hifi = snd_soc_pcm_link_new(machine, "tosa-hifi", &tosa_hifi_pcm,
-		pxa2xx_pcm, wm9712_codec, wm9712_hifi_dai, pxa2xx_ac97_hifi);
-	if (hifi == NULL) {
-		printk("failed to create HiFi PCM link\n");
-		goto link_err;
-	}
-	ret =  snd_soc_pcm_link_attach(hifi);
-	if (ret < 0) 
-		goto link_err;
-	
-	/* tosa wm9712 aux interface */
-	aux = snd_soc_pcm_link_new(machine, "tosa-aux", &tosa_aux_pcm,
-		pxa2xx_pcm, wm9712_codec, wm9712_aux_dai, pxa2xx_ac97_aux);
-	if (aux == NULL) {
-		printk("failed to create AUX PCM link\n");
-		goto link_err;
-	}
-	ret =  snd_soc_pcm_link_attach(aux);
-	if (ret < 0) 
-		goto link_err;
-	
-	return 0;
+	ret = snd_soc_platform_create(machine, pxa_platform_id);
+	if (ret < 0)
+		goto err;
 
-link_err:
+	ret = snd_soc_pcm_create(machine, NULL, 
+		WM9712_DAI_HIFI, PXA2XX_DAI_AC97_HIFI, 1, 1);
+	if (ret < 0)
+		goto err;
+	
+	ret = snd_soc_pcm_create(machine, NULL, 
+		WM9712_DAI_AUX, PXA2XX_DAI_AC97_AUX, 1, 1);
+	if (ret < 0)
+		goto err;
+	
+	ret = snd_soc_machine_register(machine);
+	return ret;
+	
+err:
 	snd_soc_machine_free(machine);
-card_err:
-	kfree(machine);
 	return ret;
 }
 
 static int __exit tosa_wm9712_remove(struct platform_device *pdev)
 {
-	struct snd_soc_machine *machine = pdev->dev.driver_data;
+	struct snd_soc_machine *machine = platform_get_drvdata(pdev);
 
 	snd_soc_machine_free(machine);
-	kfree(machine);
-
 	return 0;
 }
 
@@ -378,21 +328,19 @@ static int __exit tosa_wm9712_remove(struct platform_device *pdev)
 static int tosa_wm9712_suspend(struct platform_device *pdev, 
 	pm_message_t state)
 {
-	struct snd_soc_machine *machine = pdev->dev.driver_data;
-	
+	struct snd_soc_machine *machine = platform_get_drvdata(pdev);
 	return snd_soc_suspend(machine, state);
 }
 
 static int tosa_wm9712_resume(struct platform_device *pdev)
 {
-	struct snd_soc_machine *machine = pdev->dev.driver_data;
-	
+	struct snd_soc_machine *machine = platform_get_drvdata(pdev);
 	return snd_soc_resume(machine);
 }
 
 #else
-#define tosa_machine_suspend NULL
-#define tosa_machine_resume  NULL
+#define tosa_wm9712_suspend NULL
+#define tosa_wm9712_resume  NULL
 #endif
 
 static struct platform_driver tosa_wm9712_driver = {

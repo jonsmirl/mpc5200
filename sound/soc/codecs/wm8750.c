@@ -112,7 +112,7 @@ static int wm8750_write(struct snd_soc_codec *codec, unsigned int reg,
 	data[1] = value & 0x00ff;
 
 	wm8750_write_reg_cache (codec, reg, value);
-	if (codec->mach_write(codec->control_data, (long)data, 2) == 2)
+	if (codec->machine_write(codec->control_data, (long)data, 2) == 2)
 		return 0;
 	else
 		return -EIO;
@@ -488,7 +488,7 @@ static int wm8750_add_widgets(struct snd_soc_codec *codec,
 
 	/* set up audio path audio_mapnects */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(machine, audio_map[i][0],
+		snd_soc_dapm_add_route(machine, audio_map[i][0],
 			audio_map[i][1], audio_map[i][2]);
 	}
 
@@ -568,7 +568,7 @@ static inline int get_coeff(int mclk, int rate)
 	return -EINVAL;
 }
 
-static int wm8750_set_dai_sysclk(struct snd_soc_dai *dai,
+static int wm8750_set_dai_sysclk(struct snd_soc_dai_runtime *dai,
 		int clk_id, unsigned int freq, int dir)
 {
 	struct wm8750_priv *wm8750 = dai->private_data;
@@ -585,7 +585,7 @@ static int wm8750_set_dai_sysclk(struct snd_soc_dai *dai,
 	return -EINVAL;
 }
 
-static int wm8750_set_dai_fmt(struct snd_soc_dai *dai,
+static int wm8750_set_dai_fmt(struct snd_soc_dai_runtime *dai,
 		unsigned int fmt)
 {
 	struct snd_soc_codec *codec = dai->codec;
@@ -647,12 +647,11 @@ static int wm8750_set_dai_fmt(struct snd_soc_dai *dai,
 }
 
 static int wm8750_pcm_hw_params(struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params)
+	struct snd_pcm_hw_params *params, struct snd_soc_dai_runtime *dai)
 {
-	struct snd_soc_pcm_link *pcm_link = substream->private_data;
+	struct snd_soc_pcm_runtime *pcm_link = substream->private_data;
 	struct snd_soc_codec *codec = pcm_link->codec;
-	struct snd_soc_dai *codec_dai = pcm_link->codec_dai;
-	struct wm8750_priv *wm8750 = codec_dai->private_data;
+	struct wm8750_priv *wm8750 = dai->private_data;
 	u16 iface = wm8750_read_reg_cache(codec, WM8750_IFACE) & 0x1f3;
 	u16 srate = wm8750_read_reg_cache(codec, WM8750_SRATE) & 0x1c0;
 	int coeff = get_coeff(wm8750->sysclk, params_rate(params));
@@ -681,7 +680,7 @@ static int wm8750_pcm_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int wm8750_mute(struct snd_soc_dai *dai, int mute)
+static int wm8750_mute(struct snd_soc_dai_runtime *dai, int mute)
 {
 	struct snd_soc_codec *codec = dai->codec;
 	u16 mute_reg = wm8750_read_reg_cache(codec, WM8750_ADCDAC) & 0xfff7;
@@ -693,29 +692,29 @@ static int wm8750_mute(struct snd_soc_dai *dai, int mute)
 	return 0;
 }
 
-static int wm8750_dapm_event(struct snd_soc_codec *codec, int event)
+static int wm8750_set_bias_power(struct snd_soc_codec *codec, 
+	enum snd_soc_dapm_bias_power level)
 {
 	u16 pwr_reg = wm8750_read_reg_cache(codec, WM8750_PWR1) & 0xfe3e;
 
-	switch (event) {
-	case SNDRV_CTL_POWER_D0: /* full On */
+	switch (level) {
+	case SND_SOC_BIAS_ON: /* full On */
 		/* set vmid to 50k and unmute dac */
 		wm8750_write(codec, WM8750_PWR1, pwr_reg | 0x00c0);
 		break;
-	case SNDRV_CTL_POWER_D1: /* partial On */
-	case SNDRV_CTL_POWER_D2: /* partial On */
+	case SND_SOC_BIAS_PREPARE: /* partial On */
 		/* set vmid to 5k for quick power up */
 		wm8750_write(codec, WM8750_PWR1, pwr_reg | 0x01c1);
 		break;
-	case SNDRV_CTL_POWER_D3hot: /* Off, with power */
+	case SND_SOC_BIAS_STANDBY: /* Off, with power */
 		/* mute dac and set vmid to 500k, enable VREF */
 		wm8750_write(codec, WM8750_PWR1, pwr_reg | 0x0141);
 		break;
-	case SNDRV_CTL_POWER_D3cold: /* Off, without power */
+	case SND_SOC_BIAS_OFF: /* Off, without power */
 		wm8750_write(codec, WM8750_PWR1, 0x0001);
 		break;
 	}
-	codec->dapm_state = event;
+	codec->dapm_state = level;
 	return 0;
 }
 
@@ -723,14 +722,14 @@ static void wm8750_work(struct work_struct *work)
 {
 	struct snd_soc_codec *codec =
 		container_of(work, struct snd_soc_codec, delayed_work.work);
-	wm8750_dapm_event(codec, codec->dapm_state);
+	wm8750_set_bias_power(codec, codec->dapm_state);
 }
 
 static int wm8750_suspend(struct device *dev, pm_message_t state)
 {
 	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 
-	wm8750_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
+	wm8750_set_bias_power(codec, SND_SOC_BIAS_OFF);
 	return 0;
 }
 
@@ -747,15 +746,15 @@ static int wm8750_resume(struct device *dev)
 			continue;
 		data[0] = (i << 1) | ((cache[i] >> 8) & 0x0001);
 		data[1] = cache[i] & 0x00ff;
-		codec->mach_write(codec->control_data, (long)data, 2);
+		codec->machine_write(codec->control_data, (long)data, 2);
 	}
 
-	wm8750_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
+	wm8750_set_bias_power(codec, SND_SOC_BIAS_STANDBY);
 
 	/* charge wm8750 caps */
-	if (codec->suspend_dapm_state == SNDRV_CTL_POWER_D0) {
-		wm8750_dapm_event(codec, SNDRV_CTL_POWER_D2);
-		codec->dapm_state = SNDRV_CTL_POWER_D0;
+	if (codec->suspend_dapm_state == SND_SOC_BIAS_ON) {
+		wm8750_set_bias_power(codec, SND_SOC_BIAS_PREPARE);
+		codec->dapm_state = SND_SOC_BIAS_ON;
 		schedule_delayed_work(&codec->delayed_work, msecs_to_jiffies(1000));
 	}
 
@@ -763,9 +762,28 @@ static int wm8750_resume(struct device *dev)
 }
 
 /*
+ * This function forces any delayed work to be queued and run.
+ */
+static int run_delayed_work(struct delayed_work *dwork)
+{
+	int ret;
+
+	/* cancel any work waiting to be queued. */
+	ret = cancel_delayed_work(dwork);
+
+	/* if there was any work waiting then we run it now and
+	 * wait for it's completion */
+	if (ret) {
+		schedule_delayed_work(dwork, 0);
+		flush_scheduled_work();
+	}
+	return ret;
+}
+
+/*
  * initialise the WM8750 codec
  */
-static int wm8750_probe_codec(struct snd_soc_codec *codec,
+static int wm8750_codec_init(struct snd_soc_codec *codec,
 	struct snd_soc_machine *machine)
 {
 	int reg;
@@ -773,8 +791,8 @@ static int wm8750_probe_codec(struct snd_soc_codec *codec,
 	wm8750_reset(codec);
 
 	/* charge output caps */
-	wm8750_dapm_event(codec, SNDRV_CTL_POWER_D2);
-	codec->dapm_state = SNDRV_CTL_POWER_D3hot;
+	wm8750_set_bias_power(codec, SND_SOC_BIAS_PREPARE);
+	codec->dapm_state = SND_SOC_BIAS_STANDBY;
 	schedule_delayed_work(&codec->delayed_work, msecs_to_jiffies(1000));
 
 	/* set the update bits */
@@ -801,58 +819,11 @@ static int wm8750_probe_codec(struct snd_soc_codec *codec,
 	return 0;
 }
 
-/*
- * This function forces any delayed work to be queued and run.
- */
-static int run_delayed_work(struct delayed_work *dwork)
+static void wm8750_codec_exit(struct snd_soc_codec *codec,
+	struct snd_soc_machine *machine)
 {
-	int ret;
-
-	/* cancel any work waiting to be queued. */
-	ret = cancel_delayed_work(dwork);
-
-	/* if there was any work waiting then we run it now and
-	 * wait for it's completion */
-	if (ret) {
-		schedule_delayed_work(dwork, 0);
-		flush_scheduled_work();
-	}
-	return ret;
-}
-
-static struct snd_soc_codec_ops wm8750_codec_ops = {
-	.dapm_event	= wm8750_dapm_event,
-	.read		= wm8750_read_reg_cache,
-	.write		= wm8750_write,
-	.probe_codec	= wm8750_probe_codec,
-};
-
-static int wm8750_codec_probe(struct device *dev)
-{
-	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
-
-	info("WM8750 Audio Codec %s", WM8750_VERSION);
-
-	codec->reg_cache = kmemdup(wm8750_reg, sizeof(wm8750_reg), GFP_KERNEL);
-	if (codec->reg_cache == NULL)
-		return -ENOMEM;
-	codec->reg_cache_size = sizeof(wm8750_reg);
-
-	INIT_DELAYED_WORK(&codec->delayed_work, wm8750_work);
-	codec->owner = THIS_MODULE;
-	codec->ops = &wm8750_codec_ops;
-	return 0;
-}
-
-static int wm8750_codec_remove(struct device *dev)
-{
-	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
-	
-	if (codec->control_data)
-		wm8750_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
+	wm8750_set_bias_power(codec, SND_SOC_BIAS_OFF);
 	run_delayed_work(&codec->delayed_work);
-	kfree(codec->reg_cache);
-	return 0;
 }
 
 #define WM8750_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 |\
@@ -862,61 +833,100 @@ static int wm8750_codec_remove(struct device *dev)
 #define WM8750_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |\
 	SNDRV_PCM_FMTBIT_S24_LE)
 
-static const struct snd_soc_pcm_stream wm8750_dai_playback = {
-	.stream_name	= "Playback",
-	.channels_min	= 1,
-	.channels_max	= 2,
-	.rates		= WM8750_RATES,
-	.formats	= WM8750_FORMATS,
-};
 
-static const struct snd_soc_pcm_stream wm8750_dai_capture = {
-	.stream_name	= "Capture",
-	.channels_min	= 1,
-	.channels_max	= 2,
-	.rates		= WM8750_RATES,
-	.formats	= WM8750_FORMATS,
-};
-
-/* dai ops, called by machine drivers */
-static const struct snd_soc_dai_ops wm8750_dai_ops = {
-	.set_sysclk	= wm8750_set_dai_sysclk,
-	.set_fmt	= wm8750_set_dai_fmt,
-	.digital_mute	= wm8750_mute,
-};
-
-/* audio ops, called by alsa */
-static const struct snd_soc_ops wm8750_dai_audio_ops = {
-	.hw_params	= wm8750_pcm_hw_params,
-};
-
-static int wm8750_dai_probe(struct device *dev)
+static int wm8750_dai_new(struct snd_soc_dai_runtime *dai)
 {
-	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
 	struct wm8750_priv *wm8750;
 	
 	wm8750 = kzalloc(sizeof(struct wm8750_priv), GFP_KERNEL);
 	if (wm8750 == NULL)
 		return -ENOMEM;
-		
-	INIT_LIST_HEAD(&dai->list);
+
 	dai->private_data = wm8750;
-	dai->ops = &wm8750_dai_ops;
-	dai->audio_ops = &wm8750_dai_audio_ops;
-	dai->capture = &wm8750_dai_capture;
-	dai->playback = &wm8750_dai_playback;
 	return 0;
 }
 
-static int wm8750_dai_remove(struct device *dev)
+static void wm8750_dai_free(struct snd_soc_dai_runtime *dai)
 {
-	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
 	kfree(dai->private_data);
+}
+
+static struct snd_soc_dai wm8750_dai = {
+	.name	= "wm8750-HiFi",
+	.id	= WM8750_DAI,
+	.new	= wm8750_dai_new,
+	.free	= wm8750_dai_free,
+	
+	/* stream cababilities */
+	.playback = {
+		.stream_name	= "Playback",
+		.channels_min	= 1,
+		.channels_max	= 2,
+		.rates		= WM8750_RATES,
+		.formats	= WM8750_FORMATS,
+	},
+	.capture = {
+		.stream_name	= "Capture",
+		.channels_min	= 1,
+		.channels_max	= 2,
+		.rates		= WM8750_RATES,
+		.formats	= WM8750_FORMATS,
+	},
+	/* alsa ops */
+	.hw_params	= wm8750_pcm_hw_params,
+	
+	/* dai ops */
+	.set_sysclk	= wm8750_set_dai_sysclk,
+	.set_fmt	= wm8750_set_dai_fmt,
+	.digital_mute	= wm8750_mute,
+};
+
+static int wm8750_codec_probe(struct device *dev)
+{
+	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
+	int ret;
+
+	info("WM8750 Audio Codec %s", WM8750_VERSION);
+
+	codec->reg_cache = kmemdup(wm8750_reg, sizeof(wm8750_reg), GFP_KERNEL);
+	if (codec->reg_cache == NULL)
+		return -ENOMEM;
+	codec->reg_cache_size = sizeof(wm8750_reg);
+	codec->reg_cache_step = 1;
+
+	INIT_DELAYED_WORK(&codec->delayed_work, wm8750_work);
+	codec->set_bias_power = wm8750_set_bias_power;
+	codec->codec_read = wm8750_read_reg_cache;
+	codec->codec_write = wm8750_write;
+	codec->init = wm8750_codec_init;
+	codec->exit = wm8750_codec_exit;
+	
+	ret = snd_soc_codec_add_dai(codec, &wm8750_dai, 1);
+	if (ret < 0)
+		goto err;
+		
+ 	ret = snd_soc_register_codec(codec);
+ 	if (ret < 0)
+ 		goto err;
+	return ret;
+err:
+	kfree(codec->reg_cache);
+	return ret;
+}
+
+static int wm8750_codec_remove(struct device *dev)
+{
+	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
+	snd_soc_unregister_codec(codec);
+	kfree(codec->reg_cache);
 	return 0;
 }
+
+const char wm8750_codec_id[] = "wm8750-codec";
+EXPORT_SYMBOL_GPL(wm8750_codec_id);
 
 static struct device_driver wm8750_codec_driver = {
-	.name 		= "wm8750-codec",
+	.name 		= wm8750_codec_id,
 	.owner		= THIS_MODULE,
 	.bus 		= &asoc_bus_type,
 	.probe		= wm8750_codec_probe,
@@ -925,32 +935,13 @@ static struct device_driver wm8750_codec_driver = {
 	.resume		= wm8750_resume,
 };
 
-static struct device_driver wm8750_dai_driver = {
-	.name 		= "wm8750-dai",
-	.owner		= THIS_MODULE,
-	.bus 		= &asoc_bus_type,
-	.probe		= wm8750_dai_probe,
-	.remove		= __devexit_p(wm8750_dai_remove),
-};
-
 static __init int wm8750_init(void)
 {
-	int ret = 0;
-	
-	ret = driver_register(&wm8750_codec_driver);
-	if (ret < 0)
-		return ret;
-	ret = driver_register(&wm8750_dai_driver);
-	if (ret < 0) {
-		driver_unregister(&wm8750_codec_driver);
-		return ret;
-	}
-	return ret;
+	return driver_register(&wm8750_codec_driver);
 }
 
 static __exit void wm8750_exit(void)
 {
-	driver_unregister(&wm8750_dai_driver);
 	driver_unregister(&wm8750_codec_driver);
 }
 

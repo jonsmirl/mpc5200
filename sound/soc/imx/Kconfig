@@ -18,12 +18,13 @@ config SND_MXC_SOC_AC97
 config SND_MXC_SOC_SSI
 	tristate
 
-config SND_SOC_MX31ADS_WM8753
-	tristate "SoC Audio support for MX31 - WM8753"
+config SND_SOC_IMX32ADS_WM8350
+	tristate "SoC Audio support for MX31 - WM8350"
 	depends on SND_MXC_SOC && ARCH_MX3
 	select SND_MXC_SOC_SSI
-	select SND_SOC_WM8753
+	select SND_SOC_WM8350
+	select REGULATOR_WM8350
 	help
-	  Say Y if you want to add support for SoC audio on MX31ADS
-	  with the WM8753.
+	  Say Y if you want to add support for SoC audio on MX32ADS
+	  with the WM8350.
 

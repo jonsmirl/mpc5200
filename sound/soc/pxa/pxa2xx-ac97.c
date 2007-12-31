@@ -31,7 +31,6 @@
 #include <asm/arch/audio.h>
 
 #include "pxa2xx-pcm.h"
-#include "pxa2xx-ac97.h"
 
 static DEFINE_MUTEX(car_mutex);
 static DECLARE_WAIT_QUEUE_HEAD(gsr_wq);
@@ -179,7 +178,7 @@ static void pxa2xx_ac97_cold_reset(struct snd_ac97 *ac97)
 	GCR |= GCR_SDONE_IE|GCR_CDONE_IE;
 }
 
-static irqreturn_t pxa2xx_ac97_irq(int irq, void *dev_id)
+static irqreturn_t pxa2xx_ac97_irq(int irq, void *dai_id)
 {
 	long status;
 
@@ -279,11 +278,8 @@ static int pxa2xx_ac97_resume(struct device *dev)
 #endif
 
 static int pxa2xx_ac97_hw_params(struct snd_pcm_substream *substream,
-				struct snd_pcm_hw_params *params)
+	struct snd_pcm_hw_params *params, struct snd_soc_dai_runtime *cpu_dai)
 {
-	struct snd_soc_pcm_link *pcm_link = substream->private_data;
-	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
-
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		cpu_dai->dma_data = &pxa2xx_ac97_pcm_stereo_out;
 	else
@@ -293,11 +289,8 @@ static int pxa2xx_ac97_hw_params(struct snd_pcm_substream *substream,
 }
 
 static int pxa2xx_ac97_hw_aux_params(struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params)
+	struct snd_pcm_hw_params *params, struct snd_soc_dai_runtime *cpu_dai)
 {
-	struct snd_soc_pcm_link *pcm_link = substream->private_data;
-	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
-
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		cpu_dai->dma_data = &pxa2xx_ac97_pcm_aux_mono_out;
 	else
@@ -307,11 +300,8 @@ static int pxa2xx_ac97_hw_aux_params(struct snd_pcm_substream *substream,
 }
 
 static int pxa2xx_ac97_hw_mic_params(struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params)
+	struct snd_pcm_hw_params *params, struct snd_soc_dai_runtime *cpu_dai)
 {
-	struct snd_soc_pcm_link *pcm_link = substream->private_data;
-	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
-
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		return -ENODEV;
 	else
@@ -324,68 +314,14 @@ static int pxa2xx_ac97_hw_mic_params(struct snd_pcm_substream *substream,
 		SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_22050 | \
 		SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000)
 
-static const struct snd_soc_pcm_stream pxa2xx_ac97_hifi_playback = {
-	.stream_name	= "HiFi Playback",
-	.channels_min	= 2,
-	.channels_max	= 2,
-	.rates		= PXA2XX_AC97_RATES,
-	.formats	= SNDRV_PCM_FMTBIT_S16_LE,
-};
-
-static const struct snd_soc_pcm_stream pxa2xx_ac97_hifi_capture = {
-	.stream_name	= "HiFi Capture",
-	.channels_min	= 2,
-	.channels_max	= 2,
-	.rates		= PXA2XX_AC97_RATES,
-	.formats	= SNDRV_PCM_FMTBIT_S16_LE,
-};
-
-static const struct snd_soc_pcm_stream pxa2xx_ac97_aux_playback = {
-	.stream_name	= "Aux Playback",
-	.channels_min	= 1,
-	.channels_max	= 1,
-	.rates		= PXA2XX_AC97_RATES,
-	.formats	= SNDRV_PCM_FMTBIT_S16_LE,
-};
-
-static const struct snd_soc_pcm_stream pxa2xx_ac97_aux_capture = {
-	.stream_name	= "Aux Capture",
-	.channels_min	= 1,
-	.channels_max	= 1,
-	.rates		= PXA2XX_AC97_RATES,
-	.formats	= SNDRV_PCM_FMTBIT_S16_LE,
-};
-
-static const struct snd_soc_pcm_stream pxa2xx_ac97_mic_capture = {
-	.stream_name	= "Mic Capture",
-	.channels_min	= 1,
-	.channels_max	= 1,
-	.rates		= PXA2XX_AC97_RATES,
-	.formats	= SNDRV_PCM_FMTBIT_S16_LE,
-};
-
-/* audio ops, called by alsa */
-static const struct snd_soc_ops pxa2xx_ac97_hifi_audio_ops = {
-	.hw_params = pxa2xx_ac97_hw_params,
-};
-
-static const struct snd_soc_ops pxa2xx_ac97_aux_audio_ops = {
-	.hw_params = pxa2xx_ac97_hw_aux_params,
-};
-
-static const struct snd_soc_ops pxa2xx_ac97_mic_audio_ops = {
-	.hw_params = pxa2xx_ac97_hw_mic_params,
-};
-
-static int pxa2xx_ac97_probe(struct device *dev)
+static int pxa2xx_ac97_new(struct snd_soc_dai_runtime *cpu_dai)
 {
-	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
 	int ret;
 
 	ret = request_irq(IRQ_AC97, pxa2xx_ac97_irq, IRQF_DISABLED, "AC97", 
-		dev);
+		cpu_dai);
 	if (ret < 0)
-		goto err;
+		return ret;
 
 	pxa_gpio_mode(GPIO31_SYNC_AC97_MD);
 	pxa_gpio_mode(GPIO30_SDATA_OUT_AC97_MD);
@@ -396,138 +332,89 @@ static int pxa2xx_ac97_probe(struct device *dev)
 	pxa_gpio_mode(113 | GPIO_ALT_FN_2_OUT);
 #endif
 	pxa_set_cken(CKEN_AC97, 1);
-	
-	dai->type = SND_SOC_DAI_AC97;
-	dai->audio_ops = &pxa2xx_ac97_hifi_audio_ops;
-	dai->playback = &pxa2xx_ac97_hifi_playback;
-	dai->capture = &pxa2xx_ac97_hifi_capture;
-	dai->ac97_ops = &pxa2xx_ac97_ops;
-	snd_soc_register_cpu_dai(dai);
 	return 0;
-	
-err:
-	if (CKEN & CKEN_AC97) {
-		GCR |= GCR_ACLINK_OFF;
-		free_irq(IRQ_AC97, NULL);
-		pxa_set_cken(CKEN_AC97, 0);
-	}
-	return ret;
 }
 
-static int pxa2xx_ac97_remove(struct device *dev)
+static void pxa2xx_ac97_free(struct snd_soc_dai_runtime *cpu_dai)
 {
 	GCR |= GCR_ACLINK_OFF;
-	free_irq(IRQ_AC97, NULL);
+	free_irq(IRQ_AC97, cpu_dai);
 	pxa_set_cken(CKEN_AC97, 0);
-	return 0;
 }
 
-static int pxa2xx_ac97_aux_probe(struct device *dev)
-{
-	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
+struct snd_soc_dai pxa2xx_ac97[] = {
+{	
+	.name	= "pxa2xx-ac97",
+	.id	= PXA2XX_DAI_AC97_HIFI,
+	.ac97_control	= 1,
+
+	.new	= pxa2xx_ac97_new,
+	.free	= pxa2xx_ac97_free,
 	
-	dai->type = SND_SOC_DAI_AC97;
-	dai->audio_ops = &pxa2xx_ac97_aux_audio_ops;
-	dai->playback = &pxa2xx_ac97_aux_playback;
-	dai->capture = &pxa2xx_ac97_aux_capture;
-	dai->ac97_ops = &pxa2xx_ac97_ops;
-	snd_soc_register_cpu_dai(dai);
-	return 0;
-}
-
-static int pxa2xx_ac97_mic_probe(struct device *dev)
-{
-	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
-	
-	dai->type = SND_SOC_DAI_AC97;
-	dai->audio_ops = &pxa2xx_ac97_mic_audio_ops;
-	dai->capture = &pxa2xx_ac97_mic_capture;
-	dai->ac97_ops = &pxa2xx_ac97_ops;
-	snd_soc_register_cpu_dai(dai);
-	return 0;
-}
-
-const char pxa2xx_ac97_hifi[SND_SOC_DAI_NAME_SIZE] = {
-	"pxa2xx-ac97-hifi"
-};
-EXPORT_SYMBOL_GPL(pxa2xx_ac97_hifi);
-
-static struct snd_soc_device_driver pxa2xx_ac97_hifi_driver = {
-	.type	= SND_SOC_BUS_TYPE_DAI,
-	.driver	= {
-		.name 		= pxa2xx_ac97_hifi,
-		.owner		= THIS_MODULE,
-		.bus 		= &asoc_bus_type,
-		.probe		= pxa2xx_ac97_probe,
-		.remove		= __devexit_p(pxa2xx_ac97_remove),
-		.suspend	= pxa2xx_ac97_suspend,
-		.resume		= pxa2xx_ac97_resume,
+	.playback = {
+		.stream_name	= "HiFi Playback",
+		.channels_min	= 2,
+		.channels_max	= 2,
+		.rates		= PXA2XX_AC97_RATES,
+		.formats	= SNDRV_PCM_FMTBIT_S16_LE,
 	},
-};
-
-const char pxa2xx_ac97_aux[SND_SOC_DAI_NAME_SIZE] = {
-	"pxa2xx-ac97-aux"
-};
-EXPORT_SYMBOL_GPL(pxa2xx_ac97_aux);
-
-static struct snd_soc_device_driver pxa2xx_ac97_aux_driver = {
-	.type	= SND_SOC_BUS_TYPE_DAI,
-	.driver	= {
-		.name 		= pxa2xx_ac97_aux,
-		.owner		= THIS_MODULE,
-		.bus 		= &asoc_bus_type,
-		.probe		= pxa2xx_ac97_aux_probe,
+	.capture = {
+		.stream_name	= "HiFi Capture",
+		.channels_min	= 2,
+		.channels_max	= 2,
+		.rates		= PXA2XX_AC97_RATES,
+		.formats	= SNDRV_PCM_FMTBIT_S16_LE,
 	},
-};
-const char pxa2xx_ac97_mic[SND_SOC_DAI_NAME_SIZE] = {
-	"pxa2xx-ac97-mic"
-};
-EXPORT_SYMBOL_GPL(pxa2xx_ac97_mic);
-
-static struct snd_soc_device_driver pxa2xx_ac97_mic_driver = {
-	.type	= SND_SOC_BUS_TYPE_DAI,
-	.driver	= {
-		.name 		= pxa2xx_ac97_mic,
-		.owner		= THIS_MODULE,
-		.bus 		= &asoc_bus_type,
-		.probe		= pxa2xx_ac97_mic_probe,
+	
+	/* alsa ops */
+	.hw_params	= pxa2xx_ac97_hw_params,
+	
+	/* ac97_ops */
+	.ac97_ops 	= &pxa2xx_ac97_ops,
+},
+{	
+	.name	= "pxa2xx-aux",
+	.id	= PXA2XX_DAI_AC97_AUX,
+	
+	.playback = {
+		.stream_name	= "Aux Playback",
+		.channels_min	= 1,
+		.channels_max	= 1,
+		.rates		= PXA2XX_AC97_RATES,
+		.formats	= SNDRV_PCM_FMTBIT_S16_LE,
 	},
-};
-
-static int __init pxa2xx_ac97_init(void)
-{
-	int ret;
+	.capture = {
+		.stream_name	= "Aux Capture",
+		.channels_min	= 1,
+		.channels_max	= 1,
+		.rates		= PXA2XX_AC97_RATES,
+		.formats	= SNDRV_PCM_FMTBIT_S16_LE,
+	},
 	
-	ret = driver_register(&pxa2xx_ac97_hifi_driver.driver);
-	if (ret < 0)
-		return ret;
+	/* alsa ops */
+	.hw_params 	= pxa2xx_ac97_hw_aux_params,
 	
-	ret = driver_register(&pxa2xx_ac97_aux_driver.driver);
-	if (ret < 0)
-		goto aux_err;
+	/* ac97_ops */
+	.ac97_ops 	= &pxa2xx_ac97_ops,
+},
+{	
+	.name	= "pxa2xx-mic",
+	.id	= PXA2XX_DAI_AC97_MIC,
 	
-	ret = driver_register(&pxa2xx_ac97_mic_driver.driver);
-	if (ret < 0)
-		goto mic_err;
-	return ret;
+	.capture = {
+		.stream_name	= "Mic Capture",
+		.channels_min	= 1,
+		.channels_max	= 1,
+		.rates		= PXA2XX_AC97_RATES,
+		.formats	= SNDRV_PCM_FMTBIT_S16_LE,
+	},
+	
+	/* alsa ops */
+	.hw_params	= pxa2xx_ac97_hw_mic_params,
+	
+	/* ac97_ops */
+	.ac97_ops 	= &pxa2xx_ac97_ops,
+	
+}};
+EXPORT_SYMBOL_GPL(pxa2xx_ac97);
 
-mic_err:
-	driver_unregister(&pxa2xx_ac97_aux_driver.driver);
-aux_err:
-	driver_unregister(&pxa2xx_ac97_hifi_driver.driver);
-	return ret;	
-}
-
-static void __exit pxa2xx_ac97_exit(void)
-{
-	driver_unregister(&pxa2xx_ac97_mic_driver.driver);
-	driver_unregister(&pxa2xx_ac97_aux_driver.driver);
-	driver_unregister(&pxa2xx_ac97_hifi_driver.driver);
-}
-
-module_init(pxa2xx_ac97_init);
-module_exit(pxa2xx_ac97_exit);
-
-MODULE_AUTHOR("Nicolas Pitre");
-MODULE_DESCRIPTION("AC97 driver for the Intel PXA2xx chip");
-MODULE_LICENSE("GPL");

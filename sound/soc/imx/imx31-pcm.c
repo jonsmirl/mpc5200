@@ -38,6 +38,7 @@
 #include <asm/hardware.h>
 
 #include "imx31-pcm.h"
+#include "imx-ssi.h"
 
 /* debug */
 #define IMX_PCM_DEBUG 0
@@ -213,15 +214,15 @@ static int imx31_pcm_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct mxc_runtime_data *prtd = runtime->private_data;
-	struct snd_soc_pcm_link *pcm_link = substream->private_data;
-	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
-	struct mxc_pcm_dma_params *dma = cpu_dai->dma_data;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	struct snd_soc_dai_runtime *cpu_rdai = pcm_runtime->cpu_dai;
+	struct mxc_pcm_dma_params *dma = cpu_rdai->dma_data;
 	int ret = 0, channel = 0;
-	
+
 	/* only allocate the DMA chn once */
 	if (!prtd->dma_alloc) {
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-			ret  = mxc_request_dma(&channel, "ALSA TX SDMA");
+			ret = mxc_request_dma(&channel, "ALSA TX SDMA");
 			if (ret < 0) {
 				printk(KERN_ERR "imx31-pcm: error requesting a write dma channel\n");
 				return ret;
@@ -457,8 +458,10 @@ static int imx31_pcm_new(struct snd_soc_platform *platform,
 
 	if (!card->dev->dma_mask)
 		card->dev->dma_mask = &imx31_pcm_dmamask;
+
 	if (!card->dev->coherent_dma_mask)
 		card->dev->coherent_dma_mask = 0xffffffff;
+
 #if IMX31_DMA_BOUNCE
 	ret = snd_pcm_lib_preallocate_pages_for_all(pcm, 
 				SNDRV_DMA_TYPE_CONTINUOUS,
@@ -476,7 +479,6 @@ static int imx31_pcm_new(struct snd_soc_platform *platform,
 		if (ret)
 			goto out;
 	}
-
 	if (capture) {
 		ret = imx31_pcm_preallocate_dma_buffer(pcm,
 			SNDRV_PCM_STREAM_CAPTURE);
@@ -486,54 +488,90 @@ static int imx31_pcm_new(struct snd_soc_platform *platform,
 #endif
  out:
 	return ret;
+} 
+
+#ifdef CONFIG_PM
+static int imx31_pcm_suspend(struct device *dev, pm_message_t state)
+{
+	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	struct snd_soc_dai_runtime *dai_runtime, *d;
+
+	list_for_each_entry_safe(dai_runtime, d, &platform->dai_list, list) {
+		if (dai_runtime->active) {
+				
+		}
+	}
+
+	return 0;
 }
 
-static const struct snd_soc_platform_ops imx31_platform_ops = {
-	.pcm_new	= imx31_pcm_new,
-#if IMX31_DMA_BOUNCE
-	.pcm_free	= NULL,
+static int imx31_pcm_resume(struct device *dev)
+{
+	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	struct snd_soc_dai_runtime *dai_runtime, *d;
+
+	list_for_each_entry_safe(dai_runtime, d, &platform->dai_list, list) {
+		if (dai_runtime->active) {
+				
+		}
+	}
+	return 0;
+}
+
 #else
-	.pcm_free	= imx31_pcm_free_dma_buffers,
+#define imx31_pcm_suspend	NULL
+#define imx31_pcm_resume	NULL
 #endif
-};
 
 static int imx31_pcm_probe(struct device *dev)
 {
 	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	int ret;
 	
 	platform->pcm_ops = &imx31_pcm_ops;
-	platform->platform_ops = &imx31_platform_ops;
-	snd_soc_register_platform(platform);
-	return 0;
+	platform->pcm_new = imx31_pcm_new,
+#if IMX31_DMA_BOUNCE
+	platform->pcm_free = NULL,
+#else
+	platform->pcm_free = imx31_pcm_free_dma_buffers,
+#endif	
+	ret = snd_soc_platform_add_dai(platform, imx_ssi, ARRAY_SIZE(imx_ssi));
+	if (ret < 0)
+		return ret;
+	
+	ret = snd_soc_register_platform(platform);
+	return ret;
 }
 
 static int imx31_pcm_remove(struct device *dev)
 {
+	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	
+	snd_soc_unregister_platform(platform);
 	return 0;
 }
 
-const char imx31_pcm[SND_SOC_PLATFORM_NAME_SIZE] = "imx31-pcm";
-EXPORT_SYMBOL_GPL(imx31_pcm);
+const char imx31_platform_id[] = "imx31_pcm";
+EXPORT_SYMBOL_GPL(imx31_platform_id);
 
-static struct snd_soc_device_driver imx31_pcm_driver = {
-	.type	= SND_SOC_BUS_TYPE_DMA,
-	.driver	= {
-		.name 		= imx31_pcm,
-		.owner		= THIS_MODULE,
-		.bus 		= &asoc_bus_type,
-		.probe		= imx31_pcm_probe,
-		.remove		= __devexit_p(imx31_pcm_remove),
-	},
+static struct device_driver imx31_pcm_driver = {
+	.name 		= imx31_platform_id,
+	.owner		= THIS_MODULE,
+	.bus 		= &asoc_bus_type,
+	.probe		= imx31_pcm_probe,
+	.remove		= __devexit_p(imx31_pcm_remove),
+	.suspend	= imx31_pcm_suspend,
+	.resume		= imx31_pcm_resume,
 };
 
 static __init int imx31_pcm_init(void)
 {
-	return driver_register(&imx31_pcm_driver.driver);
+	return driver_register(&imx31_pcm_driver);
 }
 
 static __exit void imx31_pcm_exit(void)
 {
-	driver_unregister(&imx31_pcm_driver.driver);
+	driver_unregister(&imx31_pcm_driver);
 }
 
 module_init(imx31_pcm_init);

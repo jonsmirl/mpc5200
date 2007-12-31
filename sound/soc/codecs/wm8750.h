@@ -57,7 +57,8 @@
 
 #define WM8750_SYSCLK	0
 
-extern const char wm8750_hifi_dai[SND_SOC_DAI_NAME_SIZE];
-extern const char wm8750_codec[SND_SOC_CODEC_NAME_SIZE];
+#define WM8750_DAI	0
+
+extern const char wm8750_codec_id[];
 
 #endif

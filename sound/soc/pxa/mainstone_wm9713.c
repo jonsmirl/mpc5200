@@ -22,6 +22,7 @@
 #include <linux/moduleparam.h>
 #include <linux/device.h>
 #include <linux/i2c.h>
+#include <linux/platform_device.h>
 #include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -37,8 +38,6 @@
 
 #include "../codecs/wm9713.h"
 #include "pxa2xx-pcm.h"
-#include "pxa2xx-ac97.h"
-#include "pxa2xx-ssp.h"
 
 #define GPIO11_SSP2RX_MD	(11 | GPIO_ALT_FN_2_IN)
 #define GPIO13_SSP2TX_MD	(13 | GPIO_ALT_FN_1_OUT)
@@ -66,9 +65,9 @@ static void mainstone_voice_shutdown(struct snd_pcm_substream *substream)
 static int mainstone_voice_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_link *pcm_link = substream->private_data;
-	struct snd_soc_dai *codec_dai = pcm_link->codec_dai;
-	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
+	struct snd_soc_pcm_runtime *pcm_link = substream->private_data;
+	struct snd_soc_dai_runtime *codec_dai = pcm_link->codec_dai;
+	struct snd_soc_dai_runtime *cpu_dai = pcm_link->cpu_dai;
 	unsigned int bclk = 0, pcmdiv = 0;
 	int ret = 0;
 
@@ -88,74 +87,40 @@ static int mainstone_voice_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* set codec DAI configuration */
-	ret = codec_dai->ops->set_fmt(codec_dai, SND_SOC_DAIFMT_DSP_A |
+	ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_DSP_A |
 		SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
 	if (ret < 0)
 		return ret;
 
 	/* set cpu DAI configuration */
-	ret = cpu_dai->ops->set_fmt(cpu_dai, SND_SOC_DAIFMT_DSP_A |
+	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_DSP_A |
 		SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
 	if (ret < 0)
 		return ret;
 
 	/* set the SSP system clock as input (unused) */
-	ret = cpu_dai->ops->set_sysclk(cpu_dai, PXA2XX_SSP_CLK_PLL, 0,
+	ret = snd_soc_dai_set_sysclk(cpu_dai, PXA2XX_SSP_CLK_PLL, 0,
 		SND_SOC_CLOCK_IN);
 	if (ret < 0)
 		return ret;
 
 	/* set codec BCLK division for sample rate */
-	ret = codec_dai->ops->set_clkdiv(codec_dai, WM9713_PCMBCLK_DIV, bclk);
+	ret = snd_soc_dai_set_clkdiv(codec_dai, WM9713_PCMBCLK_DIV, bclk);
 	if (ret < 0)
 		return ret;
 
 	/* set codec PCM division for sample rate */
-	ret = codec_dai->ops->set_clkdiv(codec_dai, WM9713_PCMCLK_DIV, pcmdiv);
+	ret = snd_soc_dai_set_clkdiv(codec_dai, WM9713_PCMCLK_DIV, pcmdiv);
 	if (ret < 0)
 		return ret;
 
 	return 0;
 }
 
-static const struct snd_soc_ops mainstone_voice_ops = {
+static struct snd_soc_ops mainstone_voice_ops = {
 	.startup = mainstone_voice_startup,
 	.shutdown = mainstone_voice_shutdown,
 	.hw_params = mainstone_voice_hw_params,
-};
-
-static int hifi_pcm_new(struct snd_soc_pcm_link *pcm_link)
-{
-	return snd_soc_pcm_new(pcm_link, 1, 1);
-}
-
-static struct snd_soc_pcm_link_ops hifi_pcm = {
-	.new	= hifi_pcm_new,
-};
-
-static int aux_pcm_new(struct snd_soc_pcm_link *pcm_link)
-{
-	return snd_soc_pcm_new(pcm_link, 1, 0);
-}
-
-static struct snd_soc_pcm_link_ops aux_pcm = {
-	.new	= aux_pcm_new,
-};
-
-static int voice_pcm_new(struct snd_soc_pcm_link *pcm_link)
-{
-	/* mainstone wm8753 voice interface */
-	pxa_gpio_mode(GPIO11_SSP2RX_MD);
-	pxa_gpio_mode(GPIO13_SSP2TX_MD);
-	pxa_gpio_mode(GPIO22_SSP2CLKS_MD);
-	pxa_gpio_mode(GPIO88_SSP2FRMS_MD);
-	
-	pcm_link->audio_ops = &mainstone_voice_ops;
-	return snd_soc_pcm_new(pcm_link, 1, 1);
-}
-
-static struct snd_soc_pcm_link_ops voice_pcm = {
-	.new	= voice_pcm_new,
 };
 
 /* mainstone machine dapm widgets */
@@ -195,24 +160,23 @@ static int mainstone_wm9713_read(void *control_data, long val, int reg)
 	return 0;
 }
 
-static int mainstone_mach_probe(struct snd_soc_machine *machine)
+static int mainstone_wm9713_init(struct snd_soc_machine *machine)
 {
 	struct snd_soc_codec *codec;
-	struct snd_soc_pcm_link *pcm_link;
 	struct snd_ac97_bus_ops *ac97_ops;
 	int i, ret;
 
-	pcm_link = list_first_entry(&machine->active_list, 
-		struct snd_soc_pcm_link, active_list);
-	codec = pcm_link->codec;
+	codec = snd_soc_get_codec(machine, wm9713_codec_id);
+	if (codec == NULL)
+		return -ENODEV;
 	
-	codec->control_data = codec->ac97;
-	codec->mach_write = mainstone_wm9713_write;
-	codec->mach_read = mainstone_wm9713_read;
-	ac97_ops = pcm_link->cpu_dai->ac97_ops;
+	snd_soc_codec_set_io(codec, mainstone_wm9713_read, 
+		mainstone_wm9713_write, codec->ac97);
+		
+	ac97_ops = snd_soc_get_ac97_ops(machine, PXA2XX_DAI_AC97_HIFI);
 	
 	/* register with AC97 bus for ad-hoc driver access */
-	ret = snd_soc_new_ac97_codec(pcm_link, ac97_ops, 0);
+	ret = snd_soc_new_ac97_codec(codec, ac97_ops, machine->card, 0, 0);
 	if (ret < 0)
 		return ret;
 		
@@ -220,24 +184,17 @@ static int mainstone_mach_probe(struct snd_soc_machine *machine)
 	 * a warm reset followed by an optional cold reset for codec */
 	ac97_ops->reset(codec->ac97);
 	ac97_ops->warm_reset(codec->ac97);
-	if (ac97_ops->read(codec->ac97, AC97_VENDOR_ID1) == 0) { //lg
+	if (ac97_ops->read(codec->ac97, AC97_VENDOR_ID1) == 0) {
 		printk(KERN_ERR "AC97 link error\n");
 		return ret;
-	}	
-	codec->ops->io_probe(codec, machine);
+	}
+
+	snd_soc_codec_init(codec, machine);
 
 	/* set up mainstone codec pins */
-	snd_soc_dapm_set_endpoint(machine, "RXP", 0);
-	snd_soc_dapm_set_endpoint(machine, "RXN", 0);
-#if 0
-	/* Add test specific controls */
-	for (i = 0; i < ARRAY_SIZE(mainstone_controls); i++) {
-		if ((ret = snd_ctl_add(machine->card,
-				snd_soc_cnew(&mainstone_controls[i], 
-					codec, NULL))) < 0)
-			return ret;
-	}
-#endif
+	snd_soc_dapm_disable_pin(machine, "RXP");
+	snd_soc_dapm_disable_pin(machine, "RXN");
+
 	/* Add mainstone specific widgets */
 	for(i = 0; i < ARRAY_SIZE(mainstone_dapm_widgets); i++) {
 		snd_soc_dapm_new_control(machine, codec, 
@@ -246,27 +203,15 @@ static int mainstone_mach_probe(struct snd_soc_machine *machine)
 
 	/* set up mainstone specific audio path audio_mapnects */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(machine, audio_map[i][0], 
+		snd_soc_dapm_add_route(machine, audio_map[i][0], 
 			audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_sync_endpoints(machine);
-	
-	/* register card with ALSA upper layers */
-	ret = snd_soc_register_card(machine);
-	if (ret < 0) {
-		printk(KERN_ERR "%s: failed to register sound card\n",
-			__FUNCTION__);
-		return ret;
-	}
+	snd_soc_dapm_resync(machine);
 	
 	MST_MSCWR2 &= ~MST_MSCWR2_AC97_SPKROFF;
 	return 0;
 }
-
-struct snd_soc_machine_ops mainstone_mach_ops = {
-	.mach_probe = mainstone_mach_probe,	
-};
 
 /*
  * This is an example machine initialisation for a wm9713 connected to a
@@ -276,73 +221,60 @@ struct snd_soc_machine_ops mainstone_mach_ops = {
 static int mainstone_wm9713_probe(struct platform_device *pdev)
 {
 	struct snd_soc_machine *machine;
-	struct snd_soc_pcm_link * hifi, *voice, *aux;
 	int ret;
 
-	machine = kzalloc(sizeof(struct snd_soc_machine), GFP_KERNEL);
+	/* mainstone wm8753 voice interface */
+	pxa_gpio_mode(GPIO11_SSP2RX_MD);
+	pxa_gpio_mode(GPIO13_SSP2TX_MD);
+	pxa_gpio_mode(GPIO22_SSP2CLKS_MD);
+	pxa_gpio_mode(GPIO88_SSP2FRMS_MD);
+
+	machine = snd_soc_machine_create("mainstone_wm9713", &pdev->dev, 
+		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
 	if (machine == NULL)
 		return -ENOMEM;
 
-	machine->owner = THIS_MODULE;
-	machine->pdev = pdev;
-	machine->name = "Mainstone";
 	machine->longname = "WM9713";
-	machine->ops = &mainstone_mach_ops;
-	pdev->dev.driver_data = machine;
+	machine->init = mainstone_wm9713_init,
+	machine->private_data = pdev;
+	platform_set_drvdata(pdev, machine);
 	
-	/* register card */
-	ret = snd_soc_new_card(machine, 3, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
-	if (ret < 0) {
-		printk(KERN_ERR "%s: failed to create sound card\n", __func__);
-		goto card_err;
-	}
+	ret = snd_soc_codec_create(machine, wm9713_codec_id);
+	if (ret < 0)
+		goto err;
 
-	/* mainstone wm9713 hifi interface */
-	hifi = snd_soc_pcm_link_new(machine, "mainstone-hifi", &hifi_pcm,
-		pxa2xx_pcm, wm9713_codec, wm9713_hifi_dai, pxa2xx_ac97_hifi);
-	if (hifi == NULL) {
-		printk("failed to create HiFi PCM link\n");
-		goto link_err;
-	}
-	ret =  snd_soc_pcm_link_attach(hifi);
-	if (ret < 0) 
-		goto link_err;
-	
-	/* mainstone wm8753 aux interface */
-	aux = snd_soc_pcm_link_new(machine, "mainstone-aux", &aux_pcm,
-		pxa2xx_pcm, wm9713_codec, wm9713_aux_dai, pxa2xx_ac97_aux);
-	if (aux == NULL) {
-		printk("failed to create AUX PCM link\n");
-		goto link_err;
-	}
-	ret =  snd_soc_pcm_link_attach(aux);
-	if (ret < 0) 
-		goto link_err;
-	
-	voice = snd_soc_pcm_link_new(machine, "mainstone-voice", &voice_pcm,
-		pxa2xx_pcm, wm9713_codec, wm9713_voice_dai, pxa2xx_ssp_2);
-	if (voice == NULL) {
-		printk("failed to create Voice PCM link\n");
-		goto link_err;
-	}
-	ret =  snd_soc_pcm_link_attach(voice);
-	if (ret < 0) 
-		goto link_err;	
-	return 0;
+	ret = snd_soc_platform_create(machine, pxa_platform_id);
+	if (ret < 0)
+		goto err;
 
-link_err:
+	ret = snd_soc_pcm_create(machine, NULL, 
+		WM9713_DAI_AC97_HIFI, PXA2XX_DAI_AC97_HIFI, 1, 1);
+	if (ret < 0)
+		goto err;
+	
+	ret = snd_soc_pcm_create(machine, NULL, 
+		WM9713_DAI_AC97_AUX, PXA2XX_DAI_AC97_AUX, 1, 1);
+	if (ret < 0)
+		goto err;
+		
+	ret = snd_soc_pcm_create(machine, &mainstone_voice_ops, 
+		WM9713_DAI_PCM_VOICE, PXA2XX_DAI_SSP2, 1, 1);
+	if (ret < 0)
+		goto err;
+	
+	ret = snd_soc_machine_register(machine);
+	return ret;
+	
+err:
 	snd_soc_machine_free(machine);
-card_err:
-	kfree(machine);
 	return ret;
 }
 
 static int __exit mainstone_wm9713_remove(struct platform_device *pdev)
 {
-	struct snd_soc_machine *machine = pdev->dev.driver_data;
+	struct snd_soc_machine *machine = platform_get_drvdata(pdev);
 
 	snd_soc_machine_free(machine);
-	kfree(machine);
 
 	/* disable speaker */
 	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
@@ -355,7 +287,7 @@ static long mst_audio_suspend_mask;
 static int mainstone_wm9713_suspend(struct platform_device *pdev, 
 	pm_message_t state)
 {
-	struct snd_soc_machine *machine = pdev->dev.driver_data;
+	struct snd_soc_machine *machine = platform_get_drvdata(pdev);
 	
 	mst_audio_suspend_mask = MST_MSCWR2;
 	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
@@ -364,15 +296,15 @@ static int mainstone_wm9713_suspend(struct platform_device *pdev,
 
 static int mainstone_wm9713_resume(struct platform_device *pdev)
 {
-	struct snd_soc_machine *machine = pdev->dev.driver_data;
+	struct snd_soc_machine *machine = platform_get_drvdata(pdev);
 	
 	MST_MSCWR2 &= mst_audio_suspend_mask | ~MST_MSCWR2_AC97_SPKROFF;
 	return snd_soc_resume(machine);
 }
 
 #else
-#define mainstone_machine_suspend NULL
-#define mainstone_machine_resume  NULL
+#define mainstone_wm9713_suspend NULL
+#define mainstone_wm9713_resume  NULL
 #endif
 
 static struct platform_driver mainstone_wm9713_driver = {

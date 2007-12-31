@@ -212,9 +212,9 @@
 #define IMX_SSI_DIV_2_OFF		~SSI_STCCR_DIV2
 #define IMX_SSI_DIV_2_ON		SSI_STCCR_DIV2
 
-extern const char imx_ssi_1[SND_SOC_DAI_NAME_SIZE];
-extern const char imx_ssi_2[SND_SOC_DAI_NAME_SIZE];
-extern const char imx_ssi_3[SND_SOC_DAI_NAME_SIZE];
-extern const char imx_ssi_4[SND_SOC_DAI_NAME_SIZE];
+extern struct snd_soc_dai imx_ssi[4];
+
+int get_ssi_clk(int ssi, struct device *dev);
+void put_ssi_clk(int ssi);
 
 #endif
