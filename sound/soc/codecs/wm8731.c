@@ -233,7 +233,7 @@ static int wm8731_add_widgets(struct snd_soc_codec *codec,
 			intercon[i][1], intercon[i][2]);
 	}
 
-	snd_soc_dapm_new_widgets(machine);
+	snd_soc_dapm_init(machine);
 	return 0;
 }
 
@@ -432,8 +432,8 @@ static int wm8731_set_dai_fmt(struct snd_soc_dai_runtime *dai,
 	return 0;
 }
 
-static int wm8731_set_bias_power(struct snd_soc_codec *codec, 
-	enum snd_soc_dapm_bias_power level)
+static int wm8731_set_bias_level(struct snd_soc_codec *codec, 
+	enum snd_soc_dapm_bias_level level)
 {
 	u16 reg = wm8731_read_reg_cache(codec, WM8731_PWR) & 0xff7f;
 
@@ -454,7 +454,7 @@ static int wm8731_set_bias_power(struct snd_soc_codec *codec,
 		wm8731_write(codec, WM8731_PWR, 0xffff);
 		break;
 	}
-	codec->dapm_state = level;
+	codec->bias_level = level;
 	return 0;
 }
 
@@ -463,7 +463,7 @@ static int wm8731_suspend(struct device *dev, pm_message_t state)
 	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 
 	wm8731_write(codec, WM8731_ACTIVE, 0x0);
-	wm8731_set_bias_power(codec, SND_SOC_BIAS_OFF);
+	wm8731_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
 }
 
@@ -480,8 +480,8 @@ static int wm8731_resume(struct device *dev)
 		data[1] = cache[i] & 0x00ff;
 		codec->machine_write(codec->control_data, (long)data, 2);
 	}
-	wm8731_set_bias_power(codec, SND_SOC_BIAS_STANDBY);
-	wm8731_set_bias_power(codec, codec->suspend_dapm_state);
+	wm8731_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+	wm8731_set_bias_level(codec, codec->suspend_bias_level);
 	return 0;
 }
 
@@ -496,7 +496,7 @@ static int wm8731_codec_init(struct snd_soc_codec *codec,
 	wm8731_reset(codec);
 
 	/* power on device */
-	wm8731_set_bias_power(codec, SND_SOC_BIAS_STANDBY);
+	wm8731_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	/* set the update bits */
 	reg = wm8731_read_reg_cache(codec, WM8731_LOUT1V);
@@ -517,7 +517,7 @@ static int wm8731_codec_init(struct snd_soc_codec *codec,
 static void wm8731_codec_exit(struct snd_soc_codec *codec,
 	struct snd_soc_machine *machine)
 {
-	wm8731_set_bias_power(codec, SND_SOC_BIAS_OFF);
+	wm8731_set_bias_level(codec, SND_SOC_BIAS_OFF);
 }
 
 #define WM8731_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 |\
@@ -591,7 +591,7 @@ static int wm8731_codec_probe(struct device *dev)
 		return -ENOMEM;
 	codec->reg_cache_size = sizeof(wm8731_reg);
 	
-	codec->set_bias_power = wm8731_set_bias_power;
+	codec->set_bias_level = wm8731_set_bias_level;
 	codec->codec_read = wm8731_read_reg_cache;
 	codec->codec_write = wm8731_write;
 	codec->init = wm8731_codec_init;

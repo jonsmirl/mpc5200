@@ -8,109 +8,185 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
+ * 
+ * Digital Audio Interface (DAI) API.
  */
 
 #ifndef __LINUX_SND_SOC_DAI_H
 #define __LINUX_SND_SOC_DAI_H
 
 
-#include <linux/types.h>
-#include <linux/workqueue.h>
-#include <sound/driver.h>
-#include <sound/core.h>
-#include <sound/pcm.h>
-#include <sound/control.h>
-#include <sound/ac97_codec.h>
+#include <linux/list.h>
 
 /*
- * DAI hardware audio formats
+ * DAI hardware audio formats. 
+ * 
+ * Describes the physical PCM data formating and clocking. Add new formats 
+ * to the end.
  */
-#define SND_SOC_DAIFMT_I2S	0	/* I2S mode */
-#define SND_SOC_DAIFMT_RIGHT_J	1	/* Right justified mode */
-#define SND_SOC_DAIFMT_LEFT_J	2	/* Left Justified mode */
-#define SND_SOC_DAIFMT_DSP_A	3	/* L data msb after FRM or LRC */
-#define SND_SOC_DAIFMT_DSP_B	4	/* L data msb during FRM or LRC */
-#define SND_SOC_DAIFMT_AC97	5	/* AC97 */
+#define SND_SOC_DAIFMT_I2S		0 /* I2S mode */
+#define SND_SOC_DAIFMT_RIGHT_J		1 /* Right Justified mode */
+#define SND_SOC_DAIFMT_LEFT_J		2 /* Left Justified mode */
+#define SND_SOC_DAIFMT_DSP_A		3 /* L data msb after FRM LRC */
+#define SND_SOC_DAIFMT_DSP_B		4 /* L data msb during FRM LRC */
+#define SND_SOC_DAIFMT_AC97		5 /* AC97 */
 
-#define SND_SOC_DAIFMT_MSB 	SND_SOC_DAIFMT_LEFT_J
-#define SND_SOC_DAIFMT_LSB	SND_SOC_DAIFMT_RIGHT_J
-
-/*
- * DAI Gating
- */
-#define SND_SOC_DAIFMT_CONT		(0 << 4)	/* continuous clock */
-#define SND_SOC_DAIFMT_GATED		(1 << 4)	/* clock is gated when not Tx/Rx */
+/* left and right justified also known as MSB and LSB respectively */
+#define SND_SOC_DAIFMT_MSB 		SND_SOC_DAIFMT_LEFT_J
+#define SND_SOC_DAIFMT_LSB		SND_SOC_DAIFMT_RIGHT_J
 
 /*
- * DAI Sync
- * Synchronous LR (Left Right) clocks and Frame signals.
+ * DAI Clock gating. 
+ * 
+ * DAI bit clocks can be be gated (disabled) when not the DAI is not 
+ * sending or receiving PCM data in a frame. This can be used to save power. 
  */
-#define SND_SOC_DAIFMT_SYNC		(0 << 5)	/* Tx FRM = Rx FRM */ 
-#define SND_SOC_DAIFMT_ASYNC		(1 << 5)	/* Tx FRM ~ Rx FRM */ 
+#define SND_SOC_DAIFMT_CONT		(0 << 4) /* continuous clock */
+#define SND_SOC_DAIFMT_GATED		(1 << 4) /* clock is gated */
+
+/*
+ * DAI Left/Right Clocks.
+ * 
+ * Specifies whether the DAI can support different samples for similtanious
+ * playback and capture. This usually requires a seperate physical frame 
+ * clock for playback and capture.
+ */
+#define SND_SOC_DAIFMT_SYNC		(0 << 5) /* Tx FRM = Rx FRM */ 
+#define SND_SOC_DAIFMT_ASYNC		(1 << 5) /* Tx FRM ~ Rx FRM */ 
 
 /*
  * TDM
+ * 
+ * Time Division Multiplexing. Allows PCM data to be multplexed with other 
+ * data on the DAI. 
  */
 #define SND_SOC_DAIFMT_TDM		(1 << 6)
 
 /*
- * DAI hardware signal inversions
+ * DAI hardware signal inversions.
+ * 
+ * Specifies whether the DAI can also support inverted clocks for the specified
+ * format.
  */
-#define SND_SOC_DAIFMT_NB_NF		(0 << 8)	/* normal bit clock + frame */
-#define SND_SOC_DAIFMT_NB_IF		(1 << 8)	/* normal bclk + inv frm */
-#define SND_SOC_DAIFMT_IB_NF		(2 << 8)	/* invert bclk + nor frm */
-#define SND_SOC_DAIFMT_IB_IF		(3 << 8)	/* invert bclk + frm */
+#define SND_SOC_DAIFMT_NB_NF		(0 << 8) /* normal bit clock + frame */
+#define SND_SOC_DAIFMT_NB_IF		(1 << 8) /* normal bclk + inv frm */
+#define SND_SOC_DAIFMT_IB_NF		(2 << 8) /* invert bclk + nor frm */
+#define SND_SOC_DAIFMT_IB_IF		(3 << 8) /* invert bclk + frm */
 
 /*
- * DAI hardware clock masters
+ * DAI hardware clock masters.
+ * 
  * This is wrt the codec, the inverse is true for the interface
  * i.e. if the codec is clk and frm master then the interface is
  * clk and frame slave.
  */
-#define SND_SOC_DAIFMT_CBM_CFM	(0 << 12) /* codec clk & frm master */
-#define SND_SOC_DAIFMT_CBS_CFM	(1 << 12) /* codec clk slave & frm master */
-#define SND_SOC_DAIFMT_CBM_CFS	(2 << 12) /* codec clk master & frame slave */
-#define SND_SOC_DAIFMT_CBS_CFS	(3 << 12) /* codec clk & frm slave */
+#define SND_SOC_DAIFMT_CBM_CFM		(0 << 12) /* codec clk & frm master */
+#define SND_SOC_DAIFMT_CBS_CFM		(1 << 12) /* codec clk slave & frm master */
+#define SND_SOC_DAIFMT_CBM_CFS		(2 << 12) /* codec clk master & frame slave */
+#define SND_SOC_DAIFMT_CBS_CFS		(3 << 12) /* codec clk & frm slave */
 
-#define SND_SOC_DAIFMT_FORMAT_MASK		0x000f
-#define SND_SOC_DAIFMT_CLOCK_MASK		0x00f0
-#define SND_SOC_DAIFMT_INV_MASK			0x0f00
-#define SND_SOC_DAIFMT_MASTER_MASK		0xf000
+#define SND_SOC_DAIFMT_FORMAT_MASK	0x000f
+#define SND_SOC_DAIFMT_CLOCK_MASK	0x00f0
+#define SND_SOC_DAIFMT_INV_MASK		0x0f00
+#define SND_SOC_DAIFMT_MASTER_MASK	0xf000
 
 /*
  * Master Clock Directions
  */
-#define SND_SOC_CLOCK_IN	0
-#define SND_SOC_CLOCK_OUT	1
+#define SND_SOC_CLOCK_IN		0
+#define SND_SOC_CLOCK_OUT		1
 
 
 struct snd_soc_dai;
 struct snd_soc_dai_runtime;
+struct snd_ac97_bus_ops;
 
 /* 
- * Digital Audio Interface control and clocking.
+ * Digital Audio Interface control and clocking API.
  */
  
 /**
- * snd_soc_dai_set_sysclk - create new ASoC platform.
- * @machine: parent machine
- * @platform_id: platform ID name
+ * snd_soc_dai_set_sysclk - configure DAI system or master clock.
+ * @dai: DAI
+ * @clk_id: DAI specific clock ID
+ * @freq: new clock frequency in Hz
+ * @dir: new clock direction - input/output.
  *
- * Creates a new ASoC audio platform device and attaches to parent machine.
+ * Configures the DAI master (MCLK) or system (SYSCLK) clocking.
  */
 int snd_soc_dai_set_sysclk(struct snd_soc_dai_runtime *dai, int clk_id, 
 	unsigned int freq, int dir);
+
+/**
+ * snd_soc_dai_set_clkdiv - configure DAI clock dividers.
+ * @dai: DAI
+ * @clk_id: DAI specific clock divider ID
+ * @div: new clock divisor.
+ *
+ * Configures the clock dividers. This is used to derive the best DAI bit and 
+ * frame clocks from the system or master clock. It's best to set the DAI bit
+ * and frame clocks as low as possible to save system power.
+ */
 int snd_soc_dai_set_clkdiv(struct snd_soc_dai_runtime *dai, 
 	int div_id, int div);
+
+/**
+ * snd_soc_dai_set_pll - configure DAI PLL.
+ * @dai: DAI
+ * @pll_id: DAI specific PLL ID
+ * @freq_in: PLL input clock frequency in Hz
+ * @freq_out: requested PLL output clock frequency in Hz
+ *
+ * Configures and enables PLL to generate output clock based on input clock.
+ */	
 int snd_soc_dai_set_pll(struct snd_soc_dai_runtime *dai,
 	int pll_id, unsigned int freq_in, unsigned int freq_out);
+
+/**
+ * snd_soc_dai_set_fmt - configure DAI hardware audio format.
+ * @dai: DAI
+ * @clk_id: DAI specific clock ID
+ * @fmt: SND_SOC_DAIFMT_ format value.
+ *
+ * Configures the DAI hardware format and clocking.
+ */
 int snd_soc_dai_set_fmt(struct snd_soc_dai_runtime *dai, unsigned int fmt);
+
+/**
+ * snd_soc_dai_set_tdm_slot - configure DAI TDM.
+ * @dai: DAI
+ * @mask: DAI specific mask representing used slots.
+ * @slots: Number of slots in use.
+ *
+ * Configures a DAI for TDM operation. Both mask and slots are codec and DAI
+ * specific.
+ */
 int snd_soc_dai_set_tdm_slot(struct snd_soc_dai_runtime *dai,
 	unsigned int mask, int slots);
+
+/**
+ * snd_soc_dai_set_tristate - configure DAI system or master clock.
+ * @dai: DAI
+ * @tristate: tristate enable
+ *
+ * Tristates the DAI so that others can use it.
+ */
 int snd_soc_dai_set_tristate(struct snd_soc_dai_runtime *dai, int tristate);
+
+/**
+ * snd_soc_dai_digital_mute - configure DAI system or master clock.
+ * @dai: DAI
+ * @mute: mute enable
+ *
+ * Mutes the DAI DAC.
+ */
 int snd_soc_dai_digital_mute(struct snd_soc_dai_runtime *dai, int mute);
 
-
+/*
+ * DAI Capabilities.
+ * 
+ * Describes the PCM audio capabilities for a Digital Audio interface.
+ */
 struct snd_soc_dai_caps {
 	char * stream_name;
 	u64 formats;			/* SNDRV_PCM_FMTBIT_* */
@@ -141,9 +217,7 @@ struct snd_soc_dai {
 	struct snd_soc_dai_caps playback;
 	struct snd_soc_dai_caps capture;
 	
-	/*
-	 * Private resources can be requested and released here - optional.
-	 */
+	/* Private resources can be requested and released here - optional. */
 	int (*new)(struct snd_soc_dai_runtime *dai);
 	void (*free)(struct snd_soc_dai_runtime *dai);
 
@@ -204,12 +278,15 @@ struct snd_soc_dai_runtime {
 	/* runtime info */
 	struct snd_soc_dai *dai;
 	struct snd_pcm_runtime *runtime;
+	int active;
+	
+	/* parent codec/platform */
 	union {
 		struct snd_soc_codec *codec;
 		struct snd_soc_platform *platform;
 	};
+	
 	struct list_head list;
-	int active;
 	
 	/* driver and dai data */
 	void *drv_data;

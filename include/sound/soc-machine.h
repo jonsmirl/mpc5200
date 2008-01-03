@@ -22,9 +22,92 @@
 
 struct snd_soc_pcm_runtime;
 struct snd_soc_machine;
+struct snd_soc_ops;
+
+/**
+ * snd_soc_machine_create - create new ASoC machine.
+ * @name: machine name
+ * @parent: parent device
+ * @idx: sound card index
+ * @xid: sound card ID
+ *
+ * Creates a new ASoC audio machine device and sound card.
+ */
+struct snd_soc_machine *snd_soc_machine_create(const char *name,
+	struct device *parent, int idx, const char *xid);
+
+/**
+ * snd_soc_platform_create - create new ASoC platform.
+ * @machine: parent machine
+ * @platform_id: platform ID name
+ *
+ * Creates a new ASoC audio platform device and attaches it to parent machine.
+ */
+int snd_soc_platform_create(struct snd_soc_machine *machine,
+	const char *platform_id);
+
+/**
+ * snd_soc_codec_create - create new ASoC codec.
+ * @machine: parent machine
+ * @codec_id: platform ID name
+ *
+ * Creates a new ASoC audio codec device and attaches it to parent machine.
+ */
+int snd_soc_codec_create(struct snd_soc_machine *machine,
+	const char *codec_id);
+
+/**
+ * snd_soc_pcm_create - create new ASoC PCM.
+ * @machine: Machine
+ * @pcm_ops: PCM operations.
+ * @codec_dai_id: Codec DAI ID.
+ * @platform_dai_id: Platform DAI ID.
+ * @playback: Number of playback PCM's.
+ * @capture: Number of capture PCM's
+ *
+ * Joins a codec and platform DAI together and creates a ALSA PCM(s).
+ */
+int snd_soc_pcm_create(struct snd_soc_machine *machine,
+	struct snd_soc_ops *pcm_ops, int codec_dai_id, 
+	int platform_dai_id, int playback, int capture);
+
+/**
+ * snd_soc_machine_register - registers ASoC machine .
+ * @machine: machine
+ *
+ * Registers a machine and it's PCMs. This should be called after all
+ * codecs, platforms and PCM's have been created.
+ */
+int snd_soc_machine_register(struct snd_soc_machine *machine);
+
+/**
+ * snd_soc_machine_free - free machine.
+ * @machine: machine
+ *
+ * Frees all machine resources. Can be called at any time during machine
+ * initialisation process.
+ */
+void snd_soc_machine_free(struct snd_soc_machine *machine);
+
+/**
+ * snd_soc_suspend - suspends core.
+ * @machine: machine
+ * @state: suspend state
+ * 
+ * Suspends the ASoc core and driver.
+ */
+int snd_soc_suspend(struct snd_soc_machine *machine, pm_message_t state);
+
+/**
+ * snd_soc_resume - resume core.
+ * @machine: machine
+ *
+ * Resumes the ASoC core after suspend().
+ */
+int snd_soc_resume(struct snd_soc_machine *machine);
 
 struct snd_soc_ops {
-		/* ALSA audio operations - optional */
+	/* ALSA audio operations - optional */
 	int (*startup)(struct snd_pcm_substream *);
 	void (*shutdown)(struct snd_pcm_substream *);
 	int (*hw_params)(struct snd_pcm_substream *, 
@@ -68,47 +151,51 @@ struct snd_soc_pcm_runtime {
 };
 
 
-/* SoC machine */
+/* 
+ * ASoC machine
+ * 
+ * The ASoC sound card. This glues the codecs to the platforms and provides
+ * machine specific operations per PCM along with any othe machine specifics.
+ */
 struct snd_soc_machine {
 	const char *name;
 	const char *longname;
 
+	/* Runtime */
 	struct device *dev;
 	struct mutex mutex;
 	struct snd_card *card;
 	int pcms;
 	
-	/* io based probe / remove */
+	/* init() and exit() - init is called by snd_soc_machine_register()
+	 * whilst exit by snd_soc_machine_free() */
 	int (*init)(struct snd_soc_machine *machine);
 	int (*exit)(struct snd_soc_machine *machine);
 	
-	/* dapm events */
-	int (*dapm_event)(struct snd_soc_machine *machine, int event);
-
-	/* list of clients */
+	/* bias power level */
+	int (*set_bias_level)(struct snd_soc_machine *machine, 
+		enum snd_soc_dapm_bias_level level);
+	enum snd_soc_dapm_bias_level bias_level;
+	
+	/* lists of components */
 	struct list_head codec_list;
 	struct list_head platform_list;
 	struct list_head pcm_list;
 	
-	/* dapm */
+	/* DAPM */
 	struct list_head dapm_widgets;
 	struct list_head dapm_paths;
-	unsigned int dapm_state;
 	
 	void *private_data;
 };
 
-struct snd_soc_machine *snd_soc_machine_create(const char *name,
-	struct device *parent, int idx, const char *xid);
-
-int snd_soc_pcm_create(struct snd_soc_machine *machine,
-	struct snd_soc_ops *pcm_ops, int codec_dai_id, 
-	int platform_dai_id, int playback, int capture);
-
-int snd_soc_machine_register(struct snd_soc_machine *machine);
-
-void snd_soc_machine_free(struct snd_soc_machine *machine);
-
+/**
+ * snd_soc_get_codec - get codec.
+ * @machine: machine
+ * @codec_id: codec ID
+ *
+ * Gets codec from ID.
+ */
 static inline struct snd_soc_codec *
 	snd_soc_get_codec(struct snd_soc_machine *machine, const char *codec_id)
 {
@@ -121,6 +208,13 @@ static inline struct snd_soc_codec *
 	return NULL;
 }
 
+/**
+ * snd_soc_get_codec - get platform.
+ * @machine: machine
+ * @codec_id: platform ID
+ *
+ * Gets platform from ID.
+ */
 static inline struct snd_soc_platform *
 	snd_soc_get_platform(struct snd_soc_machine *machine, 
 	const char *platform_id)
@@ -134,6 +228,13 @@ static inline struct snd_soc_platform *
 	return NULL;
 }
 
+/**
+ * snd_soc_get_ac97_ops - free machine.
+ * @machine: machine
+ * @dai_id: DAI ID.
+ *
+ * Gets AC97 bus operations for DAI.
+ */
 static inline struct snd_ac97_bus_ops *
 	snd_soc_get_ac97_ops(struct snd_soc_machine *machine, int dai_id)
 {
@@ -149,9 +250,4 @@ static inline struct snd_ac97_bus_ops *
 	return NULL;
 }
 
-/* suspend and resume */
-int snd_soc_suspend(struct snd_soc_machine *machine, pm_message_t state);
-int snd_soc_resume(struct snd_soc_machine *machine);
-
-
-#endif /*SOCMACHINE_H_*/
+#endif

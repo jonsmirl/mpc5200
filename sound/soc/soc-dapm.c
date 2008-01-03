@@ -51,6 +51,8 @@
 #include <sound/soc.h>
 #include <sound/initval.h>
 
+#include "soc-prv.h"
+
 /* debug */
 #define DAPM_DEBUG 0
 #if DAPM_DEBUG
@@ -761,7 +763,7 @@ static ssize_t dapm_widget_show(struct device *dev,
 		}
 	}
 
-	switch(machine->dapm_state){
+	switch(machine->bias_level){
 	case SND_SOC_BIAS_ON:
 		state = "On";
 		break;
@@ -814,6 +816,20 @@ static void dapm_free_widgets(struct snd_soc_machine *machine)
 		kfree(p->long_name);
 		kfree(p);
 	}
+}
+
+static int snd_soc_dapm_set_pin(struct snd_soc_machine *machine,
+	char *pin, int status)
+{
+	struct snd_soc_dapm_widget *w;
+
+	list_for_each_entry(w, &machine->dapm_widgets, list) {
+		if (!strcmp(w->name, pin)) {
+			w->connected = status;
+		}
+	}
+
+	return 0;
 }
 
 /**
@@ -950,14 +966,14 @@ err:
 EXPORT_SYMBOL_GPL(snd_soc_dapm_add_route);
 
 /**
- * snd_soc_dapm_new_widgets - add new dapm widgets
+ * snd_soc_dapm_init - initialise and add any new dapm widgets
  * @codec: audio codec
  *
  * Checks the codec for any new dapm widgets and creates them if found.
  *
  * Returns 0 for success.
  */
-int snd_soc_dapm_new_widgets(struct snd_soc_machine *machine)
+int snd_soc_dapm_init(struct snd_soc_machine *machine)
 {
 	struct snd_soc_dapm_widget *w;
 
@@ -999,7 +1015,7 @@ int snd_soc_dapm_new_widgets(struct snd_soc_machine *machine)
 	mutex_unlock(&machine->mutex);
 	return 0;
 }
-EXPORT_SYMBOL_GPL(snd_soc_dapm_new_widgets);
+EXPORT_SYMBOL_GPL(snd_soc_dapm_init);
 
 /**
  * snd_soc_dapm_get_volsw - dapm mixer get callback
@@ -1281,7 +1297,7 @@ int snd_soc_dapm_stream_event(struct snd_soc_machine *machine,
 EXPORT_SYMBOL_GPL(snd_soc_dapm_stream_event);
 
 /**
- * snd_soc_dapm_device_event - send a device event to the dapm core
+ * snd_soc_dapm_set_bias - send a device event to the dapm core
  * @socdev: audio device
  * @event: device event
  *
@@ -1290,33 +1306,19 @@ EXPORT_SYMBOL_GPL(snd_soc_dapm_stream_event);
  *
  * Returns 0 for success else error.
  */
-int snd_soc_dapm_device_event(struct snd_soc_pcm_runtime *pcm_runtime, 
-	enum snd_soc_dapm_bias_power level)
+int snd_soc_dapm_set_bias(struct snd_soc_pcm_runtime *pcm_runtime, 
+	enum snd_soc_dapm_bias_level level)
 {
 	struct snd_soc_codec *codec = pcm_runtime->codec;
 	struct snd_soc_machine *machine = pcm_runtime->machine;
 	
-	if (machine->dapm_event)
-		machine->dapm_event(machine, level);
-	if (codec->set_bias_power)
-		codec->set_bias_power(codec, level);
+	if (machine->set_bias_level)
+		machine->set_bias_level(machine, level);
+	if (codec->set_bias_level)
+		codec->set_bias_level(codec, level);
 	return 0;
 }
-EXPORT_SYMBOL_GPL(snd_soc_dapm_device_event);
-
-static int snd_soc_dapm_set_pin(struct snd_soc_machine *machine,
-	char *pin, int status)
-{
-	struct snd_soc_dapm_widget *w;
-
-	list_for_each_entry(w, &machine->dapm_widgets, list) {
-		if (!strcmp(w->name, pin)) {
-			w->connected = status;
-		}
-	}
-
-	return 0;
-}
+EXPORT_SYMBOL_GPL(snd_soc_dapm_set_bias);
 
 /**
  * snd_soc_dapm_enable_pin - enable audio pin and it's parents/children

@@ -8,6 +8,8 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
+ * 
+ * ALSA SoC codec driver interface.
  */
 
 #ifndef __LINUX_SND_SOC_CODEC_H
@@ -17,13 +19,27 @@
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 
-/*
- * Convenience kcontrol builders
- */
 #define SOC_SINGLE_VALUE(reg,shift,max,invert) ((reg) | ((shift) << 8) |\
 	((shift) << 12) | ((max) << 16) | ((invert) << 24))
 #define SOC_SINGLE_VALUE_EXT(reg,max,invert) ((reg) | ((max) << 16) |\
 	((invert) << 31))
+
+/*
+ * Convenience kcontrol builders.
+ * 
+ * @SINGLE:       Mono kcontrol.
+ * @SINGLE_TLV:   Mono Table Lookup Value kcontrol.
+ * @DOUBLE:       Stereo kcontrol.
+ * @DOUBLE_R:     Stereo kcontrol that spans 2 codec registers.
+ * @DOUBLE_TLV:   Stereo Table Lookup Value kcontrol.
+ * @DOUBLE_R_TLV: Stereo Table Lookup Value kcontrol that spans 2 registers.
+ * @ENUM_SINGLE:  Mono enumerated kcontrol.
+ * @ENUM_DOUBLE:  Stereo enumerated kcontrol.
+ * @SINGLE_EXT:   Mono external kcontrol.
+ * @DOUBLE_EXT:   Stereo external kcontrol.
+ * @ENUM_EXT:     Mono external enumerated kcontrol.
+ */
+
 #define SOC_SINGLE(xname, reg, shift, max, invert) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
 	.info = snd_soc_info_volsw, .get = snd_soc_get_volsw,\
@@ -93,7 +109,15 @@
 	.get = xhandler_get, .put = xhandler_put, \
 	.private_value = (unsigned long)&xenum }
 
-/* enumerated kcontrol */
+struct snd_soc_codec;
+struct snd_soc_machine;
+struct snd_soc_dai;
+struct snd_ac97_bus_ops;
+enum snd_soc_dapm_bias_level;
+
+/* 
+ * Enumerated kcontrol
+ */
 struct soc_enum {
 	unsigned short reg;
 	unsigned short reg2;
@@ -104,64 +128,84 @@ struct soc_enum {
 	void *dapm;
 };
 
-struct snd_soc_codec;
-struct snd_soc_machine;
-struct snd_soc_dai;
-struct snd_ac97_bus_ops;
-
-/* SoC Audio Codec */
+/* 
+ * SoC Audio Codec.
+ * 
+ * Describes a SoC audio codec 
+ */
 struct snd_soc_codec {
-	struct device dev;
-	char *name;
 
-	/* runtime */
-	unsigned int active;
-	enum snd_soc_dapm_bias_power dapm_state;
-	enum snd_soc_dapm_bias_power suspend_dapm_state;
-	struct snd_ac97 *ac97;  /* for ad-hoc ac97 devices */
+	/* 
+	 * Codec runtime 
+	 */
+	char *name;
+	struct device dev;
+	unsigned int active;			/* is codec active */
+	struct delayed_work delayed_work;
+	struct snd_ac97 *ac97;  		/* for ad-hoc ac97 devices */
 	struct mutex mutex;
 	struct list_head list;
-	struct list_head dai_list;
-	struct snd_soc_machine *machine;
+	struct list_head dai_list;		/* list of DAI's */
+	struct snd_soc_machine *machine;	/* parent machine */
 	
-	int (*set_bias_power)(struct snd_soc_codec *codec, 
-		enum snd_soc_dapm_bias_power level);
+	/*
+	 *  Codec power control and state. Optional.
+	 */
+	enum snd_soc_dapm_bias_level bias_level;
+	enum snd_soc_dapm_bias_level suspend_bias_level;
+	int (*set_bias_level)(struct snd_soc_codec *codec, 
+		enum snd_soc_dapm_bias_level level);
 	
-	/* codec probe/remove - this can perform IO */
+	/* 
+	 * Initialisation and cleanup - Optional, both can perform IO.
+	 * Normally used to power up/down codec power domain and do any
+	 * codec init/exit IO.
+	 */
 	int (*init)(struct snd_soc_codec *codec, 
 		struct snd_soc_machine *machine);
 	void (*exit)(struct snd_soc_codec *codec, 
 		struct snd_soc_machine *machine);
 	
-	/* codec IO */
-	
+	/* 
+	 * Codec control IO.
+	 * 
+	 * All codec IO is performed by calling codec_read() and codec_write().
+	 * codec_read/write() formats the IO data for the codec and then calls
+	 * the machine_read and machine_write respectively to physically
+	 * perform the IO operation.
+	 * 
+	 * The machine_read and machine_write functions can either wrap the
+	 * kernel I2C, SPI read and write functions or do custom IO. 
+	 */
 	unsigned int (*codec_read)(struct snd_soc_codec *codec, 
 		unsigned int reg);
 	int (*codec_write)(struct snd_soc_codec *codec, unsigned int reg, 
 		unsigned int value);
+	int (*machine_write)(void *control_data, long data, int bytes);
+	int (*machine_read)(void *control_data, long data, int bytes);
+	void *control_data; 			/* codec control data */
 	
-	void *control_data; /* codec control data */
-	/* machine read/write can be used in 2 ways :-
-	 *  1. data points to buffer and arg 3 is size (bytes)
-	 *  2. data is reg val and arg 3 is register
-	 * This depends on codec and machine.
+	
+	/* 
+	 * Register cacheing. Codec registers can be cached to siginificantly
+	 * speed up IO operations over slow busses. e.g. I2C, SPI
 	 */
-	int (*machine_write)(void *control_data, long data, int);
-	int (*machine_read)(void *control_data, long data, int);
-	
-	/* register cache */
-	void *reg_cache;
-	short reg_cache_size;
-	short reg_cache_step;
-
-	struct delayed_work delayed_work;
+	void *reg_cache;			/* cache data */
+	short reg_cache_size;			/* number of registers */
+	short reg_cache_step;			/* register size (bytes) */
 	
 	void *private_data;
-	void *platform_data;
 };
 #define to_snd_soc_codec(d) \
 	container_of(d, struct snd_soc_codec, dev)
-	
+
+/**
+ * snd_soc_codec_set_io - configure DAI system or master clock.
+ * @codec: DAI
+ * @tristate: tristate enable
+ *
+ * Tristates the DAI so that others can use it.
+ */
 static inline void snd_soc_codec_set_io(struct snd_soc_codec *codec,
 	int (*machine_read)(void *, long, int), 
 	int (*machine_write)(void *, long, int), void *control_data)
@@ -173,41 +217,30 @@ static inline void snd_soc_codec_set_io(struct snd_soc_codec *codec,
 	mutex_unlock(&codec->mutex);
 }
 
+
 static inline int snd_soc_codec_init(struct snd_soc_codec *codec,
 	struct snd_soc_machine *machine)
 {
-	int ret = 0;
-	
-	mutex_lock(&codec->mutex);
-	
-	if (codec->control_data == NULL || codec->codec_write == NULL) {
-		ret = -EIO;
-		goto out;
-	}
+	if (codec->control_data == NULL || codec->codec_write == NULL)
+		return -EIO;
 		
 	if (codec->init)
-		ret = codec->init(codec, machine);
-
-out:
-	mutex_unlock(&codec->mutex);
-	return ret;
+		return codec->init(codec, machine);
+	return 0;
 }
 
 static inline void snd_soc_codec_exit(struct snd_soc_codec *codec,
 	struct snd_soc_machine *machine)
 {	
-	mutex_lock(&codec->mutex);
 	if (codec->exit)
 		codec->exit(codec, machine);
-	
-	mutex_unlock(&codec->mutex);
 }
  
 /*
- * Controls
+ * KControls.
+ * 
+ * Called by the convenience macros to get/set/info kcontrols.
  */
-struct snd_kcontrol *snd_soc_cnew(const struct snd_kcontrol_new *_template,
-	void *data, char *long_name);
 int snd_soc_info_enum_double(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_info *uinfo);
 int snd_soc_info_enum_ext(struct snd_kcontrol *kcontrol,
@@ -233,8 +266,8 @@ int snd_soc_get_volsw_2r(struct snd_kcontrol *kcontrol,
 int snd_soc_put_volsw_2r(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
 
-int snd_soc_codec_create(struct snd_soc_machine *machine,
-	const char *codec_id);
+struct snd_kcontrol *snd_soc_cnew(const struct snd_kcontrol_new *_template,
+	void *data, char *long_name);
 int snd_soc_codec_add_dai(struct snd_soc_codec *codec, 
 	struct snd_soc_dai *dai, int num);
 int snd_soc_register_codec(struct snd_soc_codec *codec);

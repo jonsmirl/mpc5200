@@ -40,6 +40,9 @@
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 #include <sound/initval.h>
+#include <sound/ac97_codec.h>
+
+#include "soc-prv.h"
 
 /* debug */
 #define SOC_DEBUG 0
@@ -283,7 +286,7 @@ static void close_delayed_work(struct work_struct *work)
 		if (codec->active == 0) {
 			dbg("pop wq D1 %s %s\n", codec->name,
 				codec_rdai->dai->playback.stream_name);
-			snd_soc_dapm_device_event(pcm_runtime, 
+			snd_soc_dapm_set_bias(pcm_runtime, 
 				SND_SOC_BIAS_PREPARE);
 		}
 
@@ -296,7 +299,7 @@ static void close_delayed_work(struct work_struct *work)
 		if (codec->active == 0) {
 			dbg("pop wq D3 %s %s\n", codec->name,
 				codec_rdai->dai->playback.stream_name);
-	 		snd_soc_dapm_device_event(pcm_runtime, 
+	 		snd_soc_dapm_set_bias(pcm_runtime, 
 	 			SND_SOC_BIAS_STANDBY);
 		}
 	}
@@ -349,7 +352,7 @@ static int soc_codec_close(struct snd_pcm_substream *substream)
 			SND_SOC_DAPM_STREAM_STOP);
 
 		if (codec->active == 0 && pcm_runtime->pop_wait == 0)
-			snd_soc_dapm_device_event(pcm_runtime, 
+			snd_soc_dapm_set_bias(pcm_runtime, 
 				SND_SOC_BIAS_STANDBY);
 	}
 
@@ -422,9 +425,9 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 		}
 	} else {
 		/* no delayed work - do we need to power up codec */
-		if (codec->dapm_state != SND_SOC_BIAS_ON) {
+		if (codec->bias_level != SND_SOC_BIAS_ON) {
 
-			snd_soc_dapm_device_event(pcm_runtime, SND_SOC_BIAS_PREPARE);
+			snd_soc_dapm_set_bias(pcm_runtime, SND_SOC_BIAS_PREPARE);
 
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 				snd_soc_dapm_stream_event(machine,
@@ -435,7 +438,7 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 					codec_rdai->dai->capture.stream_name,
 					SND_SOC_DAPM_STREAM_START);
 
-			snd_soc_dapm_device_event(pcm_runtime, SND_SOC_BIAS_ON);
+			snd_soc_dapm_set_bias(pcm_runtime, SND_SOC_BIAS_ON);
 			if (codec_rdai->dai->digital_mute)
 				codec_rdai->dai->digital_mute(codec_rdai, 0);
 		} else {

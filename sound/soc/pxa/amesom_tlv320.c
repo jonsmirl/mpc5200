@@ -33,8 +33,6 @@
 
 #include "../codecs/tlv320.h"
 #include "pxa2xx-pcm.h"
-#include "pxa2xx-i2s.h"
-#include "pxa2xx-ssp.h"
 
 
 /*
@@ -48,29 +46,6 @@
 #define GPIO50_SSP2CLKM_MD	(50 | GPIO_ALT_FN_3_OUT)
 #define GPIO14_SSP2FRMM_MD	(14 | GPIO_ALT_FN_2_OUT)
 
-
-static struct snd_soc_machine amesom;
-
-
-static int amesom_probe(struct platform_device *pdev)
-{
-	return 0;
-}
-
-static int amesom_remove(struct platform_device *pdev)
-{
-	return 0;
-}
-
-static int tlv320_voice_startup(struct snd_pcm_substream *substream)
-{
-	return 0;
-}
-
-static void tlv320_voice_shutdown(struct snd_pcm_substream *substream)
-{
-	return;
-}
 
 /*
  * Tlv320 uses SSP port for playback.
@@ -98,108 +73,206 @@ static int tlv320_voice_hw_params(struct snd_pcm_substream *substream,
 	// CODEC MASTER, SSP SLAVE
 
 	/* set codec DAI configuration */
-	ret = codec_dai->dai_ops.set_fmt(codec_dai, SND_SOC_DAIFMT_MSB |
+	ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_MSB |
 		SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
 	if (ret < 0)
 		return ret;
 
 	/* set cpu DAI configuration */
-	ret = cpu_dai->dai_ops.set_fmt(cpu_dai, SND_SOC_DAIFMT_MSB |
+	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_MSB |
 		SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
 	if (ret < 0)
 		return ret;
 
 	/* set the SSP system clock as input (unused) */
-	ret = cpu_dai->dai_ops.set_sysclk(cpu_dai, PXA2XX_SSP_CLK_NET_PLL, 0,
+	ret = snd_soc_dai_set_sysclk(cpu_dai, PXA2XX_SSP_CLK_NET_PLL, 0,
 		SND_SOC_CLOCK_IN);
 	if (ret < 0)
 		return ret;
 
 	/* set SSP slots */
 	//ret = cpu_dai->dai_ops.set_tdm_slot(cpu_dai, 0x1, slots);
-	ret = cpu_dai->dai_ops.set_tdm_slot(cpu_dai, 0x3, 1);
+	ret = snd_soc_dai_set_tdm_slot(cpu_dai, 0x3, 1);
 	if (ret < 0)
 		return ret;
 
 	return 0;
 }
 
-static int tlv320_voice_hw_free(struct snd_pcm_substream *substream)
+static struct snd_soc_ops tlv320_voice_ops = {
+	.hw_params = tlv320_voice_hw_params,
+};
+
+static unsigned short normal_i2c[] = {
+#ifdef TLV320AIC24K
+ 	0x41,
+#else
+	0x40,
+#endif
+	 I2C_CLIENT_END,
+};
+
+/* Magic definition of all other variables and things */
+I2C_CLIENT_INSMOD;
+
+static struct i2c_driver tlv320_i2c_driver;
+static struct i2c_client client_template;
+
+static int amesom_tlv320_write(void *control_data, long data, int size)
 {
-	return 0;
+	return i2c_master_send((struct i2c_client*)control_data, 
+		(char*) data, size);
 }
 
-static struct snd_soc_ops tlv320_voice_ops = {
-	.startup = tlv320_voice_startup,
-	.shutdown = tlv320_voice_shutdown,
-	.hw_params = tlv320_voice_hw_params,
-	.hw_free = tlv320_voice_hw_free,
-};
-
-
-static struct snd_soc_dai_link amesom_dai[] = {
+/*
+ * Logic for a tlv320 as connected on a Sharp SL-C7x0 Device
+ */
+static int amesom_init(struct snd_soc_machine *machine)
 {
-	.name = "TLV320",
-	.stream_name = "TLV320 Voice",
-	.cpu_dai = &pxa_ssp_dai[PXA2XX_DAI_SSP2],
-	.codec_dai = &tlv320_dai[TLV320_DAI_MODE1_VOICE],
-	.ops = &tlv320_voice_ops,
-},
-};
-
-static struct snd_soc_machine amesom = {
-	.name = "Amesom",
-	.probe = amesom_probe,
-	.remove = amesom_remove,
-	.dai_link = amesom_dai,
-	.num_links = ARRAY_SIZE(amesom_dai),
-};
-
-static struct tlv320_setup_data amesom_tlv320_setup = {
-#ifdef TLV320AIC24K //codec2
-	.i2c_address = 0x41,
-#else // TLV320AIC14k
-	.i2c_address = 0x40,
-#endif
-};
-
-static struct snd_soc_device amesom_snd_devdata = {
-	.machine = &amesom,
-	.platform = &pxa2xx_soc_platform,
-	.codec_dev = &soc_codec_dev_tlv320,
-	.codec_data = &amesom_tlv320_setup,
-};
-
-static struct platform_device *amesom_snd_device;
-
-static int __init amesom_init(void)
-{
-	int ret;
-
-	amesom_snd_device = platform_device_alloc("soc-audio", -1);
-	if (!amesom_snd_device)
-		return -ENOMEM;
-
-	platform_set_drvdata(amesom_snd_device, &amesom_snd_devdata);
-	amesom_snd_devdata.dev = &amesom_snd_device->dev;
-	ret = platform_device_add(amesom_snd_device);
-
-	if (ret)
-		platform_device_put(amesom_snd_device);
-
-
+	struct snd_soc_codec *codec;
+	int i, ret;
+	
+	codec = snd_soc_get_codec(machine, tlv320_codec_id);
+	if (codec == NULL)
+		return -ENODEV;
+		
 	/* SSP port 2 slave */
 	pxa_gpio_mode(GPIO11_SSP2RX_MD);
 	pxa_gpio_mode(GPIO13_SSP2TX_MD);
 	pxa_gpio_mode(GPIO50_SSP2CLKS_MD);
 	pxa_gpio_mode(GPIO14_SSP2FRMS_MD);
+	
+	snd_soc_codec_set_io(codec, NULL, amesom_tlv320_write, 
+		machine->private_data);
+	
+	snd_soc_codec_init(codec, machine);
+	
+	return 0;
+}
 
+static int tlv320_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
+{
+	struct snd_soc_machine *machine;
+	struct i2c_client *i2c;
+	int ret;
+
+	if (addr != tlv320_I2C_ADDR)
+		return -ENODEV;
+
+	client_template.adapter = adap;
+	client_template.addr = addr;
+
+	i2c = kmemdup(&client_template, sizeof(client_template), GFP_KERNEL);
+	if (i2c == NULL)
+		return -ENOMEM;
+	
+	ret = i2c_attach_client(i2c);
+	if (ret < 0) {
+		printk("failed to attach codec at addr %x\n", addr);
+		goto attach_err;
+	}
+	
+	machine = snd_soc_machine_create("amesom", &i2c->dev, 
+		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
+	if (machine == NULL)
+		return -ENOMEM;
+
+	machine->longname = "tlv320";
+	machine->init = amesom_init;
+	machine->private_data = i2c;
+	i2c_set_clientdata(i2c, machine);
+	
+	ret = snd_soc_codec_create(machine, tlv320_codec_id);
+	if (ret < 0)
+		goto err;
+
+	ret = snd_soc_platform_create(machine, pxa_platform_id);
+	if (ret < 0)
+		goto err;
+
+	ret = snd_soc_pcm_create(machine, &tlv320_voice_ops, 
+		TLV320_DAI, PXA2XX_DAI_SSP2, 1, 1);
+	if (ret < 0)
+		goto err;
+	
+	ret = snd_soc_machine_register(machine);
 	return ret;
+
+err:
+	snd_soc_machine_free(machine);
+attach_err:
+	i2c_detach_client(i2c);
+	kfree(i2c);
+	return ret;
+}
+
+static int tlv320_i2c_detach(struct i2c_client *client)
+{
+	struct snd_soc_machine *machine = i2c_get_clientdata(client);
+	 
+	snd_soc_machine_free(machine);
+	i2c_detach_client(client);
+	kfree(client);
+	return 0;
+}
+
+static int tlv320_i2c_attach(struct i2c_adapter *adap)
+{
+	return i2c_probe(adap, &addr_data, tlv320_i2c_probe);
+}
+
+static struct i2c_driver tlv320_i2c_driver = {
+	.driver = {
+		.name = "tlv320 I2C Codec",
+		.owner = THIS_MODULE,
+	},
+	.id =             I2C_DRIVERID_tlv320,
+	.attach_adapter = tlv320_i2c_attach,
+	.detach_client =  tlv320_i2c_detach,
+	.command =        NULL,
+};
+
+static struct i2c_client client_template = {
+	.name =   "tlv320",
+	.driver = &tlv320_i2c_driver,
+};
+
+static int __init amesom_tlv320_probe(struct platform_device *pdev)
+{
+	int ret;
+
+	/* register I2C driver for tlv320 codec control */
+	ret = i2c_add_driver(&tlv320_i2c_driver);
+	if (ret < 0)
+		printk (KERN_ERR "%s: failed to add i2c driver\n",
+			__FUNCTION__);
+	return ret;
+}
+
+static int __exit amesom_tlv320_remove(struct platform_device *pdev)
+{	
+	i2c_del_driver(&tlv320_i2c_driver);
+	return 0;
+}
+
+
+static struct platform_driver amesom_tlv320_driver = {
+	.probe		= amesom_tlv320_probe,
+	.remove		= __devexit_p(amesom_tlv320_remove),
+	.driver		= {
+		.name 		= "amesom-tlv320",
+		.owner		= THIS_MODULE,
+	},
+};
+
+static int __init amesom_init(void)
+{
+	return platform_driver_register(&amesom_tlv320_driver);
 }
 
 static void __exit amesom_exit(void)
 {
-	platform_device_unregister(amesom_snd_device);
+	platform_driver_unregister(&amesom_tlv320_driver);
 }
 
 module_init(amesom_init);

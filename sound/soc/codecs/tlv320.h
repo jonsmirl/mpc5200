@@ -90,10 +90,6 @@
 #define TLV320_PCMCLK		1
 
 
-struct tlv320_setup_data {
-	unsigned short i2c_address;
-};
-
 /* DAI ifmodes */
 /* mode 1 IFMODE = 00 */
 #define TLV320_DAI_MODE1_VOICE	0
@@ -105,7 +101,6 @@ struct tlv320_setup_data {
 /* mode 4 IFMODE = 11 */
 #define TLV320_DAI_MODE4_HIFI	4
 
-extern struct snd_soc_codec_dai tlv320_dai[5];
-extern struct snd_soc_codec_device soc_codec_dev_tlv320;
+extern const char tlv320_codec_id[];
 
 #endif

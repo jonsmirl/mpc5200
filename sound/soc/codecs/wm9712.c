@@ -468,7 +468,7 @@ static int wm9712_add_widgets(struct snd_soc_codec *codec,
 			audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_new_widgets(machine);
+	snd_soc_dapm_init(machine);
 	return 0;
 }
 
@@ -542,8 +542,8 @@ static int ac97_aux_prepare(struct snd_pcm_substream *substream,
 	return wm9712_ac97_write(codec, AC97_PCM_SURR_DAC_RATE, runtime->rate);
 }
 
-static int wm9712_set_bias_power(struct snd_soc_codec *codec, 
-	enum snd_soc_dapm_bias_power level)
+static int wm9712_set_bias_level(struct snd_soc_codec *codec, 
+	enum snd_soc_dapm_bias_level level)
 {
 	u16 reg;
 
@@ -568,7 +568,7 @@ static int wm9712_set_bias_power(struct snd_soc_codec *codec,
 		wm9712_ac97_write(codec, AC97_POWERDOWN, 0xffff);
 		break;
 	}
-	codec->dapm_state = level;
+	codec->bias_level = level;
 	return 0;
 }
 
@@ -576,7 +576,7 @@ static int wm9712_codec_suspend(struct device *dev, pm_message_t state)
 {
 	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 
-	wm9712_set_bias_power(codec, SND_SOC_BIAS_OFF);
+	wm9712_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
 }
 
@@ -586,7 +586,7 @@ static int wm9712_codec_resume(struct device *dev)
 	int i;
 	u16 *cache = codec->reg_cache;
 
-	wm9712_set_bias_power(codec, SND_SOC_BIAS_STANDBY);
+	wm9712_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	/* Sync reg_cache with the hardware after cold reset */
 	for (i = 2; i < ARRAY_SIZE(wm9712_reg) << 1; i+=2) {
@@ -596,8 +596,8 @@ static int wm9712_codec_resume(struct device *dev)
 		codec->machine_write(codec->ac97, i, cache[i>>1]);
 	}
 
-	if (codec->suspend_dapm_state == SND_SOC_BIAS_ON)
-		wm9712_set_bias_power(codec, SND_SOC_BIAS_ON);
+	if (codec->suspend_bias_level == SND_SOC_BIAS_ON)
+		wm9712_set_bias_level(codec, SND_SOC_BIAS_ON);
 
 	return 0;
 }
@@ -609,7 +609,7 @@ static int wm9712_codec_init(struct snd_soc_codec *codec,
 	wm9712_ac97_write(codec, AC97_VIDEO, 
 		wm9712_ac97_read(codec, AC97_VIDEO) | 0x3000);
 
-	wm9712_set_bias_power(codec, SND_SOC_BIAS_STANDBY);
+	wm9712_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 	wm9712_add_controls(codec, machine->card);
 	wm9712_add_widgets(codec, machine);
 	
@@ -677,7 +677,7 @@ static int wm9712_codec_probe(struct device *dev)
 	codec->reg_cache_size = sizeof(wm9712_reg);
 	codec->reg_cache_step = 2;
 
-	codec->set_bias_power = wm9712_set_bias_power;
+	codec->set_bias_level = wm9712_set_bias_level;
 	codec->codec_read = wm9712_ac97_read;
 	codec->codec_write = wm9712_ac97_write;
 	codec->init = wm9712_codec_init;

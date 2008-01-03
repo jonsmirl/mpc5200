@@ -492,7 +492,7 @@ static int wm8750_add_widgets(struct snd_soc_codec *codec,
 			audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_new_widgets(machine);
+	snd_soc_dapm_init(machine);
 	return 0;
 }
 
@@ -692,8 +692,8 @@ static int wm8750_mute(struct snd_soc_dai_runtime *dai, int mute)
 	return 0;
 }
 
-static int wm8750_set_bias_power(struct snd_soc_codec *codec, 
-	enum snd_soc_dapm_bias_power level)
+static int wm8750_set_bias_level(struct snd_soc_codec *codec, 
+	enum snd_soc_dapm_bias_level level)
 {
 	u16 pwr_reg = wm8750_read_reg_cache(codec, WM8750_PWR1) & 0xfe3e;
 
@@ -714,7 +714,7 @@ static int wm8750_set_bias_power(struct snd_soc_codec *codec,
 		wm8750_write(codec, WM8750_PWR1, 0x0001);
 		break;
 	}
-	codec->dapm_state = level;
+	codec->bias_level = level;
 	return 0;
 }
 
@@ -722,14 +722,14 @@ static void wm8750_work(struct work_struct *work)
 {
 	struct snd_soc_codec *codec =
 		container_of(work, struct snd_soc_codec, delayed_work.work);
-	wm8750_set_bias_power(codec, codec->dapm_state);
+	wm8750_set_bias_level(codec, codec->bias_level);
 }
 
 static int wm8750_suspend(struct device *dev, pm_message_t state)
 {
 	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 
-	wm8750_set_bias_power(codec, SND_SOC_BIAS_OFF);
+	wm8750_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
 }
 
@@ -749,12 +749,12 @@ static int wm8750_resume(struct device *dev)
 		codec->machine_write(codec->control_data, (long)data, 2);
 	}
 
-	wm8750_set_bias_power(codec, SND_SOC_BIAS_STANDBY);
+	wm8750_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	/* charge wm8750 caps */
-	if (codec->suspend_dapm_state == SND_SOC_BIAS_ON) {
-		wm8750_set_bias_power(codec, SND_SOC_BIAS_PREPARE);
-		codec->dapm_state = SND_SOC_BIAS_ON;
+	if (codec->suspend_bias_level == SND_SOC_BIAS_ON) {
+		wm8750_set_bias_level(codec, SND_SOC_BIAS_PREPARE);
+		codec->bias_level = SND_SOC_BIAS_ON;
 		schedule_delayed_work(&codec->delayed_work, msecs_to_jiffies(1000));
 	}
 
@@ -791,8 +791,8 @@ static int wm8750_codec_init(struct snd_soc_codec *codec,
 	wm8750_reset(codec);
 
 	/* charge output caps */
-	wm8750_set_bias_power(codec, SND_SOC_BIAS_PREPARE);
-	codec->dapm_state = SND_SOC_BIAS_STANDBY;
+	wm8750_set_bias_level(codec, SND_SOC_BIAS_PREPARE);
+	codec->bias_level = SND_SOC_BIAS_STANDBY;
 	schedule_delayed_work(&codec->delayed_work, msecs_to_jiffies(1000));
 
 	/* set the update bits */
@@ -822,7 +822,7 @@ static int wm8750_codec_init(struct snd_soc_codec *codec,
 static void wm8750_codec_exit(struct snd_soc_codec *codec,
 	struct snd_soc_machine *machine)
 {
-	wm8750_set_bias_power(codec, SND_SOC_BIAS_OFF);
+	wm8750_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	run_delayed_work(&codec->delayed_work);
 }
 
@@ -895,7 +895,7 @@ static int wm8750_codec_probe(struct device *dev)
 	codec->reg_cache_step = 1;
 
 	INIT_DELAYED_WORK(&codec->delayed_work, wm8750_work);
-	codec->set_bias_power = wm8750_set_bias_power;
+	codec->set_bias_level = wm8750_set_bias_level;
 	codec->codec_read = wm8750_read_reg_cache;
 	codec->codec_write = wm8750_write;
 	codec->init = wm8750_codec_init;
