@@ -15,10 +15,6 @@
 
 #include <linux/types.h>
 #include <linux/workqueue.h>
-#include <sound/driver.h>
-#include <sound/core.h>
-#include <sound/pcm.h>
-#include <sound/control.h>
 
 struct snd_soc_pcm_runtime;
 struct snd_soc_machine;
@@ -67,7 +63,7 @@ int snd_soc_codec_create(struct snd_soc_machine *machine,
  *
  * Joins a codec and platform DAI together and creates a ALSA PCM(s).
  */
-int snd_soc_pcm_create(struct snd_soc_machine *machine,
+int snd_soc_pcm_create(struct snd_soc_machine *machine, char *name,
 	struct snd_soc_ops *pcm_ops, int codec_dai_id, 
 	int platform_dai_id, int playback, int capture);
 
@@ -170,7 +166,7 @@ struct snd_soc_machine {
 	/* init() and exit() - init is called by snd_soc_machine_register()
 	 * whilst exit by snd_soc_machine_free() */
 	int (*init)(struct snd_soc_machine *machine);
-	int (*exit)(struct snd_soc_machine *machine);
+	void (*exit)(struct snd_soc_machine *machine);
 	
 	/* bias power level */
 	int (*set_bias_level)(struct snd_soc_machine *machine, 
@@ -200,7 +196,7 @@ static inline struct snd_soc_codec *
 	snd_soc_get_codec(struct snd_soc_machine *machine, const char *codec_id)
 {
 	struct snd_soc_codec *codec;
-	
+
 	list_for_each_entry(codec, &machine->codec_list, list) {
 		if (!strcmp(codec->name, codec_id))
 			return codec;
@@ -229,6 +225,27 @@ static inline struct snd_soc_platform *
 }
 
 /**
+ * snd_soc_get_pcm - get pcm.
+ * @machine: machine
+ * @pcm_id: pcm ID
+ *
+ * Gets pcm from ID.
+ */
+static inline struct snd_soc_pcm_runtime *
+	snd_soc_get_pcm(struct snd_soc_machine *machine, 
+	const char *pcm_id)
+{
+	struct snd_soc_pcm_runtime *pcm_runtime;
+	
+	list_for_each_entry(pcm_runtime, &machine->pcm_list, list) {
+		if (!strcmp(pcm_runtime->name, pcm_id))
+			return pcm_runtime;
+	}
+	return NULL;
+}
+
+
+/**
  * snd_soc_get_ac97_ops - free machine.
  * @machine: machine
  * @dai_id: DAI ID.
@@ -249,5 +266,40 @@ static inline struct snd_ac97_bus_ops *
 	}
 	return NULL;
 }
+
+/**
+ * snd_soc_codec_set_io - configure DAI system or master clock.
+ * @codec: DAI
+ * @tristate: tristate enable
+ *
+ * Tristates the DAI so that others can use it.
+ */
+static inline void snd_soc_codec_set_io(struct snd_soc_codec *codec,
+	int (*machine_read)(void *, long, int), 
+	int (*machine_write)(void *, long, int), void *control_data)
+{
+	mutex_lock(&codec->mutex);
+	codec->control_data = control_data;
+	codec->machine_read = machine_read;
+	codec->machine_write = machine_write;
+	mutex_unlock(&codec->mutex);
+}
+
+
+static inline int snd_soc_codec_init(struct snd_soc_codec *codec,
+	struct snd_soc_machine *machine)
+{		
+	if (codec->init)
+		return codec->init(codec, machine);
+	return 0;
+}
+
+static inline void snd_soc_codec_exit(struct snd_soc_codec *codec,
+	struct snd_soc_machine *machine)
+{	
+	if (codec->exit)
+		codec->exit(codec, machine);
+}
+
 
 #endif

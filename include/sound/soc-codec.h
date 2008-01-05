@@ -16,7 +16,6 @@
 #define __LINUX_SND_SOC_CODEC_H
 
 #include <linux/workqueue.h>
-#include <sound/soc.h>
 #include <sound/soc-dapm.h>
 
 #define SOC_SINGLE_VALUE(reg,shift,max,invert) ((reg) | ((shift) << 8) |\
@@ -113,7 +112,8 @@ struct snd_soc_codec;
 struct snd_soc_machine;
 struct snd_soc_dai;
 struct snd_ac97_bus_ops;
-enum snd_soc_dapm_bias_level;
+struct snd_kcontrol;
+struct snd_kcontrol_new;
 
 /* 
  * Enumerated kcontrol
@@ -158,7 +158,7 @@ struct snd_soc_codec {
 	
 	/* 
 	 * Initialisation and cleanup - Optional, both can perform IO.
-	 * Normally used to power up/down codec power domain and do any
+	 * Normally used to power up/down codec power domain (bias) and do any
 	 * codec init/exit IO.
 	 */
 	int (*init)(struct snd_soc_codec *codec, 
@@ -194,47 +194,11 @@ struct snd_soc_codec {
 	short reg_cache_size;			/* number of registers */
 	short reg_cache_step;			/* register size (bytes) */
 	
-	void *private_data;
+	void *private_data;			/* core doesnt touch this */
+	void *platform_data;			/* or this */
 };
 #define to_snd_soc_codec(d) \
 	container_of(d, struct snd_soc_codec, dev)
-
-/**
- * snd_soc_codec_set_io - configure DAI system or master clock.
- * @codec: DAI
- * @tristate: tristate enable
- *
- * Tristates the DAI so that others can use it.
- */
-static inline void snd_soc_codec_set_io(struct snd_soc_codec *codec,
-	int (*machine_read)(void *, long, int), 
-	int (*machine_write)(void *, long, int), void *control_data)
-{
-	mutex_lock(&codec->mutex);
-	codec->control_data = control_data;
-	codec->machine_read = machine_read;
-	codec->machine_write = machine_write;
-	mutex_unlock(&codec->mutex);
-}
-
-
-static inline int snd_soc_codec_init(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
-{
-	if (codec->control_data == NULL || codec->codec_write == NULL)
-		return -EIO;
-		
-	if (codec->init)
-		return codec->init(codec, machine);
-	return 0;
-}
-
-static inline void snd_soc_codec_exit(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
-{	
-	if (codec->exit)
-		codec->exit(codec, machine);
-}
  
 /*
  * KControls.
@@ -266,23 +230,58 @@ int snd_soc_get_volsw_2r(struct snd_kcontrol *kcontrol,
 int snd_soc_put_volsw_2r(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
 
+/**
+ * snd_soc_cnew - create new kcontrol.
+ * @_template: template kcontrol
+ * @data: private kcontrol data
+ * @long_name: kcontrol long name
+ *
+ * Creates a new ASoC ALSA kcontrol.
+ */
 struct snd_kcontrol *snd_soc_cnew(const struct snd_kcontrol_new *_template,
 	void *data, char *long_name);
+
+/**
+ * snd_soc_codec_add_dai - add DAI to codec.
+ * @codec: codec
+ * @dai: pointer to DAI
+ * @num: number of DAI to add
+ *
+ * Adds <num> Digital Audio Interfaces to codec.
+ */
 int snd_soc_codec_add_dai(struct snd_soc_codec *codec, 
 	struct snd_soc_dai *dai, int num);
+
+/**
+ * snd_soc_register_codec - register ASoC codec driver.
+ * @codec: codec driver
+ *
+ * Registers a codec driver with ASoC core.
+ */
 int snd_soc_register_codec(struct snd_soc_codec *codec);
+
+/**
+ * snd_soc_unregister_codec - unregister ASoC codec driver.
+ * @codec: codec driver
+ *
+ * Unregisters a codec driver with ASoC core.
+ */
 void snd_soc_unregister_codec(struct snd_soc_codec *codec);
 
-/* codec IO */
+/* Codec read and write */
 #define snd_soc_read(codec, reg) codec->codec_read(codec, reg)
 #define snd_soc_write(codec, reg, value) codec->codec_write(codec, reg, value)
 
-/* codec register bit access */
-int snd_soc_update_bits(struct snd_soc_codec *codec, unsigned short reg,
-				unsigned short mask, unsigned short value);
-int snd_soc_test_bits(struct snd_soc_codec *codec, unsigned short reg,
-				unsigned short mask, unsigned short value);
-				
+/**
+ * snd_soc_new_ac97_codec - create new AC97 codec.
+ * @codec: codec
+ * @ops: AC97 bus operations
+ * @card: ALSA sound card.
+ * @num: codec number.
+ * @bus_no: AC97 bus number.
+ *
+ * Creates a new AC97 codec.
+ */				
 int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
 	struct snd_ac97_bus_ops *ops, struct snd_card *card, 
 	int num, int bus_no);

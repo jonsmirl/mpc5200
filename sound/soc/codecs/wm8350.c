@@ -749,11 +749,11 @@ static int wm8350_add_widgets(struct snd_soc_codec *codec,
 
 	/* set up audio path audio_mapnects */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(machine, audio_map[i][0],
+		snd_soc_dapm_add_route(machine, audio_map[i][0],
 			audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_new_widgets(machine);
+	snd_soc_dapm_init(machine);
 	return 0;
 }
 
@@ -1074,7 +1074,8 @@ static int wm8350_set_tristate(struct snd_soc_dai_runtime *codec_dai,
 	return 0;
 }
 
-static int wm8350_dapm_event(struct snd_soc_codec *codec, int event)
+static int wm8350_set_bias_level(struct snd_soc_codec *codec, 
+	enum snd_soc_dapm_bias_level level)
 {
 	struct wm8350 *wm8350 = codec->control_data;
 	struct wm8350_audio_platform_data *platform = codec->platform_data;
@@ -1083,8 +1084,8 @@ static int wm8350_dapm_event(struct snd_soc_codec *codec, int event)
 	snd_assert(wm8350 != NULL, return -EINVAL);
 	snd_assert(platform != NULL, return -EINVAL);
 
-	switch (event) {
-	case SNDRV_CTL_POWER_D0: /* full On */
+	switch (level) {
+	case SND_SOC_BIAS_ON: /* full On */
 		/* set vmid to 10k and current to 1.0x */
 		pm1 = wm8350_reg_read(wm8350, WM8350_POWER_MGMT_1) & 
 			~(WM8350_VMID_MASK | WM8350_CODEC_ISEL_MASK);
@@ -1092,10 +1093,9 @@ static int wm8350_dapm_event(struct snd_soc_codec *codec, int event)
 			pm1 | WM8350_VMID_10K | 
 			platform->codec_current_d0 << 14);
 		break;
-	case SNDRV_CTL_POWER_D1: /* partial On */
-	case SNDRV_CTL_POWER_D2: /* partial On */
+	case SND_SOC_BIAS_PREPARE: /* partial On */
 		/* set vmid to 40k for quick power up */
-		if (codec->dapm_state == SNDRV_CTL_POWER_D3hot) {
+		if (codec->bias_level == SND_SOC_BIAS_STANDBY) {
 			/* D3hot --> D0 */
 			/* enable bias */
 			pm1 = wm8350_reg_read(wm8350, WM8350_POWER_MGMT_1);
@@ -1103,8 +1103,8 @@ static int wm8350_dapm_event(struct snd_soc_codec *codec, int event)
 				pm1 | WM8350_BIASEN); 
 		}
 		break;
-	case SNDRV_CTL_POWER_D3hot: /* Off, with power */
-		if (codec->dapm_state == SNDRV_CTL_POWER_D3cold) {
+	case SND_SOC_BIAS_STANDBY: /* Off, with power */
+		if (codec->bias_level == SND_SOC_BIAS_OFF) {
 			/* D3cold --> D3hot */
 			/* mute DAC & outputs */
 			wm8350_set_bits(wm8350, WM8350_DAC_MUTE, 
@@ -1161,7 +1161,7 @@ static int wm8350_dapm_event(struct snd_soc_codec *codec, int event)
 		}
 	
 		break;
-	case SNDRV_CTL_POWER_D3cold: /* Off, without power */
+	case SND_SOC_BIAS_OFF: /* Off, without power */
 
 		/* mute DAC & enable outputs */
 		wm8350_set_bits(wm8350, WM8350_DAC_MUTE, 
@@ -1218,7 +1218,7 @@ static int wm8350_dapm_event(struct snd_soc_codec *codec, int event)
 				
 		break;
 	}
-	codec->dapm_state = event;
+	codec->bias_level = level;
 	return 0;
 }
 
@@ -1233,7 +1233,7 @@ static int wm8350_dapm_event(struct snd_soc_codec *codec, int event)
 
 static struct snd_soc_dai wm8350_dai = {
 	.name	= "wm8350-HiFi",
-	.id	= 0,
+	.id	= WM8350_HIFI_DAI,
 	/* stream cababilities */
 	.playback = {
 		.stream_name	= "Playback",
@@ -1265,7 +1265,7 @@ static int wm8350_suspend(struct device *dev, pm_message_t state)
 {
 	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 // lg save status 
-	wm8350_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
+	wm8350_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
 }
 
@@ -1273,18 +1273,18 @@ static int wm8350_resume(struct device *dev)
 {
 	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 	
-	wm8350_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
+	wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	/* charge wm8350 caps */
-	if (codec->suspend_dapm_state == SNDRV_CTL_POWER_D0) {
-		wm8350_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
-		codec->dapm_state = SNDRV_CTL_POWER_D0;
+	if (codec->suspend_bias_level == SND_SOC_BIAS_ON) {
+		wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+		codec->bias_level = SND_SOC_BIAS_ON;
 	}
 
 	return 0;
 }
 
-static int wm8350_codec_io_probe(struct snd_soc_codec *codec,
+static int wm8350_codec_init(struct snd_soc_codec *codec,
 	struct snd_soc_machine *machine)
 {
 	struct wm8350* wm8350 = codec->control_data;
@@ -1301,8 +1301,8 @@ static int wm8350_codec_io_probe(struct snd_soc_codec *codec,
 	wm8350_set_bits(wm8350, WM8350_POWER_MGMT_4, WM8350_SYSCLK_ENA);
 
 	/* charge output caps */
-	codec->dapm_state = SNDRV_CTL_POWER_D3cold;
-	wm8350_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
+	codec->bias_level = SND_SOC_BIAS_OFF;
+	wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	wm8350_add_controls(codec, machine->card);
 	wm8350_add_widgets(codec, machine);
@@ -1345,15 +1345,11 @@ static int run_delayed_work(struct delayed_work *dwork)
 	return ret;
 }
 
-static int wm8350_codec_io_remove(struct snd_soc_codec *codec,
+static void wm8350_codec_exit(struct snd_soc_codec *codec,
 	struct snd_soc_machine *machine)
 {
-	struct wm8350* wm8350 = codec->control_data;
-
-	snd_assert(wm8350 != NULL, return -EINVAL);
 	run_delayed_work(&codec->delayed_work);
-	wm8350_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
-	return 0;	
+	wm8350_set_bias_level(codec, SND_SOC_BIAS_OFF);
 }
 
 static int wm8350_codec_probe(struct device *dev)
@@ -1368,11 +1364,11 @@ static int wm8350_codec_probe(struct device *dev)
 	if (or == NULL)
 		return -ENOMEM;
 
-	codec->dapm_event = wm8350_dapm_event,
-	codec->read = wm8350_codec_read,
-	codec->write = wm8350_codec_write,
-	codec->io_probe	= wm8350_codec_io_probe,
-	codec->io_remove = wm8350_codec_io_remove,
+	codec->set_bias_level = wm8350_set_bias_level;
+	codec->codec_read = wm8350_codec_read;
+	codec->codec_write = wm8350_codec_write;
+	codec->init = wm8350_codec_init;
+	codec->exit = wm8350_codec_exit;
 	codec->reg_cache_size = WM8350_MAX_REGISTER;
 	codec->reg_cache_step = 1;
 	codec->private_data = or;
@@ -1394,7 +1390,7 @@ err:
 static int wm8350_codec_remove(struct device *dev)
 {
 	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
-	
+
 	snd_soc_unregister_codec(codec);
 	kfree(codec->private_data);
 	return 0;

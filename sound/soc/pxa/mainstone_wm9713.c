@@ -247,17 +247,17 @@ static int mainstone_wm9713_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err;
 
-	ret = snd_soc_pcm_create(machine, NULL, 
+	ret = snd_soc_pcm_create(machine, "HiFi", NULL, 
 		WM9713_DAI_AC97_HIFI, PXA2XX_DAI_AC97_HIFI, 1, 1);
 	if (ret < 0)
 		goto err;
 	
-	ret = snd_soc_pcm_create(machine, NULL, 
+	ret = snd_soc_pcm_create(machine, "Aux", NULL, 
 		WM9713_DAI_AC97_AUX, PXA2XX_DAI_AC97_AUX, 1, 1);
 	if (ret < 0)
 		goto err;
 		
-	ret = snd_soc_pcm_create(machine, &mainstone_voice_ops, 
+	ret = snd_soc_pcm_create(machine, "Voice", &mainstone_voice_ops, 
 		WM9713_DAI_PCM_VOICE, PXA2XX_DAI_SSP2, 1, 1);
 	if (ret < 0)
 		goto err;

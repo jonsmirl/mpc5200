@@ -731,19 +731,23 @@ static int dapm_mixer_update_power(struct snd_soc_dapm_widget *widget,
 	return 0;
 }
 
-/* show dapm widget status in sys fs */
+struct snd_soc_machine *sysfs_machine;
+
+/* show dapm widget status in sysfs */
 static ssize_t dapm_widget_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct snd_soc_machine *machine = pdev->dev.driver_data;
+	struct snd_soc_machine *machine = sysfs_machine;
 	struct snd_soc_dapm_widget *w;
 	int count = 0;
 	char *state = "not set";
+	
+	if (sysfs_machine == NULL)
+		return 0;
 
 	list_for_each_entry(w, &machine->dapm_widgets, list) {
 
-		/* only display widgets that burnm power */
+		/* only display widgets that burn power */
 		switch (w->id) {
 		case snd_soc_dapm_hp:
 		case snd_soc_dapm_mic:
@@ -784,20 +788,23 @@ static ssize_t dapm_widget_show(struct device *dev,
 
 static DEVICE_ATTR(dapm_widget, 0444, dapm_widget_show, NULL);
 
-int snd_soc_dapm_sys_add(struct device *dev)
+int snd_soc_dapm_sys_add(struct snd_soc_machine *machine)
 {
 	int ret = 0;
 
-	if (dapm_status)
-		ret = device_create_file(dev, &dev_attr_dapm_widget);
-
+	if (dapm_status) {
+		sysfs_machine = machine;
+		ret = device_create_file(machine->dev, &dev_attr_dapm_widget);
+	}
 	return ret;
 }
 
-static void snd_soc_dapm_sys_remove(struct device *dev)
+static void snd_soc_dapm_sys_remove(struct snd_soc_machine *machine)
 {
-	if (dapm_status)
-		device_remove_file(dev, &dev_attr_dapm_widget);
+	if (dapm_status) {
+		device_remove_file(machine->dev, &dev_attr_dapm_widget);
+		sysfs_machine = NULL;
+	}
 }
 
 /* free all dapm widgets and resources */
@@ -1358,7 +1365,7 @@ EXPORT_SYMBOL_GPL(snd_soc_dapm_disable_pin);
  */
 void snd_soc_dapm_free(struct snd_soc_machine *machine)
 {
-	snd_soc_dapm_sys_remove(machine->dev);
+	snd_soc_dapm_sys_remove(machine);
 	dapm_free_widgets(machine);
 }
 EXPORT_SYMBOL_GPL(snd_soc_dapm_free);

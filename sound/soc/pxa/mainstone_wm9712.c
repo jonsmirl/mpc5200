@@ -154,12 +154,12 @@ static int mainstone_wm9712_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err;
 
-	ret = snd_soc_pcm_create(machine, NULL, 
+	ret = snd_soc_pcm_create(machine, "HiFi", NULL, 
 		WM9712_DAI_HIFI, PXA2XX_DAI_AC97_HIFI, 1, 1);
 	if (ret < 0)
 		goto err;
 	
-	ret = snd_soc_pcm_create(machine, NULL, 
+	ret = snd_soc_pcm_create(machine, "Aux", NULL, 
 		WM9712_DAI_AUX, PXA2XX_DAI_AC97_AUX, 1, 1);
 	if (ret < 0)
 		goto err;

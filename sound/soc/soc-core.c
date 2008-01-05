@@ -615,9 +615,6 @@ int snd_soc_suspend(struct snd_soc_machine *machine, pm_message_t state)
 	struct snd_soc_codec *codec;
 	struct snd_soc_pcm_runtime *pcm_runtime;
 	char *stream;
-
-	if (machine->suspend_early)
-		machine->suspend_early(machine, state);
 		
 	/* mute any active DAC's */
 	list_for_each_entry(pcm_runtime, &machine->pcm_list, list) {
@@ -637,7 +634,7 @@ int snd_soc_suspend(struct snd_soc_machine *machine, pm_message_t state)
 	list_for_each_entry(pcm_runtime, &machine->pcm_list, list) {
 		codec = pcm_runtime->codec;
 		run_delayed_work(&pcm_runtime->delayed_work);
-		codec->suspend_dapm_state = codec->dapm_state;
+		codec->suspend_bias_level = codec->bias_level;
 	}
 
 	list_for_each_entry(pcm_runtime, &machine->pcm_list, list) {
@@ -662,9 +659,6 @@ int snd_soc_suspend(struct snd_soc_machine *machine, pm_message_t state)
 			platform->dev.driver->suspend(&platform->dev, state);
 	}
 
-	if (machine->suspend_late)
-		machine->suspend_late(machine, state);
-
 	return 0;
 }
 
@@ -677,9 +671,6 @@ int snd_soc_resume(struct snd_soc_machine *machine)
 	struct snd_soc_pcm_runtime *pcm_runtime;
 	char *stream;
 	
-	if (machine->resume_early)
-		machine->resume_early(machine);
-
 	list_for_each_entry(platform, &machine->platform_list, list) {
 		if (platform->dev.driver->resume)
 			platform->dev.driver->resume(&platform->dev);
@@ -710,9 +701,6 @@ int snd_soc_resume(struct snd_soc_machine *machine)
 			codec_rdai->dai->digital_mute(codec_rdai, 0);
 	}
 
-	if (machine->resume_late)
-		machine->resume_late(machine);
-
 	snd_power_change_state(machine->card, SND_SOC_BIAS_STANDBY);
 	return 0;
 }
@@ -735,7 +723,7 @@ EXPORT_SYMBOL_GPL(snd_soc_resume);
 static ssize_t codec_reg_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct snd_soc_codec *codec = NULL;//liam - to_snd_soc_codec(dev);
+	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 	int i, step = 1, count = 0;
 
 	if (!codec->reg_cache_size)
@@ -1376,9 +1364,14 @@ EXPORT_SYMBOL_GPL(snd_soc_codec_add_dai);
 
 int snd_soc_register_codec(struct snd_soc_codec *codec)
 {
+	int err;
+	
 	if (list_empty(&codec->dai_list))
 		return -EINVAL;
-// lrg - add sysfs
+
+	err = device_create_file(&codec->dev, &dev_attr_codec_reg);
+	if (err < 0)
+		printk(KERN_WARNING "asoc: failed to add codec sysfs entries\n");
 
 	return 0;
 }
@@ -1388,6 +1381,7 @@ void snd_soc_unregister_codec(struct snd_soc_codec *codec)
 {		
 	struct snd_soc_dai_runtime *dai_runtime, *d;
 
+	device_remove_file(&codec->dev, &dev_attr_codec_reg);
 	list_for_each_entry_safe(dai_runtime, d, &codec->dai_list, list)
 		kfree(dai_runtime);
 }
@@ -1424,7 +1418,6 @@ int snd_soc_register_platform(struct snd_soc_platform *platform)
 {
 	if (list_empty(&platform->dai_list))
 		return -EINVAL;
-	
 	
 	return 0;
 }
@@ -1478,6 +1471,7 @@ EXPORT_SYMBOL_GPL(snd_soc_machine_create);
 static void codec_dev_release(struct device *dev)
 {
 	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
+	kfree(codec->name);
 	kfree(codec);
 }
 
@@ -1490,7 +1484,13 @@ int snd_soc_codec_create(struct snd_soc_machine *machine,
 	codec = kzalloc(sizeof(*codec), GFP_KERNEL);
 	if (codec == NULL)
 		return -ENOMEM;
-
+		
+	codec->name = kstrdup(codec_id, GFP_KERNEL);
+	if (codec->name == NULL) {
+		kfree(codec);
+		return -ENOMEM;
+	}
+	
 	strcpy(codec->dev.bus_id, codec_id);
 	codec->dev.bus = &asoc_bus_type;
 	codec->dev.parent = machine->dev;
@@ -1502,11 +1502,11 @@ int snd_soc_codec_create(struct snd_soc_machine *machine,
 	ret = device_register(&codec->dev);
 	if (ret < 0) {
 		printk(KERN_ERR "failed to register codec device\n");
+		kfree(codec->name);
 		kfree(codec);
 		return ret;
 	}
 	list_add(&codec->list, &machine->codec_list);
-	
 	return ret;
 }
 EXPORT_SYMBOL_GPL(snd_soc_codec_create);
@@ -1514,6 +1514,7 @@ EXPORT_SYMBOL_GPL(snd_soc_codec_create);
 static void snd_platform_dev_release(struct device *dev)
 {
 	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	kfree(platform->name);
 	kfree(platform);
 }
 
@@ -1527,6 +1528,12 @@ int snd_soc_platform_create(struct snd_soc_machine *machine,
 	if (platform == NULL)
 		return -ENOMEM;
 
+	platform->name = kstrdup(platform_id, GFP_KERNEL);
+	if (platform->name == NULL) {
+		kfree(platform);
+		return -ENOMEM;
+	}
+	
 	strcpy(platform->dev.bus_id, platform_id);
 	platform->dev.bus = &asoc_bus_type;
 	platform->dev.parent = machine->dev;
@@ -1538,6 +1545,7 @@ int snd_soc_platform_create(struct snd_soc_machine *machine,
 	ret = device_register(&platform->dev);
 	if (ret < 0) {
 		printk(KERN_ERR "failed to register platform device\n");
+		kfree(platform->name);
 		kfree(platform);
 		return ret;
 	}
@@ -1547,7 +1555,7 @@ int snd_soc_platform_create(struct snd_soc_machine *machine,
 }
 EXPORT_SYMBOL_GPL(snd_soc_platform_create);
 
-int snd_soc_pcm_create(struct snd_soc_machine *machine,
+int snd_soc_pcm_create(struct snd_soc_machine *machine, char *name,
 	struct snd_soc_ops *pcm_ops, int codec_dai_id, 
 	int platform_dai_id, int playback, int capture)
 {	
@@ -1597,6 +1605,7 @@ int snd_soc_pcm_create(struct snd_soc_machine *machine,
 	pcm_runtime->codec_dai = codec_rdai;
 	pcm_runtime->cpu_dai = cpu_rdai;
 	pcm_runtime->machine = machine;
+	pcm_runtime->name = name;
 	codec = pcm_runtime->codec = codec_rdai->codec;
 	platform = pcm_runtime->platform = cpu_rdai->platform;
 
@@ -1684,13 +1693,10 @@ int snd_soc_machine_register(struct snd_soc_machine *machine)
 		goto out;
 	}
 
-	err = snd_soc_dapm_sys_add(machine->dev);
+	err = snd_soc_dapm_sys_add(machine);
 	if (err < 0)
 		printk(KERN_WARNING "asoc: failed to add dapm sysfs entries\n");
 
-	err = device_create_file(machine->dev, &dev_attr_codec_reg);
-	if (err < 0)
-		printk(KERN_WARNING "asoc: failed to add codec sysfs entries\n");
 out:
 	mutex_unlock(&machine->mutex);
 	return ret;
@@ -1702,12 +1708,12 @@ void snd_soc_machine_free(struct snd_soc_machine *machine)
 	struct snd_soc_codec *codec, *c;
 	struct snd_soc_platform *platform, *p;
 	struct snd_soc_pcm_runtime *pcm_runtime, *_pcm_runtime;
-		
+
 	snd_card_free(machine->card);
 	
 	list_for_each_entry_safe(pcm_runtime, _pcm_runtime, &machine->pcm_list, list)
 		run_delayed_work(&pcm_runtime->delayed_work);
-	
+
 	if (machine->exit)
 		machine->exit(machine);
 
@@ -1718,7 +1724,7 @@ void snd_soc_machine_free(struct snd_soc_machine *machine)
 #endif
 		kfree(pcm_runtime);
 	}
-
+	
 	list_for_each_entry_safe(platform, p, &machine->platform_list, list)
 		device_unregister(&platform->dev);
 

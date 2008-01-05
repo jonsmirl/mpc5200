@@ -34,17 +34,17 @@
 
 
 #define AUDMUX_PTCR_TFSDIR		(1 << 31)
-#define AUDMUX_PTCR_TFSSEL(x, y)		((x << 30) | (((y - 1) & 0x7) << 27))
+#define AUDMUX_PTCR_TFSSEL(x, y)	((x << 30) | (((y - 1) & 0x7) << 27))
 #define AUDMUX_PTCR_TCLKDIR		(1 << 26)
 #define AUDMUX_PTCR_TCSEL(x, y)		((x << 25) | (((y - 1) & 0x7) << 22))
 #define AUDMUX_PTCR_RFSDIR		(1 << 21)
-#define AUDMUX_PTCR_RFSSEL(x, y)		((x << 20) | (((y - 1) & 0x7) << 17))
+#define AUDMUX_PTCR_RFSSEL(x, y)	((x << 20) | (((y - 1) & 0x7) << 17))
 #define AUDMUX_PTCR_RCLKDIR		(1 << 16)
 #define AUDMUX_PTCR_RCSEL(x, y)		((x << 15) | (((y - 1) & 0x7) << 12))
-#define AUDMUX_PTCR_SYN		(1 << 11)
+#define AUDMUX_PTCR_SYN			(1 << 11)
 
-#define AUDMUX_FROM_TXFS	0
-#define AUDMUX_FROM_RXFS	1
+#define AUDMUX_FROM_TXFS		0
+#define AUDMUX_FROM_RXFS		1
 
 #define AUDMUX_PDCR_RXDSEL(x)		(((x - 1) & 0x7) << 13)
 #define AUDMUX_PDCR_TXDXEN		(1 << 12)
@@ -57,11 +57,36 @@
 #define AUDMUX_CNMCR_CNTHI(x)		(((x) & 0xff) << 8)
 #define AUDMUX_CNMCR_CNTLOW(x)		(((x) & 0xff) << 0)
 
+/* i.MX DAI SSP ID's */
+#define IMX_DAI_SSI0			0 /* SSI1 FIFO 0 */
+#define IMX_DAI_SSI1			1 /* SSI1 FIFO 1 */
+#define IMX_DAI_SSI2			2 /* SSI2 FIFO 0 */
+#define IMX_DAI_SSI3			3 /* SSI2 FIFO 1 */
+
+/* SSI clock sources */
+#define IMX_SSP_SYS_CLK		0
+
+/* SSI audio dividers */
+#define IMX_SSI_TX_DIV_2			0
+#define IMX_SSI_TX_DIV_PSR			1
+#define IMX_SSI_TX_DIV_PM			2
+#define IMX_SSI_RX_DIV_2			3
+#define IMX_SSI_RX_DIV_PSR			4
+#define IMX_SSI_RX_DIV_PM			5
+
+/* SSI Div 2 */
+#define IMX_SSI_DIV_2_OFF		~SSI_STCCR_DIV2
+#define IMX_SSI_DIV_2_ON		SSI_STCCR_DIV2
+
+int get_ssi_clk(int ssi, struct device *dev);
+void put_ssi_clk(int ssi);
+
 struct mxc_pcm_dma_params {
 	char *name;			/* stream identifier */
 	dma_channel_params params;
 };
 
 extern const char imx31_platform_id[];
+extern struct snd_soc_dai imx_ssi[4];
 
 #endif

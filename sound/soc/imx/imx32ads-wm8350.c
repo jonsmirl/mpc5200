@@ -119,7 +119,6 @@ static int imx32ads_startup(struct snd_pcm_substream *substream)
 	/* In master mode the LR clock can come from either the DAC or ADC.
 	 * We use the LR clock from whatever stream is enabled first.
 	 */
-
 	if (!state->lr_clk_active) {
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 			wm8350_clear_bits(wm8350, WM8350_CLOCK_CONTROL_2, 
@@ -332,21 +331,21 @@ static const char* audio_map[][3] = {
 };
 
 #ifdef CONFIG_PM
-static int imx32ads_wm8350_audio_suspend(struct platform_device *dev, 
+static int imx32ads_wm8350_audio_suspend(struct platform_device *pdev, 
 	pm_message_t state)
 {
-//	struct snd_soc_machine *machine = pdev->dev.driver_data;
-	int ret = 0;
+	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
+	struct snd_soc_machine *machine = wm8350->audio;
 	
-	return ret;
+	return snd_soc_suspend(machine, state);
 }
 
-static int imx32ads_wm8350_audio_resume(struct platform_device *dev)
+static int imx32ads_wm8350_audio_resume(struct platform_device *pdev)
 {
-//	struct snd_soc_machine *machine = pdev->dev.driver_data;
-	int ret = 0;
-	
-	return ret;
+	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
+	struct snd_soc_machine *machine = wm8350->audio;
+		
+	return snd_soc_resume(machine);
 }
 
 #else
@@ -358,22 +357,22 @@ static void imx32ads_jack_handler(struct wm8350 *wm8350, int irq, void *data)
 {
 	struct snd_soc_machine *machine = (struct snd_soc_machine *)data;
 	u16 reg;
-	
+
 	/* debounce for 200ms */
 	schedule_timeout_interruptible(msecs_to_jiffies(200));
 	reg = wm8350_reg_read(wm8350, WM8350_JACK_PIN_STATUS);
 
 	if (reg & WM8350_JACK_R_LVL) {
-		snd_soc_dapm_set_endpoint(machine, "Line Out Jack", 0);
-		snd_soc_dapm_set_endpoint(machine, "Headphone Jack", 1);
+		snd_soc_dapm_disable_line(machine, "Line Out Jack");
+		snd_soc_dapm_enable_headphone(machine, "Headphone Jack");
 	} else {
-		snd_soc_dapm_set_endpoint(machine, "Headphone Jack", 0);
-		snd_soc_dapm_set_endpoint(machine, "Line Out Jack", 1);	
+		snd_soc_dapm_disable_headphone(machine, "Headphone Jack");
+		snd_soc_dapm_enable_line(machine, "Line Out Jack");	
 	}
-	snd_soc_dapm_sync_endpoints(machine);
+	snd_soc_dapm_resync(machine);
 }
 
-int mach_probe(struct snd_soc_machine *machine)
+int imx32_audio_init(struct snd_soc_machine *machine)
 {
 	struct snd_soc_codec *codec;
 	struct snd_soc_pcm_runtime *pcm_runtime;
@@ -383,27 +382,22 @@ int mach_probe(struct snd_soc_machine *machine)
 	int i;
 	u16 reg;
 
-	pcm_runtime = list_first_entry(&machine->pcm_list, 
-		struct snd_soc_pcm_runtime, list);
-	
+	pcm_runtime = snd_soc_get_pcm(machine, "HiFi");
+	if (pcm_runtime == NULL)
+		return -ENODEV;
+
+	codec = snd_soc_get_codec(machine, wm8350_codec_id);
+	if (codec == NULL)
+		return -ENODEV;
+
 	state = kzalloc(sizeof(struct imx31ads_pcm_state), GFP_KERNEL);
 	if (state == NULL)
 		return -ENOMEM;
-	
 	pcm_runtime->private_data = state;
-	
-	codec = pcm_runtime->codec;
-	codec->control_data = wm8350;
-	codec->platform_data = &imx32ads_wm8350_setup;
-	codec->io_probe(codec, machine);	
 
-	/* set unused imx32ads WM8350 codec pins */
-	snd_soc_dapm_set_endpoint(machine, "OUT3", 0);
-	snd_soc_dapm_set_endpoint(machine, "OUT4", 0);
-	snd_soc_dapm_set_endpoint(machine, "IN2R", 0);
-	snd_soc_dapm_set_endpoint(machine, "IN2L", 0);
-	snd_soc_dapm_set_endpoint(machine, "OUT2L", 0);
-	snd_soc_dapm_set_endpoint(machine, "OUT2R", 0);
+	codec->platform_data = &imx32ads_wm8350_setup;
+	snd_soc_codec_set_io(codec, NULL, NULL,	wm8350);
+	snd_soc_codec_init(codec, machine);
 
 #if 0
 	/* add imx32ads specific controls */
@@ -423,18 +417,26 @@ int mach_probe(struct snd_soc_machine *machine)
 
 	/* set up imx32ads specific audio path audio map */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(machine, audio_map[i][0], 
+		snd_soc_dapm_add_route(machine, audio_map[i][0], 
 			audio_map[i][1], audio_map[i][2]);
 	}
 
+	/* disable unused imx32ads WM8350 codec pins */
+	snd_soc_dapm_disable_pin(machine, "OUT3");
+	snd_soc_dapm_disable_pin(machine, "OUT4");
+	snd_soc_dapm_disable_pin(machine, "IN2R");
+	snd_soc_dapm_disable_pin(machine, "IN2L");
+	snd_soc_dapm_disable_pin(machine, "OUT2L");
+	snd_soc_dapm_disable_pin(machine, "OUT2R");
+
 	/* connect and enable all imx32ads WM8350 jacks (for now) */
-	snd_soc_dapm_set_endpoint(machine, "SiMIC", 1);
-	snd_soc_dapm_set_endpoint(machine, "Mic1 Jack", 1);
-	snd_soc_dapm_set_endpoint(machine, "Mic2 Jack", 1);
-	snd_soc_dapm_set_endpoint(machine, "Line In Jack", 1);
+	snd_soc_dapm_enable_pin(machine, "SiMIC");
+	snd_soc_dapm_enable_pin(machine, "Mic1 Jack");
+	snd_soc_dapm_enable_pin(machine, "Mic2 Jack");
+	snd_soc_dapm_enable_pin(machine, "Line In Jack");
 //	snd_soc_dapm_set_policy(machine, SND_SOC_DAPM_POLICY_STREAM);
-	snd_soc_dapm_sync_endpoints(machine);
-	
+	snd_soc_dapm_resync(machine);
+
 	/* enable slow clock gen for jack detect */
 	reg = wm8350_reg_read(wm8350, WM8350_POWER_MGMT_4);
 	wm8350_reg_write(wm8350, WM8350_POWER_MGMT_4, 
@@ -451,17 +453,18 @@ int mach_probe(struct snd_soc_machine *machine)
 	return 0;
 }
 
-static int mach_remove(struct snd_soc_machine *machine)
+static void imx32_audio_exit(struct snd_soc_machine *machine)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime;
 	struct snd_soc_codec *codec;
 
-	pcm_runtime = list_first_entry(&machine->pcm_list, 
-		struct snd_soc_pcm_runtime, list);
-	codec = pcm_runtime->codec;
-	codec->io_remove(codec, machine);
-	kfree(pcm_runtime->private_data);
-	return 0;
+	codec = snd_soc_get_codec(machine, wm8350_codec_id);
+	if (codec)
+		snd_soc_codec_exit(codec, machine);
+
+	pcm_runtime = snd_soc_get_pcm(machine, "HiFi");
+	if (pcm_runtime)
+		kfree(pcm_runtime->private_data);
 }
 
 static int __devinit imx32ads_wm8350_audio_probe(struct platform_device *pdev)
@@ -470,7 +473,8 @@ static int __devinit imx32ads_wm8350_audio_probe(struct platform_device *pdev)
 	struct imx31ads_data *audio_data;
 	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
 	int ret;
-	
+
+
 	audio_data = kzalloc(sizeof(*audio_data), GFP_KERNEL);
 	if (audio_data == NULL)
 		return -ENOMEM;
@@ -482,18 +486,19 @@ static int __devinit imx32ads_wm8350_audio_probe(struct platform_device *pdev)
 	}
 	audio_data->analog_supply = regulator_get(&pdev->dev, "LDO2");
 	audio_data->wm8350 = wm8350;
-	
+
 	machine = snd_soc_machine_create("imx31ads", &pdev->dev, 
 		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
 	if (machine == NULL)
 		return -ENOMEM;
 
 	machine->longname = "WM8350";
-	machine->io_probe = mach_probe,
-	machine->io_remove = mach_remove,
+	machine->init = imx32_audio_init,
+	machine->exit = imx32_audio_exit,
 	machine->private_data = audio_data;
+	machine->dev = &pdev->dev;
 	wm8350->audio = machine;
-	
+
 	ret = snd_soc_codec_create(machine, wm8350_codec_id);
 	if (ret < 0)
 		goto err;
@@ -502,11 +507,11 @@ static int __devinit imx32ads_wm8350_audio_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err;
 
-	ret = snd_soc_pcm_create(machine, &imx32ads_hifi_ops, 
-		"wm8350-HiFi", "SSI0-0", 1, 1);
+	ret = snd_soc_pcm_create(machine, "HiFi", &imx32ads_hifi_ops, 
+		WM8350_HIFI_DAI, IMX_DAI_SSI0, 1, 1);
 	if (ret < 0)
 		goto err;
-			
+
 	/* WM8350 uses SSI1 via AUDMUX port 5 for audio */
 
 	/* reset port 1 & 5 */
@@ -563,7 +568,6 @@ static int __devexit imx32ads_wm8350_audio_remove(struct platform_device *pdev)
 	wm8350_mask_irq(wm8350, WM8350_IRQ_CODEC_JCK_DET_R);
 	wm8350_free_irq(wm8350, WM8350_IRQ_CODEC_JCK_DET_R);
 	snd_soc_machine_free(machine);
-
 	regulator_put(audio_data->analog_supply, &pdev->dev); 
 	kfree(audio_data);
 	put_ssi_clk(0);

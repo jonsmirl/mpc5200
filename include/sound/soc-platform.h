@@ -19,13 +19,12 @@
 
 #include <linux/types.h>
 #include <linux/workqueue.h>
-#include <sound/driver.h>
-#include <sound/core.h>
-#include <sound/pcm.h>
 
 struct snd_soc_platform;
 struct snd_soc_machine;
 struct snd_soc_dai;
+struct snd_pcm_ops;
+struct snd_card;
 
 /**
  * snd_soc_platform_add_dai - add DAI to platform.

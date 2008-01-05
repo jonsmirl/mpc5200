@@ -401,7 +401,7 @@ static int wm8750_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	if (ret < 0)
 		goto err;
 
-	ret = snd_soc_pcm_create(machine, &spitz_ops, 
+	ret = snd_soc_pcm_create(machine, "HiFi", &spitz_ops, 
 		WM8750_DAI, PXA2XX_DAI_I2S, 1, 1);
 	if (ret < 0)
 		goto err;

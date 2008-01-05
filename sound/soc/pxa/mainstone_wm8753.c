@@ -411,12 +411,12 @@ static int wm8753_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	if (ret < 0)
 		goto err;
 
-	ret = snd_soc_pcm_create(machine, &mainstone_hifi_ops, 
+	ret = snd_soc_pcm_create(machine, "Hifi", &mainstone_hifi_ops, 
 		WM8753_DAI_HIFI, PXA2XX_DAI_I2S, 1, 1);
 	if (ret < 0)
 		goto err;
 	
-	ret = snd_soc_pcm_create(machine, &mainstone_voice_ops, 
+	ret = snd_soc_pcm_create(machine, "Voice", &mainstone_voice_ops, 
 		WM8753_DAI_VOICE, PXA2XX_DAI_SSP2, 1, 1);
 	if (ret < 0)
 		goto err;
