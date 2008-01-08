@@ -45,17 +45,16 @@ struct mpc8610_hpcd_data {
 };
 
 /**
- * mpc8610_hpcd_machine_probe: initalize the board
+ * mpc8610_hpcd_audio_init: initalize the board
  *
  * This function is called when platform_device_add() is called.  It is used
  * to initialize the board-specific hardware.
  *
  * Here we program the DMACR and PMUXCR registers.
  */
-static int mpc8610_hpcd_machine_probe(struct platform_device *sound_device)
+static int mpc8610_hpcd_audio_init(struct snd_soc_machine *machine)
 {
-	struct mpc8610_hpcd_data *machine_data =
-		sound_device->dev.platform_data;
+	struct mpc8610_hpcd_data *machine_data = machine->private_data;
 
 	/* Program the signal routing between the SSI and the DMA */
 	guts_set_dmacr(machine_data->guts, machine_data->dma_id + 1,
@@ -96,77 +95,63 @@ static int mpc8610_hpcd_machine_probe(struct platform_device *sound_device)
 static int mpc8610_hpcd_startup(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec_dai *codec_dai = rtd->dai->codec_dai;
-	struct snd_soc_cpu_dai *cpu_dai = rtd->dai->cpu_dai;
-	struct mpc8610_hpcd_data *machine_data =
-		rtd->socdev->dev->platform_data;
+	struct snd_soc_dai_runtime *codec_dai = rtd->dai->codec_dai;
+	struct snd_soc_dai_runtime *cpu_dai = rtd->dai->cpu_dai;
+	struct mpc8610_hpcd_data *machine_data = machine->private_data;
 	int ret = 0;
 
 	/* Tell the CPU driver what the serial protocol is. */
-	if (cpu_dai->dai_ops.set_fmt) {
-		ret = cpu_dai->dai_ops.set_fmt(cpu_dai,
-			machine_data->dai_format);
-		if (ret < 0) {
-			dev_err(substream->pcm->card->dev,
-				"could not set CPU driver audio format\n");
-			return ret;
-		}
+	ret = snd_soc_dai_set_fmt(cpu_dai, machine_data->dai_format);
+	if (ret < 0) {
+		dev_err(substream->pcm->card->dev,
+			"could not set CPU driver audio format\n");
+		return ret;
 	}
 
 	/* Tell the codec driver what the serial protocol is. */
-	if (codec_dai->dai_ops.set_fmt) {
-		ret = codec_dai->dai_ops.set_fmt(codec_dai,
-			machine_data->dai_format);
-		if (ret < 0) {
-			dev_err(substream->pcm->card->dev,
-				"could not set codec driver audio format\n");
-			return ret;
-		}
+	ret = snd_soc_dai_set_fmt(codec_dai, machine_data->dai_format);
+	if (ret < 0) {
+		dev_err(substream->pcm->card->dev,
+			"could not set codec driver audio format\n");
+		return ret;
 	}
 
 	/*
 	 * Tell the CPU driver what the clock frequency is, and whether it's a
 	 * slave or master.
 	 */
-	if (cpu_dai->dai_ops.set_sysclk) {
-		ret = cpu_dai->dai_ops.set_sysclk(cpu_dai, 0,
-			machine_data->clk_frequency,
-			machine_data->cpu_clk_direction);
-		if (ret < 0) {
-			dev_err(substream->pcm->card->dev,
-				"could not set CPU driver clock parameters\n");
-			return ret;
-		}
+	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, machine_data->clk_frequency,
+		machine_data->cpu_clk_direction);
+	if (ret < 0) {
+		dev_err(substream->pcm->card->dev,
+			"could not set CPU driver clock parameters\n");
+		return ret;
 	}
 
 	/*
 	 * Tell the codec driver what the MCLK frequency is, and whether it's
 	 * a slave or master.
 	 */
-	if (codec_dai->dai_ops.set_sysclk) {
-		ret = codec_dai->dai_ops.set_sysclk(codec_dai, 0,
-			machine_data->clk_frequency,
-			machine_data->codec_clk_direction);
-		if (ret < 0) {
-			dev_err(substream->pcm->card->dev,
-				"could not set codec driver clock params\n");
-			return ret;
-		}
+	ret = snd_soc_dai_set_sysclk(codec_dai, 0, machine_data->clk_frequency,
+		machine_data->codec_clk_direction);
+	if (ret < 0) {
+		dev_err(substream->pcm->card->dev,
+			"could not set codec driver clock params\n");
+		return ret;
 	}
 
 	return 0;
 }
 
 /**
- * mpc8610_hpcd_machine_remove: Remove the sound device
+ * mpc8610_hpcd_audio_exit: Remove the sound device
  *
  * This function is called to remove the sound device for one SSI.  We
  * de-program the DMACR and PMUXCR register.
  */
-int mpc8610_hpcd_machine_remove(struct platform_device *sound_device)
+int mpc8610_hpcd_audio_exit(struct snd_soc_machine *machine)
 {
-	struct mpc8610_hpcd_data *machine_data =
-		sound_device->dev.platform_data;
+	struct mpc8610_hpcd_data *machine_data = machine->private_data;
 
 	/* Restore the signal routing */
 
@@ -197,16 +182,6 @@ static struct snd_soc_ops mpc8610_hpcd_ops = {
 };
 
 /**
- * mpc8610_hpcd_machine: ASoC machine data
- */
-static struct snd_soc_machine mpc8610_hpcd_machine = {
-	.probe = mpc8610_hpcd_machine_probe,
-	.remove = mpc8610_hpcd_machine_remove,
-	.name = "MPC8610 HPCD",
-	.num_links = 1,
-};
-
-/**
  * mpc8610_hpcd_probe: OF probe function for the fabric driver
  *
  * This function gets called when an SSI node is found in the device tree.
@@ -226,6 +201,7 @@ static struct snd_soc_machine mpc8610_hpcd_machine = {
 static int mpc8610_hpcd_probe(struct of_device *ofdev,
 	const struct of_device_id *match)
 {
+	struct snd_soc_machine *machine;
 	struct device_node *np = ofdev->node;
 	struct device_node *codec_np = NULL;
 	struct device_node *guts_np = NULL;
@@ -234,8 +210,9 @@ static int mpc8610_hpcd_probe(struct of_device *ofdev,
 	const char *sprop;
 	const u32 *iprop;
 	struct resource res;
-	struct platform_device *sound_device = NULL;
 	struct mpc8610_hpcd_data *machine_data;
+/* TODO: ssi_info and dma_info could now be created in the platform driver 
+ * during it's probe. A lot of this code could be moved to platform probe() */	
 	struct fsl_ssi_info ssi_info;
 	struct fsl_dma_info dma_info;
 	int ret = -ENODEV;
@@ -452,6 +429,7 @@ static int mpc8610_hpcd_probe(struct of_device *ofdev,
 		goto error;
 	}
 
+#if 0 /* V1 TODO: remove */
 	/*
 	 * Initialize our DAI data structure.  We should probably get this
 	 * information from the device tree.
@@ -494,17 +472,42 @@ static int mpc8610_hpcd_probe(struct of_device *ofdev,
 		dev_err(&ofdev->dev, "platform device add failed\n");
 		goto error;
 	}
+#else /* V2 */
+	machine = snd_soc_machine_create("MPC8610", &ofdev->dev, 
+		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
+	if (machine == NULL)
+		return -ENOMEM;
 
-	dev_set_drvdata(&ofdev->dev, sound_device);
+	machine->longname = "CS4270";
+	machine->init = mpc8610_hpcd_audio_init;
+	machine->exit = mpc8610_hpcd_audio_exit;
+	machine->private_data = machine_data;
 
+	/* TODO: the number, ID and config of codecs, platforms,
+	 * pcm's could be found in dev tree */
+	ret = snd_soc_codec_create(machine, cs4270_codec_id);
+	if (ret < 0)
+		goto err;
+
+	ret = snd_soc_platform_create(machine, fsl_platform_id);
+	if (ret < 0)
+		goto err;
+
+	ret = snd_soc_pcm_create(machine, "HiFi", &mpc8610_hpcd_ops, 
+		CS4270_HIFI_DAI, FSL_DAI_SSI0, 1, 1);
+	if (ret < 0)
+		goto err;
+		
+	/* every has been added at this point */
+	dev_set_drvdata(&ofdev->dev, machine);
+	ret = snd_soc_machine_register(machine);
+	if (ret < 0)
+		goto err;
+
+#endif
 	return 0;
 
 error:
-	if (sound_device)
-		platform_device_unregister(sound_device);
-
-	if (machine_data->dai.cpu_dai)
-		fsl_ssi_destroy_dai(machine_data->dai.cpu_dai);
 
 	if (ssi_info.ssi)
 		iounmap(ssi_info.ssi);
@@ -528,7 +531,7 @@ error:
 		iounmap(machine_data->guts);
 
 	kfree(machine_data);
-
+	snd_soc_machine_free(machine);
 	return ret;
 }
 
@@ -539,12 +542,10 @@ error:
  */
 static int mpc8610_hpcd_remove(struct of_device *ofdev)
 {
-	struct platform_device *sound_device = dev_get_drvdata(&ofdev->dev);
-	struct mpc8610_hpcd_data *machine_data =
-		sound_device->dev.platform_data;
+	struct snd_soc_machine *machine = dev_get_drvdata(&ofdev->dev);
+	struct mpc8610_hpcd_data *machine_data = machine->private_data;
 
-	platform_device_unregister(sound_device);
-
+/* TODO: some of this will move to platform remove() */
 	if (machine_data->dai.cpu_dai)
 		fsl_ssi_destroy_dai(machine_data->dai.cpu_dai);
 
@@ -567,8 +568,7 @@ static int mpc8610_hpcd_remove(struct of_device *ofdev)
 		iounmap(machine_data->guts);
 
 	kfree(machine_data);
-	sound_device->dev.platform_data = NULL;
-
+	snd_soc_machine_free(machine);
 	dev_set_drvdata(&ofdev->dev, NULL);
 
 	return 0;

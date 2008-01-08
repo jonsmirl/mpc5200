@@ -281,7 +281,7 @@ static irqreturn_t fsl_dma_isr(int irq, void *dev_id)
  * once for each .dai_link in the machine driver's snd_soc_machine
  * structure.
  */
-static int fsl_dma_new(struct snd_card *card, struct snd_soc_codec_dai *dai,
+static int fsl_dma_new(struct snd_card *card, struct snd_soc_dai_runtime *dai,
 	struct snd_pcm *pcm)
 {
 	static u64 fsl_dma_dmamask = DMA_BIT_MASK(32);
@@ -793,14 +793,6 @@ static struct snd_pcm_ops fsl_dma_ops = {
 	.pointer	= fsl_dma_pointer,
 };
 
-struct snd_soc_platform fsl_soc_platform = {
-	.name   	= "fsl-dma",
-	.pcm_ops	= &fsl_dma_ops,
-	.pcm_new	= fsl_dma_new,
-	.pcm_free       = fsl_dma_free_dma_buffers,
-};
-EXPORT_SYMBOL_GPL(fsl_soc_platform);
-
 /**
  * fsl_dma_configure: store the DMA parameters from the fabric driver.
  *
@@ -833,6 +825,95 @@ int fsl_dma_configure(struct fsl_dma_info *dma_info)
 	return 1;
 }
 EXPORT_SYMBOL_GPL(fsl_dma_configure);
+
+/* TODO: PM needs finished */
+#ifdef CONFIG_PM
+static int fsl_pcm_suspend(struct device *dev, pm_message_t state)
+{
+	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	struct snd_soc_dai_runtime *dai_runtime, *d;
+
+	list_for_each_entry_safe(dai_runtime, d, &platform->dai_list, list) {
+		if (dai_runtime->active) {
+				
+		}
+	}
+
+	return 0;
+}
+
+static int fsl_pcm_resume(struct device *dev)
+{
+	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	struct snd_soc_dai_runtime *dai_runtime, *d;
+
+	list_for_each_entry_safe(dai_runtime, d, &platform->dai_list, list) {
+		if (dai_runtime->active) {
+				
+		}
+	}
+	return 0;
+}
+
+#else
+#define fsl_pcm_suspend	NULL
+#define fsl_pcm_resume	NULL
+#endif
+
+/*
+ * TODO: We may want to query the device tree here for our DMA and SSI
+ * properties. It may also beneficial to merge in the SSI driver.
+ */ 
+static int fsl_pcm_probe(struct device *dev)
+{
+	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	int ret;
+	
+	platform->pcm_ops = &fsl_dma_ops;
+	platform->pcm_new = fsl_pcm_new,
+	platform->pcm_free = fsl_dma_free_dma_buffers,
+/* TODO: DAI can be config here after dev tree parse */
+	ret = snd_soc_platform_add_dai(platform, imx_ssi, ARRAY_SIZE(imx_ssi));
+	if (ret < 0)
+		return ret;
+*/	
+	ret = snd_soc_register_platform(platform);
+	return ret;
+}
+
+static int fsl_pcm_remove(struct device *dev)
+{
+	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	
+	snd_soc_unregister_platform(platform);
+	return 0;
+}
+
+const char fsl_platform_id[] = "fsl_pcm";
+EXPORT_SYMBOL_GPL(fsl_platform_id);
+
+static struct device_driver fsl_pcm_driver = {
+	.name 		= fsl_platform_id,
+	.owner		= THIS_MODULE,
+	.bus 		= &asoc_bus_type,
+	.probe		= fsl_pcm_probe,
+	.remove		= __devexit_p(fsl_pcm_remove),
+	.suspend	= fsl_pcm_suspend,
+	.resume		= fsl_pcm_resume,
+};
+
+static __init int fsl_pcm_init(void)
+{
+	return driver_register(&fsl_pcm_driver);
+}
+
+static __exit void fsl_pcm_exit(void)
+{
+	driver_unregister(&fsl_pcm_driver);
+}
+
+module_init(fsl_pcm_init);
+module_exit(fsl_pcm_exit);
 
 MODULE_AUTHOR("Timur Tabi <timur@freescale.com>");
 MODULE_DESCRIPTION("Freescale Elo DMA ASoC PCM module");

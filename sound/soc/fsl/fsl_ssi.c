@@ -504,35 +504,6 @@ static int fsl_ssi_set_fmt(struct snd_soc_cpu_dai *cpu_dai, unsigned int format)
 }
 
 /**
- * fsl_ssi_dai_template: template CPU DAI for the SSI
- */
-static struct snd_soc_cpu_dai fsl_ssi_dai_template = {
-	.playback = {
-		/* The SSI does not support monaural audio. */
-		.channels_min = 2,
-		.channels_max = 2,
-		.rates = FSLSSI_I2S_RATES,
-		.formats = FSLSSI_I2S_FORMATS,
-	},
-	.capture = {
-		.channels_min = 2,
-		.channels_max = 2,
-		.rates = FSLSSI_I2S_RATES,
-		.formats = FSLSSI_I2S_FORMATS,
-	},
-	.ops = {
-		.startup = fsl_ssi_startup,
-		.prepare = fsl_ssi_prepare,
-		.shutdown = fsl_ssi_shutdown,
-		.trigger = fsl_ssi_trigger,
-	},
-	.dai_ops = {
-		.set_sysclk = fsl_ssi_set_sysclk,
-		.set_fmt = fsl_ssi_set_fmt,
-	},
-};
-
-/**
  * fsl_sysfs_ssi_show: display SSI statistics
  *
  * Display the statistics for the current SSI device.
@@ -576,7 +547,8 @@ static ssize_t fsl_sysfs_ssi_show(struct device *dev,
  * structure.  The function creates an ssi_private object, which contains
  * the snd_soc_cpu_dai.  It also creates the sysfs statistics device.
  */
-struct snd_soc_cpu_dai *fsl_ssi_create_dai(struct fsl_ssi_info *ssi_info)
+static int fsl_ssi_create_dai(struct snd_soc_dai_runtime *dai 
+struct fsl_ssi_info *ssi_info)
 {
 	struct snd_soc_cpu_dai *fsl_ssi_dai;
 	struct fsl_ssi_private *ssi_private;
@@ -621,14 +593,13 @@ struct snd_soc_cpu_dai *fsl_ssi_create_dai(struct fsl_ssi_info *ssi_info)
 
 	return fsl_ssi_dai;
 }
-EXPORT_SYMBOL_GPL(fsl_ssi_create_dai);
 
 /**
- * fsl_ssi_destroy_dai: destroy the snd_soc_cpu_dai object
+ * fsl_ssi_free_dai: destroy the snd_soc_cpu_dai object
  *
  * This function undoes the operations of fsl_ssi_create_dai()
  */
-void fsl_ssi_destroy_dai(struct snd_soc_cpu_dai *fsl_ssi_dai)
+static void fsl_ssi_free_dai(struct snd_soc_dai_runtime *dai)
 {
 	struct fsl_ssi_private *ssi_private =
 	container_of(fsl_ssi_dai, struct fsl_ssi_private, cpu_dai);
@@ -637,7 +608,43 @@ void fsl_ssi_destroy_dai(struct snd_soc_cpu_dai *fsl_ssi_dai)
 
 	kfree(ssi_private);
 }
-EXPORT_SYMBOL_GPL(fsl_ssi_destroy_dai);
+
+/*
+ * TODO: we probably want to remove this dai template and dynamically 
+ * create our DAI in platform probe() based on device tree parse data.
+ */
+struct snd_soc_dai fsl_ssi_template = {
+{
+	.name	= "SSI0-0",
+	.id	= IMX_DAI_SSI0,
+	.new 	= fsl_ssi_create_dai,
+	.free	= fsl_ssi_destroy_dai,
+	
+	.playback = {
+		/* The SSI does not support monaural audio. */
+		.channels_min	= 2,
+		.channels_max	= 2,
+		.rates		= FSLSSI_I2S_RATES,
+		.formats	= FSLSSI_I2S_FORMATS,
+	},
+	.capture = {
+		.channels_min	= 2,
+		.channels_max	= 2,
+		.rates		= FSLSSI_I2S_RATES,
+		.formats	= FSLSSI_I2S_FORMATS,
+	},
+	
+	/* alsa ops */
+	.startup	= fsl_ssi_startup,
+	.prepare	= fsl_ssi_prepare,
+	.shutdown	= fsl_ssi_shutdown,
+	.trigger	= fsl_ssi_trigger,
+	
+	/* dai ops */
+	.set_sysclk	= fsl_ssi_set_sysclk,
+	.set_fmt	= fsl_ssi_set_fmt,
+},
+EXPORT_SYMBOL_GPL(fsl_ssi_template);
 
 MODULE_AUTHOR("Timur Tabi <timur@freescale.com>");
 MODULE_DESCRIPTION("Freescale Synchronous Serial Interface (SSI) ASoC Driver");

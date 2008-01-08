@@ -142,8 +142,10 @@ struct fsl_dma_info {
 	unsigned int dma_irq[2];
 };
 
-extern struct snd_soc_platform fsl_soc_platform;
+extern const char fsl_platform_id[];
+extern struct snd_soc_dai fsl_ssi; /* TODO: probably not needed */
 
+/* TODO: probably not required */
 int fsl_dma_configure(struct fsl_dma_info *dma_info);
 
 #endif
