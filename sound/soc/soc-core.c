@@ -637,6 +637,7 @@ int snd_soc_suspend(struct snd_soc_machine *machine, pm_message_t state)
 		codec->suspend_bias_level = codec->bias_level;
 	}
 
+	/* DAPM power down */
 	list_for_each_entry(pcm_runtime, &machine->pcm_list, list) {
 		codec_rdai = pcm_runtime->codec_dai;
 		stream = codec_rdai->dai->playback.stream_name;
@@ -649,11 +650,13 @@ int snd_soc_suspend(struct snd_soc_machine *machine, pm_message_t state)
 				SND_SOC_DAPM_STREAM_SUSPEND);
 	}
 
+	/* codec suspend */
 	list_for_each_entry(codec, &machine->codec_list, list) {
 		if (codec->dev.driver->suspend)
 			codec->dev.driver->suspend(&codec->dev, state);
 	}
 
+	/* platform suspend */
 	list_for_each_entry(platform, &machine->platform_list, list) {
 		if (platform->dev.driver->suspend)
 			platform->dev.driver->suspend(&platform->dev, state);

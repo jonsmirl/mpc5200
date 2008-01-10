@@ -135,9 +135,7 @@ struct soc_enum {
  */
 struct snd_soc_codec {
 
-	/* 
-	 * Codec runtime 
-	 */
+	/* Codec runtime */
 	char *name;
 	struct device dev;
 	unsigned int active;			/* is codec active */

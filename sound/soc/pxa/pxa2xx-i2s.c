@@ -240,9 +240,9 @@ static void pxa2xx_i2s_shutdown(struct snd_pcm_substream *substream,
 }
 
 #ifdef CONFIG_PM
-static int pxa2xx_i2s_suspend(struct device *dev, pm_message_t state)
+static int pxa2xx_i2s_suspend(struct snd_soc_dai_runtime *dai, 
+	pm_message_t state)
 {
-	struct snd_soc_dai_runtime *dai = to_snd_soc_dai_runtime(dev);
 	struct pxa_i2s_priv *pxa_i2s = dai->private_data;
 	
 	if (!dai->active)
@@ -260,9 +260,8 @@ static int pxa2xx_i2s_suspend(struct device *dev, pm_message_t state)
 	return 0;
 }
 
-static int pxa2xx_i2s_resume(struct device *dev)
+static int pxa2xx_i2s_resume(struct snd_soc_dai_runtime *dai)
 {
-	struct snd_soc_dai_runtime *dai = to_snd_soc_dai_runtime(dev);
 	struct pxa_i2s_priv *pxa_i2s = dai->private_data;
 	
 	if (!dai->active)

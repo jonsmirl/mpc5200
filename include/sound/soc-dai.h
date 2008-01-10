@@ -202,11 +202,11 @@ struct snd_soc_dai_caps {
  * Digital Audio Interface.
  * 
  * Describes the Digital Audio Interface in terms of it's ALSA, DAI and AC97 
- * operations an capabilities. Codec and platfom drivers will register a this
+ * operations an capabilities. Codec and platfom drivers will register this
  * structure for every DAI they have.
  * 
  * This structure covers the clocking, formating and ALSA operations for each
- * interface a
+ * digital audio interface.
  */
 struct snd_soc_dai {
 	char *name;
@@ -217,7 +217,7 @@ struct snd_soc_dai {
 	struct snd_soc_dai_caps playback;
 	struct snd_soc_dai_caps capture;
 	
-	/* Private resources can be requested and released here - optional. */
+	/* resources can be requested and released here - optional. */
 	int (*new)(struct snd_soc_dai_runtime *dai);
 	void (*free)(struct snd_soc_dai_runtime *dai);
 
@@ -244,7 +244,8 @@ struct snd_soc_dai {
 	
 	/*
 	 * DAI digital mute - optional.
-	 * Called by soc-core to minimise any pops.
+	 * Called by soc-core to at stream startup and shutdown to 
+	 * minimise any audio artifacts e.g. pops and clicks.
 	 */
 	int (*digital_mute)(struct snd_soc_dai_runtime *dai, int mute);
 	

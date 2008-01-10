@@ -361,6 +361,85 @@ static int pxa2xx_pcm_new(struct snd_soc_platform *platform,
 	return ret;
 }
 
+#ifdef CONFIG_PM
+static int pxa2xx_suspend(struct device *dev, pm_message_t state)
+{
+	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	struct snd_soc_dai_runtime *rdai;
+	int err = 0;
+	
+	list_for_each_entry(rdai, &platform->dai_list, list) {
+		switch (rdai->dai->id) {
+#if defined(CONFIG_SND_PXA2XX_SOC_I2S)	
+		case PXA2XX_DAI_I2S:
+			err = pxa2xx_i2s_suspend(rdai, state);
+			if (err < 0)
+				printk(KERN_ERR "%s: %s failed\n", __func__,
+					rdai->dai->name);
+			break;
+#endif
+#if defined(CONFIG_SND_PXA2XX_SOC_SSP)	
+		case PXA2XX_DAI_SSP1:
+		case PXA2XX_DAI_SSP2:
+		case PXA2XX_DAI_SSP3:
+			err = pxa2xx_ssp_suspend(rdai, state);
+			if (err < 0)
+				printk(KERN_ERR "%s: %s failed\n", __func__,
+					rdai->dai->name);
+			break;
+#endif
+#if defined(CONFIG_SND_PXA2XX_SOC_AC97)
+		case PXA2XX_DAI_AC97:
+			err = pxa2xx_ac97_suspend(rdai, state);
+			if (err < 0)
+				printk(KERN_ERR "%s: %s failed\n", __func__,
+					rdai->dai->name);
+			break;
+#endif
+		default:
+			break;
+		}
+	}
+	return err;
+}
+
+static int pxa2xx_resume(struct device *dev)
+{
+	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	struct snd_soc_dai_runtime *rdai;
+	
+	list_for_each_entry(rdai, &platform->dai_list, list) {
+		switch (rdai->dai->id) {
+#if CONFIG_SND_PXA2XX_SOC_I2S
+#err SND_PXA2XX_SOC_SSP
+		case PXA2XX_DAI_I2S:
+			pxa2xx_i2s_resume(rdai);
+			break;
+#endif
+#if defined(CONFIG_SND_PXA2XX_SOC_SSP)
+		case PXA2XX_DAI_SSP1:
+		case PXA2XX_DAI_SSP2:
+		case PXA2XX_DAI_SSP3:
+			pxa2xx_ssp_resume(rdai);
+			break;
+#endif
+#if defined(CONFIG_SND_PXA2XX_SOC_AC97)
+		case PXA2XX_DAI_AC97:
+			pxa2xx_ac97_resume(rdai);
+			break;
+#endif
+		default:
+			break;
+		}
+	}
+	return 0;
+}
+
+#else
+#define pxa2xx_suspend	NULL
+#define pxa2xx_resume	NULL
+#endif
+
 static int pxa2xx_pcm_probe(struct device *dev)
 {
 	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
@@ -369,17 +448,17 @@ static int pxa2xx_pcm_probe(struct device *dev)
 	platform->pcm_ops = &pxa2xx_pcm_ops;
 	platform->pcm_new = pxa2xx_pcm_new,
 	platform->pcm_free = pxa2xx_pcm_free_dma_buffers,
-#if defined(CONFIG_SND_PXA2XX_SOC_I2S)	
+#if defined(CONFIG_SND_PXA2XX_SOC_I2S)
 	ret = snd_soc_platform_add_dai(platform, &pxa2xx_i2s, 1);
 	if (ret < 0)
 		return ret;
 #endif
-#if defined(CONFIG_SND_PXA2XX_SOC_AC97)	
+#if defined(CONFIG_SND_PXA2XX_SOC_AC97)
 	ret = snd_soc_platform_add_dai(platform, pxa2xx_ac97, 3);
 	if (ret < 0)
 		return ret;
 #endif
-#if defined(CONFIG_SND_PXA2XX_SOC_SSP)	
+#if defined(CONFIG_SND_PXA2XX_SOC_SSP)
 	ret = snd_soc_platform_add_dai(platform, pxa2xx_ssp, 3);
 	if (ret < 0)
 		return ret;
@@ -405,6 +484,8 @@ static struct device_driver pxa2xx_pcm_driver = {
 	.bus 		= &asoc_bus_type,
 	.probe		= pxa2xx_pcm_probe,
 	.remove		= __devexit_p(pxa2xx_pcm_remove),
+	.suspend	= pxa2xx_suspend,
+	.resume		= pxa2xx_resume,
 };
 
 static __init int pxa2xx_pcm_init(void)

@@ -198,29 +198,27 @@ static int cken[3] = {CKEN_SSP, CKEN_NSSP, CKEN_ASSP};
 #endif
 
 #ifdef CONFIG_PM
-
-static int pxa2xx_ssp_suspend(struct device *dev, pm_message_t state)
+int pxa2xx_ssp_suspend(struct snd_soc_dai_runtime *rdai, 
+	pm_message_t state)
 {
-	struct snd_soc_dai_runtime *dai = to_snd_soc_dai_runtime(dev);
-	struct ssp_priv *ssp = dai->private_data;
+	struct ssp_priv *ssp = rdai->private_data;
 	
-	if (!dai->active)
+	if (!rdai->active)
 		return 0;
 
 	ssp_save_state(&ssp->dev, &ssp->state);
-	pxa_set_cken(cken[dai->id], 0);
+	pxa_set_cken(cken[rdai->dai->id], 0);
 	return 0;
 }
 
-static int pxa2xx_ssp_resume(struct device *dev)
+int pxa2xx_ssp_resume(struct snd_soc_dai_runtime *rdai)
 {
-	struct snd_soc_dai_runtime *dai = to_snd_soc_dai_runtime(dev);
-	struct ssp_priv *ssp = dai->private_data;
+	struct ssp_priv *ssp = rdai->private_data;
 	
-	if (!dai->active)
+	if (!rdai->active)
 		return 0;
 
-	pxa_set_cken(cken[dai->id], 1);
+	pxa_set_cken(cken[rdai->dai->id], 1);
 	ssp_restore_state(&ssp->dev, &ssp->state);
 	ssp_enable(&ssp->dev);
 
