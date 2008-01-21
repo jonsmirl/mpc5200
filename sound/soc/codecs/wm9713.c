@@ -991,29 +991,25 @@ static int wm9713_codec_resume(struct device *dev)
 {
 	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
 	struct wm9713_priv *wm9713 = codec->private_data;
-	int i, ret;
-	u16 *cache = codec->reg_cache;
+	u16 id;
 
+	/* give the codec an AC97 warm reset to start the link */
+	codec->ac97->bus->ops->warm_reset(codec->ac97);
+	codec->machine_read(codec->ac97, (long)&id, AC97_VENDOR_ID2); 
+	if (id != 0x4c13) {
+		printk(KERN_ERR "wm9713 failed to resume");
+		return -EIO;
+	}
 	wm9713_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	/* do we need to re-start the PLL ? */
 	if (wm9713->pll_out)
 		wm9713_set_pll(codec, 0, wm9713->pll_in, wm9713->pll_out);
-#if 0 //lg 
-	/* only synchronise the codec if warm reset failed */
-	if (ret == 0) {
-		for (i = 2; i < ARRAY_SIZE(wm9713_reg) << 1; i+=2) {
-			if (i == AC97_POWERDOWN || i == AC97_EXTENDED_MID ||
-				i == AC97_EXTENDED_MSTATUS || i > 0x66)
-				continue;
-			codec->machine_write(codec->ac97, i, cache[i>>1]);
-		}
-	}
-#endif
+
 	if (codec->suspend_bias_level == SND_SOC_BIAS_ON)
 		wm9713_set_bias_level(codec, SND_SOC_BIAS_ON);
 
-	return ret;
+	return 0;
 }
 
 static int wm9713_codec_init(struct snd_soc_codec *codec,
