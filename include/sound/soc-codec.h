@@ -266,9 +266,15 @@ int snd_soc_register_codec(struct snd_soc_codec *codec);
  */
 void snd_soc_unregister_codec(struct snd_soc_codec *codec);
 
-/* Codec read and write */
+/* codec register read and write */
 #define snd_soc_read(codec, reg) codec->codec_read(codec, reg)
 #define snd_soc_write(codec, reg, value) codec->codec_write(codec, reg, value)
+
+/* codec register bit access */
+int snd_soc_update_bits(struct snd_soc_codec *codec, unsigned short reg,
+				unsigned short mask, unsigned short value);
+int snd_soc_test_bits(struct snd_soc_codec *codec, unsigned short reg,
+				unsigned short mask, unsigned short value);
 
 /**
  * snd_soc_new_ac97_codec - create new AC97 codec.

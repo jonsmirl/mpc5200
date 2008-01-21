@@ -1305,7 +1305,8 @@ EXPORT_SYMBOL_GPL(snd_soc_dapm_stream_event);
 
 /**
  * snd_soc_dapm_set_bias - send a device event to the dapm core
- * @socdev: audio device
+ * @machine: audio machine
+ * @codec: audio codec
  * @event: device event
  *
  * Sends a device event to the dapm core. The core then makes any
@@ -1313,12 +1314,9 @@ EXPORT_SYMBOL_GPL(snd_soc_dapm_stream_event);
  *
  * Returns 0 for success else error.
  */
-int snd_soc_dapm_set_bias(struct snd_soc_pcm_runtime *pcm_runtime, 
-	enum snd_soc_dapm_bias_level level)
+int snd_soc_dapm_set_bias(struct snd_soc_machine *machine,
+	struct snd_soc_codec *codec, enum snd_soc_dapm_bias_level level)
 {
-	struct snd_soc_codec *codec = pcm_runtime->codec;
-	struct snd_soc_machine *machine = pcm_runtime->machine;
-	
 	if (machine->set_bias_level)
 		machine->set_bias_level(machine, level);
 	if (codec->set_bias_level)

@@ -295,6 +295,28 @@ int snd_soc_dapm_init(struct snd_soc_machine *machine);
  */
 void snd_soc_dapm_exit(struct snd_soc_machine *machine);
 
+/**
+ * snd_soc_dapm_stream_event - Send DAPM stream event.
+ * @machine: SoC machine
+ * @stream: stream name
+ * @event: event to send
+ *
+ * Sends a device event to the dapm core. The core then makes any
+ * necessary machine or codec power changes.
+ */
+int snd_soc_dapm_stream_event(struct snd_soc_machine *machine, char *stream,
+	enum snd_soc_dapm_stream_event event);
+
+/**
+ * snd_soc_dapm_set_bias - Sets the DAPM bias level.
+ * @machine: SoC machine
+ * @codec: SoC codec
+ * @level: bias (power) level.
+ *
+ * Sets machine and codec to new bias (power) level.
+ */
+int snd_soc_dapm_set_bias(struct snd_soc_machine *machine,
+	struct snd_soc_codec *codec, enum snd_soc_dapm_bias_level level);
 
 /**
  * snd_soc_dapm_enable_pin - enable pin.
