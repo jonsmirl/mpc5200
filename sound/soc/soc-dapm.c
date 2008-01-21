@@ -51,8 +51,6 @@
 #include <sound/soc.h>
 #include <sound/initval.h>
 
-#include "soc-prv.h"
-
 /* debug */
 #define DAPM_DEBUG 0
 #if DAPM_DEBUG
@@ -1354,6 +1352,14 @@ int snd_soc_dapm_disable_pin(struct snd_soc_machine *machine, char *pin)
 	return snd_soc_dapm_set_pin(machine, pin, 0);
 }
 EXPORT_SYMBOL_GPL(snd_soc_dapm_disable_pin);
+
+int snd_soc_dapm_set_policy(struct snd_soc_machine *machine,
+	enum snd_soc_dapm_policy policy)
+{
+	machine->policy = policy;
+	return 0;
+}
+EXPORT_SYMBOL_GPL(snd_soc_dapm_set_policy);
 
 /**
  * snd_soc_dapm_free - free dapm resources

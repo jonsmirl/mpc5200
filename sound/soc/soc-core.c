@@ -42,8 +42,6 @@
 #include <sound/initval.h>
 #include <sound/ac97_codec.h>
 
-#include "soc-prv.h"
-
 /* debug */
 #define SOC_DEBUG 0
 #if SOC_DEBUG

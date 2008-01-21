@@ -181,6 +181,7 @@ struct snd_soc_machine {
 	/* DAPM */
 	struct list_head dapm_widgets;
 	struct list_head dapm_paths;
+	enum snd_soc_dapm_policy policy;
 	
 	void *private_data;
 };

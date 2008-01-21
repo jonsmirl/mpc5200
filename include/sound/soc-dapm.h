@@ -223,6 +223,28 @@ enum snd_soc_dapm_stream_event {
 	SND_SOC_DAPM_STREAM_PAUSE_RELEASE,
 };
 
+/* DAPM Policy
+ * 
+ * @AUTOMATIC:        Default DAPM policy where all power switching is fully
+ *                    automatic for best power savings.
+ * @WIDGETS_MANUAL:   Widgets will not be power switched by DAPM core.
+ * @BIAS_MANUAL:      Bias will not be power switched by DAPM core.
+ * @ALL_MANUAL:       Widgets and Bias will not be power switched by DAPM core.
+ * @WIDGETS_ON:       Widgets are always on iff they are part of a valid audio
+ *                    signal path. This path does to need to be active.
+ * @BIAS_ON:          Bias is always on.
+ * @ALL_ON:           Entire audio system is on (PC power state).     
+ */
+enum snd_soc_dapm_policy {
+	SND_SOC_DAPM_POLICY_AUTOMATIC,
+	SND_SOC_DAPM_POLICY_WIDGETS_MANUAL,
+	SND_SOC_DAPM_POLICY_BIAS_MANUAL,
+	SND_SOC_DAPM_POLICY_ALL_MANUAL,
+	SND_SOC_DAPM_POLICY_WIDGETS_ON,
+	SND_SOC_DAPM_POLICY_BIAS_ON,
+	SND_SOC_DAPM_POLICY_ALL_ON,	
+};
+
 /* 
  * DAPM Widget types
  */
@@ -294,6 +316,15 @@ int snd_soc_dapm_init(struct snd_soc_machine *machine);
  * Frees all DAPM resources.
  */
 void snd_soc_dapm_exit(struct snd_soc_machine *machine);
+
+/**
+ * snd_soc_dapm_set_policy - Set DAPM policy.
+ * @machine: SoC machine
+ *
+ * Sets the DAPM power switching policy.
+ */
+int snd_soc_dapm_set_policy(struct snd_soc_machine *machine,
+	enum snd_soc_dapm_policy policy);
 
 /**
  * snd_soc_dapm_stream_event - Send DAPM stream event.
