@@ -206,7 +206,7 @@ static inline struct snd_soc_codec *
 }
 
 /**
- * snd_soc_get_codec - get platform.
+ * snd_soc_platform - get platform.
  * @machine: machine
  * @codec_id: platform ID
  *

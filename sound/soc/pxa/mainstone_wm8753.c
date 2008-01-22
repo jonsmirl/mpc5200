@@ -352,7 +352,7 @@ static int mainstone_wm8753_init(struct snd_soc_machine *machine)
 			audio_map[i][1], audio_map[i][2]);
 	}
 	
-	snd_soc_dapm_resync(machine);
+	snd_soc_dapm_sync(machine);
 	
 	snd_soc_codec_set_io(codec, NULL, mainstone_wm8753_write, 
 		machine->private_data);

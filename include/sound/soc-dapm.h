@@ -350,21 +350,22 @@ int snd_soc_dapm_set_bias(struct snd_soc_machine *machine,
 	struct snd_soc_codec *codec, enum snd_soc_dapm_bias_level level);
 
 /**
- * snd_soc_dapm_enable_pin - enable pin.
+ * snd_soc_dapm_enable_pin - enable dapm input or output pin.
  * @machine: SoC machine
- * @pin: pin name
+ * @what: input or output pin name
  *
  * Enables input/output pin and it's parents or children widgets iff there is
  * a valid audio route and active audio stream.
  * NOTE: snd_soc_dapm_resync() needs to be called after this for DAPM to
- * do any widget power switching.
+ * do any widget power switching. Pins can also be jacks, headphones, 
+ * mics, etc.
  */
 int snd_soc_dapm_enable_pin(struct snd_soc_machine *machine, char *pin);
 
 /**
- * snd_soc_dapm_disable_pin - disable pin.
+ * snd_soc_dapm_disable - disable dapm input or output.
  * @machine: SoC machine
- * @pin: pin name
+ * @what: input or output pin name
  *
  * Disables input/output pin and it's parents or children widgets.
  * NOTE: snd_soc_dapm_resync() needs to be called after this for DAPM to
@@ -372,42 +373,14 @@ int snd_soc_dapm_enable_pin(struct snd_soc_machine *machine, char *pin);
  */	
 int snd_soc_dapm_disable_pin(struct snd_soc_machine *machine, char *pin);
 
-/*
- * Convenience enable/disable for DAPM widgets.
- */
-#define snd_soc_dapm_disable_headphone(machine, hp) \
-	snd_soc_dapm_disable_pin(machine, hp)
-#define snd_soc_dapm_enable_headphone(machine, hp) \
-	snd_soc_dapm_enable_pin(machine, hp)
-	
-#define snd_soc_dapm_disable_speaker(machine, spk) \
-	snd_soc_dapm_disable_pin(machine, spk)
-#define snd_soc_dapm_enable_speaker(machine, spk) \
-	snd_soc_dapm_enable_pin(machine, spk)
-
-#define snd_soc_dapm_disable_line(machine, line) \
-	snd_soc_dapm_disable_pin(machine, line)
-#define snd_soc_dapm_enable_line(machine, line) \
-	snd_soc_dapm_enable_pin(machine, line)
-	
-#define snd_soc_dapm_disable_headset(machine, hs) \
-	snd_soc_dapm_disable_pin(machine, hs)
-#define snd_soc_dapm_enable_headset(machine, hs) \
-	snd_soc_dapm_enable_pin(machine, hs)
-	
-#define snd_soc_dapm_disable_mic(machine, mic) \
-	snd_soc_dapm_disable_pin(machine, mic)
-#define snd_soc_dapm_enable_mic(machine, mic) \
-	snd_soc_dapm_enable_pin(machine, mic)
-
 /**
- * snd_soc_dapm_resync - disable pin.
+ * snd_soc_dapm_sync - synchronise DAPM.
  * @machine: SoC machine
  *
  * Resynchronises DAPM widget power state with pin, stream and audio path
  * state changes. This may cause DAPM power switching.
  */
-int snd_soc_dapm_resync(struct snd_soc_machine *machine);
+int snd_soc_dapm_sync(struct snd_soc_machine *machine);
 
 /* 
  * DAPM audio route.
