@@ -35,11 +35,14 @@
 
 static int load_aout32_binary(struct linux_binprm *, struct pt_regs * regs);
 static int load_aout32_library(struct file*);
-static int aout32_core_dump(long signr, struct pt_regs * regs, struct file *file);
+static int aout32_core_dump(long signr, struct pt_regs *regs, struct file *file, unsigned long limit);
 
 static struct linux_binfmt aout32_format = {
-	NULL, THIS_MODULE, load_aout32_binary, load_aout32_library, aout32_core_dump,
-	PAGE_SIZE
+	.module		= THIS_MODULE,
+	.load_binary	= load_aout32_binary,
+	.load_shlib	= load_aout32_library,
+	.core_dump	= aout32_core_dump,
+	.min_coredump	= PAGE_SIZE,
 };
 
 static void set_brk(unsigned long start, unsigned long end)
@@ -83,7 +86,7 @@ if (file->f_op->llseek) { \
  * dumping of the process results in another error..
  */
 
-static int aout32_core_dump(long signr, struct pt_regs *regs, struct file *file)
+static int aout32_core_dump(long signr, struct pt_regs *regs, struct file *file, unsigned long limit)
 {
 	mm_segment_t fs;
 	int has_dumped = 0;
@@ -102,13 +105,11 @@ static int aout32_core_dump(long signr, struct pt_regs *regs, struct file *file)
 
 /* If the size of the dump file exceeds the rlimit, then see what would happen
    if we wrote the stack, but not the data area.  */
-	if ((dump.u_dsize+dump.u_ssize) >
-	    current->signal->rlim[RLIMIT_CORE].rlim_cur)
+	if (dump.u_dsize + dump.u_ssize > limit)
 		dump.u_dsize = 0;
 
 /* Make sure we have enough room to write the stack and data areas. */
-	if ((dump.u_ssize) >
-	    current->signal->rlim[RLIMIT_CORE].rlim_cur)
+	if (dump.u_ssize > limit)
 		dump.u_ssize = 0;
 
 /* make sure we actually have a data and stack area to dump */
@@ -177,7 +178,7 @@ static u32 __user *create_aout32_tables(char __user *p, struct linux_binprm *bpr
 			get_user(c,p++);
 		} while (c);
 	}
-	put_user(NULL,argv);
+	put_user(0,argv);
 	current->mm->arg_end = current->mm->env_start = (unsigned long) p;
 	while (envc-->0) {
 		char c;
@@ -186,7 +187,7 @@ static u32 __user *create_aout32_tables(char __user *p, struct linux_binprm *bpr
 			get_user(c,p++);
 		} while (c);
 	}
-	put_user(NULL,envp);
+	put_user(0,envp);
 	current->mm->env_end = (unsigned long) p;
 	return sp;
 }

@@ -400,9 +400,11 @@ static void intel_i810_free_by_type(struct agp_memory *curr)
 		if (curr->page_count == 4)
 			i8xx_destroy_pages(gart_to_virt(curr->memory[0]));
 		else {
-			agp_bridge->driver->agp_destroy_page(
-				 gart_to_virt(curr->memory[0]));
+			agp_bridge->driver->agp_destroy_page(gart_to_virt(curr->memory[0]),
+							     AGP_PAGE_DESTROY_UNMAP);
 			global_flush_tlb();
+			agp_bridge->driver->agp_destroy_page(gart_to_virt(curr->memory[0]),
+							     AGP_PAGE_DESTROY_FREE);
 		}
 		agp_free_page_array(curr);
 	}
@@ -506,11 +508,6 @@ static void intel_i830_init_gtt_entries(void)
 			break;
 		}
 	} else {
-		/* G33's GTT stolen memory is separate from gfx data
-		 * stolen memory.
-		 */
-		if (IS_G33)
-			size = 0;
 		switch (gmch_ctrl & I855_GMCH_GMS_MASK) {
 		case I855_GMCH_GMS_STOLEN_1M:
 			gtt_entries = MB(1) - KB(size);

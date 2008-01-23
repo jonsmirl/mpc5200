@@ -649,7 +649,7 @@ EXPORT_SYMBOL_GPL(add_input_randomness);
 
 void add_interrupt_randomness(int irq)
 {
-	if (irq >= NR_IRQS || irq_timer_state[irq] == 0)
+	if (irq >= NR_IRQS || irq_timer_state[irq] == NULL)
 		return;
 
 	DEBUG_ENT("irq event %d\n", irq);
@@ -1494,7 +1494,7 @@ __u32 secure_tcpv6_sequence_number(__be32 *saddr, __be32 *daddr,
 	seq = twothirdsMD4Transform((const __u32 *)daddr, hash) & HASH_MASK;
 	seq += keyptr->count;
 
-	seq += ktime_get_real().tv64;
+	seq += ktime_to_ns(ktime_get_real());
 
 	return seq;
 }
@@ -1550,11 +1550,13 @@ __u32 secure_tcp_sequence_number(__be32 saddr, __be32 daddr,
 	 *	As close as possible to RFC 793, which
 	 *	suggests using a 250 kHz clock.
 	 *	Further reading shows this assumes 2 Mb/s networks.
-	 *	For 10 Gb/s Ethernet, a 1 GHz clock is appropriate.
-	 *	That's funny, Linux has one built in!  Use it!
-	 *	(Networks are faster now - should this be increased?)
+	 *	For 10 Mb/s Ethernet, a 1 MHz clock is appropriate.
+	 *	For 10 Gb/s Ethernet, a 1 GHz clock should be ok, but
+	 *	we also need to limit the resolution so that the u32 seq
+	 *	overlaps less than one time per MSL (2 minutes).
+	 *	Choosing a clock of 64 ns period is OK. (period of 274 s)
 	 */
-	seq += ktime_get_real().tv64;
+	seq += ktime_to_ns(ktime_get_real()) >> 6;
 #if 0
 	printk("init_seq(%lx, %lx, %d, %d) = %d\n",
 	       saddr, daddr, sport, dport, seq);
@@ -1614,7 +1616,7 @@ u64 secure_dccp_sequence_number(__be32 saddr, __be32 daddr,
 	seq = half_md4_transform(hash, keyptr->secret);
 	seq |= ((u64)keyptr->count) << (32 - HASH_BITS);
 
-	seq += ktime_get_real().tv64;
+	seq += ktime_to_ns(ktime_get_real());
 	seq &= (1ull << 48) - 1;
 #if 0
 	printk("dccp init_seq(%lx, %lx, %d, %d) = %d\n",

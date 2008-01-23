@@ -318,9 +318,9 @@ out_attach:
 static void ocfs2_drop_dentry_lock(struct ocfs2_super *osb,
 				   struct ocfs2_dentry_lock *dl)
 {
+	iput(dl->dl_inode);
 	ocfs2_simple_drop_lockres(osb, &dl->dl_lockres);
 	ocfs2_lock_res_free(&dl->dl_lockres);
-	iput(dl->dl_inode);
 	kfree(dl);
 }
 
@@ -376,7 +376,7 @@ out:
  * directory locks. The dentries have already been deleted on other
  * nodes via ocfs2_remote_dentry_delete().
  *
- * Normally, the VFS handles the d_move() for the file sytem, after
+ * Normally, the VFS handles the d_move() for the file system, after
  * the ->rename() callback. OCFS2 wants to handle this internally, so
  * the new lock can be created atomically with respect to the cluster.
  */

@@ -5,6 +5,7 @@
 #define WRITEBACK_H
 
 #include <linux/sched.h>
+#include <linux/fs.h>
 
 struct backing_dev_info;
 
@@ -61,15 +62,13 @@ struct writeback_control {
 	unsigned for_reclaim:1;		/* Invoked from the page allocator */
 	unsigned for_writepages:1;	/* This is a writepages() call */
 	unsigned range_cyclic:1;	/* range_start is cyclic */
-
-	void *fs_private;		/* For use by ->writepages() */
+	unsigned more_io:1;		/* more io to be dispatched */
 };
 
 /*
  * fs/fs-writeback.c
  */	
 void writeback_inodes(struct writeback_control *wbc);
-void wake_up_inode(struct inode *inode);
 int inode_wait(void *);
 void sync_inodes_sb(struct super_block *, int wait);
 void sync_inodes(int wait);
@@ -81,6 +80,13 @@ static inline void wait_on_inode(struct inode *inode)
 	wait_on_bit(&inode->i_state, __I_LOCK, inode_wait,
 							TASK_UNINTERRUPTIBLE);
 }
+static inline void inode_sync_wait(struct inode *inode)
+{
+	might_sleep();
+	wait_on_bit(&inode->i_state, __I_SYNC, inode_wait,
+							TASK_UNINTERRUPTIBLE);
+}
+
 
 /*
  * mm/page-writeback.c
@@ -97,6 +103,10 @@ extern int dirty_writeback_interval;
 extern int dirty_expire_interval;
 extern int block_dump;
 extern int laptop_mode;
+
+extern int dirty_ratio_handler(struct ctl_table *table, int write,
+		struct file *filp, void __user *buffer, size_t *lenp,
+		loff_t *ppos);
 
 struct ctl_table;
 struct file;
@@ -127,7 +137,7 @@ int sync_page_range(struct inode *inode, struct address_space *mapping,
 			loff_t pos, loff_t count);
 int sync_page_range_nolock(struct inode *inode, struct address_space *mapping,
 			   loff_t pos, loff_t count);
-void set_page_dirty_balance(struct page *page);
+void set_page_dirty_balance(struct page *page, int page_mkwrite);
 void writeback_set_ratelimit(void);
 
 /* pdflush.c */
