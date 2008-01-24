@@ -57,28 +57,28 @@ static void tosa_ext_control(struct snd_soc_machine *machine)
 	/* set up jack connection */
 	switch (tosa_jack_func) {
 	case TOSA_HP:
-		snd_soc_dapm_disable_headset(machine, "Headset Jack");
-		snd_soc_dapm_disable_mic(machine, "Mic (Internal)");
-		snd_soc_dapm_enable_headphone(machine, "Headphone Jack");
+		snd_soc_dapm_disable_pin(machine, "Headset Jack");
+		snd_soc_dapm_disable_pin(machine, "Mic (Internal)");
+		snd_soc_dapm_enable_pin(machine, "Headphone Jack");
 		break;
 	case TOSA_MIC_INT:
-		snd_soc_dapm_disable_headset(machine, "Headset Jack");
-		snd_soc_dapm_disable_headphone(machine, "Headphone Jack");
-		snd_soc_dapm_enable_mic(machine, "Mic (Internal)");
+		snd_soc_dapm_disable_pin(machine, "Headset Jack");
+		snd_soc_dapm_disable_pin(machine, "Headphone Jack");
+		snd_soc_dapm_enable_pin(machine, "Mic (Internal)");
 		break;
 	case TOSA_HEADSET:
-		snd_soc_dapm_disable_headphone(machine, "Headphone Jack");
-		snd_soc_dapm_disable_mic(machine, "Mic (Internal)");
-		snd_soc_dapm_enable_headset(machine, "Headset Jack");
+		snd_soc_dapm_disable_pin(machine, "Headphone Jack");
+		snd_soc_dapm_disable_pin(machine, "Mic (Internal)");
+		snd_soc_dapm_enable_pin(machine, "Headset Jack");
 		break;
 	}
 
 	if (tosa_spk_func == TOSA_SPK_ON)
-		snd_soc_dapm_enable_speaker(machine, "Speaker");
+		snd_soc_dapm_enable_pin(machine, "Speaker");
 	else
-		snd_soc_dapm_disable_speaker(machine, "Speaker");
+		snd_soc_dapm_disable_pin(machine, "Speaker");
 
-	snd_soc_dapm_resync(machine);
+	snd_soc_dapm_sync(machine);
 }
 
 static int tosa_startup(struct snd_pcm_substream *substream)
@@ -255,13 +255,13 @@ static int tosa_init(struct snd_soc_machine *machine)
 			&tosa_dapm_widgets[i]);
 	}
 
-	/* set up tosa specific audio path audio_mapnects */
+	/* set up tosa specific audio path audio_map */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
 		snd_soc_dapm_add_route(machine, audio_map[i][0], 
 			audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_resync(machine);
+	snd_soc_dapm_sync(machine);
 	
 	return 0;
 }

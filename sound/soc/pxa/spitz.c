@@ -64,51 +64,51 @@ static void spitz_ext_control(struct snd_soc_machine *machine)
 	switch (spitz_jack_func) {
 	case SPITZ_HP:
 		/* enable and unmute hp jack, disable mic bias */
-		snd_soc_dapm_disable_headset(machine, "Headset Jack");
-		snd_soc_dapm_disable_mic(machine, "Mic Jack");
-		snd_soc_dapm_disable_line(machine, "Line Jack");
-		snd_soc_dapm_enable_headphone(machine, "Headphone Jack");
+		snd_soc_dapm_disable_pin(machine, "Headset Jack");
+		snd_soc_dapm_disable_pin(machine, "Mic Jack");
+		snd_soc_dapm_disable_pin(machine, "Line Jack");
+		snd_soc_dapm_enable_pin(machine, "Headphone Jack");
 		set_scoop_gpio(&spitzscoop_device.dev, SPITZ_SCP_MUTE_L);
 		set_scoop_gpio(&spitzscoop_device.dev, SPITZ_SCP_MUTE_R);
 		break;
 	case SPITZ_MIC:
 		/* enable mic jack and bias, mute hp */
-		snd_soc_dapm_disable_headphone(machine, "Headphone Jack");
-		snd_soc_dapm_disable_headset(machine, "Headset Jack");
-		snd_soc_dapm_disable_line(machine, "Line Jack");
-		snd_soc_dapm_enable_mic(machine, "Mic Jack");
+		snd_soc_dapm_disable_pin(machine, "Headphone Jack");
+		snd_soc_dapm_disable_pin(machine, "Headset Jack");
+		snd_soc_dapm_disable_pin(machine, "Line Jack");
+		snd_soc_dapm_enable_pin(machine, "Mic Jack");
 		reset_scoop_gpio(&spitzscoop_device.dev, SPITZ_SCP_MUTE_L);
 		reset_scoop_gpio(&spitzscoop_device.dev, SPITZ_SCP_MUTE_R);
 		break;
 	case SPITZ_LINE:
 		/* enable line jack, disable mic bias and mute hp */
-		snd_soc_dapm_disable_headphone(machine, "Headphone Jack");
-		snd_soc_dapm_disable_headset(machine, "Headset Jack");
-		snd_soc_dapm_disable_mic(machine, "Mic Jack");
-		snd_soc_dapm_enable_line(machine, "Line Jack");
+		snd_soc_dapm_disable_pin(machine, "Headphone Jack");
+		snd_soc_dapm_disable_pin(machine, "Headset Jack");
+		snd_soc_dapm_disable_pin(machine, "Mic Jack");
+		snd_soc_dapm_enable_pin(machine, "Line Jack");
 		reset_scoop_gpio(&spitzscoop_device.dev, SPITZ_SCP_MUTE_L);
 		reset_scoop_gpio(&spitzscoop_device.dev, SPITZ_SCP_MUTE_R);
 		break;
 	case SPITZ_HEADSET:
 		/* enable and unmute headset jack enable mic bias, mute L hp */
-		snd_soc_dapm_disable_headphone(machine, "Headphone Jack");
-		snd_soc_dapm_disable_mic(machine, "Mic Jack");
-		snd_soc_dapm_disable_line(machine, "Line Jack");
-		snd_soc_dapm_enable_headset(machine, "Headset Jack");
+		snd_soc_dapm_disable_pin(machine, "Headphone Jack");
+		snd_soc_dapm_disable_pin(machine, "Mic Jack");
+		snd_soc_dapm_disable_pin(machine, "Line Jack");
+		snd_soc_dapm_enable_pin(machine, "Headset Jack");
 		reset_scoop_gpio(&spitzscoop_device.dev, SPITZ_SCP_MUTE_L);
 		set_scoop_gpio(&spitzscoop_device.dev, SPITZ_SCP_MUTE_R);
 		break;
 	case SPITZ_HP_OFF:
 		/* jack removed, everything off */
-		snd_soc_dapm_disable_headphone(machine, "Headphone Jack");
-		snd_soc_dapm_disable_headset(machine, "Headset Jack");
-		snd_soc_dapm_disable_mic(machine, "Mic Jack");
-		snd_soc_dapm_disable_line(machine, "Line Jack");
+		snd_soc_dapm_disable_pin(machine, "Headphone Jack");
+		snd_soc_dapm_disable_pin(machine, "Headset Jack");
+		snd_soc_dapm_disable_pin(machine, "Mic Jack");
+		snd_soc_dapm_disable_pin(machine, "Line Jack");
 		reset_scoop_gpio(&spitzscoop_device.dev, SPITZ_SCP_MUTE_L);
 		reset_scoop_gpio(&spitzscoop_device.dev, SPITZ_SCP_MUTE_R);
 		break;
 	}
-	snd_soc_dapm_resync(machine);
+	snd_soc_dapm_sync(machine);
 }
 
 static int spitz_startup(struct snd_pcm_substream *substream)
@@ -350,7 +350,7 @@ static int spitz_init(struct snd_soc_machine *machine)
 			audio_map[i][1], audio_map[i][2]);
 	}
 	
-	snd_soc_dapm_resync(machine);
+	snd_soc_dapm_sync(machine);
 	
 	snd_soc_codec_set_io(codec, NULL, spitz_wm8750_write, 
 		machine->private_data);

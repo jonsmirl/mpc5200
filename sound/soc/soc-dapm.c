@@ -838,7 +838,7 @@ static int snd_soc_dapm_set_pin(struct snd_soc_machine *machine,
 }
 
 /**
- * snd_soc_dapm_resync - scan and power dapm paths
+ * snd_soc_dapm_sync - scan and power dapm paths
  * @codec: audio codec
  *
  * Walks all dapm audio paths and powers widgets according to their
@@ -846,11 +846,11 @@ static int snd_soc_dapm_set_pin(struct snd_soc_machine *machine,
  *
  * Returns 0 for success.
  */
-int snd_soc_dapm_resync(struct snd_soc_machine *machine)
+int snd_soc_dapm_sync(struct snd_soc_machine *machine)
 {
 	return dapm_power_widgets(machine, SND_SOC_DAPM_STREAM_NOP);
 }
-EXPORT_SYMBOL_GPL(snd_soc_dapm_resync);
+EXPORT_SYMBOL_GPL(snd_soc_dapm_sync);
 
 /**
  * snd_soc_dapm_add_route - Add a DAPM route between dapm widgets

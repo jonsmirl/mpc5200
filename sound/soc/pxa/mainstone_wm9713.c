@@ -207,7 +207,7 @@ static int mainstone_wm9713_init(struct snd_soc_machine *machine)
 			audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_resync(machine);
+	snd_soc_dapm_sync(machine);
 	
 	MST_MSCWR2 &= ~MST_MSCWR2_AC97_SPKROFF;
 	return 0;

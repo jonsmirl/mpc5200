@@ -57,22 +57,22 @@ static void poodle_ext_control(struct snd_soc_machine *machine)
 			POODLE_LOCOMO_GPIO_MUTE_L, 1);
 		locomo_gpio_write(&poodle_locomo_device.dev,
 			POODLE_LOCOMO_GPIO_MUTE_R, 1);
-		snd_soc_dapm_enable_headphone(machine, "Headphone Jack");
+		snd_soc_dapm_enable_pin(machine, "Headphone Jack");
 	} else {
 		locomo_gpio_write(&poodle_locomo_device.dev,
 			POODLE_LOCOMO_GPIO_MUTE_L, 0);
 		locomo_gpio_write(&poodle_locomo_device.dev,
 			POODLE_LOCOMO_GPIO_MUTE_R, 0);
-		snd_soc_dapm_disable_headphone(machine, "Headphone Jack");
+		snd_soc_dapm_disable_pin(machine, "Headphone Jack");
 	}
 
 	if (poodle_spk_func == POODLE_SPK_ON)
-		snd_soc_dapm_enable_speaker(machine, "Ext Spk");
+		snd_soc_dapm_enable_pin(machine, "Ext Spk");
 	else
-		snd_soc_dapm_disable_speaker(machine, "Ext Spk");
+		snd_soc_dapm_disable_pin(machine, "Ext Spk");
 
 	/* signal a DAPM event */
-	snd_soc_dapm_resync(machine);
+	snd_soc_dapm_sync(machine);
 }
 
 static int poodle_startup(struct snd_pcm_substream *substream)
@@ -295,7 +295,7 @@ static int poodle_init(struct snd_soc_machine *machine)
 			audio_map[i][1], audio_map[i][2]);
 	}
 	
-	snd_soc_dapm_resync(machine);
+	snd_soc_dapm_sync(machine);
 	
 	snd_soc_codec_set_io(codec, NULL, poodle_wm8731_write, 
 		machine->private_data);

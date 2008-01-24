@@ -363,13 +363,13 @@ static void imx32ads_jack_handler(struct wm8350 *wm8350, int irq, void *data)
 	reg = wm8350_reg_read(wm8350, WM8350_JACK_PIN_STATUS);
 
 	if (reg & WM8350_JACK_R_LVL) {
-		snd_soc_dapm_disable_line(machine, "Line Out Jack");
-		snd_soc_dapm_enable_headphone(machine, "Headphone Jack");
+		snd_soc_dapm_disable_pin(machine, "Line Out Jack");
+		snd_soc_dapm_enable_pin(machine, "Headphone Jack");
 	} else {
-		snd_soc_dapm_disable_headphone(machine, "Headphone Jack");
-		snd_soc_dapm_enable_line(machine, "Line Out Jack");	
+		snd_soc_dapm_disable_pin(machine, "Headphone Jack");
+		snd_soc_dapm_enable_pin(machine, "Line Out Jack");	
 	}
-	snd_soc_dapm_resync(machine);
+	snd_soc_dapm_sync(machine);
 }
 
 int imx32_audio_init(struct snd_soc_machine *machine)
@@ -435,7 +435,7 @@ int imx32_audio_init(struct snd_soc_machine *machine)
 	snd_soc_dapm_enable_pin(machine, "Mic2 Jack");
 	snd_soc_dapm_enable_pin(machine, "Line In Jack");
 //	snd_soc_dapm_set_policy(machine, SND_SOC_DAPM_POLICY_STREAM);
-	snd_soc_dapm_resync(machine);
+	snd_soc_dapm_sync(machine);
 
 	/* enable slow clock gen for jack detect */
 	reg = wm8350_reg_read(wm8350, WM8350_POWER_MGMT_4);
