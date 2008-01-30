@@ -36,6 +36,7 @@ __XScale_start:
 #ifdef CONFIG_MACH_ZYLONITE
 		mov	r7, #(MACH_TYPE_ZYLONITE & 0xff)
 		orr	r7, r7, #(MACH_TYPE_ZYLONITE & 0xff00)
+#endif
 
 #ifdef CONFIG_MACH_MAINSTONE
 		mov     r7, #(MACH_TYPE_MAINSTONE & 0xff)
