@@ -8,7 +8,7 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
- * 
+ *
  * ALSA SoC codec driver interface.
  */
 
@@ -25,7 +25,7 @@
 
 /*
  * Convenience kcontrol builders.
- * 
+ *
  * @SINGLE:       Mono kcontrol.
  * @SINGLE_TLV:   Mono Table Lookup Value kcontrol.
  * @DOUBLE:       Stereo kcontrol.
@@ -115,7 +115,7 @@ struct snd_ac97_bus_ops;
 struct snd_kcontrol;
 struct snd_kcontrol_new;
 
-/* 
+/*
  * Enumerated kcontrol
  */
 struct soc_enum {
@@ -128,16 +128,18 @@ struct soc_enum {
 	void *dapm;
 };
 
-/* 
+/*
  * SoC Audio Codec.
- * 
- * Describes a SoC audio codec 
+ *
+ * Describes a SoC audio codec
  */
 struct snd_soc_codec {
 
-	/* Codec runtime */
-	char *name;
-	struct device dev;
+	/*
+	 * Codec runtime
+	 */
+	const char *name;
+	struct device *dev;
 	unsigned int active;			/* is codec active */
 	struct delayed_work delayed_work;
 	struct snd_ac97 *ac97;  		/* for ad-hoc ac97 devices */
@@ -145,7 +147,7 @@ struct snd_soc_codec {
 	struct list_head list;
 	struct list_head dai_list;		/* list of DAI's */
 	struct snd_soc_machine *machine;	/* parent machine */
-	
+	int num;
 	/*
 	 *  Codec power control and state. Optional.
 	 */
@@ -195,12 +197,10 @@ struct snd_soc_codec {
 	void *private_data;			/* core doesnt touch this */
 	void *platform_data;			/* or this */
 };
-#define to_snd_soc_codec(d) \
-	container_of(d, struct snd_soc_codec, dev)
- 
+
 /*
  * KControls.
- * 
+ *
  * Called by the convenience macros to get/set/info kcontrols.
  */
 int snd_soc_info_enum_double(struct snd_kcontrol *kcontrol,
@@ -240,17 +240,6 @@ struct snd_kcontrol *snd_soc_cnew(const struct snd_kcontrol_new *_template,
 	void *data, char *long_name);
 
 /**
- * snd_soc_codec_add_dai - add DAI to codec.
- * @codec: codec
- * @dai: pointer to DAI
- * @num: number of DAI to add
- *
- * Adds <num> Digital Audio Interfaces to codec.
- */
-int snd_soc_codec_add_dai(struct snd_soc_codec *codec, 
-	struct snd_soc_dai *dai, int num);
-
-/**
  * snd_soc_register_codec - register ASoC codec driver.
  * @codec: codec driver
  *
@@ -266,15 +255,42 @@ int snd_soc_register_codec(struct snd_soc_codec *codec);
  */
 void snd_soc_unregister_codec(struct snd_soc_codec *codec);
 
-/* codec register read and write */
+/**
+ * snd_soc_codec_allocate - allocate and initialize a codec.
+ * @codec: codec driver
+ *
+ * Allocates and initializes struct codec before calling register.
+ */
+struct snd_soc_codec *snd_soc_codec_allocate(void);
+
+/**
+ * snd_soc_codec_free - free codec.
+ * @codec: codec driver
+ */
+static inline void snd_soc_codec_free(struct snd_soc_codec *codec)
+{
+	kfree(codec);
+}
+
+/**
+ * snd_soc_register_codec_dai - register a codec DAI.
+ * @dai: pointer to DAI
+ *
+ * Registers codec Digital Audio Interfaces with ASoC core.
+ */
+int snd_soc_register_codec_dai(struct snd_soc_dai *dai);
+
+/**
+ * snd_soc_unregister_codec_dai - add DAI to codec.
+ * @dai: pointer to DAI
+ *
+ * Unregisters codec Digital Audio Interfaces with ASoC core.
+ */
+void snd_soc_unregister_codec_dai(struct snd_soc_dai *dai);
+
+/* Codec read and write */
 #define snd_soc_read(codec, reg) codec->codec_read(codec, reg)
 #define snd_soc_write(codec, reg, value) codec->codec_write(codec, reg, value)
-
-/* codec register bit access */
-int snd_soc_update_bits(struct snd_soc_codec *codec, unsigned short reg,
-				unsigned short mask, unsigned short value);
-int snd_soc_test_bits(struct snd_soc_codec *codec, unsigned short reg,
-				unsigned short mask, unsigned short value);
 
 /**
  * snd_soc_new_ac97_codec - create new AC97 codec.
@@ -285,9 +301,9 @@ int snd_soc_test_bits(struct snd_soc_codec *codec, unsigned short reg,
  * @bus_no: AC97 bus number.
  *
  * Creates a new AC97 codec.
- */				
+ */
 int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
-	struct snd_ac97_bus_ops *ops, struct snd_card *card, 
+	struct snd_ac97_bus_ops *ops, struct snd_card *card,
 	int num, int bus_no);
 
 #endif

@@ -23,6 +23,7 @@ config SND_SOC_IMX32ADS_WM8350
 	depends on SND_MXC_SOC && ARCH_MX3
 	select SND_MXC_SOC_SSI
 	select SND_SOC_WM8350
+	select SND_MXC_SOC_SSI
 	select REGULATOR_WM8350
 	help
 	  Say Y if you want to add support for SoC audio on MX32ADS

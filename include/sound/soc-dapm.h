@@ -86,9 +86,9 @@
 	.invert = winvert, .kcontrols = wcontrols, .num_kcontrols = 1}
 
 /* dapm event condition flags */
-#define SND_SOC_DAPM_PRE_PMU	0x1 	/* before widget power up */
+#define SND_SOC_DAPM_PRE_PMU	0x1	/* before widget power up */
 #define SND_SOC_DAPM_POST_PMU	0x2	/* after widget power up */
-#define SND_SOC_DAPM_PRE_PMD	0x4 	/* before widget power down */
+#define SND_SOC_DAPM_PRE_PMD	0x4	/* before widget power down */
 #define SND_SOC_DAPM_POST_PMD	0x8	/* after widget power down */
 #define SND_SOC_DAPM_PRE_REG	0x10	/* before audio path setup */
 #define SND_SOC_DAPM_POST_REG	0x20	/* after audio path setup */
@@ -100,8 +100,8 @@
 	(e & (SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMD))
 
 /* DAPM Path domain with event callback.
- * 
- * Event handler must return 0 for success. Event flags detailed above. 
+ *
+ * Event handler must return 0 for success. Event flags detailed above.
  */
 #define SND_SOC_DAPM_PGA_E(wname, wreg, wshift, winvert, wcontrols, \
 	wncontrols, wevent, wflags) \
@@ -148,7 +148,7 @@
 
 /*
  * Convenience DAPM kcontrol builders.
- * 
+ *
  * @SINGLE:       Mono kcontrol.
  * @SINGLE_TLV:   Mono Table Lookup Value kcontrol.
  * @DOUBLE:       Stereo kcontrol.
@@ -164,9 +164,9 @@
 	power) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname), \
 	.info = snd_soc_info_volsw, \
- 	.get = snd_soc_dapm_get_volsw, .put = snd_soc_dapm_put_volsw, \
- 	.private_value = (reg) | ((shift_left) << 8) | ((shift_right) << 12) |\
- 		 ((max) << 16) | ((invert) << 24) }
+	.get = snd_soc_dapm_get_volsw, .put = snd_soc_dapm_put_volsw, \
+	.private_value = (reg) | ((shift_left) << 8) | ((shift_right) << 12) |\
+		 ((max) << 16) | ((invert) << 24) }
 #define SOC_DAPM_SINGLE_TLV(xname, reg, shift, max, invert, tlv_array) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
 	.info = snd_soc_info_volsw, \
@@ -180,24 +180,24 @@
 	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ | SNDRV_CTL_ELEM_ACCESS_READWRITE,\
 	.tlv.p = (tlv_array), \
 	.info = snd_soc_info_volsw, \
- 	.get = snd_soc_dapm_get_volsw, .put = snd_soc_dapm_put_volsw, \
- 	.private_value = (reg) | ((shift_left) << 8) | ((shift_right) << 12) |\
- 		 ((max) << 16) | ((invert) << 24) }
+	.get = snd_soc_dapm_get_volsw, .put = snd_soc_dapm_put_volsw, \
+	.private_value = (reg) | ((shift_left) << 8) | ((shift_right) << 12) |\
+		 ((max) << 16) | ((invert) << 24) }
 #define SOC_DAPM_ENUM(xname, xenum) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
 	.info = snd_soc_info_enum_double, \
- 	.get = snd_soc_dapm_get_enum_double, \
- 	.put = snd_soc_dapm_put_enum_double, \
-  	.private_value = (unsigned long)&xenum }
+	.get = snd_soc_dapm_get_enum_double, \
+	.put = snd_soc_dapm_put_enum_double, \
+	.private_value = (unsigned long)&xenum }
 
 /*
  * Bias levels
- * 
+ *
  * @ON:      Bias is fully on for audio playback and capture operations.
  * @PREPARE: Prepare for audio operations. Called before DAPM switching for
  *           stream start and stop operations.
  * @STANDBY: Low power standby state when no playback/capture operations are
- *           in progress. NOTE: The transition time between STANDBY and ON 
+ *           in progress. NOTE: The transition time between STANDBY and ON
  *           should be as fast as possible and no longer than 10ms.
  * @OFF:     Power Off. No restrictions on transition times.
  */
@@ -210,7 +210,7 @@ enum snd_soc_dapm_bias_level {
 
 /*
  * DAPM Stream Events
- * 
+ *
  * Events sent to the DAPM subsystem to signal stream operations.
  */
 enum snd_soc_dapm_stream_event {
@@ -245,7 +245,7 @@ enum snd_soc_dapm_policy {
 	SND_SOC_DAPM_POLICY_ALL_ON,	
 };
 
-/* 
+/*
  * DAPM Widget types
  */
 enum snd_soc_dapm_type {
@@ -274,7 +274,7 @@ struct snd_soc_machine;
 struct snd_soc_codec;
 struct snd_soc_pcm_runtime;
 
-/* 
+/*
  * DAPM ALSA kcontrol get/set/info for above macros
  */
 int snd_soc_dapm_put_volsw(struct snd_kcontrol *kcontrol,
@@ -300,12 +300,12 @@ int snd_soc_dapm_new_control(struct snd_soc_machine *machine,
  */
 int snd_soc_dapm_add_route(struct snd_soc_machine *machine,
 	const char *sink_name, const char *control_name, const char *src_name);
-	
+
 /**
  * snd_soc_dapm_init - Initialise DAPM.
  * @machine: SoC machine
  *
- * Initialises DAPM resources after any new widgets or routes have been added. 
+ * Initialises DAPM resources after any new widgets or routes have been added.
  */
 int snd_soc_dapm_init(struct snd_soc_machine *machine);
 
@@ -340,41 +340,39 @@ int snd_soc_dapm_stream_event(struct snd_soc_machine *machine, char *stream,
 
 /**
  * snd_soc_dapm_set_bias - Sets the DAPM bias level.
- * @machine: SoC machine
  * @codec: SoC codec
  * @level: bias (power) level.
  *
  * Sets machine and codec to new bias (power) level.
  */
-int snd_soc_dapm_set_bias(struct snd_soc_machine *machine,
-	struct snd_soc_codec *codec, enum snd_soc_dapm_bias_level level);
+int snd_soc_dapm_set_bias(struct snd_soc_pcm_runtime *pcm_runtime,
+	enum snd_soc_dapm_bias_level level);
 
 /**
- * snd_soc_dapm_enable_pin - enable dapm input or output pin.
+ * snd_soc_dapm_enable_pin - enable pin.
  * @machine: SoC machine
- * @what: input or output pin name
+ * @pin: pin name
  *
  * Enables input/output pin and it's parents or children widgets iff there is
  * a valid audio route and active audio stream.
  * NOTE: snd_soc_dapm_resync() needs to be called after this for DAPM to
- * do any widget power switching. Pins can also be jacks, headphones, 
- * mics, etc.
+ * do any widget power switching.
  */
 int snd_soc_dapm_enable_pin(struct snd_soc_machine *machine, char *pin);
 
 /**
- * snd_soc_dapm_disable - disable dapm input or output.
+ * snd_soc_dapm_disable_pin - disable pin.
  * @machine: SoC machine
- * @what: input or output pin name
+ * @pin: pin name
  *
  * Disables input/output pin and it's parents or children widgets.
  * NOTE: snd_soc_dapm_resync() needs to be called after this for DAPM to
  * do any widget power switching.
- */	
+ */
 int snd_soc_dapm_disable_pin(struct snd_soc_machine *machine, char *pin);
 
 /**
- * snd_soc_dapm_sync - synchronise DAPM.
+ * snd_soc_dapm_sync - disable pin.
  * @machine: SoC machine
  *
  * Resynchronises DAPM widget power state with pin, stream and audio path
@@ -382,9 +380,9 @@ int snd_soc_dapm_disable_pin(struct snd_soc_machine *machine, char *pin);
  */
 int snd_soc_dapm_sync(struct snd_soc_machine *machine);
 
-/* 
+/*
  * DAPM audio route.
- * 
+ *
  * DAPM audio path between two widgets.
  */
 struct snd_soc_dapm_path {
@@ -405,9 +403,9 @@ struct snd_soc_dapm_path {
 	struct list_head list;
 };
 
-/* 
+/*
  * DAPM Widget
- * 
+ *
  * Audio component that can be individually powered down when not used.
  * Called Widget for want of a better adjective atm.
  */

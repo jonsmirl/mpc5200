@@ -14,9 +14,9 @@
  *
  *  Revision history
  *    29th Aug 2006   Initial version.
- * 
+ *
  * TODO:
- *  Refactor for new SDMA API when Freescale have it ready 
+ *  Refactor for new SDMA API when Freescale have it ready
  *  (I am assuming the SDMA iapi needs rework for mainline).
  *
  */
@@ -49,9 +49,9 @@
 #endif
 
 /*
- * Coherent DMA memory is used by default, although Freescale have used 
- * bounce buffers in all their drivers for i.MX31 to date. If you have any 
- * issues, please select bounce buffers. 
+ * Coherent DMA memory is used by default, although Freescale have used
+ * bounce buffers in all their drivers for i.MX31 to date. If you have any
+ * issues, please select bounce buffers.
  */
 #define IMX31_DMA_BOUNCE 0
 
@@ -91,7 +91,7 @@ static void audio_stop_dma(struct snd_pcm_substream *substream)
 #if IMX31_DMA_BOUNCE
 	unsigned int dma_size;
 	unsigned int offset;
-	
+
 	dma_size = frames_to_bytes(runtime, runtime->period_size);
 	offset = dma_size * prtd->periods;
 #endif
@@ -110,7 +110,7 @@ static void audio_stop_dma(struct snd_pcm_substream *substream)
 	else
 		dma_unmap_single(NULL, runtime->dma_addr + offset, dma_size,
 					DMA_FROM_DEVICE);
-#endif	
+#endif
 	spin_unlock_irqrestore(&prtd->dma_lock, flags);
 }
 
@@ -122,25 +122,25 @@ static int dma_new_period(struct snd_pcm_substream *substream)
 	unsigned int offset = dma_size * prtd->period;
 	int ret = 0;
 	dma_request_t sdma_request;
-	
-	if (!prtd->active) 
+
+	if (!prtd->active)
 		return 0;
-		
+
 	memset(&sdma_request, 0, sizeof(dma_request_t));
-	
+
 	dbg("period pos  ALSA %x DMA %x\n",runtime->periods, prtd->period);
 	dbg("period size ALSA %x DMA %x Offset %x dmasize %x\n",
-		(unsigned int) runtime->period_size, runtime->dma_bytes, 
+		(unsigned int) runtime->period_size, runtime->dma_bytes,
 			offset, dma_size);
 	dbg("DMA addr %x\n", runtime->dma_addr + offset);
-	
+
 #if IMX31_DMA_BOUNCE
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		sdma_request.sourceAddr = (char*)(dma_map_single(NULL,
 			runtime->dma_area + offset, dma_size, DMA_TO_DEVICE));
 	else
 		sdma_request.destAddr = (char*)(dma_map_single(NULL,
-			runtime->dma_area + offset, dma_size, DMA_FROM_DEVICE));	
+			runtime->dma_area + offset, dma_size, DMA_FROM_DEVICE));
 #else
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		sdma_request.sourceAddr = (char*)(runtime->dma_addr + offset);
@@ -154,7 +154,7 @@ static int dma_new_period(struct snd_pcm_substream *substream)
 		printk(KERN_ERR "imx31-pcm: cannot configure audio DMA channel\n");
 		goto out;
 	}
-	
+
 	ret = mxc_dma_start(prtd->dma_wchannel);
 	if (ret < 0) {
 		printk(KERN_ERR "imx31-pcm: cannot queue audio DMA buffer\n");
@@ -169,7 +169,7 @@ out:
 
 static void audio_dma_irq(void *data)
 {
-	struct snd_pcm_substream *substream = 
+	struct snd_pcm_substream *substream =
 		(struct snd_pcm_substream *)data;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct mxc_runtime_data *prtd = runtime->private_data;
@@ -182,7 +182,7 @@ static void audio_dma_irq(void *data)
 	prtd->periods++;
 	prtd->periods %= runtime->periods;
 
-	dbg("irq per %d offset %x\n", prtd->periods, 
+	dbg("irq per %d offset %x\n", prtd->periods,
 		frames_to_bytes(runtime, runtime->period_size) * prtd->periods);
 #if IMX31_DMA_BOUNCE
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
@@ -191,10 +191,10 @@ static void audio_dma_irq(void *data)
 	else
 		dma_unmap_single(NULL, runtime->dma_addr + offset, dma_size,
 							DMA_FROM_DEVICE);
-						
+
 #endif
-	
- 	if (prtd->active)
+
+	if (prtd->active)
 		snd_pcm_period_elapsed(substream);
 	dma_new_period(substream);
 }
@@ -215,7 +215,7 @@ static int imx31_pcm_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct mxc_runtime_data *prtd = runtime->private_data;
 	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
-	struct snd_soc_dai_runtime *cpu_rdai = pcm_runtime->cpu_dai;
+	struct snd_soc_dai *cpu_rdai = pcm_runtime->cpu_dai;
 	struct mxc_pcm_dma_params *dma = cpu_rdai->dma_data;
 	int ret = 0, channel = 0;
 
@@ -227,7 +227,7 @@ static int imx31_pcm_hw_params(struct snd_pcm_substream *substream,
 				printk(KERN_ERR "imx31-pcm: error requesting a write dma channel\n");
 				return ret;
 			}
-	
+
 		} else {
 			ret = mxc_request_dma(&channel, "ALSA RX SDMA");
 			if (ret < 0) {
@@ -237,12 +237,12 @@ static int imx31_pcm_hw_params(struct snd_pcm_substream *substream,
 		}
 		prtd->dma_wchannel = channel;
 		prtd->dma_alloc = 1;
-		
+
 		/* set up chn with params */
 		dma->params.callback = audio_dma_irq;
 		dma->params.arg = substream;
 	}
-	
+
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
 		dma->params.word_size = TRANSFER_16BIT;
@@ -252,16 +252,16 @@ static int imx31_pcm_hw_params(struct snd_pcm_substream *substream,
 		dma->params.word_size = TRANSFER_24BIT;
 		break;
 	}
-	
+
 	ret = mxc_dma_setup_channel(channel, &dma->params);
 	if (ret < 0) {
 		printk(KERN_ERR "imx31-pcm: failed to setup audio DMA chn %d\n", channel);
 		mxc_free_dma(channel);
 		return ret;
 	}
-	
+
 #if IMX31_DMA_BOUNCE
-	ret = snd_pcm_lib_malloc_pages(substream, 
+	ret = snd_pcm_lib_malloc_pages(substream,
 		params_buffer_bytes(params));
 	if (ret < 0) {
 		printk(KERN_ERR "imx31-pcm: failed to malloc pcm pages\n");
@@ -280,7 +280,7 @@ static int imx31_pcm_hw_free(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct mxc_runtime_data *prtd = runtime->private_data;
-	
+
 	if (prtd->dma_wchannel) {
 		mxc_free_dma(prtd->dma_wchannel);
 		prtd->dma_wchannel = 0;
@@ -296,7 +296,7 @@ static int imx31_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	struct mxc_runtime_data *prtd = substream->runtime->private_data;
 	int ret = 0;
-	
+
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 		prtd->dma_active = 0;
@@ -353,7 +353,7 @@ static snd_pcm_uframes_t imx31_pcm_pointer(struct snd_pcm_substream *substream)
 			offset = 0;
 	}
 	dbg("pointer offset %x\n", offset);
-	
+
 	return offset;
 }
 
@@ -366,7 +366,7 @@ static int imx31_pcm_open(struct snd_pcm_substream *substream)
 
 	snd_soc_set_runtime_hwparams(substream, &imx31_pcm_hardware);
 
-	ret = snd_pcm_hw_constraint_integer(runtime, 
+	ret = snd_pcm_hw_constraint_integer(runtime,
 		SNDRV_PCM_HW_PARAM_PERIODS);
 	if (ret < 0)
 		return ret;
@@ -383,7 +383,7 @@ static int imx31_pcm_close(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct mxc_runtime_data *prtd = runtime->private_data;
-	
+
 	kfree(prtd);
 	return 0;
 }
@@ -422,7 +422,7 @@ static int imx31_pcm_preallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 					   &buf->addr, GFP_KERNEL);
 	if (!buf->area)
 		return -ENOMEM;
-		
+
 	buf->bytes = size;
 	return 0;
 }
@@ -450,7 +450,7 @@ static void imx31_pcm_free_dma_buffers(struct snd_pcm *pcm)
 
 static u64 imx31_pcm_dmamask = 0xffffffff;
 
-static int imx31_pcm_new(struct snd_soc_platform *platform, 
+static int imx31_pcm_new(struct snd_soc_platform *platform,
 	struct snd_card *card, int playback, int capture,
 	struct snd_pcm *pcm)
 {
@@ -463,15 +463,15 @@ static int imx31_pcm_new(struct snd_soc_platform *platform,
 		card->dev->coherent_dma_mask = 0xffffffff;
 
 #if IMX31_DMA_BOUNCE
-	ret = snd_pcm_lib_preallocate_pages_for_all(pcm, 
+	ret = snd_pcm_lib_preallocate_pages_for_all(pcm,
 				SNDRV_DMA_TYPE_CONTINUOUS,
 				snd_dma_continuous_data(GFP_KERNEL),
-				imx31_pcm_hardware.buffer_bytes_max * 2, 
+				imx31_pcm_hardware.buffer_bytes_max * 2,
 				imx31_pcm_hardware.buffer_bytes_max * 2);
 	if (ret < 0) {
 		printk(KERN_ERR "imx31-pcm: failed to preallocate pages\n");
 		goto out;
-	}	
+	}
 #else
 	if (playback) {
 		ret = imx31_pcm_preallocate_dma_buffer(pcm,
@@ -488,90 +488,63 @@ static int imx31_pcm_new(struct snd_soc_platform *platform,
 #endif
  out:
 	return ret;
-} 
-
-#ifdef CONFIG_PM
-static int imx31_pcm_suspend(struct device *dev, pm_message_t state)
-{
-	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
-	struct snd_soc_dai_runtime *dai_runtime, *d;
-
-	list_for_each_entry_safe(dai_runtime, d, &platform->dai_list, list) {
-		if (dai_runtime->active) {
-				
-		}
-	}
-
-	return 0;
 }
 
-static int imx31_pcm_resume(struct device *dev)
+/* for modprobe */
+const char imx31_platform_id[] = "imx31-pcm";
+EXPORT_SYMBOL_GPL(imx31_platform_id);
+
+static int imx31_pcm_probe(struct platform_device *pdev)
 {
-	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
-	struct snd_soc_dai_runtime *dai_runtime, *d;
-
-	list_for_each_entry_safe(dai_runtime, d, &platform->dai_list, list) {
-		if (dai_runtime->active) {
-				
-		}
-	}
-	return 0;
-}
-
-#else
-#define imx31_pcm_suspend	NULL
-#define imx31_pcm_resume	NULL
-#endif
-
-static int imx31_pcm_probe(struct device *dev)
-{
-	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	struct snd_soc_platform *platform;
 	int ret;
-	
+
+	platform = snd_soc_platform_allocate();
+	if (platform == NULL)
+		return -ENOMEM;
+
 	platform->pcm_ops = &imx31_pcm_ops;
 	platform->pcm_new = imx31_pcm_new,
 #if IMX31_DMA_BOUNCE
 	platform->pcm_free = NULL,
 #else
 	platform->pcm_free = imx31_pcm_free_dma_buffers,
-#endif	
-	ret = snd_soc_platform_add_dai(platform, imx_ssi, ARRAY_SIZE(imx_ssi));
-	if (ret < 0)
-		return ret;
-	
+#endif
+	platform->dev = &pdev->dev;
+	platform->name = imx31_platform_id;
 	ret = snd_soc_register_platform(platform);
+	if (ret < 0)
+		snd_soc_platform_free(platform);
+	platform_set_drvdata(pdev, platform);
 	return ret;
 }
 
-static int imx31_pcm_remove(struct device *dev)
+static int imx31_pcm_remove(struct platform_device *pdev)
 {
-	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
-	
+	struct snd_soc_platform *platform = platform_get_drvdata(pdev);
+
 	snd_soc_unregister_platform(platform);
+	snd_soc_platform_free(platform);
 	return 0;
 }
 
-const char imx31_platform_id[] = "imx31_pcm";
-EXPORT_SYMBOL_GPL(imx31_platform_id);
-
-static struct device_driver imx31_pcm_driver = {
-	.name 		= imx31_platform_id,
-	.owner		= THIS_MODULE,
-	.bus 		= &asoc_bus_type,
+static struct platform_driver imx31_pcm_driver = {
+	.driver = {
+		.name		= imx31_platform_id,
+		.owner		= THIS_MODULE,
+	},
 	.probe		= imx31_pcm_probe,
 	.remove		= __devexit_p(imx31_pcm_remove),
-	.suspend	= imx31_pcm_suspend,
-	.resume		= imx31_pcm_resume,
 };
 
 static __init int imx31_pcm_init(void)
 {
-	return driver_register(&imx31_pcm_driver);
+	return platform_driver_register(&imx31_pcm_driver);
 }
 
 static __exit void imx31_pcm_exit(void)
 {
-	driver_unregister(&imx31_pcm_driver);
+	platform_driver_unregister(&imx31_pcm_driver);
 }
 
 module_init(imx31_pcm_init);

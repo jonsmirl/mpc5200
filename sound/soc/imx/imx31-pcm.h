@@ -87,6 +87,9 @@ struct mxc_pcm_dma_params {
 };
 
 extern const char imx31_platform_id[];
-extern struct snd_soc_dai imx_ssi[4];
+extern const char imx_ssi_id1_0[];
+extern const char imx_ssi_id1_1[];
+extern const char imx_ssi_id2_0[];
+extern const char imx_ssi_id2_1[];
 
 #endif

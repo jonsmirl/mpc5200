@@ -18,7 +18,7 @@
 #include <sound/soc-platform.h>
 #include <sound/soc-machine.h>
 
-#define SND_SOC_VERSION "0.30"
+#define SND_SOC_VERSION "0.31"
 
 extern struct bus_type asoc_bus_type;
 
