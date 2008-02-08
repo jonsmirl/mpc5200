@@ -9,5 +9,7 @@
 #define WM9712_DAI_AUX	1
 
 extern const char wm9712_codec_id[];
+extern const char wm9712_codec_hifi_dai_id[];
+extern const char wm9712_codec_aux_dai_id[];
 
 #endif
