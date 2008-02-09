@@ -121,5 +121,7 @@ struct wm8753_setup_data {
 #define WM8753_DAI_VOICE	1
 
 extern const char wm8753_codec_id[];
+extern const char wm8753_codec_hifi_dai_id[];
+extern const char wm8753_codec_voice_dai_id[];
 
 #endif
