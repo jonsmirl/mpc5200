@@ -45,5 +45,8 @@
 #define WM9713_DAI_PCM_VOICE		2
 
 extern const char wm9713_codec_id[];
+extern const char wm9713_codec_hifi_dai_id[];
+extern const char wm9713_codec_aux_dai_id[];
+extern const char wm9713_codec_voice_dai_id[];
 
 #endif

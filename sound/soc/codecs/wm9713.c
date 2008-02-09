@@ -21,7 +21,7 @@
 
 #include <linux/init.h>
 #include <linux/module.h>
-#include <linux/device.h>
+#include <linux/platform_device.h>
 #include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -33,11 +33,14 @@
 
 #include "wm9713.h"
 
-#define WM9713_VERSION "0.20"
+#define WM9713_VERSION "0.21"
 
-struct wm9713_priv {
+struct wm9713_data {
 	u32 pll_in; /* PLL input frequency */
 	u32 pll_out; /* PLL output frequency */
+	struct snd_soc_dai *hifi_dai;
+	struct snd_soc_dai *aux_dai;
+	struct snd_soc_dai *voice_dai;
 };
 
 static unsigned int wm9713_ac97_read(struct snd_soc_codec *codec,
@@ -683,7 +686,7 @@ struct pll_ pll[] = {
 static int wm9713_set_pll(struct snd_soc_codec *codec,
 	int pll_id, unsigned int freq_in, unsigned int freq_out)
 {
-	struct wm9713_priv *wm9713 = codec->private_data;
+	struct wm9713_data *wm9713 = codec->private_data;
 	int i;
 	u16 reg, reg2;
 
@@ -746,7 +749,7 @@ found:
 	return 0;
 }
 
-static int wm9713_set_dai_pll(struct snd_soc_dai_runtime *codec_dai,
+static int wm9713_set_dai_pll(struct snd_soc_dai *codec_dai,
 		int pll_id, unsigned int freq_in, unsigned int freq_out)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
@@ -757,7 +760,7 @@ static int wm9713_set_dai_pll(struct snd_soc_dai_runtime *codec_dai,
  * Tristate the PCM DAI lines, tristate can be disabled by calling
  * wm9713_set_dai_fmt()
  */
-static int wm9713_set_dai_tristate(struct snd_soc_dai_runtime *codec_dai,
+static int wm9713_set_dai_tristate(struct snd_soc_dai *codec_dai,
 	int tristate)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
@@ -773,7 +776,7 @@ static int wm9713_set_dai_tristate(struct snd_soc_dai_runtime *codec_dai,
  * Configure WM9713 clock dividers.
  * Voice DAC needs 256 FS
  */
-static int wm9713_set_dai_clkdiv(struct snd_soc_dai_runtime *codec_dai,
+static int wm9713_set_dai_clkdiv(struct snd_soc_dai *codec_dai,
 		int div_id, int div)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
@@ -807,7 +810,7 @@ static int wm9713_set_dai_clkdiv(struct snd_soc_dai_runtime *codec_dai,
 	return 0;
 };
 
-static int wm9713_set_dai_fmt(struct snd_soc_dai_runtime *codec_dai,
+static int wm9713_set_dai_fmt(struct snd_soc_dai *codec_dai,
 		unsigned int fmt)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
@@ -870,10 +873,10 @@ static int wm9713_set_dai_fmt(struct snd_soc_dai_runtime *codec_dai,
 }
 
 static int wm9713_pcm_hw_params(struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params, struct snd_soc_dai_runtime *dai)
+	struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
 {
-	struct snd_soc_pcm_runtime *pcm_link = substream->private_data;
-	struct snd_soc_codec *codec = pcm_link->codec;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	struct snd_soc_codec *codec = pcm_runtime->codec;
 	u16 reg = wm9713_ac97_read(codec, AC97_CENTER_LFE_MASTER) & 0xfff3;
 
 	switch (params_format(params)) {
@@ -896,10 +899,10 @@ static int wm9713_pcm_hw_params(struct snd_pcm_substream *substream,
 }
 
 static void wm9713_voice_shutdown(struct snd_pcm_substream *substream,
-	struct snd_soc_dai_runtime *dai)
+	struct snd_soc_dai *dai)
 {
-	struct snd_soc_pcm_runtime *pcm_link = substream->private_data;
-	struct snd_soc_codec *codec = pcm_link->codec;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	struct snd_soc_codec *codec = pcm_runtime->codec;
 	u16 status;
 
 	/* Gracefully shut down the voice interface. */
@@ -911,11 +914,11 @@ static void wm9713_voice_shutdown(struct snd_pcm_substream *substream,
 }
 
 static int ac97_hifi_prepare(struct snd_pcm_substream *substream,
-	struct snd_soc_dai_runtime *dai)
+	struct snd_soc_dai *dai)
 {
-	struct snd_soc_pcm_runtime *pcm_link = substream->private_data;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct snd_soc_codec *codec = pcm_link->codec;
+	struct snd_soc_codec *codec = pcm_runtime->codec;
 	int reg;
 	u16 vra;
 
@@ -931,11 +934,11 @@ static int ac97_hifi_prepare(struct snd_pcm_substream *substream,
 }
 
 static int ac97_aux_prepare(struct snd_pcm_substream *substream,
-	struct snd_soc_dai_runtime *dai)
+	struct snd_soc_dai *dai)
 {
-	struct snd_soc_pcm_runtime *pcm_link = substream->private_data;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct snd_soc_codec *codec = pcm_link->codec;
+	struct snd_soc_codec *codec = pcm_runtime->codec;
 	u16 vra, xsle;
 
 	vra = wm9713_ac97_read(codec, AC97_EXTENDED_STATUS);
@@ -979,18 +982,18 @@ static int wm9713_set_bias_level(struct snd_soc_codec *codec,
 	return 0;
 }
 
-static int wm9713_codec_suspend(struct device *dev, pm_message_t state)
+static int wm9713_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
+	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
 
 	wm9713_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
 }
 
-static int wm9713_codec_resume(struct device *dev)
+static int wm9713_resume(struct platform_device *pdev)
 {
-	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
-	struct wm9713_priv *wm9713 = codec->private_data;
+	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
+	struct wm9713_data *wm9713 = codec->private_data;
 	u16 id;
 
 	/* give the codec an AC97 warm reset to start the link */
@@ -1036,58 +1039,49 @@ static int wm9713_codec_init(struct snd_soc_codec *codec,
 #define WM9713_PCM_FORMATS \
 	(SNDRV_PCM_FMTBIT_S16  | SNDRV_PCM_FMTBIT_S24)
 
-static struct snd_soc_dai wm9713_dai[] = {
-{
-	.name	= "wm9713-HiFi",
-	.id	= 0,
-	
-	/* stream cababilities */
-	.playback = {
-		.stream_name	= "HiFi Playback",
-		.channels_min	= 1,
-		.channels_max	= 2,
-		.rates		= WM9713_RATES,
-		.formats	= SNDRV_PCM_FMTBIT_S16,
-	},
-	.capture = {
-		.stream_name	= "HiFi Capture",
-		.channels_min	= 1,
-		.channels_max	= 2,
-		.rates		= WM9713_RATES,
-		.formats	= SNDRV_PCM_FMTBIT_S16,
-	},
+static struct snd_soc_dai_caps wm9713_hifi_playback = {
+	.stream_name	= "HiFi Playback",
+	.channels_min	= 1,
+	.channels_max	= 2,
+	.rates		= WM9713_RATES,
+	.formats	= SNDRV_PCM_FMTBIT_S16,
+};
+
+static struct snd_soc_dai_caps wm9713_capture = {
+	.stream_name	= "HiFi Capture",
+	.channels_min	= 1,
+	.channels_max	= 2,
+	.rates		= WM9713_RATES,
+	.formats	= SNDRV_PCM_FMTBIT_S16,
+};
+
+static struct snd_soc_dai_caps wm9713_aux_playback = {
+	.stream_name	= "Aux Playback",
+	.channels_min	= 1,
+	.channels_max	= 1,
+	.rates		= WM9713_RATES,
+	.formats	= SNDRV_PCM_FMTBIT_S16,
+};
+
+static struct snd_soc_dai_caps wm9713_voice_playback = {
+	.stream_name	= "Voice Playback",
+	.channels_min	= 1,
+	.channels_max	= 1,
+	.rates		= WM9713_RATES,
+	.formats	= WM9713_PCM_FORMATS,
+};
+
+static struct snd_soc_dai_ops wm9713_hifi_dai_ops = {
 	/* alsa ops */
 	.prepare = ac97_hifi_prepare,
-},
-{
-	.name	= "wm9713-AUX",
-	.id	= 1,
-	
-	/* stream cababilities */
-	.playback = {
-		.stream_name	= "Aux Playback",
-		.channels_min	= 1,
-		.channels_max	= 1,
-		.rates		= WM9713_RATES,
-		.formats	= SNDRV_PCM_FMTBIT_S16,
-	},
-	
+};
+
+static struct snd_soc_dai_ops wm9713_aux_dai_ops = {
 	/* alsa ops */
 	.prepare = ac97_aux_prepare,
-},
-{
-	.name	= "wm9713-Voice",
-	.id	= 2,
-	
-	/* stream cababilities */
-	.playback = {
-		.stream_name	= "Voice Playback",
-		.channels_min	= 1,
-		.channels_max	= 1,
-		.rates		= WM9713_RATES,
-		.formats	= WM9713_PCM_FORMATS,
-	},
-	
+};
+
+static struct snd_soc_dai_ops wm9713_voice_dai_ops = {
 	/* alsa ops */
 	.hw_params = wm9713_pcm_hw_params,
 	.shutdown = wm9713_voice_shutdown,
@@ -1097,77 +1091,197 @@ static struct snd_soc_dai wm9713_dai[] = {
 	.set_pll = wm9713_set_dai_pll,
 	.set_fmt = wm9713_set_dai_fmt,
 	.set_tristate = wm9713_set_dai_tristate,
-}};
+};
 
-static int wm9713_codec_probe(struct device *dev)
+/* for modprobe */
+const char wm9713_codec_id[] = "wm9713-codec";
+EXPORT_SYMBOL_GPL(wm9713_codec_id);
+
+const char wm9713_codec_hifi_dai_id[] = "wm9713-codec-hifi-dai";
+EXPORT_SYMBOL_GPL(wm9713_codec_hifi_dai_id);
+
+const char wm9713_codec_aux_dai_id[] = "wm9713-codec-aux-dai";
+EXPORT_SYMBOL_GPL(wm9713_codec_aux_dai_id);
+
+const char wm9713_codec_voice_dai_id[] = "wm9713-codec-voice-dai";
+EXPORT_SYMBOL_GPL(wm9713_codec_voice_dai_id);
+
+static int wm9713_hifi_dai_probe(struct wm9713_data *wm9713, 
+	struct device *dev)
 {
-	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
+	struct snd_soc_dai *dai;
+	int ret;
+
+	dai = snd_soc_dai_allocate();
+	if (dai == NULL)
+		return -ENOMEM;
+
+	dai->name = wm9713_codec_hifi_dai_id;
+	dai->ops = &wm9713_hifi_dai_ops;
+	dai->playback = &wm9713_hifi_playback;
+	dai->capture = &wm9713_capture;
+	dai->dev = dev;
+	ret = snd_soc_register_codec_dai(dai);
+	if (ret < 0) {
+		snd_soc_dai_free(dai);
+		return ret;
+	}
+	wm9713->hifi_dai = dai;
+	return 0;
+}
+
+static int wm9713_voice_dai_probe(struct wm9713_data *wm9713, 
+	struct device *dev)
+{
+	struct snd_soc_dai *dai;
+	int ret;
+
+	dai = snd_soc_dai_allocate();
+	if (dai == NULL)
+		return -ENOMEM;
+
+	dai->name = wm9713_codec_voice_dai_id;
+	dai->ops = &wm9713_voice_dai_ops;
+	dai->playback = &wm9713_voice_playback;
+	dai->dev = dev;
+	ret = snd_soc_register_codec_dai(dai);
+	if (ret < 0) {
+		snd_soc_dai_free(dai);
+		return ret;
+	}
+	wm9713->voice_dai = dai;
+	return 0;
+}
+
+static int wm9713_aux_dai_probe(struct wm9713_data *wm9713, 
+	struct device *dev)
+{
+	struct snd_soc_dai *dai;
+	int ret;
+
+	dai = snd_soc_dai_allocate();
+	if (dai == NULL)
+		return -ENOMEM;
+
+	dai->name = wm9713_codec_aux_dai_id;
+	dai->ops = &wm9713_aux_dai_ops;
+	dai->playback = &wm9713_aux_playback;
+	dai->dev = dev;
+	ret = snd_soc_register_codec_dai(dai);
+	if (ret < 0) {
+		snd_soc_dai_free(dai);
+		return ret;
+	}
+	wm9713->aux_dai = dai;
+	return 0;
+}
+
+static int wm9713_codec_probe(struct platform_device *pdev)
+{
+	struct wm9713_data *wm9713;
+	struct snd_soc_codec *codec;
 	int ret = 0;
 
 	printk(KERN_INFO "WM9713/WM9714 SoC Audio Codec %s\n", WM9713_VERSION);
 
-	codec->reg_cache = kmemdup(wm9713_reg, sizeof(wm9713_reg), GFP_KERNEL);
-	if (codec->reg_cache == NULL)
+	codec = snd_soc_codec_allocate();
+	if (codec == NULL)
 		return -ENOMEM;
-		
+
+	wm9713 = kzalloc(sizeof(struct wm9713_data), GFP_KERNEL);
+	if (wm9713 == NULL) {
+		ret =  -ENOMEM;
+		goto priv_err;
+	}
+	
+	codec->reg_cache = kmemdup(wm9713_reg, sizeof(wm9713_reg), GFP_KERNEL);
+	if (codec->reg_cache == NULL) {
+		ret =  -ENOMEM;
+		goto cache_err;
+	}
+	
 	codec->reg_cache_size = sizeof(wm9713_reg);
 	codec->reg_cache_step = 2;
 	codec->set_bias_level = wm9713_set_bias_level;
 	codec->codec_read = wm9713_ac97_read;
 	codec->codec_write = wm9713_ac97_write;
 	codec->init = wm9713_codec_init;
+	codec->dev = &pdev->dev;
+	codec->name = wm9713_codec_id;
+	codec->private_data = wm9713;
 
-	codec->private_data = kzalloc(sizeof(struct wm9713_priv), GFP_KERNEL);
-	if (codec->private_data == NULL) {
-		kfree(codec->reg_cache);
-		return -ENOMEM;
-	}
-
-	ret = snd_soc_codec_add_dai(codec, wm9713_dai, ARRAY_SIZE(wm9713_dai));
-	if (ret < 0)
-		goto err;
-		
- 	ret = snd_soc_register_codec(codec);
+	ret = snd_soc_register_codec(codec);
  	if (ret < 0)
- 		goto err;
+ 		goto codec_err;
+ 	ret = wm9713_hifi_dai_probe(wm9713, &pdev->dev);
+	if (ret < 0)
+		goto hifi_dai_err;
+	ret = wm9713_aux_dai_probe(wm9713, &pdev->dev);
+	if (ret < 0)
+		goto aux_dai_err;
+	ret = wm9713_voice_dai_probe(wm9713, &pdev->dev);
+	if (ret < 0)
+		goto voice_dai_err;
+ 	platform_set_drvdata(pdev, wm9713);
 	return ret;
-err:
+	
+voice_dai_err:
+	snd_soc_unregister_codec_dai(wm9713->aux_dai);
+	snd_soc_dai_free(wm9713->aux_dai);
+aux_dai_err:
+	snd_soc_unregister_codec_dai(wm9713->hifi_dai);
+	snd_soc_dai_free(wm9713->hifi_dai);
+hifi_dai_err:
+	snd_soc_unregister_codec(codec);
+codec_err:
 	kfree(codec->reg_cache);
-	kfree(codec->private_data);
+cache_err:
+	kfree(wm9713);
+priv_err:
+	snd_soc_codec_free(codec);
 	return ret;
 }
 
-static int wm9713_codec_remove(struct device *dev)
+static int wm9713_codec_remove(struct platform_device *pdev)
 {
-	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
-
+	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
+	struct wm9713_data *wm9713 = codec->private_data;
+	
+	snd_soc_unregister_codec_dai(wm9713->hifi_dai);
+	snd_soc_dai_free(wm9713->hifi_dai);
+	
+	snd_soc_unregister_codec_dai(wm9713->aux_dai);
+	snd_soc_dai_free(wm9713->aux_dai);
+	
+	snd_soc_unregister_codec_dai(wm9713->aux_dai);
+	snd_soc_dai_free(wm9713->voice_dai);
+	
 	snd_soc_unregister_codec(codec);
-	kfree(codec->private_data);
 	kfree(codec->reg_cache);
+	kfree(codec->private_data);
+	snd_soc_codec_free(codec);
 	return 0;
 }
 
-const char wm9713_codec_id[] = "wm9713-codec";
-EXPORT_SYMBOL_GPL(wm9713_codec_id);
-
-static struct device_driver wm9713_codec_driver = {
-	.name 		= wm9713_codec_id,
-	.owner		= THIS_MODULE,
-	.bus 		= &asoc_bus_type,
+static struct platform_driver wm9713_codec_driver = {
+	.driver = {
+		.name		= wm9713_codec_id,
+		.owner		= THIS_MODULE,
+	},
 	.probe		= wm9713_codec_probe,
 	.remove		= __devexit_p(wm9713_codec_remove),
-	.suspend	= wm9713_codec_suspend,
-	.resume		= wm9713_codec_resume,
+	.suspend	= wm9713_suspend,
+	.resume		= wm9713_resume,
 };
 
 static __init int wm9713_init(void)
 {
-	return driver_register(&wm9713_codec_driver);
+	return platform_driver_register(&wm9713_codec_driver);
 }
 
 static __exit void wm9713_exit(void)
 {
-	driver_unregister(&wm9713_codec_driver);
+	platform_driver_unregister(&wm9713_codec_driver);
 }
 
 module_init(wm9713_init);
