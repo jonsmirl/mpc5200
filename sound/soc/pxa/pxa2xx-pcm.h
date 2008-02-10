@@ -75,8 +75,8 @@ struct pxa2xx_gpio {
 
 /* PXA audio platform ID */
 extern const char pxa_platform_id[];
+extern const char pxa2xx_i2s_id[];
 
-extern struct snd_soc_dai pxa2xx_i2s;
 extern struct snd_soc_dai pxa2xx_ac97[];
 extern struct snd_soc_dai pxa2xx_ssp[];
 

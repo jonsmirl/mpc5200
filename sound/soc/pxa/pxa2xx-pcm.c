@@ -74,8 +74,8 @@ static int pxa2xx_pcm_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct pxa2xx_runtime_data *prtd = runtime->private_data;
-	struct snd_soc_pcm_runtime *pcm_link = substream->private_data;
-	struct snd_soc_dai_runtime *cpu_dai = pcm_link->cpu_dai;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	struct snd_soc_dai *cpu_dai = pcm_runtime->cpu_dai;
 	struct pxa2xx_pcm_dma_params *dma = cpu_dai->dma_data;
 	size_t totsize = params_buffer_bytes(params);
 	size_t period = params_period_bytes(params);
@@ -361,141 +361,55 @@ static int pxa2xx_pcm_new(struct snd_soc_platform *platform,
 	return ret;
 }
 
-#ifdef CONFIG_PM
-static int pxa2xx_suspend(struct device *dev, pm_message_t state)
+static int pxa2xx_pcm_probe(struct platform_device *pdev)
 {
-	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
-	struct snd_soc_dai_runtime *rdai;
-	int err = 0;
-	
-	list_for_each_entry(rdai, &platform->dai_list, list) {
-		switch (rdai->dai->id) {
-#if defined(CONFIG_SND_PXA2XX_SOC_I2S)	
-		case PXA2XX_DAI_I2S:
-			err = pxa2xx_i2s_suspend(rdai, state);
-			if (err < 0)
-				printk(KERN_ERR "%s: %s failed\n", __func__,
-					rdai->dai->name);
-			break;
-#endif
-#if defined(CONFIG_SND_PXA2XX_SOC_SSP)	
-		case PXA2XX_DAI_SSP1:
-		case PXA2XX_DAI_SSP2:
-		case PXA2XX_DAI_SSP3:
-			err = pxa2xx_ssp_suspend(rdai, state);
-			if (err < 0)
-				printk(KERN_ERR "%s: %s failed\n", __func__,
-					rdai->dai->name);
-			break;
-#endif
-#if defined(CONFIG_SND_PXA2XX_SOC_AC97)
-		case PXA2XX_DAI_AC97:
-			err = pxa2xx_ac97_suspend(rdai, state);
-			if (err < 0)
-				printk(KERN_ERR "%s: %s failed\n", __func__,
-					rdai->dai->name);
-			break;
-#endif
-		default:
-			break;
-		}
-	}
-	return err;
-}
-
-static int pxa2xx_resume(struct device *dev)
-{
-	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
-	struct snd_soc_dai_runtime *rdai;
-	
-	list_for_each_entry(rdai, &platform->dai_list, list) {
-		switch (rdai->dai->id) {
-#if CONFIG_SND_PXA2XX_SOC_I2S
-#err SND_PXA2XX_SOC_SSP
-		case PXA2XX_DAI_I2S:
-			pxa2xx_i2s_resume(rdai);
-			break;
-#endif
-#if defined(CONFIG_SND_PXA2XX_SOC_SSP)
-		case PXA2XX_DAI_SSP1:
-		case PXA2XX_DAI_SSP2:
-		case PXA2XX_DAI_SSP3:
-			pxa2xx_ssp_resume(rdai);
-			break;
-#endif
-#if defined(CONFIG_SND_PXA2XX_SOC_AC97)
-		case PXA2XX_DAI_AC97:
-			pxa2xx_ac97_resume(rdai);
-			break;
-#endif
-		default:
-			break;
-		}
-	}
-	return 0;
-}
-
-#else
-#define pxa2xx_suspend	NULL
-#define pxa2xx_resume	NULL
-#endif
-
-static int pxa2xx_pcm_probe(struct device *dev)
-{
-	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	struct snd_soc_platform *platform;
 	int ret;
+	
+	platform = snd_soc_platform_allocate();
+	if (platform == NULL)
+		return -ENOMEM;
 	
 	platform->pcm_ops = &pxa2xx_pcm_ops;
 	platform->pcm_new = pxa2xx_pcm_new,
 	platform->pcm_free = pxa2xx_pcm_free_dma_buffers,
-#if defined(CONFIG_SND_PXA2XX_SOC_I2S)
-	ret = snd_soc_platform_add_dai(platform, &pxa2xx_i2s, 1);
-	if (ret < 0)
-		return ret;
-#endif
-#if defined(CONFIG_SND_PXA2XX_SOC_AC97)
-	ret = snd_soc_platform_add_dai(platform, pxa2xx_ac97, 3);
-	if (ret < 0)
-		return ret;
-#endif
-#if defined(CONFIG_SND_PXA2XX_SOC_SSP)
-	ret = snd_soc_platform_add_dai(platform, pxa2xx_ssp, 3);
-	if (ret < 0)
-		return ret;
-#endif	
+
 	ret = snd_soc_register_platform(platform);
+	if (ret < 0)
+		snd_soc_platform_free(platform);
+	platform_set_drvdata(pdev, platform);
 	return ret;
 }
 
-static int pxa2xx_pcm_remove(struct device *dev)
+static int pxa2xx_pcm_remove(struct platform_device *pdev)
 {
-	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	struct snd_soc_platform *platform = platform_get_drvdata(pdev);
 	
 	snd_soc_unregister_platform(platform);
+	snd_soc_platform_free(platform);
 	return 0;
 }
 
 const char pxa_platform_id[] = "pxa2xx-pcm";
 EXPORT_SYMBOL_GPL(pxa_platform_id);
 
-static struct device_driver pxa2xx_pcm_driver = {
-	.name 		= pxa_platform_id,
-	.owner		= THIS_MODULE,
-	.bus 		= &asoc_bus_type,
+static struct platform_driver pxa2xx_pcm_driver = {
+	.driver = {
+		.name 		= pxa_platform_id,
+		.owner		= THIS_MODULE,
+	},
 	.probe		= pxa2xx_pcm_probe,
 	.remove		= __devexit_p(pxa2xx_pcm_remove),
-	.suspend	= pxa2xx_suspend,
-	.resume		= pxa2xx_resume,
 };
 
 static __init int pxa2xx_pcm_init(void)
 {
-	return driver_register(&pxa2xx_pcm_driver);
+	return platform_driver_register(&pxa2xx_pcm_driver);
 }
 
 static __exit void pxa2xx_pcm_exit(void)
 {
-	driver_unregister(&pxa2xx_pcm_driver);
+	platform_driver_unregister(&pxa2xx_pcm_driver);
 }
 
 module_init(pxa2xx_pcm_init);
