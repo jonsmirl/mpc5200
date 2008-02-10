@@ -65,9 +65,9 @@ static void mainstone_voice_shutdown(struct snd_pcm_substream *substream)
 static int mainstone_voice_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_runtime *pcm_link = substream->private_data;
-	struct snd_soc_dai_runtime *codec_dai = pcm_link->codec_dai;
-	struct snd_soc_dai_runtime *cpu_dai = pcm_link->cpu_dai;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	struct snd_soc_dai *codec_dai = pcm_runtime->codec_dai;
+	struct snd_soc_dai *cpu_dai = pcm_runtime->cpu_dai;
 	unsigned int bclk = 0, pcmdiv = 0;
 	int ret = 0;
 
@@ -213,6 +213,36 @@ static int mainstone_wm9713_init(struct snd_soc_machine *machine)
 	return 0;
 }
 
+static struct snd_soc_pcm_config hifi_pcm_config = {
+	.name		= "HiFi",
+	.codec		= wm9713_codec_id,
+	.codec_dai	= wm9713_codec_hifi_dai_id,
+//	.platform	= pxa_platform_id,
+//	.cpu_dai	= pxa_ac97_hifi_dai_id,
+	.playback	= 1,
+	.capture	= 1,
+};
+
+static struct snd_soc_pcm_config voice_pcm_config = {
+	.name		= "HiFi",
+	.codec		= wm9713_codec_id,
+	.codec_dai	= wm9713_codec_voice_dai_id,
+//	.platform	= pxa_platform_id,
+//	.cpu_dai	= pxa2xx_ssp2_dai_id,
+	.ops		= &mainstone_voice_ops,
+	.playback	= 1,
+	.capture	= 1,
+};
+
+static struct snd_soc_pcm_config aux_pcm_config = {
+	.name		= "Aux",
+	.codec		= wm9713_codec_id,
+	.codec_dai	= wm9713_codec_aux_dai_id,
+//	.platform	= pxa_platform_id,
+//	.cpu_dai	= pxa_ac97_aux_dai_id,
+	.playback	= 1,
+};
+
 /*
  * This is an example machine initialisation for a wm9713 connected to a
  * Mainstone II. It is missing logic to detect hp/mic insertions and logic
@@ -239,26 +269,15 @@ static int mainstone_wm9713_probe(struct platform_device *pdev)
 	machine->private_data = pdev;
 	platform_set_drvdata(pdev, machine);
 	
-	ret = snd_soc_codec_create(machine, wm9713_codec_id);
-	if (ret < 0)
-		goto err;
-
-	ret = snd_soc_platform_create(machine, pxa_platform_id);
-	if (ret < 0)
-		goto err;
-
-	ret = snd_soc_pcm_create(machine, "HiFi", NULL, 
-		WM9713_DAI_AC97_HIFI, PXA2XX_DAI_AC97_HIFI, 1, 1);
+	ret = snd_soc_pcm_create(machine, &hifi_pcm_config);
 	if (ret < 0)
 		goto err;
 	
-	ret = snd_soc_pcm_create(machine, "Aux", NULL, 
-		WM9713_DAI_AC97_AUX, PXA2XX_DAI_AC97_AUX, 1, 1);
+	ret = snd_soc_pcm_create(machine, &aux_pcm_config);
 	if (ret < 0)
 		goto err;
 		
-	ret = snd_soc_pcm_create(machine, "Voice", &mainstone_voice_ops, 
-		WM9713_DAI_PCM_VOICE, PXA2XX_DAI_SSP2, 1, 1);
+	ret = snd_soc_pcm_create(machine, &voice_pcm_config);
 	if (ret < 0)
 		goto err;
 	
