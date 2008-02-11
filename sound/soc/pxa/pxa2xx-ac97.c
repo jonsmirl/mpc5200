@@ -454,16 +454,20 @@ unwind_create:
 
 static int pxa_ac97_remove(struct platform_device *pdev)
 {
-	struct snd_soc_dai *dai = platform_get_drvdata(pdev);
-	struct pxa_ac97_data *ac97 = dai->private_data;
+	/*struct snd_soc_dai *dai = platform_get_drvdata(pdev);*/
+	struct pxa_ac97_data *ac97 = platform_get_drvdata(pdev);
+	int i;
 
 	GCR |= GCR_ACLINK_OFF;
 	free_irq(IRQ_AC97, ac97->dai[0]);
 	pxa_set_cken(CKEN_AC97, 0);
 
-	snd_soc_unregister_platform_dai(dai);
-	kfree(dai->private_data);
-	snd_soc_dai_free(dai);
+	for (i = 0; i < 3; i++) {
+		snd_soc_unregister_platform_dai(ac97->dai[i]);
+		kfree(ac97->dai[i]->private_data);
+		snd_soc_dai_free(ac97->dai[i]);
+	}
+
 	return 0;
 }
 
