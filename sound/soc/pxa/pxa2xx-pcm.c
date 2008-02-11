@@ -366,10 +366,15 @@ static int pxa2xx_pcm_probe(struct platform_device *pdev)
 	struct snd_soc_platform *platform;
 	int ret;
 	
+
 	platform = snd_soc_platform_allocate();
-	if (platform == NULL)
+	if (platform == NULL) {
+		dev_err(&pdev->dev, "Unable to allocate ASoC platform\n");
 		return -ENOMEM;
-	
+	}
+
+	platform->dev = &pdev->dev;
+	platform->name = pxa_platform_id;
 	platform->pcm_ops = &pxa2xx_pcm_ops;
 	platform->pcm_new = pxa2xx_pcm_new,
 	platform->pcm_free = pxa2xx_pcm_free_dma_buffers,
