@@ -454,7 +454,6 @@ unwind_create:
 
 static int pxa_ac97_remove(struct platform_device *pdev)
 {
-	/*struct snd_soc_dai *dai = platform_get_drvdata(pdev);*/
 	struct pxa_ac97_data *ac97 = platform_get_drvdata(pdev);
 	int i;
 
