@@ -394,8 +394,8 @@ static int pxa_ac97_probe(struct platform_device *pdev)
 {
 	struct pxa_ac97_data *ac97;
 	int ret, i;
-	const char *id[] = {pxa_ac97_hifi_dai_id, pxa_ac97_hifi_dai_id, 
-		pxa_ac97_hifi_dai_id};
+	const char *id[] = {pxa_ac97_hifi_dai_id, pxa_ac97_aux_dai_id, 
+		pxa_ac97_mic_dai_id};
 	struct snd_soc_dai_caps *caps[][2] = {
 		{&pxa_ac97_hifi_playback, &pxa_ac97_hifi_capture},
 		{&pxa_ac97_aux_playback, &pxa_ac97_aux_capture},
