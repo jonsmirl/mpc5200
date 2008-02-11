@@ -60,5 +60,6 @@
 #define WM8750_DAI	0
 
 extern const char wm8750_codec_id[];
+extern const char wm8750_codec_dai_id[];
 
 #endif
