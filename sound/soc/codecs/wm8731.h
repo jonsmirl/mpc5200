@@ -35,5 +35,6 @@
 #define WM8731_DAI		0
 
 extern const char wm8731_codec_id[];
+extern const char wm8731_codec_dai_id[];
 
 #endif
