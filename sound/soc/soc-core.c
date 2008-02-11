@@ -758,11 +758,21 @@ static int soc_create_pcm(struct snd_soc_machine *machine,
 	/* yes, then check codec list */
 	list_for_each_entry(codec, &codec_list, list) {
 		if (!strcmp(config->codec, codec->name) &&
-			codec->num == config->codec_num && 
-			try_module_get(codec->dev->driver->owner)) {
-				pcm_config->codec = codec;
-				goto codec_dai;
-			}
+		    codec->num == config->codec_num && 
+		    try_module_get(codec->dev->driver->owner)) {
+			dbg("ASoC %s %s: Match for %s.%d %s.%d\n",
+			    machine->name, config->name,
+			    config->codec, config->codec_num,
+			    codec->name, codec->num);
+			
+			pcm_config->codec = codec;
+			goto codec_dai;
+		} else {
+			dbg("ASoC %s %s: No match for %s.%d %s.%d\n",
+			    machine->name, config->name,
+			    config->codec, config->codec_num,
+			    codec->name, codec->num);
+		}
 	}
 
 codec_dai:
@@ -773,10 +783,18 @@ codec_dai:
 	/* yes, then check the codec_dai list */
 	list_for_each_entry(codec_dai, &codec_dai_list, list) {
 		if (!strcmp(config->codec_dai, codec_dai->name) &&
-			try_module_get(codec_dai->dev->driver->owner)) {
-				pcm_config->codec_dai = codec_dai;
-				goto platform;
-			}
+		    try_module_get(codec_dai->dev->driver->owner)) {
+			dbg("ASoC %s %s: Match for %s %s\n",
+			    machine->name, config->name,
+			    config->codec_dai, codec_dai->name);
+
+			pcm_config->codec_dai = codec_dai;
+			goto platform;
+		} else {
+			dbg("ASoC %s %s: No match for %s %s\n",
+			    machine->name, config->name,
+			    config->codec_dai, codec_dai->name);
+		}
 	}
 
 platform:
@@ -787,10 +805,18 @@ platform:
 	/* yes, then check the platform list */
 	list_for_each_entry(platform, &platform_list, list) {
 		if (!strcmp(config->platform, platform->name) &&
-			try_module_get(platform->dev->driver->owner)) {
-				pcm_config->platform = platform;
-				goto cpu_dai;
-			}
+		    try_module_get(platform->dev->driver->owner)) {
+			dbg("ASoC %s %s: Match for %s %s\n",
+			    machine->name, config->name,
+			    config->platform, platform->name);
+
+			pcm_config->platform = platform;
+			goto cpu_dai;
+		} else {
+			dbg("ASoC %s %s: No match for %s %s\n",
+			    machine->name, config->name,
+			    config->platform, platform->name);
+		}
 	}
 
 cpu_dai:
@@ -801,17 +827,31 @@ cpu_dai:
 	/* yes, then check the codec_dai list */
 	list_for_each_entry(cpu_dai, &cpu_dai_list, list) {
 		if (!strcmp(config->cpu_dai, cpu_dai->name) &&
-			try_module_get(cpu_dai->dev->driver->owner)) {
-				pcm_config->cpu_dai = cpu_dai;
-				goto check;
-			}
+		    try_module_get(cpu_dai->dev->driver->owner)) {
+			dbg("ASoC %s %s: Match for %s %s\n",
+			    machine->name, config->name,
+			    config->cpu_dai, cpu_dai->name);
+
+			pcm_config->cpu_dai = cpu_dai;
+			goto check;
+		} else {
+			dbg("ASoC %s %s: No match for %s %s\n",
+			    machine->name, config->name,
+			    config->cpu_dai, cpu_dai->name);
+		}
 	}
 
 check:
 	/* we should have all the pcm components at this point */
 	if (!pcm_config->codec || !pcm_config->codec_dai ||
-		!pcm_config->platform || !pcm_config->cpu_dai)
+	    !pcm_config->platform || !pcm_config->cpu_dai) {
+		dbg("ASoC %s %s: incomplete codec %d (DAI %d) platform"
+		    " %d (DAI %d)\n", 
+		    machine->name, config->name,
+		    !pcm_config->codec == 0, !pcm_config->codec_dai == 0,
+		    !pcm_config->platform == 0, !pcm_config->cpu_dai == 0);
 		return 0;
+	}
 
 	/* now create and register the pcm */
 	pcm_runtime = kzalloc(sizeof(*pcm_runtime), GFP_KERNEL);
@@ -1578,8 +1618,8 @@ EXPORT_SYMBOL_GPL(snd_soc_dai_digital_mute);
 
 int snd_soc_register_codec_dai(struct snd_soc_dai *dai)
 {
-	if (dai->dev == NULL || dai->name == NULL)
-		return -EINVAL;
+	BUG_ON(!dai->dev);
+	BUG_ON(!dai->name);
 
 	mutex_lock(&client_mutex);
 	list_add(&dai->list, &codec_dai_list);
@@ -1599,8 +1639,8 @@ EXPORT_SYMBOL_GPL(snd_soc_unregister_codec_dai);
 
 int snd_soc_register_codec(struct snd_soc_codec *codec)
 {
-	if (codec->dev == NULL || codec->name == NULL)
-		return -EINVAL;
+	BUG_ON(!codec->dev);
+	BUG_ON(!codec->name);
 
 	mutex_lock(&client_mutex);
 	list_add(&codec->list, &codec_list);
@@ -1620,8 +1660,8 @@ EXPORT_SYMBOL_GPL(snd_soc_unregister_codec);
 
 int snd_soc_register_platform_dai(struct snd_soc_dai *dai)
 {
-	if (dai->dev == NULL || dai->name == NULL)
-		return -EINVAL;
+	BUG_ON(!dai->dev);
+	BUG_ON(!dai->name);
 
 	mutex_lock(&client_mutex);
 	list_add(&dai->list, &cpu_dai_list);
@@ -1641,8 +1681,8 @@ EXPORT_SYMBOL_GPL(snd_soc_unregister_platform_dai);
 
 int snd_soc_register_platform(struct snd_soc_platform *platform)
 {
-	if (platform->dev == NULL || platform->name == NULL)
-		return -EINVAL;
+	BUG_ON(!platform->dev);
+	BUG_ON(!platform->name);
 
 	mutex_lock(&client_mutex);
 	list_add(&platform->list, &platform_list);
