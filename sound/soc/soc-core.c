@@ -45,7 +45,7 @@
 #include "soc-prv.h"
 
 /* debug */
-#define SOC_DEBUG 1
+#define SOC_DEBUG 0
 #if SOC_DEBUG
 #define dbg(format, arg...) printk(format, ## arg)
 #else
