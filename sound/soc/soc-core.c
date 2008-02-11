@@ -45,7 +45,7 @@
 #include "soc-prv.h"
 
 /* debug */
-#define SOC_DEBUG 0
+#define SOC_DEBUG 1
 #if SOC_DEBUG
 #define dbg(format, arg...) printk(format, ## arg)
 #else
@@ -305,7 +305,7 @@ static void close_delayed_work(struct work_struct *work)
 	mutex_lock(&pcm_mutex);
 
 	dbg("pop wq checking: %s status: %s waiting: %s\n",
-		codec_dai->playback,
+		codec_dai->name,
 		pcm_runtime->playback_active ? "active" : "inactive",
 		pcm_runtime->pop_wait ? "yes" : "no");
 
