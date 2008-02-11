@@ -96,7 +96,7 @@ struct snd_soc_pcm_runtime *snd_soc_get_pcm(struct snd_soc_machine *machine,
  * Gets AC97 operations from Digital Audio Interface.
  */
 struct snd_ac97_bus_ops *snd_soc_get_ac97_ops(struct snd_soc_machine *machine,
-	int dai_id);
+					      const char *dai_id);
 
 /**
  * snd_soc_get_codec - get codec.
