@@ -963,6 +963,22 @@ static ssize_t codec_reg_show(struct device *dev,
 }
 static DEVICE_ATTR(codec_reg, 0444, codec_reg_show, NULL);
 
+
+static int soc_ac97_write(void *control_data, long val, int reg)
+{
+	struct snd_ac97 *ac97 = (struct snd_ac97 *)control_data;
+	ac97->bus->ops->write(ac97, reg, val);
+	return 0;
+}
+
+static int soc_ac97_read(void *control_data, long val, int reg)
+{
+	struct snd_ac97 *ac97 = (struct snd_ac97 *)control_data;
+	val = ac97->bus->ops->read(ac97, reg);
+	return 0;
+}
+
+
 /**
  * snd_soc_new_ac97_codec - initailise AC97 device
  * @codec: audio codec
@@ -1002,6 +1018,10 @@ int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
 	ac97->bus->num = bus_no;
 	spin_lock_init(&ac97->bus->bus_lock);
 	codec->ac97 = ac97;
+
+	snd_soc_codec_set_io(codec, soc_ac97_read, soc_ac97_write,
+			     codec->ac97);
+		
 	mutex_unlock(&codec->mutex);
 	return 0;
 }
@@ -1831,12 +1851,12 @@ struct snd_soc_pcm_runtime *snd_soc_get_pcm(struct snd_soc_machine *machine,
 EXPORT_SYMBOL_GPL(snd_soc_get_pcm);
 
 struct snd_ac97_bus_ops *snd_soc_get_ac97_ops(struct snd_soc_machine *machine,
-	int dai_id)
+					      const char *dai_id)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime;
 
 	list_for_each_entry(pcm_runtime, &machine->pcm_list, list) {
-		if (pcm_runtime->cpu_dai->id == dai_id)
+		if (strcmp(pcm_runtime->cpu_dai->name, dai_id) == 0)
 			return pcm_runtime->cpu_dai->ops->ac97_ops;
 	}
 	return NULL;
@@ -1847,11 +1867,9 @@ void snd_soc_codec_set_io(struct snd_soc_codec *codec,
 	int (*machine_read)(void *, long, int),
 	int (*machine_write)(void *, long, int), void *control_data)
 {
-	mutex_lock(&codec->mutex);
 	codec->control_data = control_data;
 	codec->machine_read = machine_read;
 	codec->machine_write = machine_write;
-	mutex_unlock(&codec->mutex);
 }
 EXPORT_SYMBOL_GPL(snd_soc_codec_set_io);
 
