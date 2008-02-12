@@ -448,6 +448,57 @@ static int is_connected_input_ep(struct snd_soc_dapm_widget *widget)
 	return con;
 }
 
+static int dapm_power_widgets_ext(struct snd_soc_dapm_widget *w)
+{
+	int in, out, power, power_change, ret;
+	
+	/* all other widgets */
+	in = is_connected_input_ep(w);
+	dapm_clear_walk(w->machine);
+	out = is_connected_output_ep(w);
+	dapm_clear_walk(w->machine);
+	power = (out != 0 && in != 0) ? 1 : 0;
+	power_change = (w->power == power) ? 0 : 1;
+	w->power = power;
+
+	/* call any power change event handlers */
+	if (power_change && w->event) {
+		dbg("power %s event for %s flags %x\n",
+			w->power ? "on" : "off", w->name, w->event_flags);
+		if (power) {
+			/* power up event */
+			if (w->event_flags & SND_SOC_DAPM_PRE_PMU) {
+				ret = w->event(w, NULL, SND_SOC_DAPM_PRE_PMU);
+				if (ret < 0)
+					return ret;
+			}
+			dapm_update_bits(w);
+			if (w->event_flags & SND_SOC_DAPM_POST_PMU){
+				ret = w->event(w, NULL, SND_SOC_DAPM_POST_PMU);
+				if (ret < 0)
+					return ret;
+			}
+		} else {
+			/* power down event */
+			if (w->event_flags & SND_SOC_DAPM_PRE_PMD) {
+				ret = w->event(w, NULL, SND_SOC_DAPM_PRE_PMD);
+				if (ret < 0)
+					return ret;
+			}
+			dapm_update_bits(w);
+			if (w->event_flags & SND_SOC_DAPM_POST_PMD) {
+				ret = w->event(w, NULL, SND_SOC_DAPM_POST_PMD);
+				if (ret < 0)
+					return ret;
+			}
+		} 
+	} else if (power_change)
+		/* no event handler */
+		dapm_update_bits(w);
+
+	return 0;
+}
+
 /*
  * Scan each dapm widget for complete audio path.
  * A complete path is a route that has valid endpoints i.e.:-
@@ -460,7 +511,7 @@ static int is_connected_input_ep(struct snd_soc_dapm_widget *widget)
 static int dapm_power_widgets(struct snd_soc_machine *machine, int event)
 {
 	struct snd_soc_dapm_widget *w;
-	int in, out, i, c = 1, *seq = NULL, ret = 0, power_change, power;
+	int in, out, i, c = 1, *seq = NULL, ret = 0;
 
 	/* do we have a sequenced stream event */
 	if (event == SND_SOC_DAPM_STREAM_START) {
@@ -503,6 +554,10 @@ static int dapm_power_widgets(struct snd_soc_machine *machine, int event)
 			/* programmable gain/attenuation */
 			if (w->id == snd_soc_dapm_pga) {
 				int on;
+				
+				if (w->event)
+					goto ext;
+				
 				in = is_connected_input_ep(w);
 				dapm_clear_walk(w->machine);
 				out = is_connected_output_ep(w);
@@ -553,56 +608,11 @@ static int dapm_power_widgets(struct snd_soc_machine *machine, int event)
 				}
 				continue;
 			}
-
-			/* all other widgets */
-			in = is_connected_input_ep(w);
-			dapm_clear_walk(w->machine);
-			out = is_connected_output_ep(w);
-			dapm_clear_walk(w->machine);
-			power = (out != 0 && in != 0) ? 1 : 0;
-			power_change = (w->power == power) ? 0: 1;
-			w->power = power;
-
-			/* call any power change event handlers */
-			if (power_change) {
-				if (w->event) {
-					dbg("power %s event for %s flags %x\n",
-						w->power ? "on" : "off", w->name, w->event_flags);
-					if (power) {
-						/* power up event */
-						if (w->event_flags & SND_SOC_DAPM_PRE_PMU) {
-							ret = w->event(w,
-								NULL, SND_SOC_DAPM_PRE_PMU);
-							if (ret < 0)
-								return ret;
-						}
-						dapm_update_bits(w);
-						if (w->event_flags & SND_SOC_DAPM_POST_PMU){
-							ret = w->event(w,
-								NULL, SND_SOC_DAPM_POST_PMU);
-							if (ret < 0)
-								return ret;
-						}
-					} else {
-						/* power down event */
-						if (w->event_flags & SND_SOC_DAPM_PRE_PMD) {
-							ret = w->event(w,
-								NULL, SND_SOC_DAPM_PRE_PMD);
-							if (ret < 0)
-								return ret;
-						}
-						dapm_update_bits(w);
-						if (w->event_flags & SND_SOC_DAPM_POST_PMD) {
-							ret = w->event(w,
-								NULL, SND_SOC_DAPM_POST_PMD);
-							if (ret < 0)
-								return ret;
-						}
-					}
-				} else
-					/* no event handler */
-					dapm_update_bits(w);
-			}
+ext:			
+			/* widgets with external callbacks */
+			ret = dapm_power_widgets_ext(w);
+			if (ret < 0)
+				return ret;
 		}
 	}
 
