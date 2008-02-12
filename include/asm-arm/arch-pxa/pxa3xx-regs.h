@@ -13,6 +13,8 @@
 #ifndef __ASM_ARCH_PXA3XX_REGS_H
 #define __ASM_ARCH_PXA3XX_REGS_H
 
+#define OSCC		__REG(0x41350000)  /* Oscillator Configuration Register */
+
 /*
  * Application Subsystem Clock
  */
@@ -71,5 +73,7 @@
 /* Note: GCU clock enable bit differs on PXA300/PXA310 and PXA320 */
 #define PXA300_CKEN_GRAPHICS	42	/* Graphics controller clock enable */
 #define PXA320_CKEN_GRAPHICS	7	/* Graphics controller clock enable */
+
+#define OSCC_PEN	(1 << 11)	/* 13MHz POUT */
 
 #endif /* __ASM_ARCH_PXA3XX_REGS_H */

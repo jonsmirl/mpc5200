@@ -156,7 +156,37 @@ static const struct clkops clk_pxa3xx_hsio_ops = {
 	.getrate	= clk_pxa3xx_hsio_getrate,
 };
 
+static void clk_pout_enable(struct clk *clk)
+{
+	local_irq_disable();
+
+	OSCC |= OSCC_PEN;
+
+	local_irq_enable();
+}
+
+static void clk_pout_disable(struct clk *clk)
+{
+	local_irq_disable();
+
+	OSCC &= ~OSCC_PEN;
+
+	local_irq_enable();
+}
+
+static const struct clkops clk_pout_ops = {
+	.enable		= clk_pout_enable,
+	.disable	= clk_pout_disable,
+};
+
 static struct clk pxa3xx_clks[] = {
+	{
+		.name		= "CLK_POUT",
+		.ops		= &clk_pout_ops,
+		.rate		= 13000000,
+		.delay		= 70,
+	},
+
 	INIT_CK("LCDCLK", LCD,    &clk_pxa3xx_hsio_ops, &pxa_device_fb.dev),
 	INIT_CK("CAMCLK", CAMERA, &clk_pxa3xx_hsio_ops, NULL),
 
