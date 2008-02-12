@@ -28,7 +28,7 @@
 #include <sound/tlv.h>
 
 #define AUDIO_NAME "WM8350"
-#define WM8350_VERSION "0.5"
+#define WM8350_VERSION "0.6"
 
 #define WM8350_OUTn_0dB 0x39
 
@@ -62,14 +62,10 @@ struct wm8350_output {
 	u16 mute;
 };
 
-struct wm8350_out_ramp {
+struct wm8350_data {
+	struct snd_soc_dai *dai;
 	struct wm8350_output out1;
 	struct wm8350_output out2;
-};
-
-struct wm8350_data {
-	struct snd_soc_codec *codec;
-	struct snd_soc_dai *dai;
 };
 
 static unsigned int wm8350_codec_read(struct snd_soc_codec *codec,
@@ -91,8 +87,8 @@ static int wm8350_codec_write(struct snd_soc_codec *codec, unsigned int reg,
  */
 static inline int wm8350_out1_ramp_step(struct snd_soc_codec *codec)
 {
-	struct wm8350_out_ramp *or = codec->private_data;
-	struct wm8350_output *output = &or->out1;
+	struct wm8350_data *wm8350_data = codec->private_data;
+	struct wm8350_output *out1 = &wm8350_data->out1;
 	struct wm8350 *wm8350 = codec->control_data;
 	int left_complete = 0, right_complete = 0;
 	u16 reg, val;
@@ -101,16 +97,16 @@ static inline int wm8350_out1_ramp_step(struct snd_soc_codec *codec)
 	reg = wm8350_reg_read(wm8350, WM8350_LOUT1_VOLUME);
 	val = (reg & WM8350_OUT1L_VOL_MASK) >> WM8350_OUT1L_VOL_SHIFT;
 
-	if (output->ramp == WM8350_RAMP_UP) {
+	if (out1->ramp == WM8350_RAMP_UP) {
 		/* ramp step up */
-		if (val < output->left_vol) {
+		if (val < out1->left_vol) {
 			val++;
 			reg &= ~WM8350_OUT1L_VOL_MASK;
 			wm8350_reg_write(wm8350, WM8350_LOUT1_VOLUME,
 				reg | (val << WM8350_OUT1L_VOL_SHIFT));
 		} else
 			left_complete = 1;
-	} else if (output->ramp == WM8350_RAMP_DOWN) {
+	} else if (out1->ramp == WM8350_RAMP_DOWN) {
 		/* ramp step down */
 		if (val > 0) {
 			val--;
@@ -125,16 +121,16 @@ static inline int wm8350_out1_ramp_step(struct snd_soc_codec *codec)
 	/* right channel */
 	reg = wm8350_reg_read(wm8350, WM8350_ROUT1_VOLUME);
 	val = (reg & WM8350_OUT1R_VOL_MASK) >> WM8350_OUT1R_VOL_SHIFT;
-	if (output->ramp == WM8350_RAMP_UP) {
+	if (out1->ramp == WM8350_RAMP_UP) {
 		/* ramp step up */
-		if (val < output->right_vol) {
+		if (val < out1->right_vol) {
 			val++;
 			reg &= ~WM8350_OUT1R_VOL_MASK;
 			wm8350_reg_write(wm8350, WM8350_ROUT1_VOLUME,
 				reg | (val << WM8350_OUT1R_VOL_SHIFT));
 		} else
 			right_complete = 1;
-	} else if (output->ramp == WM8350_RAMP_DOWN) {
+	} else if (out1->ramp == WM8350_RAMP_DOWN) {
 		/* ramp step down */
 		if (val > 0) {
 			val--;
@@ -157,8 +153,8 @@ static inline int wm8350_out1_ramp_step(struct snd_soc_codec *codec)
  */
 static inline int wm8350_out2_ramp_step(struct snd_soc_codec *codec)
 {
-	struct wm8350_out_ramp *or = codec->private_data;
-	struct wm8350_output *output = &or->out2;
+	struct wm8350_data *wm8350_data = codec->private_data;
+	struct wm8350_output *out2 = &wm8350_data->out2;
 	struct wm8350 *wm8350 = codec->control_data;
 	int left_complete = 0, right_complete = 0;
 	u16 reg, val;
@@ -166,16 +162,16 @@ static inline int wm8350_out2_ramp_step(struct snd_soc_codec *codec)
 	/* left channel */
 	reg = wm8350_reg_read(wm8350, WM8350_LOUT2_VOLUME);
 	val = (reg & WM8350_OUT2L_VOL_MASK) >> WM8350_OUT1L_VOL_SHIFT;
-	if (output->ramp == WM8350_RAMP_UP) {
+	if (out2->ramp == WM8350_RAMP_UP) {
 		/* ramp step up */
-		if (val < output->left_vol) {
+		if (val < out2->left_vol) {
 			val++;
 			reg &= ~WM8350_OUT2L_VOL_MASK;
 			wm8350_reg_write(wm8350, WM8350_LOUT2_VOLUME,
 				reg | (val << WM8350_OUT1L_VOL_SHIFT));
 		} else
 			left_complete = 1;
-	} else if (output->ramp == WM8350_RAMP_DOWN) {
+	} else if (out2->ramp == WM8350_RAMP_DOWN) {
 		/* ramp step down */
 		if (val > 0) {
 			val--;
@@ -190,16 +186,16 @@ static inline int wm8350_out2_ramp_step(struct snd_soc_codec *codec)
 	/* right channel */
 	reg = wm8350_reg_read(wm8350, WM8350_ROUT2_VOLUME);
 	val = (reg & WM8350_OUT2R_VOL_MASK) >> WM8350_OUT1R_VOL_SHIFT;
-	if (output->ramp == WM8350_RAMP_UP) {
+	if (out2->ramp == WM8350_RAMP_UP) {
 		/* ramp step up */
-		if (val < output->right_vol) {
+		if (val < out2->right_vol) {
 			val++;
 			reg &= ~WM8350_OUT2R_VOL_MASK;
 			wm8350_reg_write(wm8350, WM8350_ROUT2_VOLUME,
 				reg | (val << WM8350_OUT1R_VOL_SHIFT));
 		} else
 			right_complete = 1;
-	} else if (output->ramp == WM8350_RAMP_DOWN) {
+	} else if (out2->ramp == WM8350_RAMP_DOWN) {
 		/* ramp step down */
 		if (val > 0) {
 			val--;
@@ -227,8 +223,9 @@ static void wm8350_pga_work(struct work_struct *work)
 {
 	struct snd_soc_codec *codec =
 		container_of(work, struct snd_soc_codec, delayed_work.work);
-	struct wm8350_out_ramp *or = codec->private_data;
-	struct wm8350_output *out1 = &or->out1, *out2 = &or->out2;
+	struct wm8350_data *wm8350_data = codec->private_data;
+	struct wm8350_output *out1 = &wm8350_data->out1, 
+		*out2 = &wm8350_data->out2;
 	int i, out1_complete, out2_complete;
 
 	/* do we need to ramp at all ? */
@@ -273,7 +270,9 @@ static void wm8350_pga_work(struct work_struct *work)
 static int pga_event(struct snd_soc_dapm_widget *w, int event)
 {
 	struct snd_soc_codec *codec = w->codec;
-	struct wm8350_out_ramp *or = codec->private_data;
+	struct wm8350_data *wm8350_data = codec->private_data;
+	struct wm8350_output *out1 = &wm8350_data->out1, 
+		*out2 = &wm8350_data->out2;
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
@@ -281,11 +280,11 @@ static int pga_event(struct snd_soc_dapm_widget *w, int event)
 		switch (w->shift) {
 		case 0:
 		case 1:
-			or->out1.ramp = WM8350_RAMP_UP;
+			out1->ramp = WM8350_RAMP_UP;
 			break;
 		case 2:
 		case 3:
-			or->out2.ramp = WM8350_RAMP_UP;
+			out2->ramp = WM8350_RAMP_UP;
 			break;
 		}
 		if (!delayed_work_pending(&codec->delayed_work))
@@ -297,11 +296,11 @@ static int pga_event(struct snd_soc_dapm_widget *w, int event)
 		switch (w->shift) {
 		case 0:
 		case 1:
-			or->out1.ramp = WM8350_RAMP_DOWN;
+			out1->ramp = WM8350_RAMP_DOWN;
 			break;
 		case 2:
 		case 3:
-			or->out2.ramp = WM8350_RAMP_DOWN;
+			out2->ramp = WM8350_RAMP_DOWN;
 			break;
 		}
 		if (!delayed_work_pending(&codec->delayed_work))
@@ -316,8 +315,9 @@ static int wm8350_put_volsw_2r_vu(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
-	struct wm8350_out_ramp *or = codec->private_data;
-	struct wm8350_output *out1 = &or->out1, *out2 = &or->out2;
+	struct wm8350_data *wm8350_data = codec->private_data;
+	struct wm8350_output *out1 = &wm8350_data->out1, 
+		*out2 = &wm8350_data->out2;
 	int ret, reg = kcontrol->private_value & 0xff;
 	u16 val;
 
@@ -349,8 +349,8 @@ static int wm8350_get_volsw_2r(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
-	struct wm8350_out_ramp *or = codec->private_data;
-	struct wm8350_output *out1 = &or->out1, *out2 = &or->out2;
+	struct wm8350_data *wm8350 = codec->private_data;
+	struct wm8350_output *out1 = &wm8350->out1, *out2 = &wm8350->out2;
 	int reg = kcontrol->private_value & 0xff;
 	int reg2 = (kcontrol->private_value >> 24) & 0xff;
 	int shift = (kcontrol->private_value >> 8) & 0x0f;
@@ -1266,16 +1266,16 @@ static struct snd_soc_dai_ops wm8350_dai_ops = {
 
 static int wm8350_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	struct wm8350_data *wm8350 = platform_get_drvdata(pdev);
+	struct snd_soc_codec *codec= platform_get_drvdata(pdev);
+
 // lg save status
-	wm8350_set_bias_level(wm8350->codec, SND_SOC_BIAS_OFF);
+	wm8350_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
 }
 
 static int wm8350_resume(struct platform_device *pdev)
 {
-	struct wm8350_data *wm8350 = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = wm8350->codec;
+	struct snd_soc_codec *codec= platform_get_drvdata(pdev);
 
 	wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
@@ -1292,8 +1292,9 @@ static int wm8350_codec_init(struct snd_soc_codec *codec,
 	struct snd_soc_machine *machine)
 {
 	struct wm8350* wm8350 = codec->control_data;
-	struct wm8350_out_ramp *or = codec->private_data;
-	struct wm8350_output *out1 = &or->out1, *out2 = &or->out2;
+	struct wm8350_data *wm8350_data = codec->private_data;
+	struct wm8350_output *out1 = &wm8350_data->out1, 
+		*out2 = &wm8350_data->out2;
 
 	snd_assert(wm8350 != NULL, return -EINVAL);
 
@@ -1392,7 +1393,6 @@ static int wm8350_codec_probe(struct platform_device *pdev)
 {
 	struct snd_soc_codec *codec;
 	struct wm8350_data *wm8350;
-	struct wm8350_out_ramp *ramp_data;
 	int ret;
 
 	info("WM8350 Audio Codec %s", WM8350_VERSION);
@@ -1400,12 +1400,6 @@ static int wm8350_codec_probe(struct platform_device *pdev)
 	codec = snd_soc_codec_allocate();
 	if (codec == NULL)
 		return -ENOMEM;
-
-	ramp_data = kzalloc(sizeof(struct wm8350_out_ramp), GFP_KERNEL);
-	if (ramp_data == NULL) {
-		ret = -ENOMEM;
-		goto ramp_err;
-	}
 
 	wm8350 = kzalloc(sizeof(struct wm8350_data), GFP_KERNEL);
 	if (wm8350 == NULL) {
@@ -1422,18 +1416,16 @@ static int wm8350_codec_probe(struct platform_device *pdev)
 	codec->exit = wm8350_codec_exit;
 	codec->reg_cache_size = WM8350_MAX_REGISTER;
 	codec->reg_cache_step = 1;
-	codec->private_data = ramp_data;
-	wm8350->codec = codec;
+	codec->private_data = wm8350;
 	INIT_DELAYED_WORK(&codec->delayed_work, wm8350_pga_work);
-
+	platform_set_drvdata(pdev, codec);
+		
 	ret = snd_soc_register_codec(codec);
 	if (ret < 0)
 		goto codec_err;
 	ret = wm8350_dai_probe(wm8350, &pdev->dev);
 	if (ret < 0)
 		goto dai_err;
-
-	platform_set_drvdata(pdev, wm8350);
 	return ret;
 
 dai_err:
@@ -1441,21 +1433,20 @@ dai_err:
 codec_err:
 	kfree(wm8350);
 wm8350_err:
-	kfree(ramp_data);
-ramp_err:
 	snd_soc_codec_free(codec);
 	return ret;
 }
 
 static int wm8350_codec_remove(struct platform_device *pdev)
 {
-	struct wm8350_data *wm8350 = platform_get_drvdata(pdev);
-
-	kfree(wm8350->codec->private_data);
+	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
+	struct wm8350_data *wm8350 = codec->private_data;
+	
 	snd_soc_unregister_codec_dai(wm8350->dai);
 	snd_soc_dai_free(wm8350->dai);
-	snd_soc_unregister_codec(wm8350->codec);
-	snd_soc_codec_free(wm8350->codec);
+	kfree(wm8350);
+	snd_soc_unregister_codec(codec);
+	snd_soc_codec_free(codec);
 	return 0;
 }
 
