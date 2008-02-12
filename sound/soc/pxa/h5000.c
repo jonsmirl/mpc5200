@@ -44,14 +44,14 @@ static int h5000_spk_func = 0;
 static int h5000_jack_func = 0;
 
 
-static void h5000_ext_control(struct snd_soc_codec *codec)
+static void h5000_ext_control(struct snd_soc_machine *machine)
 {
 	switch (h5000_spk_func) {
 	case H5000_SPK_OFF:
-		snd_soc_dapm_set_endpoint(codec, "Ext Spk", 0);
+		snd_soc_dapm_disable_pin(machine, "Ext Spk");
 		break;
 	case H5000_SPK_ON:
-		snd_soc_dapm_set_endpoint(codec, "Ext Spk", 1);
+		snd_soc_dapm_enable_pin(machine, "Ext Spk");
 		break;
 	default:
 		printk (KERN_ERR "%s: invalid value %d for h5000_spk_func\n", 
@@ -61,19 +61,19 @@ static void h5000_ext_control(struct snd_soc_codec *codec)
 
 	switch (h5000_jack_func) {
 	case H5000_OFF:
-		snd_soc_dapm_set_endpoint(codec, "Headphone Jack", 0);
-		snd_soc_dapm_set_endpoint(codec, "Internal Mic", 1);
-		snd_soc_dapm_set_endpoint(codec, "Mic Jack", 0);
+		snd_soc_dapm_disable_pin(machine, "Headphone Jack");
+		snd_soc_dapm_enable_pin(machine, "Internal Mic");
+		snd_soc_dapm_disable_pin(machine, "Mic Jack");
 		break;
 	case H5000_HP:
-		snd_soc_dapm_set_endpoint(codec, "Headphone Jack", 1);
-		snd_soc_dapm_set_endpoint(codec, "Internal Mic", 1);
-		snd_soc_dapm_set_endpoint(codec, "Mic Jack", 0);
+		snd_soc_dapm_enable_pin(machine, "Headphone Jack");
+		snd_soc_dapm_enable_pin(machine, "Internal Mic");
+		snd_soc_dapm_disable_pin(machine, "Mic Jack");
 		break;
 	case H5000_MIC:
-		snd_soc_dapm_set_endpoint(codec, "Headphone Jack", 0);
-		snd_soc_dapm_set_endpoint(codec, "Internal Mic", 0);
-		snd_soc_dapm_set_endpoint(codec, "Mic Jack", 1);
+		snd_soc_dapm_enable_pin(machine, "Headphone Jack");
+		snd_soc_dapm_enable_pin(machine, "Internal Mic");
+		snd_soc_dapm_set_endpoint(machine, "Mic Jack");
 		break;
 	default:
 		printk(KERN_ERR "%s: invalid value %d for h5000_jack_func\n", 
@@ -81,15 +81,15 @@ static void h5000_ext_control(struct snd_soc_codec *codec)
 		break;
 	};
 
-	snd_soc_dapm_sync_endpoints(codec);
+	snd_soc_dapm_sync(machine);
 };
 
 static int h5000_startup(struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec *codec = rtd->socdev->codec;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	struct snd_soc_machine *machine = pcm_runtime->machine;
 
-	h5000_ext_control(codec);
+	h5000_ext_control(machine);
 	return 0;
 };
 
@@ -100,9 +100,9 @@ static void h5000_shutdown(struct snd_pcm_substream *substream)
 static int h5000_hw_params(struct snd_pcm_substream *substream, 
 	struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec_dai *codec_dai = rtd->dai->codec_dai;
-	struct snd_soc_cpu_dai *cpu_dai = rtd->dai->cpu_dai;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	struct snd_soc_dai *cpu_dai = pcm_runtime->cpu_dai;
+	struct snd_soc_dai *codec_dai = pcm_runtime->codec_dai;
 	unsigned int clk = 0;
 	int ret = 0;
 
@@ -121,25 +121,25 @@ static int h5000_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* set codec DAI configuration */
-	ret = codec_dai->dai_ops.set_fmt(codec_dai, SND_SOC_DAIFMT_I2S |
+	ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_I2S |
 		SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0)
 		return ret;
 
 	/* set cpu DAI configuration */
-	ret = cpu_dai->dai_ops.set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S |
+	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S |
 		SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0)
 		return ret;
 
 	/* set the codec system clock for DAC and ADC */
-	ret = codec_dai->dai_ops.set_sysclk(codec_dai, 0, clk,
+	ret = snd_soc_dai_set_sysclk(codec_dai, 0, clk,
 		SND_SOC_CLOCK_IN);
 	if (ret < 0)
 		return ret;
 
 	/* set the I2S system clock as input (unused) */
-	ret = cpu_dai->dai_ops.set_sysclk(cpu_dai, PXA2XX_I2S_SYSCLK, 0,
+	ret = snd_soc_dai_set_sysclk(cpu_dai, PXA2XX_I2S_SYSCLK, 0,
 		SND_SOC_CLOCK_OUT);
 	if (ret < 0)
 		return ret;
@@ -163,13 +163,13 @@ static int h5000_get_jack(struct snd_kcontrol *kcontrol,
 static int h5000_set_jack(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_kcontrol_chip (kcontrol);
+	struct snd_soc_machine *machine = snd_kcontrol_chip(kcontrol);
 	
 	if (h5000_jack_func == ucontrol->value.integer.value [0])
 		return 0;
 	
 	h5000_jack_func = ucontrol->value.integer.value [0];
-	h5000_ext_control(codec);
+	h5000_ext_control(machine);
 	return 1;
 };
 
@@ -183,13 +183,13 @@ static int h5000_get_spk(struct snd_kcontrol *kcontrol,
 static int h5000_set_spk(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_kcontrol_chip (kcontrol);
+	struct snd_soc_machine *machine = snd_kcontrol_chip(kcontrol);
 	
 	if (h5000_spk_func == ucontrol->value.integer.value [0])
 		return 0;
 	
 	h5000_spk_func = ucontrol->value.integer.value [0];
-	h5000_ext_control(codec);
+	h5000_ext_control(machine);
 	return 1;
 };
 
@@ -252,20 +252,40 @@ static const struct snd_kcontrol_new ak4535_h5000_controls[] = {
 
 };
 
-static int h5000_ak4535_init (struct snd_soc_codec *codec)
+#define AK4535_I2C_ADDR	0x10
+static unsigned short normal_i2c[] = { AK4535_I2C_ADDR, I2C_CLIENT_END };
+
+/* Magic definition of all other variables and things */
+I2C_CLIENT_INSMOD;
+
+static struct i2c_driver ak4535_i2c_driver;
+static struct i2c_client client_template;
+
+static int h5000_ak4535_write(void *control_data, long data, int size)
 {
+	return i2c_master_send((struct i2c_client*)control_data, 
+		(char*) data, size);
+}
+
+static int h5000_ak4535_init (struct snd_soc_machine *machine)
+{
+	struct snd_soc_codec *codec;
 	int i, err;
 	
+	codec = snd_soc_get_codec(machine, ak4535_codec_id);
+	if (codec == NULL)
+		return -ENODEV;
+	
 	/* NC codec pins */
-	snd_soc_dapm_set_endpoint(codec, "MOUT1", 0);
-	snd_soc_dapm_set_endpoint(codec, "LOUT", 0);
-	snd_soc_dapm_set_endpoint(codec, "ROUT", 0);
+	snd_soc_dapm_disable_pin(machine, "MOUT1");
+	snd_soc_dapm_disable_pin(machine, "LOUT");
+	snd_soc_dapm_disable_pin(machine, "ROUT");
 	
 	// mp - not sure I understand here, is the codec driver wrong ?
-	snd_soc_dapm_set_endpoint(codec, "MOUT2", 0);	/* FIXME: These pins are marked as INPUTS */
-	snd_soc_dapm_set_endpoint(codec, "MIN", 0);	/* FIXME: and OUTPUTS in ak4535.c . We need to do this in order */
-	snd_soc_dapm_set_endpoint(codec, "AIN", 0);	/* FIXME: to get DAPM working properly, because the pins are connected */
-	snd_soc_dapm_set_endpoint(codec, "MICOUT", 0);	/* FIXME: OUTPUT -> INPUT. */
+	snd_soc_dapm_disable_pin(machine, "MOUT2");	/* FIXME: These pins are marked as INPUTS */
+	snd_soc_dapm_disable_pin(machine, "MIN");	/* FIXME: and OUTPUTS in ak4535.c . We need to do this in order */
+	snd_soc_dapm_disable_pin(machine, "AIN");	/* FIXME: to get DAPM working properly, because the pins are connected */
+	snd_soc_dapm_disable_pin(machine, "MICOUT");	/* FIXME: OUTPUT -> INPUT. */
 
 	/* Add h5000 specific controls */
 	for (i = 0; i < ARRAY_SIZE (ak4535_h5000_controls); i++) {
@@ -282,42 +302,108 @@ static int h5000_ak4535_init (struct snd_soc_codec *codec)
 
 	/* Set up h5000 specific audio path audio_map */
 	for (i = 0; audio_map [i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(codec, audio_map [i][0], 
+		snd_soc_dapm_add_route(codec, audio_map [i][0], 
 			audio_map [i][1], audio_map [i][2]);
 	};
 
-	snd_soc_dapm_sync_endpoints(codec);
+	snd_soc_dapm_sync(machine);
+	
+	snd_soc_codec_set_io(codec, NULL, h5000_ak4535_write, 
+		machine->private_data);
+	
+	snd_soc_codec_init(codec, machine);
+	
 	return 0;
 };
 
-
-static struct snd_soc_dai_link h5000_dai = {
-	.name = "ak4535",
-	.stream_name = "AK4535",
-	.cpu_dai = &pxa_i2s_dai,
-	.codec_dai = &ak4535_dai,
-	.init = h5000_ak4535_init,
-	.ops = &h5000_ops,
+static struct snd_soc_pcm_config hifi_pcm_config = {
+	.name		= "HiFi",
+	.codec		= ak4535_codec_id,
+	.codec_dai	= ak4535_codec_dai_id,
+	.platform	= pxa_platform_id,
+	.cpu_dai	= pxa2xx_i2s_id,
+	.ops		= &h5000_voice_ops,
+	.playback	= 1,
+	.capture	= 1,
 };
 
-static struct snd_soc_machine snd_soc_machine_h5000 = {
-	.name = "h5000",
-	.dai_link = &h5000_dai,
-	.num_links = 1,
+static int h5000_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
+{
+	struct snd_soc_machine *machine;
+	struct i2c_client *i2c;
+	int ret;
+
+	if (addr != AK4535_I2C_ADDR)
+		return -ENODEV;
+
+	client_template.adapter = adap;
+	client_template.addr = addr;
+
+	i2c = kmemdup(&client_template, sizeof(client_template), GFP_KERNEL);
+	if (i2c == NULL)
+		return -ENOMEM;
+	
+	ret = i2c_attach_client(i2c);
+	if (ret < 0) {
+		printk("failed to attach codec at addr %x\n", addr);
+		goto attach_err;
+	}
+	
+	machine = snd_soc_machine_create("h5000", &i2c->dev, 
+		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
+	if (machine == NULL)
+		return -ENOMEM;
+
+	machine->longname = "h5000";
+	machine->init = h5000_ak4535_init;
+	machine->private_data = i2c;
+	i2c_set_clientdata(i2c, machine);
+	
+	ret = snd_soc_pcm_create(machine, &hifi_pcm_config);
+	if (ret < 0)
+		goto err;
+	
+	ret = snd_soc_machine_register(machine);
+	return ret;
+
+err:
+	snd_soc_machine_free(machine);
+attach_err:
+	i2c_detach_client(i2c);
+	kfree(i2c);
+	return ret;
+}
+
+static int h5000_i2c_detach(struct i2c_client *client)
+{
+	struct snd_soc_machine *machine = i2c_get_clientdata(client);
+	 
+	snd_soc_machine_free(machine);
+	i2c_detach_client(client);
+	kfree(client);
+	return 0;
+}
+
+static int h5000_i2c_attach(struct i2c_adapter *adap)
+{
+	return i2c_probe(adap, &addr_data, h5000_i2c_probe);
+}
+
+static struct i2c_driver ak4535_i2c_driver = {
+	.driver = {
+		.name = "h5000 Codec",
+		.owner = THIS_MODULE,
+	},
+	.id =             I2C_DRIVERID_H5000,
+	.attach_adapter = h5000_i2c_attach,
+	.detach_client =  h5000_i2c_detach,
+	.command =        NULL,
 };
 
-static struct ak4535_setup_data h5000_codec_setup = {
-	.i2c_address = 0x10,
+static struct i2c_client client_template = {
+	.name =   "h5000",
+	.driver = &ak4535_i2c_driver,
 };
-
-static struct snd_soc_device h5000_snd_devdata = {
-	.machine = &snd_soc_machine_h5000,
-	.platform = &pxa2xx_soc_platform,
-	.codec_dev = &soc_codec_dev_ak4535,
-	.codec_data = &h5000_codec_setup,
-};
-
-static struct platform_device *h5000_snd_device;
 
 static int __init h5000_init(void)
 {
@@ -327,29 +413,22 @@ static int __init h5000_init(void)
 		return -ENODEV;
 
 	request_module("i2c-pxa");
-
-	h5000_snd_device = platform_device_alloc("soc-audio", -1);
-	if (!h5000_snd_device)
-		return -ENOMEM;
 	
 	/* enable audio codec */
 	samcop_set_gpio_b(&h5400_samcop.dev, 
 		SAMCOP_GPIO_GPB_CODEC_POWER_ON, SAMCOP_GPIO_GPB_CODEC_POWER_ON);
 
-	platform_set_drvdata(h5000_snd_device, &h5000_snd_devdata);
-
-	h5000_snd_devdata.dev = &h5000_snd_device->dev;
-	ret = platform_device_add(h5000_snd_device);
-	if (ret)
-		platform_device_put(h5000_snd_device);
+	ret = i2c_add_driver(&h5000_i2c_driver);
+	if (ret < 0)
+		printk (KERN_ERR "%s: failed to add i2c driver\n",
+			__FUNCTION__);
 
 	return ret;
-	
 };
 
 static void __exit h5000_exit(void)
 {
-	platform_device_unregister(h5000_snd_device);
+	i2c_del_driver(&h5000_i2c_driver);
 	
 	samcop_set_gpio_b(&h5400_samcop.dev, 
 		SAMCOP_GPIO_GPB_CODEC_POWER_ON | SAMCOP_GPIO_GPB_AUDIO_POWER_ON, 0);

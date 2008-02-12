@@ -58,34 +58,38 @@ static int magician_in_sel = MAGICIAN_MIC;
 
 extern struct platform_device magician_cpld;
 
-static void magician_ext_control(struct snd_soc_codec *codec)
+static void magician_ext_control(struct snd_soc_machine *machine)
 {
-	snd_soc_dapm_set_endpoint(codec, "Speaker",
-			(magician_spk_func == MAGICIAN_SPK_ON));
-
-	snd_soc_dapm_set_endpoint(codec, "Headphone Jack",
-			(magician_hp_func == MAGICIAN_HP_ON));
+	if (magician_spk_func == MAGICIAN_SPK_ON)
+		snd_soc_dapm_enable_pin(machine "Speaker");
+	else
+		snd_soc_dapm_disable_pin(machine "Speaker");
+	
+	if (magician_hp_func == MAGICIAN_HP_ON)
+		snd_soc_dapm_enable_pin(machine "Headphone Jack");
+	else
+		snd_soc_dapm_disable_pin(machine "Headphone Jack");
 
 	switch (magician_in_sel) {
 	case MAGICIAN_MIC:
-		snd_soc_dapm_set_endpoint(codec, "Headset Mic", 0);
-		snd_soc_dapm_set_endpoint(codec, "Call Mic", 1);
+		snd_soc_dapm_disable_pin(machine, "Headset Mic");
+		snd_soc_dapm_enable_pin(machine, "Call Mic");
 		break;
 	case MAGICIAN_MIC_EXT:
-		snd_soc_dapm_set_endpoint(codec, "Call Mic", 0);
-		snd_soc_dapm_set_endpoint(codec, "Headset Mic", 1);
+		snd_soc_dapm_disable_pin(machine, "Call Mic");
+		snd_soc_dapm_enable_pin(machine, "Headset Mic");
 		break;
 	}
-	snd_soc_dapm_sync_endpoints(codec);
+	snd_soc_dapm_sync(machine);
 }
 
 static int magician_startup(struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec *codec = rtd->socdev->codec;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	struct snd_soc_machine *machine = pcm_runtime->machine;
 
 	/* check the jack status at stream startup */
-	magician_ext_control(codec);
+	magician_ext_control(machine);
 
 	return 0;
 }
@@ -96,9 +100,9 @@ static int magician_startup(struct snd_pcm_substream *substream)
 static int magician_playback_hw_params(struct snd_pcm_substream *substream,
 				       struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec_dai *codec_dai = rtd->dai->codec_dai;
-	struct snd_soc_cpu_dai *cpu_dai = rtd->dai->cpu_dai;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	struct snd_soc_dai *cpu_dai = pcm_runtime->cpu_dai;
+	struct snd_soc_dai *codec_dai = pcm_runtime->codec_dai;
 	unsigned int acps, acds, div4;
 	int ret = 0;
 
@@ -135,37 +139,37 @@ static int magician_playback_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* set codec DAI configuration */
-	ret = codec_dai->dai_ops.set_fmt(codec_dai, SND_SOC_DAIFMT_MSB |
+	ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_MSB |
 			SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0)
 		return ret;
 
 	/* set cpu DAI configuration */
-	ret = cpu_dai->dai_ops.set_fmt(cpu_dai, SND_SOC_DAIFMT_MSB |
+	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_MSB |
 			SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0)
 		return ret;
 
 	/* set audio clock as clock source */
-	ret = cpu_dai->dai_ops.set_sysclk(cpu_dai, PXA2XX_SSP_CLK_AUDIO, 0,
+	ret = snd_soc_dai_set_sysclk(cpu_dai, PXA2XX_SSP_CLK_AUDIO, 0,
 			SND_SOC_CLOCK_OUT);
 	if (ret < 0)
 		return ret;
 
 	/* set the SSP audio system clock ACDS divider */
-	ret = cpu_dai->dai_ops.set_clkdiv(cpu_dai,
+	ret = snd_soc_dai_set_clkdiv(cpu_dai,
 			PXA2XX_SSP_AUDIO_DIV_ACDS, acds);
 	if (ret < 0)
 		return ret;
 
 	/* set the SSP audio system clock SCDB divider4 */
-	ret = cpu_dai->dai_ops.set_clkdiv(cpu_dai,
+	ret = snd_soc_dai_set_clkdiv(cpu_dai,
 			PXA2XX_SSP_AUDIO_DIV_SCDB, div4);
 	if (ret < 0)
 		return ret;
 
 	/* set SSP audio pll clock */
-	ret = cpu_dai->dai_ops.set_pll(cpu_dai, 0, 0, acps);
+	ret = snd_soc_dai_set_pll(cpu_dai, 0, 0, acps);
 	if (ret < 0)
 		return ret;
 
@@ -205,25 +209,25 @@ static int magician_playback_hw_free(struct snd_pcm_substream *substream)
 static int magician_capture_hw_params(struct snd_pcm_substream *substream,
 				      struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec_dai *codec_dai = rtd->dai->codec_dai;
-	struct snd_soc_cpu_dai *cpu_dai = rtd->dai->cpu_dai;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	struct snd_soc_dai *cpu_dai = pcm_runtime->cpu_dai;
+	struct snd_soc_dai *codec_dai = pcm_runtime->codec_dai;
 	int ret = 0;
 
 	/* set codec DAI configuration */
-	ret = codec_dai->dai_ops.set_fmt(codec_dai,
+	ret = snd_soc_dai_set_fmt(codec_dai,
 			SND_SOC_DAIFMT_MSB | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0)
 		return ret;
 
 	/* set cpu DAI configuration */
-	ret = cpu_dai->dai_ops.set_fmt(cpu_dai,
+	ret = snd_soc_dai_set_fmt(cpu_dai,
 			SND_SOC_DAIFMT_MSB | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0)
 		return ret;
 
 	/* set the I2S system clock as output */
-	ret = cpu_dai->dai_ops.set_sysclk(cpu_dai, PXA2XX_I2S_SYSCLK, 0,
+	ret = snd_soc_dai_set_sysclk(cpu_dai, PXA2XX_I2S_SYSCLK, 0,
 			SND_SOC_CLOCK_OUT);
 	if (ret < 0)
 		return ret;
@@ -265,13 +269,13 @@ static int magician_get_jack(struct snd_kcontrol * kcontrol,
 static int magician_set_hp(struct snd_kcontrol * kcontrol,
 			     struct snd_ctl_elem_value * ucontrol)
 {
-	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_machine *machine = snd_kcontrol_chip(kcontrol);
 
 	if (magician_hp_func == ucontrol->value.integer.value[0])
 		return 0;
 
 	magician_hp_func = ucontrol->value.integer.value[0];
-	magician_ext_control(codec);
+	magician_ext_control(machine);
 	return 1;
 }
 
@@ -285,13 +289,13 @@ static int magician_get_spk(struct snd_kcontrol * kcontrol,
 static int magician_set_spk(struct snd_kcontrol * kcontrol,
 			    struct snd_ctl_elem_value * ucontrol)
 {
-	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_machine *machine = snd_kcontrol_chip(kcontrol);
 
 	if (magician_spk_func == ucontrol->value.integer.value[0])
 		return 0;
 
 	magician_spk_func = ucontrol->value.integer.value[0];
-	magician_ext_control(codec);
+	magician_ext_control(machine);
 	return 1;
 }
 
@@ -305,7 +309,7 @@ static int magician_get_input(struct snd_kcontrol * kcontrol,
 static int magician_set_input(struct snd_kcontrol * kcontrol,
 			      struct snd_ctl_elem_value * ucontrol)
 {
-	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_machine *machine = snd_kcontrol_chip(kcontrol);
 
 	if (magician_in_sel == ucontrol->value.integer.value[0])
 		return 0;
@@ -406,20 +410,40 @@ static const struct snd_kcontrol_new uda1380_magician_controls[] = {
 			magician_set_input),
 };
 
+#define UDA1380_I2C_ADDR	0x10
+static unsigned short normal_i2c[] = { UDA1380_I2C_ADDR, I2C_CLIENT_END };
+
+/* Magic definition of all other variables and things */
+I2C_CLIENT_INSMOD;
+
+static struct i2c_driver uda1380_i2c_driver;
+static struct i2c_client client_template;
+
+static int magician_uda1380_write(void *control_data, long data, int size)
+{
+	return i2c_master_send((struct i2c_client*)control_data, 
+		(char*) data, size);
+}
+
 /*
  * Logic for a uda1380 as connected on a HTC Magician
  */
-static int magician_uda1380_init(struct snd_soc_codec *codec)
+static int magician_uda1380_init(struct snd_soc_machine *machine)
 {
+	struct snd_soc_codec *codec;
 	int i, err;
+	
+	codec = snd_soc_get_codec(machine, uda1380_codec_id);
+	if (codec == NULL)
+		return -ENODEV;
 
 	/* NC codec pins */
-	snd_soc_dapm_set_endpoint(codec, "VOUTLHP", 0);
-	snd_soc_dapm_set_endpoint(codec, "VOUTRHP", 0);
+	snd_soc_dapm_disable_pin(machine, "VOUTLHP");
+	snd_soc_dapm_disable_pin(machine, "VOUTRHP");
 
 	/* FIXME: is anything connected here? */
-	snd_soc_dapm_set_endpoint(codec, "VINL", 0);
-	snd_soc_dapm_set_endpoint(codec, "VINR", 0);
+	snd_soc_dapm_disable_pin(machine, "VINL");
+	snd_soc_dapm_disable_pin(machine, "VINR");
 
 	/* Add magician specific controls */
 	for (i = 0; i < ARRAY_SIZE(uda1380_magician_controls); i++) {
@@ -436,55 +460,120 @@ static int magician_uda1380_init(struct snd_soc_codec *codec)
 
 	/* Set up magician specific audio path interconnects */
 	for (i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(codec, audio_map[i][0],
+		snd_soc_dapm_add_route(codec, audio_map[i][0],
 				audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_sync_endpoints(codec);
+	snd_soc_dapm_sync(machine);
+	
+	snd_soc_codec_set_io(codec, NULL, magician_uda1380_write, 
+		machine->private_data);
+	
+	snd_soc_codec_init(codec, machine);
 	return 0;
 }
 
-/* magician digital audio interface glue - connects codec <--> CPU */
-static struct snd_soc_dai_link magician_dai[] = {
+static struct snd_soc_pcm_config playback_pcm_config = {
+	.name		= "HiFi Playback",
+	.codec		= uda1380_codec_id,
+	.codec_dai	= uda1380_codec_dai_id,
+	.platform	= pxa_platform_id,
+	.cpu_dai	= pxa2xx_ssp1_dai_id,
+	.ops		= &magician_playback_ops,
+	.playback	= 1,
+};
+
+static struct snd_soc_pcm_config capture_pcm_config = {
+	.name		= "HiFi Capture",
+	.codec		= uda1380_codec_id,
+	.codec_dai	= uda1380_codec_dai_id,
+	.platform	= pxa_platform_id,
+	.cpu_dai	= pxa2xx_i2s_id,
+	.ops		= &magician_capture_ops,
+	.capture	= 1,
+};
+
+static int magician_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 {
-	.name = "uda1380",
-	.stream_name = "UDA1380 Playback",
-	.cpu_dai = &pxa_ssp_dai[0],
-	.codec_dai = &uda1380_dai[UDA1380_DAI_PLAYBACK],
-	.init = magician_uda1380_init,
-	.ops = &magician_playback_ops,
-},
-{
-	.name = "uda1380",
-	.stream_name = "UDA1380 Capture",
-	.cpu_dai = &pxa_i2s_dai,
-	.codec_dai = &uda1380_dai[UDA1380_DAI_CAPTURE],
-	.ops = &magician_capture_ops,
+	struct snd_soc_machine *machine;
+	struct i2c_client *i2c;
+	int ret;
+
+	if (addr != UDA1380_I2C_ADDR)
+		return -ENODEV;
+
+	client_template.adapter = adap;
+	client_template.addr = addr;
+
+	i2c = kmemdup(&client_template, sizeof(client_template), GFP_KERNEL);
+	if (i2c == NULL)
+		return -ENOMEM;
+	
+	ret = i2c_attach_client(i2c);
+	if (ret < 0) {
+		printk("failed to attach codec at addr %x\n", addr);
+		goto attach_err;
+	}
+	
+	machine = snd_soc_machine_create("magician", &i2c->dev, 
+		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
+	if (machine == NULL)
+		return -ENOMEM;
+
+	machine->longname = "magician";
+	machine->init = magician_uda1380_init;
+	machine->private_data = i2c;
+	i2c_set_clientdata(i2c, machine);
+	
+	ret = snd_soc_pcm_create(machine, &playback_pcm_config);
+	if (ret < 0)
+		goto err;
+		
+	ret = snd_soc_pcm_create(machine, &capture_pcm_config);
+	if (ret < 0)
+		goto err;
+	
+	ret = snd_soc_machine_register(machine);
+	return ret;
+
+err:
+	snd_soc_machine_free(machine);
+attach_err:
+	i2c_detach_client(i2c);
+	kfree(i2c);
+	return ret;
 }
+
+static int magician_i2c_detach(struct i2c_client *client)
+{
+	struct snd_soc_machine *machine = i2c_get_clientdata(client);
+	 
+	snd_soc_machine_free(machine);
+	i2c_detach_client(client);
+	kfree(client);
+	return 0;
+}
+
+static int magician_i2c_attach(struct i2c_adapter *adap)
+{
+	return i2c_probe(adap, &addr_data, magician_i2c_probe);
+}
+
+static struct i2c_driver uda1380_i2c_driver = {
+	.driver = {
+		.name = "magician Codec",
+		.owner = THIS_MODULE,
+	},
+	.id =             I2C_DRIVERID_UDA1380,
+	.attach_adapter = magician_i2c_attach,
+	.detach_client =  magician_i2c_detach,
+	.command =        NULL,
 };
 
-/* magician audio machine driver */
-static struct snd_soc_machine snd_soc_machine_magician = {
-	.name = "Magician",
-	.dai_link = magician_dai,
-	.num_links = ARRAY_SIZE(magician_dai),
+static struct i2c_client client_template = {
+	.name =   "magician",
+	.driver = &uda1380_i2c_driver,
 };
-
-/* magician audio private data */
-static struct uda1380_setup_data magician_uda1380_setup = {
-	.i2c_address = 0x18,
-	.dac_clk = UDA1380_DAC_CLK_WSPLL,
-};
-
-/* magician audio subsystem */
-static struct snd_soc_device magician_snd_devdata = {
-	.machine = &snd_soc_machine_magician,
-	.platform = &pxa2xx_soc_platform,
-	.codec_dev = &soc_codec_dev_uda1380,
-	.codec_data = &magician_uda1380_setup,
-};
-
-static struct platform_device *magician_snd_device;
 
 static int __init magician_init(void)
 {
@@ -503,16 +592,10 @@ static int __init magician_init(void)
 	/* correct place? we'll need it to talk to the uda1380 */
 	request_module("i2c-pxa");
 
-	magician_snd_device = platform_device_alloc("soc-audio", -1);
-	if (!magician_snd_device)
-		return -ENOMEM;
-
-	platform_set_drvdata(magician_snd_device, &magician_snd_devdata);
-	magician_snd_devdata.dev = &magician_snd_device->dev;
-	ret = platform_device_add(magician_snd_device);
-
-	if (ret)
-		platform_device_put(magician_snd_device);
+	ret = i2c_add_driver(&magician_i2c_driver);
+	if (ret < 0)
+		printk (KERN_ERR "%s: failed to add i2c driver\n",
+			__FUNCTION__);
 
 	pxa_gpio_mode(GPIO23_SSPSCLK_MD);
 	pxa_gpio_mode(GPIO24_SSPSFRM_MD);
@@ -523,8 +606,8 @@ static int __init magician_init(void)
 
 static void __exit magician_exit(void)
 {
-	platform_device_unregister(magician_snd_device);
-
+	i2c_del_driver(&magician_i2c_driver);
+	
 	magician_egpio_disable(&magician_cpld, EGPIO_NR_MAGICIAN_SPK_POWER);
 	magician_egpio_disable(&magician_cpld, EGPIO_NR_MAGICIAN_EP_POWER);
 	magician_egpio_disable(&magician_cpld, EGPIO_NR_MAGICIAN_MIC_POWER);

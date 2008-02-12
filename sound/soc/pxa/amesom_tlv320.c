@@ -53,9 +53,9 @@
 static int tlv320_voice_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec_dai *codec_dai = rtd->dai->codec_dai;
-	struct snd_soc_cpu_dai *cpu_dai = rtd->dai->cpu_dai;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	struct snd_soc_dai *cpu_dai = pcm_runtime->cpu_dai;
+	struct snd_soc_dai *codec_dai = pcm_runtime->codec_dai;
 	int ret = 0;
 
 	//printk("tlv320_voice_hw_params enter\n");
@@ -150,6 +150,17 @@ static int amesom_init(struct snd_soc_machine *machine)
 	return 0;
 }
 
+static struct snd_soc_pcm_config hifi_pcm_config = {
+	.name		= "HiFi",
+	.codec		= tlv320_codec_id,
+	.codec_dai	= tlv320_codec_dai_id,
+	.platform	= pxa_platform_id,
+	.cpu_dai	= pxa2xx_ssp2_dai_id,
+	.ops		= &tlv320_voice_ops,
+	.playback	= 1,
+	.capture	= 1,
+};
+
 static int tlv320_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 {
 	struct snd_soc_machine *machine;
@@ -182,16 +193,7 @@ static int tlv320_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	machine->private_data = i2c;
 	i2c_set_clientdata(i2c, machine);
 	
-	ret = snd_soc_codec_create(machine, tlv320_codec_id);
-	if (ret < 0)
-		goto err;
-
-	ret = snd_soc_platform_create(machine, pxa_platform_id);
-	if (ret < 0)
-		goto err;
-
-	ret = snd_soc_pcm_create(machine, &tlv320_voice_ops, 
-		TLV320_DAI, PXA2XX_DAI_SSP2, 1, 1);
+	ret = snd_soc_pcm_create(machine, &hifi_pcm_config);
 	if (ret < 0)
 		goto err;
 	
