@@ -36,11 +36,7 @@
 
 #define AK4535_CACHEREGNUM 	0x10
 
-struct ak4535_setup_data {
-	unsigned short i2c_address;
-};
-
-extern struct snd_soc_codec_dai ak4535_dai;
-extern struct snd_soc_codec_device soc_codec_dev_ak4535;
+extern const char ak4535_codec_id[];
+extern const char ak4535_codec_dai_id[];
 
 #endif

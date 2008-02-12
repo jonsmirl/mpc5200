@@ -30,7 +30,7 @@
 #include "ak4535.h"
 
 #define AUDIO_NAME "ak4535"
-#define AK4535_VERSION "0.3"
+#define AK4535_VERSION "0.4"
 
 #define AK4535_DEBUG 0
 #if AK4535_DEBUG
@@ -38,11 +38,10 @@
 #define ak4535dbg_dump(s) if (0) {}
 #endif
 
-struct snd_soc_codec_device soc_codec_dev_ak4535;
-
 /* codec private data */
-struct ak4535_priv {
+struct ak4535_data {
 	unsigned int sysclk;
+	struct snd_soc_dai *dai;
 };
 
 /*
@@ -73,10 +72,10 @@ static inline unsigned int ak4535_read(struct snd_soc_codec *codec,
 	u8 data;
 	data = reg;
 
-	if (codec->hw_write(codec->control_data, &data, 1) != 1)
+	if (codec->machine_write(codec->control_data, (long)&data, 1) != 1)
 		return -EIO;
 
-	if (codec->hw_read(codec->control_data, &data, 1) != 1)
+	if (codec->machine_read(codec->control_data, (long)&data, 1) != 1)
 		return -EIO;
 
 	return data;
@@ -110,7 +109,7 @@ static int ak4535_write(struct snd_soc_codec *codec, unsigned int reg,
 	data[1] = value & 0xff;
 
 	ak4535_write_reg_cache (codec, reg, value);
-	if (codec->hw_write(codec->control_data, data, 2) == 2)
+	if (codec->machine_write(codec->control_data, (long)data, 2) == 2)
 		return 0;
 	else
 		return -EIO;
@@ -166,12 +165,13 @@ static const struct snd_kcontrol_new ak4535_snd_controls[] = {
 };
 
 /* add non dapm controls */
-static int ak4535_add_controls(struct snd_soc_codec *codec)
+static int ak4535_add_controls(struct snd_soc_codec *codec,
+	struct snd_card *card)
 {
 	int err, i;
 
 	for (i = 0; i < ARRAY_SIZE(ak4535_snd_controls); i++) {
-		err = snd_ctl_add(codec->card,
+		err = snd_ctl_add(card,
 			snd_soc_cnew(&ak4535_snd_controls[i],codec, NULL));
 		if (err < 0)
 			return err;
@@ -329,41 +329,41 @@ static const char *audio_map[][3] = {
 	{NULL, NULL, NULL},
 };
 
-static int ak4535_add_widgets(struct snd_soc_codec *codec)
+static int ak4535_add_widgets(struct snd_soc_codec *codec,
+	struct snd_soc_machine *machine)
 {
 	int i;
 
 	for(i = 0; i < ARRAY_SIZE(ak4535_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(codec, &ak4535_dapm_widgets[i]);
+		snd_soc_dapm_new_control(machine, codec, 
+			&ak4535_dapm_widgets[i]);
 	}
 
 	/* set up audio path audio_map interconnects */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(codec, audio_map[i][0],
+		snd_soc_dapm_add_route(machine, audio_map[i][0],
 			audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_new_widgets(codec);
+	snd_soc_dapm_init(machine);
 	return 0;
 }
 
-static int ak4535_set_dai_sysclk(struct snd_soc_codec_dai *codec_dai,
+static int ak4535_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 	int clk_id, unsigned int freq, int dir)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
-	struct ak4535_priv *ak4535 = codec->private_data;
+	struct ak4535_data *ak4535 = codec->private_data;
 
 	ak4535->sysclk = freq;
 	return 0;
 }
 
 static int ak4535_hw_params(struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params)
+	struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_device *socdev = rtd->socdev;
-	struct snd_soc_codec *codec = socdev->codec;
-	struct ak4535_priv *ak4535 = codec->private_data;
+	struct snd_soc_codec *codec = dai->codec;
+	struct ak4535_data *ak4535 = codec->private_data;
 	u8 mode2 = ak4535_read_reg_cache(codec, AK4535_MODE2) & ~(0x3 << 5);
 	int rate = params_rate(params), fs = 256;
 
@@ -387,7 +387,7 @@ static int ak4535_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int ak4535_set_dai_fmt(struct snd_soc_codec_dai *codec_dai,
+static int ak4535_set_dai_fmt(struct snd_soc_dai *codec_dai,
 		unsigned int fmt)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
@@ -412,7 +412,7 @@ static int ak4535_set_dai_fmt(struct snd_soc_codec_dai *codec_dai,
 	return 0;
 }
 
-static int ak4535_mute(struct snd_soc_codec_dai *dai, int mute)
+static int ak4535_mute(struct snd_soc_dai *dai, int mute)
 {
 	struct snd_soc_codec *codec = dai->codec;
 	u16 mute_reg = ak4535_read_reg_cache(codec, AK4535_DAC) & 0xffdf;
@@ -423,157 +423,63 @@ static int ak4535_mute(struct snd_soc_codec_dai *dai, int mute)
 	return 0;
 }
 
-static int ak4535_dapm_event(struct snd_soc_codec *codec, int event)
+static int ak4535_set_bias_level(struct snd_soc_codec *codec, 
+	enum snd_soc_dapm_bias_level level)
 {
+	struct ak4535_data *ak4535 = codec->private_data;
 	u16 i;
 
-	switch (event) {
-	case SNDRV_CTL_POWER_D0: /* full On */
-		ak4535_mute(codec->dai, 0);
+	switch (level) {
+	case SND_SOC_BIAS_ON: /* full On */
+		ak4535_mute(ak4535->dai, 0);
 	/* vref/mid, clk and osc on, dac unmute, active */
-	case SNDRV_CTL_POWER_D1: /* partial On */
-	case SNDRV_CTL_POWER_D2: /* partial On */
-		ak4535_mute(codec->dai, 1);
+	case SND_SOC_BIAS_PREPARE: /* partial On */
+		ak4535_mute(ak4535->dai, 1);
 		break;
-	case SNDRV_CTL_POWER_D3hot: /* Off, with power */
+	case SND_SOC_BIAS_STANDBY: /* Off, with power */
 		/* everything off except vref/vmid, dac mute, inactive */
 		i = ak4535_read_reg_cache (codec, AK4535_PM1);
 		ak4535_write(codec, AK4535_PM1, i|0x80);
 		i = ak4535_read_reg_cache (codec, AK4535_PM2);
 		ak4535_write(codec, AK4535_PM2, i & (~0x80));
 		break;
-	case SNDRV_CTL_POWER_D3cold: /* Off, without power */
+	case SND_SOC_BIAS_OFF: /* Off, without power */
 		/* everything off, inactive */
 		i = ak4535_read_reg_cache (codec, AK4535_PM1);
 		ak4535_write(codec, AK4535_PM1, i & (~0x80));
 		break;
 	}
-	codec->dapm_state = event;
+	codec->bias_level = level;
 	ak4535dbg_dump (codec);
 	return 0;
 }
 
-#define AK4535_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 |\
-		SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_22050 | SNDRV_PCM_RATE_44100 | \
-		SNDRV_PCM_RATE_48000)
-
-struct snd_soc_codec_dai ak4535_dai = {
-	.name = "AK4535",
-	.playback = {
-		.stream_name = "Playback",
-		.channels_min = 1,
-		.channels_max = 2,
-		.rates = AK4535_RATES,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
-	.capture = {
-		.stream_name = "Capture",
-		.channels_min = 1,
-		.channels_max = 2,
-		.rates = AK4535_RATES,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
-	.ops = {
-		.hw_params = ak4535_hw_params,
-	},
-	.dai_ops = {
-		.set_fmt = ak4535_set_dai_fmt,
-		.digital_mute = ak4535_mute,
-		.set_sysclk = ak4535_set_dai_sysclk,
-	},
-};
-EXPORT_SYMBOL_GPL(ak4535_dai);
-
 static int ak4535_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->codec;
+	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
 
-	ak4535_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
+	ak4535_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
 }
 
 static int ak4535_resume(struct platform_device *pdev)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->codec;
+	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
+	
 	ak4535_sync(codec);
-	ak4535_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
-	ak4535_dapm_event(codec, codec->suspend_dapm_state);
+	ak4535_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+	ak4535_set_bias_level(codec, codec->suspend_bias_level);
 	return 0;
 }
 
 /*
- * initialise the AK4535 driver
- * register the mixer and dsp interfaces with the kernel
+ * initialise the AK4535 codec
  */
-static int ak4535_init(struct snd_soc_device *socdev)
-{
-	struct snd_soc_codec *codec = socdev->codec;
-	int ret = 0;
-
-	codec->name = "AK4535";
-	codec->owner = THIS_MODULE;
-	codec->read = ak4535_read_reg_cache;
-	codec->write = ak4535_write;
-	codec->dapm_event = ak4535_dapm_event;
-	codec->dai = &ak4535_dai;
-	codec->num_dai = 1;
-	codec->reg_cache_size = sizeof(ak4535_reg);
-	codec->reg_cache = kmemdup(ak4535_reg, sizeof(ak4535_reg), GFP_KERNEL);
-
-	if (codec->reg_cache == NULL)
-		return -ENOMEM;
-
-	/* register pcms */
-	ret = snd_soc_new_pcms(socdev, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
-	if (ret < 0) {
-		printk(KERN_ERR "ak4535: failed to create pcms\n");
-		goto pcm_err;
-	}
-
-	/* power on device */
-	ak4535_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
-
-	ak4535_add_controls(codec);
-	ak4535_add_widgets(codec);
-	ret = snd_soc_register_card(socdev);
-	if (ret < 0) {
-		printk(KERN_ERR "ak4535: failed to register card\n");
-		goto card_err;
-	}
-
-	return ret;
-
-card_err:
-	snd_soc_free_pcms(socdev);
-	snd_soc_dapm_free(socdev);
-pcm_err:
-	kfree(codec->reg_cache);
-
-	return ret;
-}
-
-/*
- * initialise the WM8731 codec
- */
-static int ak4535_probe_codec(struct snd_soc_codec *codec,
+static int ak4535_codec_init(struct snd_soc_codec *codec,
 	struct snd_soc_machine *machine)
 {
-	int reg;
-
-	ak4535_reset(codec);
-
 	/* power on device */
-	ak4535_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
-
-	/* set the update bits */
-	reg = ak4535_read_reg_cache(codec, WM8731_LOUT1V);
-	ak4535_write(codec, WM8731_LOUT1V, reg | 0x0100);
-	reg = ak4535_read_reg_cache(codec, WM8731_ROUT1V);
-	ak4535_write(codec, WM8731_ROUT1V, reg | 0x0100);
-	reg = ak4535_read_reg_cache(codec, WM8731_LINVOL);
-	ak4535_write(codec, WM8731_LINVOL, reg | 0x0100);
-	reg = ak4535_read_reg_cache(codec, WM8731_RINVOL);
-	ak4535_write(codec, WM8731_RINVOL, reg | 0x0100);
+	ak4535_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 	
 	ak4535_add_controls(codec, machine->card);
 	ak4535_add_widgets(codec, machine);
@@ -581,156 +487,158 @@ static int ak4535_probe_codec(struct snd_soc_codec *codec,
 	return 0;
 }
 
-static struct snd_soc_codec_ops ak4535_codec_ops = {
-	.dapm_event	= ak4535_dapm_event,
-	.read		= ak4535_read_reg_cache,
-	.write		= ak4535_write,
-	.probe_codec	= ak4535_probe_codec,
-};
-
-static int ak4535_codec_probe(struct device *dev)
+static void ak4535_codec_exit(struct snd_soc_codec *codec,
+	struct snd_soc_machine *machine)
 {
-	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
-
-	info("WM8731 Audio Codec %s", WM8731_VERSION);
-
-	codec->reg_cache = kmemdup(ak4535_reg, sizeof(ak4535_reg), GFP_KERNEL);
-	if (codec->reg_cache == NULL)
-		return -ENOMEM;
-	codec->reg_cache_size = sizeof(ak4535_reg);
-	
-	codec->owner = THIS_MODULE;
-	codec->ops = &ak4535_codec_ops;
-	return 0;
+	ak4535_set_bias_level(codec, SND_SOC_BIAS_OFF);
 }
 
-static int ak4535_codec_remove(struct device *dev)
-{
-	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
-	
-	if (codec->control_data)
-		ak4535_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
-	kfree(codec->reg_cache);
-	return 0;
-}
-
-#define WM8731_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 |\
+#define AK4535_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 |\
 		SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_22050 |\
-		SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 |\
-		SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_88200 |\
-		SNDRV_PCM_RATE_96000)
+		SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000)
 
-#define WM8731_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |\
-	SNDRV_PCM_FMTBIT_S24_LE)
 
-static const struct snd_soc_pcm_stream ak4535_dai_playback = {
+#define AK4535_FORMATS SNDRV_PCM_FMTBIT_S16_LE
+
+static struct snd_soc_dai_caps ak4535_playback = {
 	.stream_name	= "Playback",
 	.channels_min	= 1,
 	.channels_max	= 2,
-	.rates		= WM8731_RATES,
-	.formats	= WM8731_FORMATS,
+	.rates		= AK4535_RATES,
+	.formats	= AK4535_FORMATS,
 };
 
-static const struct snd_soc_pcm_stream ak4535_dai_capture = {
+static struct snd_soc_dai_caps ak4535_capture = {
 	.stream_name	= "Capture",
 	.channels_min	= 1,
 	.channels_max	= 2,
-	.rates		= WM8731_RATES,
-	.formats	= WM8731_FORMATS,
+	.rates		= AK4535_RATES,
+	.formats	= AK4535_FORMATS,
 };
 
-/* dai ops, called by machine drivers */
-static const struct snd_soc_dai_ops ak4535_dai_ops = {
+static struct snd_soc_dai_ops ak4535_dai_ops = {
+	/* dai ops */
 	.digital_mute	= ak4535_mute,
 	.set_sysclk	= ak4535_set_dai_sysclk,
 	.set_fmt	= ak4535_set_dai_fmt,
-};
-
-/* audio ops, called by alsa */
-static const struct snd_soc_ops ak4535_dai_audio_ops = {
+	
+	/* alsa ops */
 	.hw_params	= ak4535_hw_params,
-	.prepare	= ak4535_prepare,
-	.shutdown	= ak4535_shutdown,
 };
 
-static int ak4535_dai_probe(struct device *dev)
+/* for modprobe */
+const char ak4535_codec_id[] = "ak4535-codec";
+EXPORT_SYMBOL_GPL(ak4535_codec_id);
+
+const char ak4535_codec_dai_id[] = "ak4535-codec-dai";
+EXPORT_SYMBOL_GPL(ak4535_codec_dai_id);
+
+static int ak4535_dai_probe(struct ak4535_data *ak4535, struct device *dev)
 {
-	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
-	struct ak4535_priv *ak4535;
-	
-	ak4535 = kzalloc(sizeof(struct ak4535_priv), GFP_KERNEL);
-	if (ak4535 == NULL)
+	struct snd_soc_dai *dai;
+	int ret;
+
+	dai = snd_soc_dai_allocate();
+	if (dai == NULL)
 		return -ENOMEM;
-	
-	dai->private_data = ak4535;
+
+	dai->name = ak4535_codec_dai_id;
 	dai->ops = &ak4535_dai_ops;
-	dai->audio_ops = &ak4535_dai_audio_ops;
-	dai->capture = &ak4535_dai_capture;
-	dai->playback = &ak4535_dai_playback;
+	dai->playback = &ak4535_playback;
+	dai->capture = &ak4535_capture;
+	dai->dev = dev;
+	ret = snd_soc_register_codec_dai(dai);
+	if (ret < 0) {
+		snd_soc_dai_free(dai);
+		return ret;
+	}
+	ak4535->dai = dai;
 	return 0;
 }
 
-static int ak4535_dai_remove(struct device *dev)
+static int ak4535_codec_probe(struct platform_device *pdev)
 {
-	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
-	kfree(dai->private_data);
+	struct snd_soc_codec *codec;
+	struct ak4535_data *ak4535;
+	int ret;
+
+	printk(KERN_INFO "AK4535 Audio Codec %s", AK4535_VERSION);
+
+	codec = snd_soc_codec_allocate();
+	if (codec == NULL)
+		return -ENOMEM;
+
+	ak4535 = kzalloc(sizeof(struct ak4535_data), GFP_KERNEL);
+	if (ak4535 == NULL) {
+		ret = -ENOMEM;
+		goto ak4535_err;
+	}
+
+	codec->dev = &pdev->dev;
+	codec->name = ak4535_codec_id;
+	codec->set_bias_level = ak4535_set_bias_level;
+	codec->codec_read = ak4535_read_reg_cache;
+	codec->codec_write = ak4535_write;
+	codec->init = ak4535_codec_init;
+	codec->exit = ak4535_codec_exit;
+	codec->reg_cache_size = AK4535_CACHEREGNUM;
+	codec->reg_cache_step = 1;
+	codec->private_data = ak4535;
+	platform_set_drvdata(pdev, codec);
+		
+	ret = snd_soc_register_codec(codec);
+	if (ret < 0)
+		goto codec_err;
+	ret = ak4535_dai_probe(ak4535, &pdev->dev);
+	if (ret < 0)
+		goto dai_err;
+	return ret;
+
+dai_err:
+	snd_soc_register_codec(codec);
+codec_err:
+	kfree(ak4535);
+ak4535_err:
+	snd_soc_codec_free(codec);
+	return ret;
+}
+
+static int ak4535_codec_remove(struct platform_device *pdev)
+{
+	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
+	struct ak4535_data *ak4535 = codec->private_data;
+	
+	snd_soc_unregister_codec_dai(ak4535->dai);
+	snd_soc_dai_free(ak4535->dai);
+	kfree(ak4535);
+	snd_soc_unregister_codec(codec);
+	snd_soc_codec_free(codec);
 	return 0;
 }
 
-const char ak4535_codec[SND_SOC_CODEC_NAME_SIZE] = "ak4535-codec";
-EXPORT_SYMBOL_GPL(ak4535_codec);
-
-static struct snd_soc_device_driver ak4535_codec_driver = {
-	.type	= SND_SOC_BUS_TYPE_CODEC,
-	.driver	= {
-		.name 		= ak4535_codec,
+static struct platform_driver ak4535_codec_driver = {
+	.driver = {
+		.name		= ak4535_codec_id,
 		.owner		= THIS_MODULE,
-		.bus 		= &asoc_bus_type,
-		.probe		= ak4535_codec_probe,
-		.remove		= __devexit_p(ak4535_codec_remove),
-		.suspend	= ak4535_suspend,
-		.resume		= ak4535_resume,
 	},
-};
-
-const char ak4535_hifi_dai[SND_SOC_CODEC_NAME_SIZE] = "ak4535-hifi-dai";
-EXPORT_SYMBOL_GPL(ak4535_hifi_dai);
-
-static struct snd_soc_device_driver ak4535_hifi_dai_driver = {
-	.type	= SND_SOC_BUS_TYPE_DAI,
-	.driver	= {
-		.name 		= ak4535_hifi_dai,
-		.owner		= THIS_MODULE,
-		.bus 		= &asoc_bus_type,
-		.probe		= ak4535_dai_probe,
-		.remove		= __devexit_p(ak4535_dai_remove),
-	},
+	.probe		= ak4535_codec_probe,
+	.remove		= __devexit_p(ak4535_codec_remove),
+	.suspend	= ak4535_suspend,
+	.resume		= ak4535_resume,
 };
 
 static __init int ak4535_init(void)
 {
-	int ret = 0;
-	
-	ret = driver_register(&ak4535_codec_driver.driver);
-	if (ret < 0)
-		return ret;
-	ret = driver_register(&ak4535_hifi_dai_driver.driver);
-	if (ret < 0) {
-		driver_unregister(&ak4535_codec_driver.driver);
-		return ret;
-	}
-	return ret;
+	return platform_driver_register(&ak4535_codec_driver);
 }
 
 static __exit void ak4535_exit(void)
 {
-	driver_unregister(&ak4535_hifi_dai_driver.driver);
-	driver_unregister(&ak4535_codec_driver.driver);
+	platform_driver_unregister(&ak4535_codec_driver);
 }
 
 module_init(ak4535_init);
 module_exit(ak4535_exit);
-
 
 MODULE_DESCRIPTION("Soc AK4535 driver");
 MODULE_AUTHOR("Richard Purdie");
