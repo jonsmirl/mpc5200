@@ -53,7 +53,6 @@
 #include <asm/system.h>
 #include <asm/vpe.h>
 #include <asm/kspd.h>
-#include <asm/mips_mt.h>
 
 typedef void *vpe_handle;
 
@@ -470,7 +469,7 @@ static int apply_r_mips_lo16(struct module *me, uint32_t *location,
 			 */
  			if (v != l->value) {
 				printk(KERN_DEBUG "VPE loader: "
-				       "apply_r_mips_lo16/hi16: 	"
+				       "apply_r_mips_lo16/hi16: \t"
 				       "inconsistent value information\n");
 				return -ENOEXEC;
 			}
@@ -629,7 +628,7 @@ static void simplify_symbols(Elf_Shdr * sechdrs,
 			break;
 
 		case SHN_MIPS_SCOMMON:
-			printk(KERN_DEBUG "simplify_symbols: ignoring SHN_MIPS_SCOMMON"
+			printk(KERN_DEBUG "simplify_symbols: ignoring SHN_MIPS_SCOMMON "
 			       "symbol <%s> st_shndx %d\n", strtab + sym[i].st_name,
 			       sym[i].st_shndx);
 			// .sbss section

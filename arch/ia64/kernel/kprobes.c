@@ -182,8 +182,8 @@ static int __kprobes unsupported_inst(uint template, uint  slot,
 	qp = kprobe_inst & 0x3f;
 	if (is_cmp_ctype_unc_inst(template, slot, major_opcode, kprobe_inst)) {
 		if (slot == 1 && qp)  {
-			printk(KERN_WARNING "Kprobes on cmp unc"
-					"instruction on slot 1 at <0x%lx>"
+			printk(KERN_WARNING "Kprobes on cmp unc "
+					"instruction on slot 1 at <0x%lx> "
 					"is not supported\n", addr);
 			return -EINVAL;
 
@@ -221,8 +221,8 @@ static int __kprobes unsupported_inst(uint template, uint  slot,
 			 * bit 12 to be equal to 1
 			 */
 			if (slot == 1 && qp) {
-				printk(KERN_WARNING "Kprobes on test bit"
-						"instruction on slot at <0x%lx>"
+				printk(KERN_WARNING "Kprobes on test bit "
+						"instruction on slot at <0x%lx> "
 						"is not supported\n", addr);
 				return -EINVAL;
 			}
@@ -242,7 +242,7 @@ static int __kprobes unsupported_inst(uint template, uint  slot,
 			 */
 			int x6=(kprobe_inst >> 27) & 0x3F;
 			if ((x6 == 0x10) || (x6 == 0x11)) {
-				printk(KERN_WARNING "Kprobes on"
+				printk(KERN_WARNING "Kprobes on "
 					"Indirect Predict is not supported\n");
 				return -EINVAL;
 			}
@@ -381,9 +381,10 @@ static void __kprobes save_previous_kprobe(struct kprobe_ctlblk *kcb)
 static void __kprobes restore_previous_kprobe(struct kprobe_ctlblk *kcb)
 {
 	unsigned int i;
-	i = atomic_sub_return(1, &kcb->prev_kprobe_index);
-	__get_cpu_var(current_kprobe) = kcb->prev_kprobe[i].kp;
-	kcb->kprobe_status = kcb->prev_kprobe[i].status;
+	i = atomic_read(&kcb->prev_kprobe_index);
+	__get_cpu_var(current_kprobe) = kcb->prev_kprobe[i-1].kp;
+	kcb->kprobe_status = kcb->prev_kprobe[i-1].status;
+	atomic_sub(1, &kcb->prev_kprobe_index);
 }
 
 static void __kprobes set_current_kprobe(struct kprobe *p,
@@ -435,6 +436,23 @@ int __kprobes trampoline_probe_handler(struct kprobe *p, struct pt_regs *regs)
 			/* another task is sharing our hash bucket */
 			continue;
 
+		orig_ret_address = (unsigned long)ri->ret_addr;
+		if (orig_ret_address != trampoline_address)
+			/*
+			 * This is the real return address. Any other
+			 * instances associated with this task are for
+			 * other calls deeper on the call stack
+			 */
+			break;
+	}
+
+	regs->cr_iip = orig_ret_address;
+
+	hlist_for_each_entry_safe(ri, node, tmp, head, hlist) {
+		if (ri->task != current)
+			/* another task is sharing our hash bucket */
+			continue;
+
 		if (ri->rp && ri->rp->handler)
 			ri->rp->handler(ri, regs);
 
@@ -451,8 +469,6 @@ int __kprobes trampoline_probe_handler(struct kprobe *p, struct pt_regs *regs)
 	}
 
 	kretprobe_assert(ri, orig_ret_address, trampoline_address);
-
-	regs->cr_iip = orig_ret_address;
 
 	reset_current_kprobe();
 	spin_unlock_irqrestore(&kretprobe_lock, flags);

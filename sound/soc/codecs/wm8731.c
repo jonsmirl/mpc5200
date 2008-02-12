@@ -18,7 +18,6 @@
 #include <linux/delay.h>
 #include <linux/pm.h>
 #include <linux/platform_device.h>
-#include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -501,14 +500,14 @@ static int wm8731_codec_init(struct snd_soc_codec *codec,
 
 	/* set the update bits */
 	reg = wm8731_read_reg_cache(codec, WM8731_LOUT1V);
-	wm8731_write(codec, WM8731_LOUT1V, reg | 0x0100);
+	wm8731_write(codec, WM8731_LOUT1V, reg & ~0x0100);
 	reg = wm8731_read_reg_cache(codec, WM8731_ROUT1V);
-	wm8731_write(codec, WM8731_ROUT1V, reg | 0x0100);
+	wm8731_write(codec, WM8731_ROUT1V, reg & ~0x0100);
 	reg = wm8731_read_reg_cache(codec, WM8731_LINVOL);
-	wm8731_write(codec, WM8731_LINVOL, reg | 0x0100);
+	wm8731_write(codec, WM8731_LINVOL, reg & ~0x0100);
 	reg = wm8731_read_reg_cache(codec, WM8731_RINVOL);
-	wm8731_write(codec, WM8731_RINVOL, reg | 0x0100);
-	
+	wm8731_write(codec, WM8731_RINVOL, reg & ~0x0100);
+		
 	wm8731_add_controls(codec, machine->card);
 	wm8731_add_widgets(codec, machine);
 

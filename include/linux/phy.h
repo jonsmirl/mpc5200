@@ -58,6 +58,8 @@ typedef enum {
 	PHY_INTERFACE_MODE_RMII,
 	PHY_INTERFACE_MODE_RGMII,
 	PHY_INTERFACE_MODE_RGMII_ID,
+	PHY_INTERFACE_MODE_RGMII_RXID,
+	PHY_INTERFACE_MODE_RGMII_TXID,
 	PHY_INTERFACE_MODE_RTBI
 } phy_interface_t;
 
@@ -86,7 +88,7 @@ struct mii_bus {
 
 	/* A lock to ensure that only one thing can read/write
 	 * the MDIO bus at a time */
-	spinlock_t mdio_lock;
+	struct mutex mdio_lock;
 
 	struct device *dev;
 
@@ -282,10 +284,11 @@ struct phy_device {
 
 	/* Interrupt and Polling infrastructure */
 	struct work_struct phy_queue;
+	struct work_struct state_queue;
 	struct timer_list phy_timer;
 	atomic_t irq_disable;
 
-	spinlock_t lock;
+	struct mutex lock;
 
 	struct net_device *attached_dev;
 
@@ -401,6 +404,7 @@ int phy_mii_ioctl(struct phy_device *phydev,
 int phy_start_interrupts(struct phy_device *phydev);
 void phy_print_status(struct phy_device *phydev);
 struct phy_device* phy_device_create(struct mii_bus *bus, int addr, int phy_id);
+void phy_device_free(struct phy_device *phydev);
 
 extern struct bus_type mdio_bus_type;
 #endif /* __PHY_H */

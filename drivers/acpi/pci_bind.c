@@ -44,6 +44,8 @@ struct acpi_pci_data {
 	struct pci_dev *dev;
 };
 
+static int acpi_pci_unbind(struct acpi_device *device);
+
 static void acpi_pci_data_handler(acpi_handle handle, u32 function,
 				  void *context)
 {
@@ -267,7 +269,7 @@ int acpi_pci_bind(struct acpi_device *device)
 	return result;
 }
 
-int acpi_pci_unbind(struct acpi_device *device)
+static int acpi_pci_unbind(struct acpi_device *device)
 {
 	int result = 0;
 	acpi_status status = AE_OK;
@@ -294,9 +296,6 @@ int acpi_pci_unbind(struct acpi_device *device)
 	    acpi_get_data(device->handle, acpi_pci_data_handler,
 			  (void **)&data);
 	if (ACPI_FAILURE(status)) {
-		ACPI_EXCEPTION((AE_INFO, status,
-				"Unable to get data from device %s",
-				acpi_device_bid(device)));
 		result = -ENODEV;
 		goto end;
 	}

@@ -21,7 +21,7 @@
 #define SND_SOC_NOPM	-1
 
 /*
- * SoC dynamic audio power managment
+ * SoC dynamic audio power management
  *
  * We can have upto 4 power domains
  *  1. Codec domain - VREF, VMID
@@ -183,6 +183,7 @@
 	.get = snd_soc_dapm_get_volsw, .put = snd_soc_dapm_put_volsw, \
 	.private_value = (reg) | ((shift_left) << 8) | ((shift_right) << 12) |\
 		 ((max) << 16) | ((invert) << 24) }
+
 #define SOC_DAPM_ENUM(xname, xenum) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
 	.info = snd_soc_info_enum_double, \
@@ -380,12 +381,6 @@ int snd_soc_dapm_disable_pin(struct snd_soc_machine *machine, char *pin);
  */
 int snd_soc_dapm_sync(struct snd_soc_machine *machine);
 
-/* dapm events signalling */
-int snd_soc_dapm_stream_event(struct snd_soc_machine *machine, char *stream,
-	enum snd_soc_dapm_stream_event event);
-int snd_soc_dapm_set_bias(struct snd_soc_pcm_runtime *pcm_runtime, 
-	enum snd_soc_dapm_bias_level level);
-
 /* dapm sys fs - used by the core */
 int snd_soc_dapm_sys_add(struct snd_soc_machine *machine);
 
@@ -443,7 +438,7 @@ struct snd_soc_dapm_widget {
 
 	/* external events */
 	unsigned short event_flags;	/* flags to specify event types */
-	int (*event)(struct snd_soc_dapm_widget*, int);
+	int (*event)(struct snd_soc_dapm_widget*, struct snd_kcontrol *, int);
 
 	/* ALSA kcontrols that relate to this widget */
 	int num_kcontrols;

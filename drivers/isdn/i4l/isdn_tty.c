@@ -85,6 +85,8 @@ isdn_tty_try_read(modem_info * info, struct sk_buff *skb)
 								tty_insert_flip_char(tty, DLE, 0);
 							tty_insert_flip_char(tty, *dp++, 0);
 						}
+						if (*dp == DLE)
+							tty_insert_flip_char(tty, DLE, 0);
 						last = *dp;
 					} else {
 #endif
@@ -1915,7 +1917,6 @@ isdn_tty_modem_init(void)
 		info->owner = THIS_MODULE;
 #endif
 		spin_lock_init(&info->readlock);
-		init_MUTEX(&info->write_sem);
 		sprintf(info->last_cause, "0000");
 		sprintf(info->last_num, "none");
 		info->last_dir = 0;
@@ -2645,7 +2646,12 @@ isdn_tty_modem_result(int code, modem_info * info)
 		if ((info->flags & ISDN_ASYNC_CLOSING) || (!info->tty)) {
 			return;
 		}
+#ifdef CONFIG_ISDN_AUDIO
+		if ( !info->vonline )
+			tty_ldisc_flush(info->tty);
+#else
 		tty_ldisc_flush(info->tty);
+#endif
 		if ((info->flags & ISDN_ASYNC_CHECK_CD) &&
 		    (!((info->flags & ISDN_ASYNC_CALLOUT_ACTIVE) &&
 		       (info->flags & ISDN_ASYNC_CALLOUT_NOHUP)))) {

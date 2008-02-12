@@ -96,10 +96,10 @@ static void s3c2410_spigpio_chipselect(struct spi_device *dev, int value)
 
 static int s3c2410_spigpio_probe(struct platform_device *dev)
 {
+	struct s3c2410_spigpio_info *info;
 	struct spi_master	*master;
 	struct s3c2410_spigpio  *sp;
 	int ret;
-	int i;
 
 	master = spi_alloc_master(&dev->dev, sizeof(struct s3c2410_spigpio));
 	if (master == NULL) {
@@ -113,10 +113,11 @@ static int s3c2410_spigpio_probe(struct platform_device *dev)
 	platform_set_drvdata(dev, sp);
 
 	/* copy in the plkatform data */
-	sp->info = dev->dev.platform_data;
+	info = sp->info = dev->dev.platform_data;
 
 	/* setup spi bitbang adaptor */
 	sp->bitbang.master = spi_master_get(master);
+	sp->bitbang.master->bus_num = info->bus_num;
 	sp->bitbang.chipselect = s3c2410_spigpio_chipselect;
 
 	sp->bitbang.txrx_word[SPI_MODE_0] = s3c2410_spigpio_txrx_mode0;
@@ -124,28 +125,22 @@ static int s3c2410_spigpio_probe(struct platform_device *dev)
 	sp->bitbang.txrx_word[SPI_MODE_2] = s3c2410_spigpio_txrx_mode2;
 	sp->bitbang.txrx_word[SPI_MODE_3] = s3c2410_spigpio_txrx_mode3;
 
-	/* set state of spi pins */
-	s3c2410_gpio_setpin(sp->info->pin_clk, 0);
-	s3c2410_gpio_setpin(sp->info->pin_mosi, 0);
+	/* set state of spi pins, always assume that the clock is
+	 * available, but do check the MOSI and MISO. */
+	s3c2410_gpio_setpin(info->pin_clk, 0);
+	s3c2410_gpio_cfgpin(info->pin_clk, S3C2410_GPIO_OUTPUT);
 
-	s3c2410_gpio_cfgpin(sp->info->pin_clk, S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(sp->info->pin_mosi, S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_cfgpin(sp->info->pin_miso, S3C2410_GPIO_INPUT);
+	if (info->pin_mosi < S3C2410_GPH10) {
+		s3c2410_gpio_setpin(info->pin_mosi, 0);
+		s3c2410_gpio_cfgpin(info->pin_mosi, S3C2410_GPIO_OUTPUT);
+	}
+
+	if (info->pin_miso != S3C2410_GPA0 && info->pin_miso < S3C2410_GPH10)
+		s3c2410_gpio_cfgpin(info->pin_miso, S3C2410_GPIO_INPUT);
 
 	ret = spi_bitbang_start(&sp->bitbang);
 	if (ret)
 		goto err_no_bitbang;
-
-	/* register the chips to go with the board */
-
-	for (i = 0; i < sp->info->board_size; i++) {
-		dev_info(&dev->dev, "registering %p: %s\n",
-			 &sp->info->board_info[i],
-			 sp->info->board_info[i].modalias);
-
-		sp->info->board_info[i].controller_data = sp;
-		spi_new_device(master, sp->info->board_info + i);
-	}
 
 	return 0;
 

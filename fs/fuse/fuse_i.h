@@ -215,7 +215,11 @@ struct fuse_req {
 	/** Data for asynchronous requests */
 	union {
 		struct fuse_forget_in forget_in;
-		struct fuse_release_in release_in;
+		struct {
+			struct fuse_release_in in;
+			struct vfsmount *vfsmount;
+			struct dentry *dentry;
+		} release;
 		struct fuse_init_in init_in;
 		struct fuse_init_out init_out;
 		struct fuse_read_in read_in;
@@ -237,12 +241,6 @@ struct fuse_req {
 
 	/** File used in the request (or NULL) */
 	struct fuse_file *ff;
-
-	/** vfsmount used in release */
-	struct vfsmount *vfsmount;
-
-	/** dentry used in release */
-	struct dentry *dentry;
 
 	/** Request completion callback */
 	void (*end)(struct fuse_conn *, struct fuse_req *);
@@ -297,6 +295,12 @@ struct fuse_conn {
 
 	/** Number of requests currently in the background */
 	unsigned num_background;
+
+	/** Number of background requests currently queued for userspace */
+	unsigned active_background;
+
+	/** The list of background requests set aside for later queuing */
+	struct list_head bg_queue;
 
 	/** Pending interrupts */
 	struct list_head interrupts;
@@ -447,7 +451,7 @@ void fuse_send_forget(struct fuse_conn *fc, struct fuse_req *req,
 /**
  * Initialize READ or READDIR request
  */
-void fuse_read_fill(struct fuse_req *req, struct fuse_file *ff,
+void fuse_read_fill(struct fuse_req *req, struct file *file,
 		    struct inode *inode, loff_t pos, size_t count, int opcode);
 
 /**
@@ -593,3 +597,6 @@ int fuse_valid_type(int m);
 int fuse_allow_task(struct fuse_conn *fc, struct task_struct *task);
 
 u64 fuse_lock_owner_id(struct fuse_conn *fc, fl_owner_t id);
+
+int fuse_update_attributes(struct inode *inode, struct kstat *stat,
+			   struct file *file, bool *refreshed);

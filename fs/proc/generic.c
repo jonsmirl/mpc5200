@@ -25,12 +25,6 @@
 
 #include "internal.h"
 
-static ssize_t proc_file_read(struct file *file, char __user *buf,
-			      size_t nbytes, loff_t *ppos);
-static ssize_t proc_file_write(struct file *file, const char __user *buffer,
-			       size_t count, loff_t *ppos);
-static loff_t proc_file_lseek(struct file *, loff_t, int);
-
 DEFINE_SPINLOCK(proc_subdir_lock);
 
 static int proc_match(int len, const char *name, struct proc_dir_entry *de)
@@ -39,12 +33,6 @@ static int proc_match(int len, const char *name, struct proc_dir_entry *de)
 		return 0;
 	return !memcmp(name, de->name, len);
 }
-
-static const struct file_operations proc_file_operations = {
-	.llseek		= proc_file_lseek,
-	.read		= proc_file_read,
-	.write		= proc_file_write,
-};
 
 /* buffer size is one page but our output routines use some slack for overruns */
 #define PROC_BLOCK_SIZE	(PAGE_SIZE - 1024)
@@ -233,6 +221,12 @@ proc_file_lseek(struct file *file, loff_t offset, int orig)
 	return retval;
 }
 
+static const struct file_operations proc_file_operations = {
+	.llseek		= proc_file_lseek,
+	.read		= proc_file_read,
+	.write		= proc_file_write,
+};
+
 static int proc_notify_change(struct dentry *dentry, struct iattr *iattr)
 {
 	struct inode *inode = dentry->d_inode;
@@ -397,18 +391,21 @@ struct dentry *proc_lookup(struct inode * dir, struct dentry *dentry, struct nam
 			if (de->namelen != dentry->d_name.len)
 				continue;
 			if (!memcmp(dentry->d_name.name, de->name, de->namelen)) {
-				unsigned int ino = de->low_ino;
+				unsigned int ino;
 
+				if (de->shadow_proc)
+					de = de->shadow_proc(current, de);
+				ino = de->low_ino;
 				de_get(de);
 				spin_unlock(&proc_subdir_lock);
 				error = -EINVAL;
 				inode = proc_get_inode(dir->i_sb, ino, de);
-				spin_lock(&proc_subdir_lock);
-				break;
+				goto out_unlock;
 			}
 		}
 	}
 	spin_unlock(&proc_subdir_lock);
+out_unlock:
 	unlock_kernel();
 
 	if (inode) {
@@ -524,6 +521,7 @@ static const struct inode_operations proc_dir_inode_operations = {
 static int proc_register(struct proc_dir_entry * dir, struct proc_dir_entry * dp)
 {
 	unsigned int i;
+	struct proc_dir_entry *tmp;
 	
 	i = get_inode_number();
 	if (i == 0)
@@ -547,6 +545,15 @@ static int proc_register(struct proc_dir_entry * dir, struct proc_dir_entry * dp
 	}
 
 	spin_lock(&proc_subdir_lock);
+
+	for (tmp = dir->subdir; tmp; tmp = tmp->next)
+		if (strcmp(tmp->name, dp->name) == 0) {
+			printk(KERN_WARNING "proc_dir_entry '%s' already "
+					"registered\n", dp->name);
+			dump_stack();
+			break;
+		}
+
 	dp->next = dir->subdir;
 	dp->parent = dir;
 	dir->subdir = dp;
@@ -555,42 +562,7 @@ static int proc_register(struct proc_dir_entry * dir, struct proc_dir_entry * dp
 	return 0;
 }
 
-/*
- * Kill an inode that got unregistered..
- */
-static void proc_kill_inodes(struct proc_dir_entry *de)
-{
-	struct list_head *p;
-	struct super_block *sb;
-
-	/*
-	 * Actually it's a partial revoke().
-	 */
-	spin_lock(&sb_lock);
-	list_for_each_entry(sb, &proc_fs_type.fs_supers, s_instances) {
-		file_list_lock();
-		list_for_each(p, &sb->s_files) {
-			struct file *filp = list_entry(p, struct file,
-							f_u.fu_list);
-			struct dentry *dentry = filp->f_path.dentry;
-			struct inode *inode;
-			const struct file_operations *fops;
-
-			if (dentry->d_op != &proc_dentry_operations)
-				continue;
-			inode = dentry->d_inode;
-			if (PDE(inode) != de)
-				continue;
-			fops = filp->f_op;
-			filp->f_op = NULL;
-			fops_put(fops);
-		}
-		file_list_unlock();
-	}
-	spin_unlock(&sb_lock);
-}
-
-static struct proc_dir_entry *proc_create(struct proc_dir_entry **parent,
+static struct proc_dir_entry *__proc_create(struct proc_dir_entry **parent,
 					  const char *name,
 					  mode_t mode,
 					  nlink_t nlink)
@@ -620,6 +592,7 @@ static struct proc_dir_entry *proc_create(struct proc_dir_entry **parent,
 	ent->namelen = len;
 	ent->mode = mode;
 	ent->nlink = nlink;
+	atomic_set(&ent->count, 1);
 	ent->pde_users = 0;
 	spin_lock_init(&ent->pde_unload_lock);
 	ent->pde_unload_completion = NULL;
@@ -632,7 +605,7 @@ struct proc_dir_entry *proc_symlink(const char *name,
 {
 	struct proc_dir_entry *ent;
 
-	ent = proc_create(&parent,name,
+	ent = __proc_create(&parent, name,
 			  (S_IFLNK | S_IRUGO | S_IWUGO | S_IXUGO),1);
 
 	if (ent) {
@@ -657,7 +630,7 @@ struct proc_dir_entry *proc_mkdir_mode(const char *name, mode_t mode,
 {
 	struct proc_dir_entry *ent;
 
-	ent = proc_create(&parent, name, S_IFDIR | mode, 2);
+	ent = __proc_create(&parent, name, S_IFDIR | mode, 2);
 	if (ent) {
 		if (proc_register(parent, ent) < 0) {
 			kfree(ent);
@@ -691,7 +664,7 @@ struct proc_dir_entry *create_proc_entry(const char *name, mode_t mode,
 		nlink = 1;
 	}
 
-	ent = proc_create(&parent,name,mode,nlink);
+	ent = __proc_create(&parent, name, mode, nlink);
 	if (ent) {
 		if (proc_register(parent, ent) < 0) {
 			kfree(ent);
@@ -699,6 +672,38 @@ struct proc_dir_entry *create_proc_entry(const char *name, mode_t mode,
 		}
 	}
 	return ent;
+}
+
+struct proc_dir_entry *proc_create(const char *name, mode_t mode,
+				   struct proc_dir_entry *parent,
+				   const struct file_operations *proc_fops)
+{
+	struct proc_dir_entry *pde;
+	nlink_t nlink;
+
+	if (S_ISDIR(mode)) {
+		if ((mode & S_IALLUGO) == 0)
+			mode |= S_IRUGO | S_IXUGO;
+		nlink = 2;
+	} else {
+		if ((mode & S_IFMT) == 0)
+			mode |= S_IFREG;
+		if ((mode & S_IALLUGO) == 0)
+			mode |= S_IRUGO;
+		nlink = 1;
+	}
+
+	pde = __proc_create(&parent, name, mode, nlink);
+	if (!pde)
+		goto out;
+	pde->proc_fops = proc_fops;
+	if (proc_register(parent, pde) < 0)
+		goto out_free;
+	return pde;
+out_free:
+	kfree(pde);
+out:
+	return NULL;
 }
 
 void free_proc_entry(struct proc_dir_entry *de)
@@ -710,14 +715,13 @@ void free_proc_entry(struct proc_dir_entry *de)
 
 	release_inode_number(ino);
 
-	if (S_ISLNK(de->mode) && de->data)
+	if (S_ISLNK(de->mode))
 		kfree(de->data);
 	kfree(de);
 }
 
 /*
  * Remove a /proc entry and free it if it's not currently in use.
- * If it is in use, we set the 'deleted' flag.
  */
 void remove_proc_entry(const char *name, struct proc_dir_entry *parent)
 {
@@ -764,17 +768,10 @@ void remove_proc_entry(const char *name, struct proc_dir_entry *parent)
 continue_removing:
 		if (S_ISDIR(de->mode))
 			parent->nlink--;
-		if (!S_ISREG(de->mode))
-			proc_kill_inodes(de);
 		de->nlink = 0;
 		WARN_ON(de->subdir);
-		if (!atomic_read(&de->count))
+		if (atomic_dec_and_test(&de->count))
 			free_proc_entry(de);
-		else {
-			de->deleted = 1;
-			printk("remove_proc_entry: %s/%s busy, count=%d\n",
-				parent->name, de->name, atomic_read(&de->count));
-		}
 		break;
 	}
 	spin_unlock(&proc_subdir_lock);

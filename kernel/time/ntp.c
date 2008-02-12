@@ -43,10 +43,6 @@ long time_freq;				/* frequency offset (scaled ppm)*/
 static long time_reftime;		/* time at last adjustment (s)	*/
 long time_adjust;
 
-#define CLOCK_TICK_OVERFLOW	(LATCH * HZ - CLOCK_TICK_RATE)
-#define CLOCK_TICK_ADJUST	(((s64)CLOCK_TICK_OVERFLOW * NSEC_PER_SEC) / \
-					(s64)CLOCK_TICK_RATE)
-
 static void ntp_update_frequency(void)
 {
 	u64 second_length = (u64)(tick_usec * NSEC_PER_USEC * USER_HZ)
@@ -205,7 +201,7 @@ static void sync_cmos_clock(unsigned long dummy)
 		return;
 
 	getnstimeofday(&now);
-	if (abs(xtime.tv_nsec - (NSEC_PER_SEC / 2)) <= tick_nsec / 2)
+	if (abs(now.tv_nsec - (NSEC_PER_SEC / 2)) <= tick_nsec / 2)
 		fail = update_persistent_clock(now);
 
 	next.tv_nsec = (NSEC_PER_SEC / 2) - now.tv_nsec;
@@ -249,10 +245,12 @@ int do_adjtimex(struct timex *txc)
 
 	/* Now we validate the data before disabling interrupts */
 
-	if ((txc->modes & ADJ_OFFSET_SINGLESHOT) == ADJ_OFFSET_SINGLESHOT)
+	if ((txc->modes & ADJ_OFFSET_SINGLESHOT) == ADJ_OFFSET_SINGLESHOT) {
 	  /* singleshot must not be used with any other mode bits */
-		if (txc->modes != ADJ_OFFSET_SINGLESHOT)
+		if (txc->modes != ADJ_OFFSET_SINGLESHOT &&
+					txc->modes != ADJ_OFFSET_SS_READ)
 			return -EINVAL;
+	}
 
 	if (txc->modes != ADJ_OFFSET_SINGLESHOT && (txc->modes & ADJ_OFFSET))
 	  /* adjustment Offset limited to +- .512 seconds */
@@ -372,7 +370,8 @@ int do_adjtimex(struct timex *txc)
 leave:	if ((time_status & (STA_UNSYNC|STA_CLOCKERR)) != 0)
 		result = TIME_ERROR;
 
-	if ((txc->modes & ADJ_OFFSET_SINGLESHOT) == ADJ_OFFSET_SINGLESHOT)
+	if ((txc->modes == ADJ_OFFSET_SINGLESHOT) ||
+			(txc->modes == ADJ_OFFSET_SS_READ))
 		txc->offset = save_adjust;
 	else
 		txc->offset = ((long)shift_right(time_offset, SHIFT_UPDATE)) *

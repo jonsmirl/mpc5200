@@ -55,6 +55,7 @@ static const struct sis_laptop sis_laptop[] = {
 	/* devid, subvendor, subdev */
 	{ 0x5513, 0x1043, 0x1107 },	/* ASUS A6K */
 	{ 0x5513, 0x1734, 0x105F },	/* FSC Amilo A1630 */
+	{ 0x5513, 0x1071, 0x8640 },     /* EasyNote K5305 */
 	/* end marker */
 	{ 0, }
 };
@@ -344,7 +345,7 @@ static void sis_old_set_dmamode (struct ata_port *ap, struct ata_device *adev)
 
 	if (adev->dma_mode < XFER_UDMA_0) {
 		/* bits 3-0 hold recovery timing bits 8-10 active timing and
-		   the higer bits are dependant on the device */
+		   the higher bits are dependant on the device */
 		timing &= ~0x870F;
 		timing |= mwdma_bits[speed];
 	} else {
@@ -384,7 +385,7 @@ static void sis_66_set_dmamode (struct ata_port *ap, struct ata_device *adev)
 
 	if (adev->dma_mode < XFER_UDMA_0) {
 		/* bits 3-0 hold recovery timing bits 8-10 active timing and
-		   the higer bits are dependant on the device, bit 15 udma */
+		   the higher bits are dependant on the device, bit 15 udma */
 		timing &= ~0x870F;
 		timing |= mwdma_bits[speed];
 	} else {

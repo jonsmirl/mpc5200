@@ -1477,10 +1477,6 @@ sys32_rt_sigreturn:
 		 add		%o7, 1f-.-4, %o7
 		nop
 #endif
-sys_ptrace:	add		%sp, PTREGS_OFF, %o0
-		call		do_ptrace
-		 add		%o7, 1f-.-4, %o7
-		nop
 		.align		32
 1:		ldx		[%curptr + TI_FLAGS], %l5
 		andcc		%l5, (_TIF_SYSCALL_TRACE|_TIF_SECCOMP|_TIF_SYSCALL_AUDIT), %g0
@@ -2593,3 +2589,15 @@ sun4v_mmustat_info:
 	retl
 	 nop
 	.size	sun4v_mmustat_info, .-sun4v_mmustat_info
+
+	.globl	sun4v_mmu_demap_all
+	.type	sun4v_mmu_demap_all,#function
+sun4v_mmu_demap_all:
+	clr	%o0
+	clr	%o1
+	mov	HV_MMU_ALL, %o2
+	mov	HV_FAST_MMU_DEMAP_ALL, %o5
+	ta	HV_FAST_TRAP
+	retl
+	 nop
+	.size	sun4v_mmu_demap_all, .-sun4v_mmu_demap_all

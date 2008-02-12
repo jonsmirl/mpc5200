@@ -1,15 +1,15 @@
-/* SCTP kernel reference Implementation
+/* SCTP kernel implementation
  * (C) Copyright 2007 Hewlett-Packard Development Company, L.P.
  *
- * This file is part of the SCTP kernel reference Implementation
+ * This file is part of the SCTP kernel implementation
  *
- * The SCTP reference implementation is free software;
+ * This SCTP implementation is free software;
  * you can redistribute it and/or modify it under the terms of
  * the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
  *
- * The SCTP reference implementation is distributed in the hope that it
+ * This SCTP implementation is distributed in the hope that it
  * will be useful, but WITHOUT ANY WARRANTY; without even the implied
  *                 ************************
  * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -54,11 +54,13 @@ static struct sctp_hmac sctp_hmac_list[SCTP_AUTH_NUM_HMACS] = {
 		/* id 2 is reserved as well */
 		.hmac_id = SCTP_AUTH_HMAC_ID_RESERVED_2,
 	},
+#if defined (CONFIG_CRYPTO_SHA256) || defined (CONFIG_CRYPTO_SHA256_MODULE)
 	{
 		.hmac_id = SCTP_AUTH_HMAC_ID_SHA256,
 		.hmac_name="hmac(sha256)",
 		.hmac_len = SCTP_SHA256_SIG_SIZE,
 	}
+#endif
 };
 
 
@@ -418,15 +420,15 @@ struct sctp_shared_key *sctp_auth_get_shkey(
 				const struct sctp_association *asoc,
 				__u16 key_id)
 {
-	struct sctp_shared_key *key = NULL;
+	struct sctp_shared_key *key;
 
 	/* First search associations set of endpoint pair shared keys */
 	key_for_each(key, &asoc->endpoint_shared_keys) {
 		if (key->key_id == key_id)
-			break;
+			return key;
 	}
 
-	return key;
+	return NULL;
 }
 
 /*
@@ -631,7 +633,7 @@ static int __sctp_auth_cid(sctp_cid_t chunk, struct sctp_chunks_param *param)
 	int found = 0;
 	int i;
 
-	if (!param)
+	if (!param || param->param_hdr.length == 0)
 		return 0;
 
 	len = ntohs(param->param_hdr.length) - sizeof(sctp_paramhdr_t);

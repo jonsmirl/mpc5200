@@ -547,8 +547,8 @@ static ssize_t fsl_sysfs_ssi_show(struct device *dev,
  * structure.  The function creates an ssi_private object, which contains
  * the snd_soc_cpu_dai.  It also creates the sysfs statistics device.
  */
-static int fsl_ssi_create_dai(struct snd_soc_dai_runtime *dai 
-struct fsl_ssi_info *ssi_info)
+struct snd_soc_cpu_dai *fsl_ssi_create_dai(struct fsl_ssi_info *ssi_info)
+
 {
 	struct snd_soc_cpu_dai *fsl_ssi_dai;
 	struct fsl_ssi_private *ssi_private;
@@ -593,13 +593,14 @@ struct fsl_ssi_info *ssi_info)
 
 	return fsl_ssi_dai;
 }
+EXPORT_SYMBOL_GPL(fsl_ssi_create_dai);
 
 /**
- * fsl_ssi_free_dai: destroy the snd_soc_cpu_dai object
+ * fsl_ssi_destroy_dai: destroy the snd_soc_cpu_dai object
  *
  * This function undoes the operations of fsl_ssi_create_dai()
  */
-static void fsl_ssi_free_dai(struct snd_soc_dai_runtime *dai)
+void fsl_ssi_destroy_dai(struct snd_soc_cpu_dai *fsl_ssi_dai)
 {
 	struct fsl_ssi_private *ssi_private =
 	container_of(fsl_ssi_dai, struct fsl_ssi_private, cpu_dai);
