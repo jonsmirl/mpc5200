@@ -122,3 +122,10 @@ config SND_PXA2XX_SOC_MAINSTONE_WM9712
 	  Say Y if you want to add support for SoC voice audio on Mainstone
 	  with the WM9712.
 
+config SND_PXA3XX_SOC_ZYLONITE
+	tristate "SoC audio support for Marvell Zylonite"
+	depends on SND_PXA2XX_SOC && MACH_ZYLONITE
+	select SND_PXA2XX_SOC_AC97
+	select SND_SOC_WM9713
+	help
+	  Say Y if you want to add support for SoC voice audio on Zylonite
