@@ -51,8 +51,6 @@
 #include <sound/soc.h>
 #include <sound/initval.h>
 
-#include "soc-prv.h"
-
 /* debug */
 #define DAPM_DEBUG 0
 #if DAPM_DEBUG

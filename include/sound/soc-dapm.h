@@ -380,6 +380,15 @@ int snd_soc_dapm_disable_pin(struct snd_soc_machine *machine, char *pin);
  */
 int snd_soc_dapm_sync(struct snd_soc_machine *machine);
 
+/* dapm events signalling */
+int snd_soc_dapm_stream_event(struct snd_soc_machine *machine, char *stream,
+	enum snd_soc_dapm_stream_event event);
+int snd_soc_dapm_set_bias(struct snd_soc_pcm_runtime *pcm_runtime, 
+	enum snd_soc_dapm_bias_level level);
+
+/* dapm sys fs - used by the core */
+int snd_soc_dapm_sys_add(struct snd_soc_machine *machine);
+
 /*
  * DAPM audio route.
  *
