@@ -83,8 +83,8 @@ static void tosa_ext_control(struct snd_soc_machine *machine)
 
 static int tosa_startup(struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_runtime *pcm_link = substream->private_data;
-	struct snd_soc_machine *machine = pcm_link->machine;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	struct snd_soc_machine *machine = pcm_runtime->machine;
 
 	/* check the jack status at stream startup */
 	tosa_ext_control(machine);
@@ -266,6 +266,25 @@ static int tosa_init(struct snd_soc_machine *machine)
 	return 0;
 }
 
+static struct snd_soc_pcm_config hifi_pcm_config = {
+	.name		= "HiFi",
+	.codec		= wm9712_codec_id,
+	.codec_dai	= wm9712_codec_hifi_dai_id,
+	.platform	= pxa_platform_id,
+	.cpu_dai	= pxa_ac97_hifi_dai_id,
+	.playback	= 1,
+	.capture	= 1,
+};
+
+static struct snd_soc_pcm_config aux_pcm_config = {
+	.name		= "Aux",
+	.codec		= wm9712_codec_id,
+	.codec_dai	= wm9712_codec_aux_dai_id,
+	.platform	= pxa_platform_id,
+	.cpu_dai	= pxa_ac97_aux_dai_id,
+	.playback	= 1,
+};
+
 /*
  * This is an example machine initialisation for a wm9712 connected to a
  * Mainstone II. It is missing logic to detect hp/mic insertions and logic
@@ -289,21 +308,11 @@ static int tosa_wm9712_probe(struct platform_device *pdev)
 	machine->private_data = pdev;
 	platform_set_drvdata(pdev, machine);
 	
-	ret = snd_soc_codec_create(machine, wm9712_codec_id);
+	ret = snd_soc_pcm_create(machine, &hifi_pcm_config);
 	if (ret < 0)
 		goto err;
-
-	ret = snd_soc_platform_create(machine, pxa_platform_id);
-	if (ret < 0)
-		goto err;
-
-	ret = snd_soc_pcm_create(machine, "HiFi", NULL, 
-		WM9712_DAI_HIFI, PXA2XX_DAI_AC97_HIFI, 1, 1);
-	if (ret < 0)
-		goto err;
-	
-	ret = snd_soc_pcm_create(machine, "Aux", NULL, 
-		WM9712_DAI_AUX, PXA2XX_DAI_AC97_AUX, 1, 1);
+		
+	ret = snd_soc_pcm_create(machine, &aux_pcm_config);
 	if (ret < 0)
 		goto err;
 	

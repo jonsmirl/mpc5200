@@ -113,8 +113,8 @@ static void spitz_ext_control(struct snd_soc_machine *machine)
 
 static int spitz_startup(struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_runtime *pcm_link = substream->private_data;
-	struct snd_soc_machine *machine = pcm_link->machine;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	struct snd_soc_machine *machine = pcm_runtime->machine;
 
 	/* check the jack status at stream startup */
 	spitz_ext_control(machine);
@@ -124,9 +124,9 @@ static int spitz_startup(struct snd_pcm_substream *substream)
 static int spitz_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_runtime *pcm_link = substream->private_data;
-	struct snd_soc_dai_runtime *cpu_dai = pcm_link->cpu_dai;
-	struct snd_soc_dai_runtime *codec_dai = pcm_link->codec_dai;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	struct snd_soc_dai *cpu_dai = pcm_runtime->cpu_dai;
+	struct snd_soc_dai *codec_dai = pcm_runtime->codec_dai;
 	unsigned int clk = 0;
 	int ret = 0;
 
@@ -360,6 +360,17 @@ static int spitz_init(struct snd_soc_machine *machine)
 	return 0;
 }
 
+static struct snd_soc_pcm_config hifi_pcm_config = {
+	.name		= "HiFi",
+	.codec		= wm8750_codec_id,
+	.codec_dai	= wm8750_codec_dai_id,
+	.platform	= pxa_platform_id,
+	.cpu_dai	= pxa2xx_i2s_id,
+	.ops		= &spitz_ops,
+	.playback	= 1,
+	.capture	= 1,
+};
+
 static int wm8750_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 {
 	struct i2c_client *i2c;
@@ -392,16 +403,7 @@ static int wm8750_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	machine->private_data = i2c;
 	i2c_set_clientdata(i2c, machine);
 	
-	ret = snd_soc_codec_create(machine, wm8750_codec_id);
-	if (ret < 0)
-		goto err;
-
-	ret = snd_soc_platform_create(machine, pxa_platform_id);
-	if (ret < 0)
-		goto err;
-
-	ret = snd_soc_pcm_create(machine, "HiFi", &spitz_ops, 
-		WM8750_DAI, PXA2XX_DAI_I2S, 1, 1);
+	ret = snd_soc_pcm_create(machine, &hifi_pcm_config);
 	if (ret < 0)
 		goto err;
 	
