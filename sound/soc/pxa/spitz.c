@@ -56,9 +56,9 @@ static int spitz_spk_func;
 static void spitz_ext_control(struct snd_soc_machine *machine)
 {
 	if (spitz_spk_func == SPITZ_SPK_ON)
-		snd_soc_dapm_enable_speaker(machine, "Ext Spk");
+		snd_soc_dapm_enable_pin(machine, "Ext Spk");
 	else
-		snd_soc_dapm_disable_speaker(machine, "Ext Spk");
+		snd_soc_dapm_disable_pin(machine, "Ext Spk");
 
 	/* set up jack connection */
 	switch (spitz_jack_func) {
