@@ -7,7 +7,7 @@ config SND_PXA2XX_SOC
 	  to select the audio interfaces to support below.
 
 config SND_PXA2XX_SOC_AC97
-	tristate
+	tristate "SoC support for AC97 on PXA chips"
 	select AC97_BUS
 	select SND_SOC_AC97_BUS
 
@@ -15,6 +15,10 @@ config SND_PXA2XX_SOC_I2S
 	tristate
 
 config SND_PXA2XX_SOC_SSP
+	tristate
+	select PXA_SSP
+
+config SND_PXA3XX_SOC_SSP
 	tristate
 	select PXA_SSP
 
