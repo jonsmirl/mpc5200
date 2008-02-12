@@ -54,6 +54,37 @@ static struct platform_device smc91x_device = {
 	.resource	= smc91x_resources,
 };
 
+static struct platform_device pxa2xx_pcm = {
+	.name		= "pxa2xx-pcm",
+	.id		= -1,
+};
+
+static struct platform_device ac97_device = {
+	.name		= "pxa2xx-ac97",
+	.id		= -1,
+};
+
+static struct platform_device codec_device = {
+	.name		= "wm9713-codec",
+	.id		= -1,
+	.dev		= {
+		.parent		= &ac97_device.dev,
+	},
+};
+
+static struct platform_device sound_fabric_device = {
+	.name		= "zylonite-audio",
+	.id		= -1,
+};
+
+static struct platform_device *zylonite_devices[] __initdata = {
+	&smc91x_device,
+	&pxa2xx_pcm,
+	&ac97_device,
+	&codec_device,
+	&sound_fabric_device,
+};
+
 #if defined(CONFIG_FB_PXA) || (CONFIG_FB_PXA_MODULES)
 static void zylonite_backlight_power(int on)
 {
@@ -168,7 +199,8 @@ static void __init zylonite_init(void)
 	 */
 	smc91x_resources[1].start = gpio_to_irq(gpio_eth_irq);
 	smc91x_resources[1].end   = gpio_to_irq(gpio_eth_irq);
-	platform_device_register(&smc91x_device);
+
+	platform_add_devices(zylonite_devices, ARRAY_SIZE(zylonite_devices));
 
 	zylonite_init_lcd();
 }
