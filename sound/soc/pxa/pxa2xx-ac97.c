@@ -490,3 +490,7 @@ static __exit void pxa_ac97_exit(void)
 
 module_init(pxa_ac97_init);
 module_exit(pxa_ac97_exit);
+
+MODULE_AUTHOR("Nicolas Pitre");
+MODULE_DESCRIPTION("Intel PXA2xx PCM AC97 AC97 driver");
+MODULE_LICENSE("GPL");
