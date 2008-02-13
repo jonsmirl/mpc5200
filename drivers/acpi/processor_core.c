@@ -494,7 +494,7 @@ static int get_cpu_id(acpi_handle handle, u32 acpi_id)
 	if (apic_id == -1)
 		return apic_id;
 
-	for (i = 0; i < NR_CPUS; ++i) {
+	for_each_possible_cpu(i) {
 		if (cpu_physical_id(i) == apic_id)
 			return i;
 	}
@@ -612,12 +612,6 @@ static int acpi_processor_get_info(struct acpi_processor *pr, unsigned has_uid)
 		request_region(pr->throttling.address, 6, "ACPI CPU throttle");
 	}
 
-#ifdef CONFIG_CPU_FREQ
-	acpi_processor_ppc_has_changed(pr);
-#endif
-	acpi_processor_get_throttling_info(pr);
-	acpi_processor_get_limit_info(pr);
-
 	return 0;
 }
 
@@ -638,7 +632,7 @@ static int __cpuinit acpi_processor_start(struct acpi_device *device)
 		return 0;
 	}
 
-	BUG_ON((pr->id >= NR_CPUS) || (pr->id < 0));
+	BUG_ON((pr->id >= nr_cpu_ids) || (pr->id < 0));
 
 	/*
 	 * Buggy BIOS check
@@ -647,7 +641,7 @@ static int __cpuinit acpi_processor_start(struct acpi_device *device)
 	 */
 	if (processor_device_array[pr->id] != NULL &&
 	    processor_device_array[pr->id] != device) {
-		printk(KERN_WARNING "BIOS reported wrong ACPI id"
+		printk(KERN_WARNING "BIOS reported wrong ACPI id "
 			"for the processor\n");
 		return -ENODEV;
 	}
@@ -665,8 +659,32 @@ static int __cpuinit acpi_processor_start(struct acpi_device *device)
 	/* _PDC call should be done before doing anything else (if reqd.). */
 	arch_acpi_processor_init_pdc(pr);
 	acpi_processor_set_pdc(pr);
+#ifdef CONFIG_CPU_FREQ
+	acpi_processor_ppc_has_changed(pr);
+#endif
+	acpi_processor_get_throttling_info(pr);
+	acpi_processor_get_limit_info(pr);
+
 
 	acpi_processor_power_init(pr, device);
+
+	pr->cdev = thermal_cooling_device_register("Processor", device,
+						&processor_cooling_ops);
+	if (pr->cdev)
+		printk(KERN_INFO PREFIX
+			"%s is registered as cooling_device%d\n",
+			device->dev.bus_id, pr->cdev->id);
+	else
+		goto end;
+
+	result = sysfs_create_link(&device->dev.kobj, &pr->cdev->device.kobj,
+					"thermal_cooling");
+	if (result)
+		return result;
+	result = sysfs_create_link(&pr->cdev->device.kobj, &device->dev.kobj,
+					"device");
+	if (result)
+		return result;
 
 	if (pr->flags.throttling) {
 		printk(KERN_INFO PREFIX "%s [%s] (supports",
@@ -684,7 +702,7 @@ static void acpi_processor_notify(acpi_handle handle, u32 event, void *data)
 {
 	struct acpi_processor *pr = data;
 	struct acpi_device *device = NULL;
-
+	int saved;
 
 	if (!pr)
 		return;
@@ -694,7 +712,10 @@ static void acpi_processor_notify(acpi_handle handle, u32 event, void *data)
 
 	switch (event) {
 	case ACPI_PROCESSOR_NOTIFY_PERFORMANCE:
+		saved = pr->performance_platform_limit;
 		acpi_processor_ppc_has_changed(pr);
+		if (saved == pr->performance_platform_limit)
+			break;
 		acpi_bus_generate_proc_event(device, event,
 					pr->performance_platform_limit);
 		acpi_bus_generate_netlink_event(device->pnp.device_class,
@@ -771,7 +792,7 @@ static int acpi_processor_remove(struct acpi_device *device, int type)
 
 	pr = acpi_driver_data(device);
 
-	if (pr->id >= NR_CPUS) {
+	if (pr->id >= nr_cpu_ids) {
 		kfree(pr);
 		return 0;
 	}
@@ -787,6 +808,11 @@ static int acpi_processor_remove(struct acpi_device *device, int type)
 					    acpi_processor_notify);
 
 	acpi_processor_remove_fs(device);
+
+	sysfs_remove_link(&device->dev.kobj, "thermal_cooling");
+	sysfs_remove_link(&pr->cdev->device.kobj, "device");
+	thermal_cooling_device_unregister(pr->cdev);
+	pr->cdev = NULL;
 
 	processors[pr->id] = NULL;
 
@@ -809,11 +835,18 @@ static int is_processor_present(acpi_handle handle)
 
 
 	status = acpi_evaluate_integer(handle, "_STA", NULL, &sta);
-	if (ACPI_FAILURE(status) || !(sta & ACPI_STA_DEVICE_PRESENT)) {
-		ACPI_EXCEPTION((AE_INFO, status, "Processor Device is not present"));
-		return 0;
-	}
-	return 1;
+	/*
+	 * if a processor object does not have an _STA object,
+	 * OSPM assumes that the processor is present.
+	 */
+	if (status == AE_NOT_FOUND)
+		return 1;
+
+	if (ACPI_SUCCESS(status) && (sta & ACPI_STA_DEVICE_PRESENT))
+		return 1;
+
+	ACPI_EXCEPTION((AE_INFO, status, "Processor Device is not present"));
+	return 0;
 }
 
 static
@@ -842,7 +875,7 @@ int acpi_processor_device_add(acpi_handle handle, struct acpi_device **device)
 	if (!pr)
 		return -ENODEV;
 
-	if ((pr->id >= 0) && (pr->id < NR_CPUS)) {
+	if ((pr->id >= 0) && (pr->id < nr_cpu_ids)) {
 		kobject_uevent(&(*device)->dev.kobj, KOBJ_ONLINE);
 	}
 	return 0;
@@ -880,13 +913,13 @@ acpi_processor_hotplug_notify(acpi_handle handle, u32 event, void *data)
 			break;
 		}
 
-		if (pr->id >= 0 && (pr->id < NR_CPUS)) {
+		if (pr->id >= 0 && (pr->id < nr_cpu_ids)) {
 			kobject_uevent(&device->dev.kobj, KOBJ_OFFLINE);
 			break;
 		}
 
 		result = acpi_processor_start(device);
-		if ((!result) && ((pr->id >= 0) && (pr->id < NR_CPUS))) {
+		if ((!result) && ((pr->id >= 0) && (pr->id < nr_cpu_ids))) {
 			kobject_uevent(&device->dev.kobj, KOBJ_ONLINE);
 		} else {
 			printk(KERN_ERR PREFIX "Device [%s] failed to start\n",
@@ -909,7 +942,7 @@ acpi_processor_hotplug_notify(acpi_handle handle, u32 event, void *data)
 			return;
 		}
 
-		if ((pr->id < NR_CPUS) && (cpu_present(pr->id)))
+		if ((pr->id < nr_cpu_ids) && (cpu_present(pr->id)))
 			kobject_uevent(&device->dev.kobj, KOBJ_OFFLINE);
 		break;
 	default:
@@ -1057,6 +1090,8 @@ static int __init acpi_processor_init(void)
 	acpi_thermal_cpufreq_init();
 
 	acpi_processor_ppc_init();
+
+	acpi_processor_throttling_init();
 
 	return 0;
 

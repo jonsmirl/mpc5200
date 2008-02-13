@@ -286,7 +286,7 @@ static inline void mask_ack_irq(struct irq_desc *desc, int irq)
  *	Note: The caller is expected to handle the ack, clear, mask and
  *	unmask issues if necessary.
  */
-void fastcall
+void
 handle_simple_irq(unsigned int irq, struct irq_desc *desc)
 {
 	struct irqaction *action;
@@ -297,18 +297,13 @@ handle_simple_irq(unsigned int irq, struct irq_desc *desc)
 
 	if (unlikely(desc->status & IRQ_INPROGRESS))
 		goto out_unlock;
+	desc->status &= ~(IRQ_REPLAY | IRQ_WAITING);
 	kstat_cpu(cpu).irqs[irq]++;
 
 	action = desc->action;
-	if (unlikely(!action || (desc->status & IRQ_DISABLED))) {
-		if (desc->chip->mask)
-			desc->chip->mask(irq);
-		desc->status &= ~(IRQ_REPLAY | IRQ_WAITING);
-		desc->status |= IRQ_PENDING;
+	if (unlikely(!action || (desc->status & IRQ_DISABLED)))
 		goto out_unlock;
-	}
 
-	desc->status &= ~(IRQ_REPLAY | IRQ_WAITING | IRQ_PENDING);
 	desc->status |= IRQ_INPROGRESS;
 	spin_unlock(&desc->lock);
 
@@ -332,7 +327,7 @@ out_unlock:
  *	it after the associated handler has acknowledged the device, so the
  *	interrupt line is back to inactive.
  */
-void fastcall
+void
 handle_level_irq(unsigned int irq, struct irq_desc *desc)
 {
 	unsigned int cpu = smp_processor_id();
@@ -380,7 +375,7 @@ out_unlock:
  *	for modern forms of interrupt handlers, which handle the flow
  *	details in hardware, transparently.
  */
-void fastcall
+void
 handle_fasteoi_irq(unsigned int irq, struct irq_desc *desc)
 {
 	unsigned int cpu = smp_processor_id();
@@ -439,7 +434,7 @@ out:
  *	the handler was running. If all pending interrupts are handled, the
  *	loop is left.
  */
-void fastcall
+void
 handle_edge_irq(unsigned int irq, struct irq_desc *desc)
 {
 	const unsigned int cpu = smp_processor_id();
@@ -510,7 +505,7 @@ out_unlock:
  *
  *	Per CPU interrupts on SMP machines without locking requirements
  */
-void fastcall
+void
 handle_percpu_irq(unsigned int irq, struct irq_desc *desc)
 {
 	irqreturn_t action_ret;
@@ -593,4 +588,40 @@ set_irq_chip_and_handler_name(unsigned int irq, struct irq_chip *chip,
 {
 	set_irq_chip(irq, chip);
 	__set_irq_handler(irq, handle, 0, name);
+}
+
+void __init set_irq_noprobe(unsigned int irq)
+{
+	struct irq_desc *desc;
+	unsigned long flags;
+
+	if (irq >= NR_IRQS) {
+		printk(KERN_ERR "Trying to mark IRQ%d non-probeable\n", irq);
+
+		return;
+	}
+
+	desc = irq_desc + irq;
+
+	spin_lock_irqsave(&desc->lock, flags);
+	desc->status |= IRQ_NOPROBE;
+	spin_unlock_irqrestore(&desc->lock, flags);
+}
+
+void __init set_irq_probe(unsigned int irq)
+{
+	struct irq_desc *desc;
+	unsigned long flags;
+
+	if (irq >= NR_IRQS) {
+		printk(KERN_ERR "Trying to mark IRQ%d probeable\n", irq);
+
+		return;
+	}
+
+	desc = irq_desc + irq;
+
+	spin_lock_irqsave(&desc->lock, flags);
+	desc->status &= ~IRQ_NOPROBE;
+	spin_unlock_irqrestore(&desc->lock, flags);
 }

@@ -387,8 +387,6 @@ _xfs_buf_lookup_pages(
 		if (unlikely(page == NULL)) {
 			if (flags & XBF_READ_AHEAD) {
 				bp->b_page_count = i;
-				for (i = 0; i < bp->b_page_count; i++)
-					unlock_page(bp->b_pages[i]);
 				return -ENOMEM;
 			}
 
@@ -418,22 +416,15 @@ _xfs_buf_lookup_pages(
 		ASSERT(!PagePrivate(page));
 		if (!PageUptodate(page)) {
 			page_count--;
-			if (blocksize >= PAGE_CACHE_SIZE) {
-				if (flags & XBF_READ)
-					bp->b_locked = 1;
-			} else if (!PagePrivate(page)) {
+			if (blocksize < PAGE_CACHE_SIZE && !PagePrivate(page)) {
 				if (test_page_region(page, offset, nbytes))
 					page_count++;
 			}
 		}
 
+		unlock_page(page);
 		bp->b_pages[i] = page;
 		offset = 0;
-	}
-
-	if (!bp->b_locked) {
-		for (i = 0; i < bp->b_page_count; i++)
-			unlock_page(bp->b_pages[i]);
 	}
 
 	if (page_count == bp->b_page_count)
@@ -709,8 +700,7 @@ static inline struct page *
 mem_to_page(
 	void			*addr)
 {
-	if (((unsigned long)addr < VMALLOC_START) ||
-	    ((unsigned long)addr >= VMALLOC_END)) {
+	if ((!is_vmalloc_addr(addr))) {
 		return virt_to_page(addr);
 	} else {
 		return vmalloc_to_page(addr);
@@ -725,15 +715,15 @@ xfs_buf_associate_memory(
 {
 	int			rval;
 	int			i = 0;
-	size_t			ptr;
-	size_t			end, end_cur;
-	off_t			offset;
+	unsigned long		pageaddr;
+	unsigned long		offset;
+	size_t			buflen;
 	int			page_count;
 
-	page_count = PAGE_CACHE_ALIGN(len) >> PAGE_CACHE_SHIFT;
-	offset = (off_t) mem - ((off_t)mem & PAGE_CACHE_MASK);
-	if (offset && (len > PAGE_CACHE_SIZE))
-		page_count++;
+	pageaddr = (unsigned long)mem & PAGE_CACHE_MASK;
+	offset = (unsigned long)mem - pageaddr;
+	buflen = PAGE_CACHE_ALIGN(len + offset);
+	page_count = buflen >> PAGE_CACHE_SHIFT;
 
 	/* Free any previous set of page pointers */
 	if (bp->b_pages)
@@ -747,22 +737,14 @@ xfs_buf_associate_memory(
 		return rval;
 
 	bp->b_offset = offset;
-	ptr = (size_t) mem & PAGE_CACHE_MASK;
-	end = PAGE_CACHE_ALIGN((size_t) mem + len);
-	end_cur = end;
-	/* set up first page */
-	bp->b_pages[0] = mem_to_page(mem);
 
-	ptr += PAGE_CACHE_SIZE;
-	bp->b_page_count = ++i;
-	while (ptr < end) {
-		bp->b_pages[i] = mem_to_page((void *)ptr);
-		bp->b_page_count = ++i;
-		ptr += PAGE_CACHE_SIZE;
+	for (i = 0; i < bp->b_page_count; i++) {
+		bp->b_pages[i] = mem_to_page((void *)pageaddr);
+		pageaddr += PAGE_CACHE_SIZE;
 	}
-	bp->b_locked = 0;
 
-	bp->b_count_desired = bp->b_buffer_length = len;
+	bp->b_count_desired = len;
+	bp->b_buffer_length = buflen;
 	bp->b_flags |= XBF_MAPPED;
 
 	return 0;
@@ -1032,7 +1014,7 @@ xfs_buf_ioend(
 	xfs_buf_t		*bp,
 	int			schedule)
 {
-	bp->b_flags &= ~(XBF_READ | XBF_WRITE);
+	bp->b_flags &= ~(XBF_READ | XBF_WRITE | XBF_READ_AHEAD);
 	if (bp->b_error == 0)
 		bp->b_flags |= XBF_DONE;
 
@@ -1106,25 +1088,13 @@ xfs_buf_iostart(
 	return status;
 }
 
-STATIC_INLINE int
-_xfs_buf_iolocked(
-	xfs_buf_t		*bp)
-{
-	ASSERT(bp->b_flags & (XBF_READ | XBF_WRITE));
-	if (bp->b_flags & XBF_READ)
-		return bp->b_locked;
-	return 0;
-}
-
 STATIC_INLINE void
 _xfs_buf_ioend(
 	xfs_buf_t		*bp,
 	int			schedule)
 {
-	if (atomic_dec_and_test(&bp->b_io_remaining) == 1) {
-		bp->b_locked = 0;
+	if (atomic_dec_and_test(&bp->b_io_remaining) == 1)
 		xfs_buf_ioend(bp, schedule);
-	}
 }
 
 STATIC void
@@ -1155,10 +1125,6 @@ xfs_buf_bio_end_io(
 
 		if (--bvec >= bio->bi_io_vec)
 			prefetchw(&bvec->bv_page->flags);
-
-		if (_xfs_buf_iolocked(bp)) {
-			unlock_page(page);
-		}
 	} while (bvec >= bio->bi_io_vec);
 
 	_xfs_buf_ioend(bp, 1);
@@ -1169,13 +1135,12 @@ STATIC void
 _xfs_buf_ioapply(
 	xfs_buf_t		*bp)
 {
-	int			i, rw, map_i, total_nr_pages, nr_pages;
+	int			rw, map_i, total_nr_pages, nr_pages;
 	struct bio		*bio;
 	int			offset = bp->b_offset;
 	int			size = bp->b_count_desired;
 	sector_t		sector = bp->b_bn;
 	unsigned int		blocksize = bp->b_target->bt_bsize;
-	int			locking = _xfs_buf_iolocked(bp);
 
 	total_nr_pages = bp->b_page_count;
 	map_i = 0;
@@ -1198,7 +1163,7 @@ _xfs_buf_ioapply(
 	 * filesystem block size is not smaller than the page size.
 	 */
 	if ((bp->b_buffer_length < PAGE_CACHE_SIZE) &&
-	    (bp->b_flags & XBF_READ) && locking &&
+	    (bp->b_flags & XBF_READ) &&
 	    (blocksize >= PAGE_CACHE_SIZE)) {
 		bio = bio_alloc(GFP_NOIO, 1);
 
@@ -1213,24 +1178,6 @@ _xfs_buf_ioapply(
 		atomic_inc(&bp->b_io_remaining);
 
 		goto submit_io;
-	}
-
-	/* Lock down the pages which we need to for the request */
-	if (locking && (bp->b_flags & XBF_WRITE) && (bp->b_locked == 0)) {
-		for (i = 0; size; i++) {
-			int		nbytes = PAGE_CACHE_SIZE - offset;
-			struct page	*page = bp->b_pages[i];
-
-			if (nbytes > size)
-				nbytes = size;
-
-			lock_page(page);
-
-			size -= nbytes;
-			offset = 0;
-		}
-		offset = bp->b_offset;
-		size = bp->b_count_desired;
 	}
 
 next_chunk:
@@ -1579,7 +1526,7 @@ xfs_alloc_delwrite_queue(
 
 	INIT_LIST_HEAD(&btp->bt_list);
 	INIT_LIST_HEAD(&btp->bt_delwrite_queue);
-	spinlock_init(&btp->bt_delwrite_lock, "delwri_lock");
+	spin_lock_init(&btp->bt_delwrite_lock);
 	btp->bt_flags = 0;
 	btp->bt_task = kthread_run(xfsbufd, btp, "xfsbufd");
 	if (IS_ERR(btp->bt_task)) {
@@ -1749,6 +1696,8 @@ xfsbufd(
 	xfs_buf_t	*bp;
 
 	current->flags |= PF_MEMALLOC;
+
+	set_freezable();
 
 	do {
 		if (unlikely(freezing(current))) {

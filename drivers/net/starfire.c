@@ -216,7 +216,7 @@ do { \
 
 
 /* These identify the driver base version and may not be removed. */
-static const char version[] __devinitdata =
+static char version[] =
 KERN_INFO "starfire.c:v1.03 7/26/2000  Written by Donald Becker <becker@scyld.com>\n"
 KERN_INFO " (unofficial 2.2/2.4 kernel port, version " DRV_VERSION ", " DRV_RELDATE ")\n";
 
@@ -1742,7 +1742,7 @@ static void set_rx_mode(struct net_device *dev)
 			if (vlan_group_get_device(np->vlgrp, i)) {
 				if (vlan_count >= 32)
 					break;
-				writew(cpu_to_be16(i), filter_addr);
+				writew(i, filter_addr);
 				filter_addr += 16;
 				vlan_count++;
 			}

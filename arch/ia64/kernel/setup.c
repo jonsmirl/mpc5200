@@ -71,8 +71,6 @@ unsigned long __per_cpu_offset[NR_CPUS];
 EXPORT_SYMBOL(__per_cpu_offset);
 #endif
 
-extern void ia64_setup_printk_clock(void);
-
 DEFINE_PER_CPU(struct cpuinfo_ia64, cpu_info);
 DEFINE_PER_CPU(unsigned long, local_per_cpu_offset);
 unsigned long ia64_cycles_per_usec;
@@ -95,7 +93,6 @@ static struct resource bss_resource = {
 	.name	= "Kernel bss",
 	.flags	= IORESOURCE_BUSY | IORESOURCE_MEM
 };
-extern char _text[], _end[], _etext[], _edata[], _bss[];
 
 unsigned long ia64_max_cacheline_size;
 
@@ -206,7 +203,7 @@ static int __init register_memory(void)
 	code_resource.end   = ia64_tpa(_etext) - 1;
 	data_resource.start = ia64_tpa(_etext);
 	data_resource.end   = ia64_tpa(_edata) - 1;
-	bss_resource.start  = ia64_tpa(_bss);
+	bss_resource.start  = ia64_tpa(__bss_start);
 	bss_resource.end    = ia64_tpa(_end) - 1;
 	efi_initialize_iomem_resources(&code_resource, &data_resource,
 			&bss_resource);
@@ -508,8 +505,6 @@ setup_arch (char **cmdline_p)
 	/* process SAL system table: */
 	ia64_sal_init(__va(efi.sal_systab));
 
-	ia64_setup_printk_clock();
-
 #ifdef CONFIG_SMP
 	cpu_physical_id(0) = hard_smp_processor_id();
 #endif
@@ -659,7 +654,7 @@ c_stop (struct seq_file *m, void *v)
 {
 }
 
-struct seq_operations cpuinfo_op = {
+const struct seq_operations cpuinfo_op = {
 	.start =	c_start,
 	.next =		c_next,
 	.stop =		c_stop,

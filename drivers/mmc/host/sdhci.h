@@ -171,7 +171,8 @@ struct sdhci_host {
 	spinlock_t		lock;		/* Mutex */
 
 	int			flags;		/* Host attributes */
-#define SDHCI_USE_DMA		(1<<0)
+#define SDHCI_USE_DMA		(1<<0)		/* Host is DMA capable */
+#define SDHCI_REQ_USE_DMA	(1<<1)		/* Use DMA for this req. */
 
 	unsigned int		max_clk;	/* Max possible freq (MHz) */
 	unsigned int		timeout_clk;	/* Timeout freq (KHz) */
@@ -207,6 +208,7 @@ struct sdhci_chip {
 
 	unsigned long		quirks;
 
+	int			index;		/* Index for chip0, chip1 ...*/
 	int			num_slots;	/* Slots on controller */
 	struct sdhci_host	*hosts[0];	/* Pointers to hosts */
 };

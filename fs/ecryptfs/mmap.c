@@ -34,8 +34,6 @@
 #include <linux/scatterlist.h>
 #include "ecryptfs_kernel.h"
 
-struct kmem_cache *ecryptfs_lower_page_cache;
-
 /**
  * ecryptfs_get_locked_page
  *
@@ -102,13 +100,14 @@ static void set_header_info(char *page_virt,
 			    struct ecryptfs_crypt_stat *crypt_stat)
 {
 	size_t written;
-	int save_num_header_extents_at_front =
-		crypt_stat->num_header_extents_at_front;
+	size_t save_num_header_bytes_at_front =
+		crypt_stat->num_header_bytes_at_front;
 
-	crypt_stat->num_header_extents_at_front = 1;
+	crypt_stat->num_header_bytes_at_front =
+		ECRYPTFS_MINIMUM_HEADER_EXTENT_SIZE;
 	ecryptfs_write_header_metadata(page_virt + 20, crypt_stat, &written);
-	crypt_stat->num_header_extents_at_front =
-		save_num_header_extents_at_front;
+	crypt_stat->num_header_bytes_at_front =
+		save_num_header_bytes_at_front;
 }
 
 /**
@@ -134,8 +133,11 @@ ecryptfs_copy_up_encrypted_with_header(struct page *page,
 		loff_t view_extent_num = ((((loff_t)page->index)
 					   * num_extents_per_page)
 					  + extent_num_in_page);
+		size_t num_header_extents_at_front =
+			(crypt_stat->num_header_bytes_at_front
+			 / crypt_stat->extent_size);
 
-		if (view_extent_num < crypt_stat->num_header_extents_at_front) {
+		if (view_extent_num < num_header_extents_at_front) {
 			/* This is a header extent */
 			char *page_virt;
 
@@ -157,9 +159,8 @@ ecryptfs_copy_up_encrypted_with_header(struct page *page,
 		} else {
 			/* This is an encrypted data extent */
 			loff_t lower_offset =
-				((view_extent_num -
-				  crypt_stat->num_header_extents_at_front)
-				 * crypt_stat->extent_size);
+				((view_extent_num * crypt_stat->extent_size)
+				 - crypt_stat->num_header_bytes_at_front);
 
 			rc = ecryptfs_read_lower_page_segment(
 				page, (lower_offset >> PAGE_CACHE_SHIFT),
@@ -257,20 +258,18 @@ static int fill_zeros_to_end_of_page(struct page *page, unsigned int to)
 	end_byte_in_page = i_size_read(inode) % PAGE_CACHE_SIZE;
 	if (to > end_byte_in_page)
 		end_byte_in_page = to;
-	zero_user_page(page, end_byte_in_page,
-		PAGE_CACHE_SIZE - end_byte_in_page, KM_USER0);
+	zero_user_segment(page, end_byte_in_page, PAGE_CACHE_SIZE);
 out:
 	return 0;
 }
 
+/* This function must zero any hole we create */
 static int ecryptfs_prepare_write(struct file *file, struct page *page,
 				  unsigned from, unsigned to)
 {
 	int rc = 0;
+	loff_t prev_page_end_size;
 
-	if (from == 0 && to == PAGE_CACHE_SIZE)
-		goto out;	/* If we are writing a full page, it will be
-				   up to date. */
 	if (!PageUptodate(page)) {
 		rc = ecryptfs_read_lower_page_segment(page, page->index, 0,
 						      PAGE_CACHE_SIZE,
@@ -283,22 +282,32 @@ static int ecryptfs_prepare_write(struct file *file, struct page *page,
 		} else
 			SetPageUptodate(page);
 	}
-	if (page->index != 0) {
-		loff_t end_of_prev_pg_pos =
-			(((loff_t)page->index << PAGE_CACHE_SHIFT) - 1);
 
-		if (end_of_prev_pg_pos > i_size_read(page->mapping->host)) {
+	prev_page_end_size = ((loff_t)page->index << PAGE_CACHE_SHIFT);
+
+	/*
+	 * If creating a page or more of holes, zero them out via truncate.
+	 * Note, this will increase i_size.
+	 */
+	if (page->index != 0) {
+		if (prev_page_end_size > i_size_read(page->mapping->host)) {
 			rc = ecryptfs_truncate(file->f_path.dentry,
-					       end_of_prev_pg_pos);
+					       prev_page_end_size);
 			if (rc) {
 				printk(KERN_ERR "Error on attempt to "
 				       "truncate to (higher) offset [%lld];"
-				       " rc = [%d]\n", end_of_prev_pg_pos, rc);
+				       " rc = [%d]\n", prev_page_end_size, rc);
 				goto out;
 			}
 		}
-		if (end_of_prev_pg_pos + 1 > i_size_read(page->mapping->host))
-			zero_user_page(page, 0, PAGE_CACHE_SIZE, KM_USER0);
+	}
+	/*
+	 * Writing to a new page, and creating a small hole from start of page?
+	 * Zero it out.
+	 */
+	if ((i_size_read(page->mapping->host) == prev_page_end_size) &&
+	    (from != 0)) {
+		zero_user(page, 0, PAGE_CACHE_SIZE);
 	}
 out:
 	return rc;

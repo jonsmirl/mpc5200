@@ -220,7 +220,8 @@ static int wm9713_add_controls(struct snd_soc_codec *codec,
  * register map, thus we add a new (virtual) register to help determine the
  * audio route within the device.
  */
-static int mixer_event (struct snd_soc_dapm_widget *w, int event)
+static int mixer_event (struct snd_soc_dapm_widget *w, 
+	struct snd_kcontrol *k, int event)
 {
 	u16 l, r, beep, tone, phone, rec, pcm, aux;
 

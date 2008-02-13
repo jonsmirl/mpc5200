@@ -83,4 +83,7 @@ struct uda1380_setup_data {
 #define UDA1380_DAI_PLAYBACK	1 /* playback DAI */
 #define UDA1380_DAI_CAPTURE	2 /* capture DAI */
 
+extern const char uda1380_codec_id[];
+extern const char uda1380_codec_dai_id[];
+
 #endif /* _UDA1380_H */

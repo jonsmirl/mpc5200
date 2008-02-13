@@ -150,6 +150,10 @@
 #define PORT_MCF	78
 
 
+/* MN10300 on-chip UART numbers */
+#define PORT_MN10300		80
+#define PORT_MN10300_CTS	81
+
 #ifdef __KERNEL__
 
 #include <linux/compiler.h>
@@ -437,7 +441,7 @@ uart_handle_sysrq_char(struct uart_port *port, unsigned int ch)
 #ifdef SUPPORT_SYSRQ
 	if (port->sysrq) {
 		if (ch && time_before(jiffies, port->sysrq)) {
-			handle_sysrq(ch, port->info->tty);
+			handle_sysrq(ch, port->info ? port->info->tty : NULL);
 			port->sysrq = 0;
 			return 1;
 		}

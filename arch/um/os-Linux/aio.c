@@ -12,6 +12,7 @@
 #include "aio.h"
 #include "init.h"
 #include "kern_constants.h"
+#include "kern_util.h"
 #include "os.h"
 #include "user.h"
 
@@ -141,7 +142,7 @@ static int do_not_aio(struct aio_thread_req *req)
 	if (actual != req->offset)
 		return -errno;
 
-	switch(req->type) {
+	switch (req->type) {
 	case AIO_READ:
 		n = read(req->io_fd, req->buf, req->len);
 		break;
@@ -218,7 +219,7 @@ static int init_aio_24(void)
 		goto out_close_pipe;
 
 	err = run_helper_thread(not_aio_thread, NULL,
-				CLONE_FILES | CLONE_VM | SIGCHLD, &aio_stack);
+				CLONE_FILES | CLONE_VM, &aio_stack);
 	if (err < 0)
 		goto out_close_pipe;
 
@@ -254,7 +255,7 @@ static int init_aio_26(void)
 	}
 
 	err = run_helper_thread(aio_thread, NULL,
-				CLONE_FILES | CLONE_VM | SIGCHLD, &aio_stack);
+				CLONE_FILES | CLONE_VM, &aio_stack);
 	if (err < 0)
 		return err;
 

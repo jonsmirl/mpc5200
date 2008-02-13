@@ -371,6 +371,8 @@ struct input_absinfo {
 #define KEY_BRIGHTNESS_ZERO	244	/* brightness off, use ambient */
 #define KEY_DISPLAY_OFF		245	/* display device to off state */
 
+#define KEY_WIMAX		246
+
 #define BTN_MISC		0x100
 #define BTN_0			0x100
 #define BTN_1			0x101
@@ -529,6 +531,11 @@ struct input_absinfo {
 
 #define KEY_DOLLAR		0x1b2
 #define KEY_EURO		0x1b3
+
+#define KEY_FRAMEBACK		0x1b4	/* Consumer - transport controls */
+#define KEY_FRAMEFORWARD	0x1b5
+
+#define KEY_CONTEXT_MENU	0x1b6	/* GenDesc - system context menu */
 
 #define KEY_DEL_EOL		0x1c0
 #define KEY_DEL_EOS		0x1c1
@@ -1013,7 +1020,6 @@ struct ff_effect {
  * @going_away: marks devices that are in a middle of unregistering and
  *	causes input_open_device*() fail with -ENODEV.
  * @dev: driver model's view of this device
- * @cdev: union for struct device pointer
  * @h_list: list of input handles associated with the device. When
  *	accessing the list dev->mutex must be held
  * @node: used to place the device onto input_dev_list
@@ -1078,9 +1084,6 @@ struct input_dev {
 	int going_away;
 
 	struct device dev;
-	union {			/* temporarily so while we switching to struct device */
-		struct device *dev;
-	} cdev;
 
 	struct list_head	h_list;
 	struct list_head	node;
@@ -1303,6 +1306,9 @@ static inline void input_set_abs_params(struct input_dev *dev, int axis, int min
 
 	dev->absbit[BIT_WORD(axis)] |= BIT_MASK(axis);
 }
+
+int input_get_keycode(struct input_dev *dev, int scancode, int *keycode);
+int input_set_keycode(struct input_dev *dev, int scancode, int keycode);
 
 extern struct class input_class;
 

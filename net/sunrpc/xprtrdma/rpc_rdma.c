@@ -83,7 +83,7 @@ static const char transfertypes[][12] = {
  */
 
 static int
-rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, int pos,
+rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
 	enum rpcrdma_chunktype type, struct rpcrdma_mr_seg *seg, int nsegs)
 {
 	int len, n = 0, p;
@@ -92,7 +92,6 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, int pos,
 		seg[n].mr_page = NULL;
 		seg[n].mr_offset = xdrbuf->head[0].iov_base;
 		seg[n].mr_len = xdrbuf->head[0].iov_len;
-		pos += xdrbuf->head[0].iov_len;
 		++n;
 	}
 
@@ -104,7 +103,6 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, int pos,
 		seg[n].mr_len = min_t(u32,
 			PAGE_SIZE - xdrbuf->page_base, xdrbuf->page_len);
 		len = xdrbuf->page_len - seg[n].mr_len;
-		pos += len;
 		++n;
 		p = 1;
 		while (len > 0) {
@@ -119,19 +117,14 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, int pos,
 		}
 	}
 
-	if (pos < xdrbuf->len && xdrbuf->tail[0].iov_len) {
+	if (xdrbuf->tail[0].iov_len) {
 		if (n == nsegs)
 			return 0;
 		seg[n].mr_page = NULL;
 		seg[n].mr_offset = xdrbuf->tail[0].iov_base;
 		seg[n].mr_len = xdrbuf->tail[0].iov_len;
-		pos += xdrbuf->tail[0].iov_len;
 		++n;
 	}
-
-	if (pos < xdrbuf->len)
-		dprintk("RPC:       %s: marshaled only %d of %d\n",
-				__func__, pos, xdrbuf->len);
 
 	return n;
 }
@@ -176,7 +169,7 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(rqst->rq_task->tk_xprt);
 	int nsegs, nchunks = 0;
-	int pos;
+	unsigned int pos;
 	struct rpcrdma_mr_seg *seg = req->rl_segments;
 	struct rpcrdma_read_chunk *cur_rchunk = NULL;
 	struct rpcrdma_write_array *warray = NULL;
@@ -220,7 +213,7 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
 					(__be32 *)&cur_rchunk->rc_target.rs_offset,
 					seg->mr_base);
 			dprintk("RPC:       %s: read chunk "
-				"elem %d@0x%llx:0x%x pos %d (%s)\n", __func__,
+				"elem %d@0x%llx:0x%x pos %u (%s)\n", __func__,
 				seg->mr_len, (unsigned long long)seg->mr_base,
 				seg->mr_rkey, pos, n < nsegs ? "more" : "last");
 			cur_rchunk++;
@@ -387,7 +380,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
 	headerp->rm_xid = rqst->rq_xid;
 	headerp->rm_vers = xdr_one;
 	headerp->rm_credit = htonl(r_xprt->rx_buf.rb_max_requests);
-	headerp->rm_type = __constant_htonl(RDMA_MSG);
+	headerp->rm_type = htonl(RDMA_MSG);
 
 	/*
 	 * Chunks needed for results?
@@ -465,11 +458,11 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
 						RPCRDMA_INLINE_PAD_VALUE(rqst));
 
 		if (padlen) {
-			headerp->rm_type = __constant_htonl(RDMA_MSGP);
+			headerp->rm_type = htonl(RDMA_MSGP);
 			headerp->rm_body.rm_padded.rm_align =
 				htonl(RPCRDMA_INLINE_PAD_VALUE(rqst));
 			headerp->rm_body.rm_padded.rm_thresh =
-				__constant_htonl(RPCRDMA_INLINE_PAD_THRESH);
+				htonl(RPCRDMA_INLINE_PAD_THRESH);
 			headerp->rm_body.rm_padded.rm_pempty[0] = xdr_zero;
 			headerp->rm_body.rm_padded.rm_pempty[1] = xdr_zero;
 			headerp->rm_body.rm_padded.rm_pempty[2] = xdr_zero;
@@ -559,7 +552,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
  * RDMA'd by server. See map at rpcrdma_create_chunks()! :-)
  */
 static int
-rpcrdma_count_chunks(struct rpcrdma_rep *rep, int max, int wrchunk, __be32 **iptrp)
+rpcrdma_count_chunks(struct rpcrdma_rep *rep, unsigned int max, int wrchunk, __be32 **iptrp)
 {
 	unsigned int i, total_len;
 	struct rpcrdma_write_chunk *cur_wchunk;

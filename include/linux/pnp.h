@@ -13,8 +13,8 @@
 #include <linux/errno.h>
 #include <linux/mod_devicetable.h>
 
-#define PNP_MAX_PORT		8
-#define PNP_MAX_MEM		4
+#define PNP_MAX_PORT		40
+#define PNP_MAX_MEM		12
 #define PNP_MAX_IRQ		2
 #define PNP_MAX_DMA		2
 #define PNP_NAME_LEN		50
@@ -126,7 +126,7 @@ struct pnp_resource_table {
 };
 
 /*
- * Device Managemnt
+ * Device Management
  */
 
 struct pnp_card {
@@ -258,6 +258,7 @@ extern struct pnp_protocol isapnp_protocol;
 #else
 #define pnp_device_is_isapnp(dev) 0
 #endif
+extern struct mutex pnp_res_mutex;
 
 #ifdef CONFIG_PNPBIOS
 extern struct pnp_protocol pnpbios_protocol;

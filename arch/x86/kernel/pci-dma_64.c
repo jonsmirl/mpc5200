@@ -12,8 +12,7 @@
 #include <asm/gart.h>
 #include <asm/calgary.h>
 
-int iommu_merge __read_mostly = 1;
-EXPORT_SYMBOL(iommu_merge);
+int iommu_merge __read_mostly = 0;
 
 dma_addr_t bad_dma_address __read_mostly;
 EXPORT_SYMBOL(bad_dma_address);
@@ -230,7 +229,7 @@ EXPORT_SYMBOL(dma_set_mask);
  * See <Documentation/x86_64/boot-options.txt> for the iommu kernel parameter
  * documentation.
  */
-__init int iommu_setup(char *p)
+static __init int iommu_setup(char *p)
 {
 	iommu_merge = 1;
 

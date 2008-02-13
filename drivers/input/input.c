@@ -235,6 +235,10 @@ static void input_handle_event(struct input_dev *dev,
 		if (value >= 0)
 			disposition = INPUT_PASS_TO_ALL;
 		break;
+
+	case EV_PWR:
+		disposition = INPUT_PASS_TO_ALL;
+		break;
 	}
 
 	if (type != EV_SYN)
@@ -489,7 +493,7 @@ static void input_disconnect_device(struct input_dev *dev)
 	if (is_event_supported(EV_KEY, dev->evbit, EV_MAX)) {
 		for (code = 0; code <= KEY_MAX; code++) {
 			if (is_event_supported(code, dev->keybit, KEY_MAX) &&
-			    test_bit(code, dev->key)) {
+			    __test_and_clear_bit(code, dev->key)) {
 				input_pass_event(dev, EV_KEY, code, 0);
 			}
 		}
@@ -522,7 +526,7 @@ static int input_default_getkeycode(struct input_dev *dev,
 	if (!dev->keycodesize)
 		return -EINVAL;
 
-	if (scancode < 0 || scancode >= dev->keycodemax)
+	if (scancode >= dev->keycodemax)
 		return -EINVAL;
 
 	*keycode = input_fetch_keycode(dev, scancode);
@@ -536,10 +540,7 @@ static int input_default_setkeycode(struct input_dev *dev,
 	int old_keycode;
 	int i;
 
-	if (scancode < 0 || scancode >= dev->keycodemax)
-		return -EINVAL;
-
-	if (keycode < 0 || keycode > KEY_MAX)
+	if (scancode >= dev->keycodemax)
 		return -EINVAL;
 
 	if (!dev->keycodesize)
@@ -582,6 +583,75 @@ static int input_default_setkeycode(struct input_dev *dev,
 	return 0;
 }
 
+/**
+ * input_get_keycode - retrieve keycode currently mapped to a given scancode
+ * @dev: input device which keymap is being queried
+ * @scancode: scancode (or its equivalent for device in question) for which
+ *	keycode is needed
+ * @keycode: result
+ *
+ * This function should be called by anyone interested in retrieving current
+ * keymap. Presently keyboard and evdev handlers use it.
+ */
+int input_get_keycode(struct input_dev *dev, int scancode, int *keycode)
+{
+	if (scancode < 0)
+		return -EINVAL;
+
+	return dev->getkeycode(dev, scancode, keycode);
+}
+EXPORT_SYMBOL(input_get_keycode);
+
+/**
+ * input_get_keycode - assign new keycode to a given scancode
+ * @dev: input device which keymap is being updated
+ * @scancode: scancode (or its equivalent for device in question)
+ * @keycode: new keycode to be assigned to the scancode
+ *
+ * This function should be called by anyone needing to update current
+ * keymap. Presently keyboard and evdev handlers use it.
+ */
+int input_set_keycode(struct input_dev *dev, int scancode, int keycode)
+{
+	unsigned long flags;
+	int old_keycode;
+	int retval;
+
+	if (scancode < 0)
+		return -EINVAL;
+
+	if (keycode < 0 || keycode > KEY_MAX)
+		return -EINVAL;
+
+	spin_lock_irqsave(&dev->event_lock, flags);
+
+	retval = dev->getkeycode(dev, scancode, &old_keycode);
+	if (retval)
+		goto out;
+
+	retval = dev->setkeycode(dev, scancode, keycode);
+	if (retval)
+		goto out;
+
+	/*
+	 * Simulate keyup event if keycode is not present
+	 * in the keymap anymore
+	 */
+	if (test_bit(EV_KEY, dev->evbit) &&
+	    !is_event_supported(old_keycode, dev->keybit, KEY_MAX) &&
+	    __test_and_clear_bit(old_keycode, dev->key)) {
+
+		input_pass_event(dev, EV_KEY, old_keycode, 0);
+		if (dev->sync)
+			input_pass_event(dev, EV_SYN, SYN_REPORT, 1);
+	}
+
+ out:
+	spin_unlock_irqrestore(&dev->event_lock, flags);
+
+	return retval;
+}
+EXPORT_SYMBOL(input_set_keycode);
 
 #define MATCH_BIT(bit, max) \
 		for (i = 0; i < BITS_TO_LONGS(max); i++) \
@@ -751,7 +821,7 @@ static int input_devices_seq_show(struct seq_file *seq, void *v)
 	return 0;
 }
 
-static struct seq_operations input_devices_seq_ops = {
+static const struct seq_operations input_devices_seq_ops = {
 	.start	= input_devices_seq_start,
 	.next	= input_devices_seq_next,
 	.stop	= input_devices_seq_stop,
@@ -804,7 +874,7 @@ static int input_handlers_seq_show(struct seq_file *seq, void *v)
 
 	return 0;
 }
-static struct seq_operations input_handlers_seq_ops = {
+static const struct seq_operations input_handlers_seq_ops = {
 	.start	= input_handlers_seq_start,
 	.next	= input_handlers_seq_next,
 	.stop	= input_handlers_seq_stop,
@@ -1266,6 +1336,10 @@ void input_set_capability(struct input_dev *dev, unsigned int type, unsigned int
 		__set_bit(code, dev->ffbit);
 		break;
 
+	case EV_PWR:
+		/* do nothing */
+		break;
+
 	default:
 		printk(KERN_ERR
 			"input_set_capability: unknown type %u (code %u)\n",
@@ -1320,9 +1394,6 @@ int input_register_device(struct input_dev *dev)
 
 	snprintf(dev->dev.bus_id, sizeof(dev->dev.bus_id),
 		 "input%ld", (unsigned long) atomic_inc_return(&input_no) - 1);
-
-	if (dev->cdev.dev)
-		dev->dev.parent = dev->cdev.dev;
 
 	error = device_add(&dev->dev);
 	if (error)

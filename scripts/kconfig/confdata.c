@@ -145,33 +145,6 @@ static int conf_set_sym_val(struct symbol *sym, int def, int def_flags, char *p)
 	return 0;
 }
 
-/* Read an environment variable and assign the value to the symbol */
-int conf_set_env_sym(const char *env, const char *symname, int def)
-{
-	struct symbol *sym;
-	char *p;
-	int def_flags;
-
-	p = getenv(env);
-	if (p) {
-		char warning[200];
-		sprintf(warning, "Environment variable (%s = \"%s\")", env, p);
-		conf_filename = warning;
-		def_flags = SYMBOL_DEF << def;
-		if (def == S_DEF_USER) {
-			sym = sym_find(symname);
-			if (!sym)
-				return 1;
-		} else {
-			sym = sym_lookup(symname, 0);
-			if (sym->type == S_UNKNOWN)
-				sym->type = S_OTHER;
-		}
-		conf_set_sym_val(sym, def, def_flags, p);
-	}
-	return 0;
-}
-
 int conf_read_simple(const char *name, int def)
 {
 	FILE *in = NULL;
@@ -259,8 +232,7 @@ load:
 					sym->type = S_BOOLEAN;
 			}
 			if (sym->flags & def_flags) {
-				conf_warning("trying to reassign symbol %s", sym->name);
-				break;
+				conf_warning("override: reassigning to symbol %s", sym->name);
 			}
 			switch (sym->type) {
 			case S_BOOLEAN:
@@ -299,8 +271,7 @@ load:
 					sym->type = S_OTHER;
 			}
 			if (sym->flags & def_flags) {
-				conf_warning("trying to reassign symbol %s", sym->name);
-				break;
+				conf_warning("override: reassigning to symbol %s", sym->name);
 			}
 			if (conf_set_sym_val(sym, def, def_flags, p))
 				continue;
@@ -324,14 +295,12 @@ load:
 				}
 				break;
 			case yes:
-				if (cs->def[def].tri != no) {
-					conf_warning("%s creates inconsistent choice state", sym->name);
-					cs->flags &= ~def_flags;
-				} else
-					cs->def[def].val = sym;
+				if (cs->def[def].tri != no)
+					conf_warning("override: %s changes choice state", sym->name);
+				cs->def[def].val = sym;
 				break;
 			}
-			cs->def[def].tri = E_OR(cs->def[def].tri, sym->def[def].tri);
+			cs->def[def].tri = EXPR_OR(cs->def[def].tri, sym->def[def].tri);
 		}
 	}
 	fclose(in);
@@ -343,7 +312,7 @@ load:
 
 int conf_read(const char *name)
 {
-	struct symbol *sym;
+	struct symbol *sym, *choice_sym;
 	struct property *prop;
 	struct expr *e;
 	int i, flags;
@@ -384,9 +353,9 @@ int conf_read(const char *name)
 		 */
 		prop = sym_get_choice_prop(sym);
 		flags = sym->flags;
-		for (e = prop->expr; e; e = e->left.expr)
-			if (e->right.sym->visible != no)
-				flags &= e->right.sym->flags;
+		expr_list_for_each_sym(prop->expr, e, choice_sym)
+			if (choice_sym->visible != no)
+				flags &= choice_sym->flags;
 		sym->flags &= flags | ~SYMBOL_DEF_USER;
 	}
 

@@ -25,14 +25,15 @@ static struct page *__xip_sparse_page;
 static struct page *xip_sparse_page(void)
 {
 	if (!__xip_sparse_page) {
-		unsigned long zeroes = get_zeroed_page(GFP_HIGHUSER);
-		if (zeroes) {
+		struct page *page = alloc_page(GFP_HIGHUSER | __GFP_ZERO);
+
+		if (page) {
 			static DEFINE_SPINLOCK(xip_alloc_lock);
 			spin_lock(&xip_alloc_lock);
 			if (!__xip_sparse_page)
-				__xip_sparse_page = virt_to_page(zeroes);
+				__xip_sparse_page = page;
 			else
-				free_page(zeroes);
+				__free_page(page);
 			spin_unlock(&xip_alloc_lock);
 		}
 	}
@@ -55,7 +56,8 @@ do_xip_mapping_read(struct address_space *mapping,
 		    read_actor_t actor)
 {
 	struct inode *inode = mapping->host;
-	unsigned long index, end_index, offset;
+	pgoff_t index, end_index;
+	unsigned long offset;
 	loff_t isize;
 
 	BUG_ON(!mapping->a_ops->get_xip_page);
@@ -314,7 +316,7 @@ __xip_file_write(struct file *filp, const char __user *buf,
 		fault_in_pages_readable(buf, bytes);
 		kaddr = kmap_atomic(page, KM_USER0);
 		copied = bytes -
-			__copy_from_user_inatomic_nocache(kaddr, buf, bytes);
+			__copy_from_user_inatomic_nocache(kaddr + offset, buf, bytes);
 		kunmap_atomic(kaddr, KM_USER0);
 		flush_dcache_page(page);
 
@@ -430,7 +432,7 @@ xip_truncate_page(struct address_space *mapping, loff_t from)
 		else
 			return PTR_ERR(page);
 	}
-	zero_user_page(page, offset, length, KM_USER0);
+	zero_user(page, offset, length);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(xip_truncate_page);

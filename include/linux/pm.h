@@ -95,7 +95,7 @@ struct pm_dev
 };
 
 /* Functions above this comment are list-based old-style power
- * managment. Please avoid using them.  */
+ * management. Please avoid using them.  */
 
 /*
  * Callbacks for platform drivers to implement.
@@ -245,6 +245,15 @@ static inline int call_platform_enable_wakeup(struct device *dev, int is_on)
 		device_can_wakeup(dev) = !!(val); \
 		device_set_wakeup_enable(dev,val); \
 	} while(0)
+
+/*
+ * Global Power Management flags
+ * Used to keep APM and ACPI from both being active
+ */
+extern unsigned int	pm_flags;
+
+#define PM_APM	1
+#define PM_ACPI	2
 
 #endif /* __KERNEL__ */
 

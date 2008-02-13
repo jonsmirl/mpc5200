@@ -329,7 +329,7 @@ static int hpt37x_pre_reset(struct ata_link *link, unsigned long deadline)
 	/* Restore state */
 	pci_write_config_byte(pdev, 0x5B, scr2);
 
-	if (ata66 & (1 << ap->port_no))
+	if (ata66 & (2 >> ap->port_no))
 		ap->cbl = ATA_CBL_PATA40;
 	else
 		ap->cbl = ATA_CBL_PATA80;
@@ -375,7 +375,7 @@ static int hpt374_pre_reset(struct ata_link *link, unsigned long deadline)
 	pci_write_config_word(pdev, mcrbase + 2, mcr3 | 0x8000);
 	pci_read_config_byte(pdev, 0x5A, &ata66);
 	/* Reset TCBLID/FCBLID to output */
-	pci_write_config_word(pdev, 0x52, mcr3);
+	pci_write_config_word(pdev, mcrbase + 2, mcr3);
 
 	if (ata66 & (2 >> ap->port_no))
 		ap->cbl = ATA_CBL_PATA40;
@@ -847,15 +847,16 @@ static u32 hpt374_read_freq(struct pci_dev *pdev)
 	u32 freq;
 	unsigned long io_base = pci_resource_start(pdev, 4);
 	if (PCI_FUNC(pdev->devfn) & 1) {
-		struct pci_dev *pdev_0 = pci_get_slot(pdev->bus, pdev->devfn - 1);
+		struct pci_dev *pdev_0;
+
+		pdev_0 = pci_get_slot(pdev->bus, pdev->devfn - 1);
 		/* Someone hot plugged the controller on us ? */
 		if (pdev_0 == NULL)
 			return 0;
 		io_base = pci_resource_start(pdev_0, 4);
 		freq = inl(io_base + 0x90);
 		pci_dev_put(pdev_0);
-	}
-	else
+	} else
 		freq = inl(io_base + 0x90);
 	return freq;
 }

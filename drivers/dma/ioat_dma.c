@@ -159,24 +159,47 @@ static int ioat_dma_enumerate_channels(struct ioatdma_device *device)
 	return device->common.chancnt;
 }
 
-static void ioat_set_src(dma_addr_t addr,
-			 struct dma_async_tx_descriptor *tx,
-			 int index)
-{
-	tx_to_ioat_desc(tx)->src = addr;
-}
-
-static void ioat_set_dest(dma_addr_t addr,
-			  struct dma_async_tx_descriptor *tx,
-			  int index)
-{
-	tx_to_ioat_desc(tx)->dst = addr;
-}
-
+/**
+ * ioat_dma_memcpy_issue_pending - push potentially unrecognized appended
+ *                                 descriptors to hw
+ * @chan: DMA channel handle
+ */
 static inline void __ioat1_dma_memcpy_issue_pending(
-					       struct ioat_dma_chan *ioat_chan);
+						struct ioat_dma_chan *ioat_chan)
+{
+	ioat_chan->pending = 0;
+	writeb(IOAT_CHANCMD_APPEND, ioat_chan->reg_base + IOAT1_CHANCMD_OFFSET);
+}
+
+static void ioat1_dma_memcpy_issue_pending(struct dma_chan *chan)
+{
+	struct ioat_dma_chan *ioat_chan = to_ioat_chan(chan);
+
+	if (ioat_chan->pending != 0) {
+		spin_lock_bh(&ioat_chan->desc_lock);
+		__ioat1_dma_memcpy_issue_pending(ioat_chan);
+		spin_unlock_bh(&ioat_chan->desc_lock);
+	}
+}
+
 static inline void __ioat2_dma_memcpy_issue_pending(
-					       struct ioat_dma_chan *ioat_chan);
+						struct ioat_dma_chan *ioat_chan)
+{
+	ioat_chan->pending = 0;
+	writew(ioat_chan->dmacount,
+	       ioat_chan->reg_base + IOAT_CHAN_DMACOUNT_OFFSET);
+}
+
+static void ioat2_dma_memcpy_issue_pending(struct dma_chan *chan)
+{
+	struct ioat_dma_chan *ioat_chan = to_ioat_chan(chan);
+
+	if (ioat_chan->pending != 0) {
+		spin_lock_bh(&ioat_chan->desc_lock);
+		__ioat2_dma_memcpy_issue_pending(ioat_chan);
+		spin_unlock_bh(&ioat_chan->desc_lock);
+	}
+}
 
 static dma_cookie_t ioat1_tx_submit(struct dma_async_tx_descriptor *tx)
 {
@@ -203,7 +226,7 @@ static dma_cookie_t ioat1_tx_submit(struct dma_async_tx_descriptor *tx)
 	prev = to_ioat_desc(ioat_chan->used_desc.prev);
 	prefetch(prev->hw);
 	do {
-		copy = min((u32) len, ioat_chan->xfercap);
+		copy = min_t(size_t, len, ioat_chan->xfercap);
 
 		new->async_tx.ack = 1;
 
@@ -291,10 +314,12 @@ static dma_cookie_t ioat2_tx_submit(struct dma_async_tx_descriptor *tx)
 	orig_ack = first->async_tx.ack;
 	new = first;
 
-	/* ioat_chan->desc_lock is still in force in version 2 path */
-
+	/*
+	 * ioat_chan->desc_lock is still in force in version 2 path
+	 * it gets unlocked at end of this function
+	 */
 	do {
-		copy = min((u32) len, ioat_chan->xfercap);
+		copy = min_t(size_t, len, ioat_chan->xfercap);
 
 		new->async_tx.ack = 1;
 
@@ -376,8 +401,6 @@ static struct ioat_desc_sw *ioat_dma_alloc_descriptor(
 
 	memset(desc, 0, sizeof(*desc));
 	dma_async_tx_descriptor_init(&desc_sw->async_tx, &ioat_chan->common);
-	desc_sw->async_tx.tx_set_src = ioat_set_src;
-	desc_sw->async_tx.tx_set_dest = ioat_set_dest;
 	switch (ioat_chan->device->version) {
 	case IOAT_VER_1_2:
 		desc_sw->async_tx.tx_submit = ioat1_tx_submit;
@@ -432,7 +455,7 @@ static void ioat2_dma_massage_chan_desc(struct ioat_dma_chan *ioat_chan)
 static int ioat_dma_alloc_chan_resources(struct dma_chan *chan)
 {
 	struct ioat_dma_chan *ioat_chan = to_ioat_chan(chan);
-	struct ioat_desc_sw *desc = NULL;
+	struct ioat_desc_sw *desc;
 	u16 chanctrl;
 	u32 chanerr;
 	int i;
@@ -575,7 +598,7 @@ static void ioat_dma_free_chan_resources(struct dma_chan *chan)
 static struct ioat_desc_sw *
 ioat1_dma_get_next_descriptor(struct ioat_dma_chan *ioat_chan)
 {
-	struct ioat_desc_sw *new = NULL;
+	struct ioat_desc_sw *new;
 
 	if (!list_empty(&ioat_chan->free_desc)) {
 		new = to_ioat_desc(ioat_chan->free_desc.next);
@@ -583,9 +606,11 @@ ioat1_dma_get_next_descriptor(struct ioat_dma_chan *ioat_chan)
 	} else {
 		/* try to get another desc */
 		new = ioat_dma_alloc_descriptor(ioat_chan, GFP_ATOMIC);
-		/* will this ever happen? */
-		/* TODO add upper limit on these */
-		BUG_ON(!new);
+		if (!new) {
+			dev_err(&ioat_chan->device->pdev->dev,
+				"alloc failed\n");
+			return NULL;
+		}
 	}
 
 	prefetch(new->hw);
@@ -595,7 +620,7 @@ ioat1_dma_get_next_descriptor(struct ioat_dma_chan *ioat_chan)
 static struct ioat_desc_sw *
 ioat2_dma_get_next_descriptor(struct ioat_dma_chan *ioat_chan)
 {
-	struct ioat_desc_sw *new = NULL;
+	struct ioat_desc_sw *new;
 
 	/*
 	 * used.prev points to where to start processing
@@ -609,8 +634,8 @@ ioat2_dma_get_next_descriptor(struct ioat_dma_chan *ioat_chan)
 	if (ioat_chan->used_desc.prev &&
 	    ioat_chan->used_desc.next == ioat_chan->used_desc.prev->prev) {
 
-		struct ioat_desc_sw *desc = NULL;
-		struct ioat_desc_sw *noop_desc = NULL;
+		struct ioat_desc_sw *desc;
+		struct ioat_desc_sw *noop_desc;
 		int i;
 
 		/* set up the noop descriptor */
@@ -624,10 +649,14 @@ ioat2_dma_get_next_descriptor(struct ioat_dma_chan *ioat_chan)
 		ioat_chan->pending++;
 		ioat_chan->dmacount++;
 
-		/* get a few more descriptors */
+		/* try to get a few more descriptors */
 		for (i = 16; i; i--) {
 			desc = ioat_dma_alloc_descriptor(ioat_chan, GFP_ATOMIC);
-			BUG_ON(!desc);
+			if (!desc) {
+				dev_err(&ioat_chan->device->pdev->dev,
+					"alloc failed\n");
+				break;
+			}
 			list_add_tail(&desc->node, ioat_chan->used_desc.next);
 
 			desc->hw->next
@@ -669,77 +698,52 @@ static struct ioat_desc_sw *ioat_dma_get_next_descriptor(
 
 static struct dma_async_tx_descriptor *ioat1_dma_prep_memcpy(
 						struct dma_chan *chan,
+						dma_addr_t dma_dest,
+						dma_addr_t dma_src,
 						size_t len,
-						int int_en)
+						unsigned long flags)
 {
 	struct ioat_dma_chan *ioat_chan = to_ioat_chan(chan);
 	struct ioat_desc_sw *new;
 
 	spin_lock_bh(&ioat_chan->desc_lock);
 	new = ioat_dma_get_next_descriptor(ioat_chan);
-	new->len = len;
 	spin_unlock_bh(&ioat_chan->desc_lock);
 
-	return new ? &new->async_tx : NULL;
+	if (new) {
+		new->len = len;
+		new->dst = dma_dest;
+		new->src = dma_src;
+		return &new->async_tx;
+	} else
+		return NULL;
 }
 
 static struct dma_async_tx_descriptor *ioat2_dma_prep_memcpy(
 						struct dma_chan *chan,
+						dma_addr_t dma_dest,
+						dma_addr_t dma_src,
 						size_t len,
-						int int_en)
+						unsigned long flags)
 {
 	struct ioat_dma_chan *ioat_chan = to_ioat_chan(chan);
 	struct ioat_desc_sw *new;
 
 	spin_lock_bh(&ioat_chan->desc_lock);
 	new = ioat2_dma_get_next_descriptor(ioat_chan);
-	new->len = len;
 
-	/* leave ioat_chan->desc_lock set in version 2 path */
-	return new ? &new->async_tx : NULL;
-}
+	/*
+	 * leave ioat_chan->desc_lock set in ioat 2 path
+	 * it will get unlocked at end of tx_submit
+	 */
 
-
-/**
- * ioat_dma_memcpy_issue_pending - push potentially unrecognized appended
- *                                 descriptors to hw
- * @chan: DMA channel handle
- */
-static inline void __ioat1_dma_memcpy_issue_pending(
-						struct ioat_dma_chan *ioat_chan)
-{
-	ioat_chan->pending = 0;
-	writeb(IOAT_CHANCMD_APPEND, ioat_chan->reg_base + IOAT1_CHANCMD_OFFSET);
-}
-
-static void ioat1_dma_memcpy_issue_pending(struct dma_chan *chan)
-{
-	struct ioat_dma_chan *ioat_chan = to_ioat_chan(chan);
-
-	if (ioat_chan->pending != 0) {
-		spin_lock_bh(&ioat_chan->desc_lock);
-		__ioat1_dma_memcpy_issue_pending(ioat_chan);
-		spin_unlock_bh(&ioat_chan->desc_lock);
-	}
-}
-
-static inline void __ioat2_dma_memcpy_issue_pending(
-						struct ioat_dma_chan *ioat_chan)
-{
-	ioat_chan->pending = 0;
-	writew(ioat_chan->dmacount,
-	       ioat_chan->reg_base + IOAT_CHAN_DMACOUNT_OFFSET);
-}
-
-static void ioat2_dma_memcpy_issue_pending(struct dma_chan *chan)
-{
-	struct ioat_dma_chan *ioat_chan = to_ioat_chan(chan);
-
-	if (ioat_chan->pending != 0) {
-		spin_lock_bh(&ioat_chan->desc_lock);
-		__ioat2_dma_memcpy_issue_pending(ioat_chan);
-		spin_unlock_bh(&ioat_chan->desc_lock);
-	}
+	if (new) {
+		new->len = len;
+		new->dst = dma_dest;
+		new->src = dma_src;
+		return &new->async_tx;
+	} else
+		return NULL;
 }
 
 static void ioat_dma_cleanup_tasklet(unsigned long data)
@@ -1019,7 +1023,7 @@ static void ioat_dma_start_null_desc(struct ioat_dma_chan *ioat_chan)
 static void ioat_dma_test_callback(void *dma_async_param)
 {
 	printk(KERN_ERR "ioatdma: ioat_dma_test_callback(%p)\n",
-			dma_async_param);
+		dma_async_param);
 }
 
 /**
@@ -1032,8 +1036,8 @@ static int ioat_dma_self_test(struct ioatdma_device *device)
 	u8 *src;
 	u8 *dest;
 	struct dma_chan *dma_chan;
-	struct dma_async_tx_descriptor *tx = NULL;
-	dma_addr_t addr;
+	struct dma_async_tx_descriptor *tx;
+	dma_addr_t dma_dest, dma_src;
 	dma_cookie_t cookie;
 	int err = 0;
 
@@ -1061,7 +1065,12 @@ static int ioat_dma_self_test(struct ioatdma_device *device)
 		goto out;
 	}
 
-	tx = device->common.device_prep_dma_memcpy(dma_chan, IOAT_TEST_SIZE, 0);
+	dma_src = dma_map_single(dma_chan->device->dev, src, IOAT_TEST_SIZE,
+				 DMA_TO_DEVICE);
+	dma_dest = dma_map_single(dma_chan->device->dev, dest, IOAT_TEST_SIZE,
+				  DMA_FROM_DEVICE);
+	tx = device->common.device_prep_dma_memcpy(dma_chan, dma_dest, dma_src,
+						   IOAT_TEST_SIZE, 0);
 	if (!tx) {
 		dev_err(&device->pdev->dev,
 			"Self-test prep failed, disabling\n");
@@ -1070,12 +1079,6 @@ static int ioat_dma_self_test(struct ioatdma_device *device)
 	}
 
 	async_tx_ack(tx);
-	addr = dma_map_single(dma_chan->device->dev, src, IOAT_TEST_SIZE,
-			      DMA_TO_DEVICE);
-	tx->tx_set_src(addr, tx, 0);
-	addr = dma_map_single(dma_chan->device->dev, dest, IOAT_TEST_SIZE,
-			      DMA_FROM_DEVICE);
-	tx->tx_set_dest(addr, tx, 0);
 	tx->callback = ioat_dma_test_callback;
 	tx->callback_param = (void *)0x8086;
 	cookie = tx->tx_submit(tx);
@@ -1351,7 +1354,7 @@ err_completion_pool:
 err_dma_pool:
 	kfree(device);
 err_kzalloc:
-	dev_err(&device->pdev->dev,
+	dev_err(&pdev->dev,
 		"Intel(R) I/OAT DMA Engine initialization failed\n");
 	return NULL;
 }

@@ -95,9 +95,10 @@ static int mpc8610_hpcd_audio_init(struct snd_soc_machine *machine)
 static int mpc8610_hpcd_startup(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai_runtime *codec_dai = rtd->dai->codec_dai;
-	struct snd_soc_dai_runtime *cpu_dai = rtd->dai->cpu_dai;
-	struct mpc8610_hpcd_data *machine_data = machine->private_data;
+	struct snd_soc_dai *codec_dai = rtd->dai->codec_dai;
+	struct snd_soc_dai *cpu_dai = rtd->dai->cpu_dai;
+	struct mpc8610_hpcd_data *machine_data =
+		rtd->socdev->dev->platform_data;
 	int ret = 0;
 
 	/* Tell the CPU driver what the serial protocol is. */
@@ -207,12 +208,15 @@ static int mpc8610_hpcd_probe(struct of_device *ofdev,
 	struct device_node *guts_np = NULL;
 	struct device_node *dma_np = NULL;
 	struct device_node *dma_channel_np = NULL;
+	const phandle *codec_ph;
 	const char *sprop;
 	const u32 *iprop;
 	struct resource res;
 	struct mpc8610_hpcd_data *machine_data;
+
 /* TODO: ssi_info and dma_info could now be created in the platform driver 
  * during it's probe. A lot of this code could be moved to platform probe() */	
+
 	struct fsl_ssi_info ssi_info;
 	struct fsl_dma_info dma_info;
 	int ret = -ENODEV;
@@ -227,17 +231,14 @@ static int mpc8610_hpcd_probe(struct of_device *ofdev,
 	ssi_info.dev = &ofdev->dev;
 
 	/*
-	 * We are only interested in SSIs with a codec child node in them, so
-	 * let's make sure this SSI has one.
+	 * We are only interested in SSIs with a codec phandle in them, so let's
+	 * make sure this SSI has one.
 	 */
-	while ((codec_np = of_get_next_child(np, codec_np)) != NULL) {
-		if (strcmp(codec_np->name, "codec") == 0) {
-			/* Most drivers forget the final of_node_put() call */
-			of_node_put(codec_np);
-			break;
-		}
-	}
+	codec_ph = of_get_property(np, "codec-handle", NULL);
+	if (!codec_ph)
+		goto error;
 
+	codec_np = of_find_node_by_phandle(*codec_ph);
 	if (!codec_np)
 		goto error;
 
@@ -429,6 +430,7 @@ static int mpc8610_hpcd_probe(struct of_device *ofdev,
 		goto error;
 	}
 
+
 #if 0 /* V1 TODO: remove */
 	/*
 	 * Initialize our DAI data structure.  We should probably get this
@@ -505,9 +507,17 @@ static int mpc8610_hpcd_probe(struct of_device *ofdev,
 		goto err;
 
 #endif
+
+	dev_set_drvdata(&ofdev->dev, sound_device);
+
 	return 0;
 
 error:
+
+	of_node_put(codec_np);
+	of_node_put(guts_np);
+	of_node_put(dma_np);
+	of_node_put(dma_channel_np);
 
 	if (ssi_info.ssi)
 		iounmap(ssi_info.ssi);
@@ -531,6 +541,7 @@ error:
 		iounmap(machine_data->guts);
 
 	kfree(machine_data);
+
 	snd_soc_machine_free(machine);
 	return ret;
 }
@@ -546,6 +557,7 @@ static int mpc8610_hpcd_remove(struct of_device *ofdev)
 	struct mpc8610_hpcd_data *machine_data = machine->private_data;
 
 /* TODO: some of this will move to platform remove() */
+
 	if (machine_data->dai.cpu_dai)
 		fsl_ssi_destroy_dai(machine_data->dai.cpu_dai);
 
@@ -568,7 +580,9 @@ static int mpc8610_hpcd_remove(struct of_device *ofdev)
 		iounmap(machine_data->guts);
 
 	kfree(machine_data);
+
 	snd_soc_machine_free(machine);
+	
 	dev_set_drvdata(&ofdev->dev, NULL);
 
 	return 0;

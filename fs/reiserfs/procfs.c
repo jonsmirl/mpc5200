@@ -420,12 +420,6 @@ static void *r_start(struct seq_file *m, loff_t * pos)
 		return NULL;
 
 	up_write(&s->s_umount);
-
-	if (de->deleted) {
-		deactivate_super(s);
-		return NULL;
-	}
-
 	return s;
 }
 
@@ -450,7 +444,7 @@ static int r_show(struct seq_file *m, void *v)
 	return show(m, v);
 }
 
-static struct seq_operations r_ops = {
+static const struct seq_operations r_ops = {
 	.start = r_start,
 	.next = r_next,
 	.stop = r_stop,

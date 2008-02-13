@@ -422,7 +422,7 @@ static irqreturn_t mpc52xx_fec_rx_interrupt(int irq, void *dev_id)
 
 		rskb = bcom_retrieve_buffer(priv->rx_dmatsk, &status,
 				(struct bcom_bd **)&bd);
-		dma_unmap_single(&dev->dev, bd->skb_pa, skb->len, DMA_FROM_DEVICE);
+		dma_unmap_single(&dev->dev, bd->skb_pa, rskb->len, DMA_FROM_DEVICE);
 
 		/* Test for errors in received frame */
 		if (status & BCOM_FEC_RX_BD_ERRORS) {
@@ -467,7 +467,7 @@ static irqreturn_t mpc52xx_fec_rx_interrupt(int irq, void *dev_id)
 			bcom_prepare_next_buffer(priv->rx_dmatsk);
 
 		bd->status = FEC_RX_BUFFER_SIZE;
-		bd->skb_pa = dma_map_single(&dev->dev, rskb->data,
+		bd->skb_pa = dma_map_single(&dev->dev, skb->data,
 				FEC_RX_BUFFER_SIZE, DMA_FROM_DEVICE);
 
 		bcom_submit_next_buffer(priv->rx_dmatsk, skb);
@@ -568,8 +568,9 @@ static void mpc52xx_fec_reset_stats(struct net_device *dev)
 	struct mpc52xx_fec __iomem *fec = priv->fec;
 
 	out_be32(&fec->mib_control, FEC_MIB_DISABLE);
-	memset_io(&fec->rmon_t_drop, 0,	(__force u32)&fec->reserved10 -
-			(__force u32)&fec->rmon_t_drop);
+	memset_io(&fec->rmon_t_drop, 0,
+		   offsetof(struct mpc52xx_fec, reserved10) -
+		   offsetof(struct mpc52xx_fec, rmon_t_drop));
 	out_be32(&fec->mib_control, 0);
 
 	memset(&dev->stats, 0, sizeof(dev->stats));
@@ -971,6 +972,8 @@ mpc52xx_fec_probe(struct of_device *op, const struct of_device_id *match)
 
 	mpc52xx_fec_reset_stats(ndev);
 
+	SET_NETDEV_DEV(ndev, &op->dev);
+
 	/* Register the new network device */
 	rv = register_netdev(ndev);
 	if (rv < 0)
@@ -1054,10 +1057,8 @@ static int mpc52xx_fec_of_resume(struct of_device *op)
 #endif
 
 static struct of_device_id mpc52xx_fec_match[] = {
-	{
-		.type		= "network",
-		.compatible	= "mpc5200-fec",
-	},
+	{ .type = "network", .compatible = "fsl,mpc5200-fec", },
+	{ .type = "network", .compatible = "mpc5200-fec", },
 	{ }
 };
 

@@ -69,6 +69,12 @@ static inline long sync_writeback_pages(void)
 int dirty_background_ratio = 5;
 
 /*
+ * free highmem will not be subtracted from the total free memory
+ * for calculating free ratios if vm_highmem_is_dirtyable is true
+ */
+int vm_highmem_is_dirtyable;
+
+/*
  * The generator of dirty data starts writeback at this percentage
  */
 int vm_dirty_ratio = 10;
@@ -219,7 +225,7 @@ static inline void task_dirties_fraction(struct task_struct *tsk,
  *
  *   dirty -= (dirty/8) * p_{t}
  */
-void task_dirty_limit(struct task_struct *tsk, long *pdirty)
+static void task_dirty_limit(struct task_struct *tsk, long *pdirty)
 {
 	long numerator, denominator;
 	long dirty = *pdirty;
@@ -287,7 +293,10 @@ static unsigned long determine_dirtyable_memory(void)
 	x = global_page_state(NR_FREE_PAGES)
 		+ global_page_state(NR_INACTIVE)
 		+ global_page_state(NR_ACTIVE);
-	x -= highmem_dirtyable_memory(x);
+
+	if (!vm_highmem_is_dirtyable)
+		x -= highmem_dirtyable_memory(x);
+
 	return x + 1;	/* Ensure that we never return 0 */
 }
 
@@ -1067,7 +1076,7 @@ static int __set_page_dirty(struct page *page)
 	return 0;
 }
 
-int fastcall set_page_dirty(struct page *page)
+int set_page_dirty(struct page *page)
 {
 	int ret = __set_page_dirty(page);
 	if (ret)

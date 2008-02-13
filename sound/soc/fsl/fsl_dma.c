@@ -135,8 +135,9 @@ struct fsl_dma_private {
  * number of periods.
  */
 static const struct snd_pcm_hardware fsl_dma_hardware = {
-
-	.info   		= SNDRV_PCM_INFO_INTERLEAVED,
+	.info   		= SNDRV_PCM_INFO_INTERLEAVED |
+				  SNDRV_PCM_INFO_MMAP |
+				  SNDRV_PCM_INFO_MMAP_VALID,
 	.formats		= FSLDMA_PCM_FORMATS,
 	.rates  		= FSLDMA_PCM_RATES,
 	.rate_min       	= 5512,
@@ -281,7 +282,7 @@ static irqreturn_t fsl_dma_isr(int irq, void *dev_id)
  * once for each .dai_link in the machine driver's snd_soc_machine
  * structure.
  */
-static int fsl_dma_new(struct snd_card *card, struct snd_soc_dai_runtime *dai,
+static int fsl_dma_new(struct snd_card *card, struct snd_soc_codec_dai *dai,
 	struct snd_pcm *pcm)
 {
 	static u64 fsl_dma_dmamask = DMA_BIT_MASK(32);
@@ -826,39 +827,6 @@ int fsl_dma_configure(struct fsl_dma_info *dma_info)
 }
 EXPORT_SYMBOL_GPL(fsl_dma_configure);
 
-/* TODO: PM needs finished */
-#ifdef CONFIG_PM
-static int fsl_pcm_suspend(struct device *dev, pm_message_t state)
-{
-	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
-	struct snd_soc_dai_runtime *dai_runtime, *d;
-
-	list_for_each_entry_safe(dai_runtime, d, &platform->dai_list, list) {
-		if (dai_runtime->active) {
-				
-		}
-	}
-
-	return 0;
-}
-
-static int fsl_pcm_resume(struct device *dev)
-{
-	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
-	struct snd_soc_dai_runtime *dai_runtime, *d;
-
-	list_for_each_entry_safe(dai_runtime, d, &platform->dai_list, list) {
-		if (dai_runtime->active) {
-				
-		}
-	}
-	return 0;
-}
-
-#else
-#define fsl_pcm_suspend	NULL
-#define fsl_pcm_resume	NULL
-#endif
 
 /*
  * TODO: We may want to query the device tree here for our DMA and SSI
@@ -898,8 +866,8 @@ static struct device_driver fsl_pcm_driver = {
 	.bus 		= &asoc_bus_type,
 	.probe		= fsl_pcm_probe,
 	.remove		= __devexit_p(fsl_pcm_remove),
-	.suspend	= fsl_pcm_suspend,
-	.resume		= fsl_pcm_resume,
+//	.suspend	= fsl_pcm_suspend,
+//	.resume		= fsl_pcm_resume,
 };
 
 static __init int fsl_pcm_init(void)

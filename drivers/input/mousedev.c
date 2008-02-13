@@ -16,7 +16,6 @@
 #include <linux/slab.h>
 #include <linux/poll.h>
 #include <linux/module.h>
-#include <linux/moduleparam.h>
 #include <linux/init.h>
 #include <linux/input.h>
 #include <linux/random.h>
@@ -1029,6 +1028,15 @@ static const struct input_device_id mousedev_ids[] = {
 				BIT_MASK(ABS_PRESSURE) |
 				BIT_MASK(ABS_TOOL_WIDTH) },
 	},	/* A touchpad */
+	{
+		.flags = INPUT_DEVICE_ID_MATCH_EVBIT |
+			INPUT_DEVICE_ID_MATCH_KEYBIT |
+			INPUT_DEVICE_ID_MATCH_ABSBIT,
+		.evbit = { BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS) },
+		.keybit = { [BIT_WORD(BTN_LEFT)] = BIT_MASK(BTN_LEFT) },
+		.absbit = { BIT_MASK(ABS_X) | BIT_MASK(ABS_Y) },
+	},	/* Mouse-like device with absolute X and Y but ordinary
+		   clicks, like hp ILO2 High Performance mouse */
 
 	{ },	/* Terminating entry */
 };

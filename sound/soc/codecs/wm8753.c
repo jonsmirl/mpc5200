@@ -40,7 +40,6 @@
 #include <linux/delay.h>
 #include <linux/pm.h>
 #include <linux/platform_device.h>
-#include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -263,10 +262,7 @@ static int wm8753_set_dai(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
-static const unsigned int rec_mix_tlv[] = {
-	TLV_DB_RANGE_HEAD(1),
-	0,7, TLV_DB_LINEAR_ITEM(-1500, 600),
-};
+static const DECLARE_TLV_DB_LINEAR(rec_mix_tlv, -1500, 600);
 
 static const struct snd_kcontrol_new wm8753_snd_controls[] = {
 SOC_DOUBLE_R("PCM Volume", WM8753_LDAC, WM8753_RDAC, 0, 255, 0),

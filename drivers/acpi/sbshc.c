@@ -111,11 +111,16 @@ static int wait_transaction_complete(struct acpi_smb_hc *hc, int timeout)
 		return -ETIME;
 }
 
-int acpi_smbus_transaction(struct acpi_smb_hc *hc, u8 protocol, u8 address,
-		    u8 command, u8 *data, u8 length)
+static int acpi_smbus_transaction(struct acpi_smb_hc *hc, u8 protocol,
+				  u8 address, u8 command, u8 *data, u8 length)
 {
 	int ret = -EFAULT, i;
 	u8 temp, sz = 0;
+
+	if (!hc) {
+		printk(KERN_ERR PREFIX "host controller is not configured\n");
+		return ret;
+	}
 
 	mutex_lock(&hc->lock);
 	if (smb_hc_read(hc, ACPI_SMB_PROTOCOL, &temp))
@@ -202,10 +207,9 @@ int acpi_smbus_unregister_callback(struct acpi_smb_hc *hc)
 
 EXPORT_SYMBOL_GPL(acpi_smbus_unregister_callback);
 
-static void acpi_smbus_callback(void *context)
+static inline void acpi_smbus_callback(void *context)
 {
 	struct acpi_smb_hc *hc = context;
-
 	if (hc->callback)
 		hc->callback(hc->context);
 }
@@ -214,6 +218,7 @@ static int smbus_alarm(void *context)
 {
 	struct acpi_smb_hc *hc = context;
 	union acpi_smb_status status;
+	u8 address;
 	if (smb_hc_read(hc, ACPI_SMB_STATUS, &status.raw))
 		return 0;
 	/* Check if it is only a completion notify */
@@ -222,9 +227,18 @@ static int smbus_alarm(void *context)
 	if (!status.fields.alarm)
 		return 0;
 	mutex_lock(&hc->lock);
+	smb_hc_read(hc, ACPI_SMB_ALARM_ADDRESS, &address);
+	status.fields.alarm = 0;
 	smb_hc_write(hc, ACPI_SMB_STATUS, status.raw);
-	if (hc->callback)
-		acpi_os_execute(OSL_GPE_HANDLER, acpi_smbus_callback, hc);
+	/* We are only interested in events coming from known devices */
+	switch (address >> 1) {
+		case ACPI_SBS_CHARGER:
+		case ACPI_SBS_MANAGER:
+		case ACPI_SBS_BATTERY:
+			acpi_os_execute(OSL_GPE_HANDLER,
+					acpi_smbus_callback, hc);
+		default:;
+	}
 	mutex_unlock(&hc->lock);
 	return 0;
 }
@@ -283,6 +297,7 @@ static int acpi_smbus_hc_remove(struct acpi_device *device, int type)
 	hc = acpi_driver_data(device);
 	acpi_ec_remove_query_handler(hc->ec, hc->query_bit);
 	kfree(hc);
+	acpi_driver_data(device) = NULL;
 	return 0;
 }
 

@@ -31,9 +31,7 @@
 #include <linux/delay.h>
 #include <linux/pm.h>
 #include <linux/bitops.h>
-#include <linux/device.h>
-#include <linux/string.h>
-#include <sound/driver.h>
+#include <linux/platform_device.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -41,8 +39,6 @@
 #include <sound/soc-dapm.h>
 #include <sound/initval.h>
 #include <sound/ac97_codec.h>
-
-#include "soc-prv.h"
 
 /* debug */
 #define SOC_DEBUG 1
@@ -471,6 +467,7 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 			snd_soc_dapm_set_bias(pcm_runtime, SND_SOC_BIAS_ON);
 			if (codec_dai->ops->digital_mute)
 				codec_dai->ops->digital_mute(codec_dai, 0);
+
 		} else {
 			/* codec already powered - power on widgets */
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
@@ -1320,8 +1317,11 @@ int snd_soc_info_volsw_ext(struct snd_kcontrol *kcontrol,
 {
 	int max = kcontrol->private_value;
 
-	uinfo->type =
-		max == 1 ? SNDRV_CTL_ELEM_TYPE_BOOLEAN : SNDRV_CTL_ELEM_TYPE_INTEGER;
+	if (max == 1)
+		uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
+	else
+		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+
 	uinfo->count = 1;
 	uinfo->value.integer.min = 0;
 	uinfo->value.integer.max = max;
@@ -1365,8 +1365,11 @@ int snd_soc_info_volsw(struct snd_kcontrol *kcontrol,
 	int shift = (kcontrol->private_value >> 8) & 0x0f;
 	int rshift = (kcontrol->private_value >> 12) & 0x0f;
 
-	uinfo->type =
-		max == 1 ? SNDRV_CTL_ELEM_TYPE_BOOLEAN : SNDRV_CTL_ELEM_TYPE_INTEGER;
+	if (max == 1)
+		uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
+	else
+		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+
 	uinfo->count = shift == rshift ? 1 : 2;
 	uinfo->value.integer.min = 0;
 	uinfo->value.integer.max = max;
@@ -1463,8 +1466,11 @@ int snd_soc_info_volsw_2r(struct snd_kcontrol *kcontrol,
 {
 	int max = (kcontrol->private_value >> 12) & 0xff;
 
-	uinfo->type =
-		max == 1 ? SNDRV_CTL_ELEM_TYPE_BOOLEAN : SNDRV_CTL_ELEM_TYPE_INTEGER;
+	if (max == 1)
+		uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
+	else
+		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+
 	uinfo->count = 2;
 	uinfo->value.integer.min = 0;
 	uinfo->value.integer.max = max;

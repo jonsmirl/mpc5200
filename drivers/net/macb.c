@@ -307,8 +307,31 @@ static void macb_tx(struct macb *bp)
 		(unsigned long)status);
 
 	if (status & MACB_BIT(UND)) {
+		int i;
 		printk(KERN_ERR "%s: TX underrun, resetting buffers\n",
-		       bp->dev->name);
+			bp->dev->name);
+
+		head = bp->tx_head;
+
+		/*Mark all the buffer as used to avoid sending a lost buffer*/
+		for (i = 0; i < TX_RING_SIZE; i++)
+			bp->tx_ring[i].ctrl = MACB_BIT(TX_USED);
+
+		/* free transmit buffer in upper layer*/
+		for (tail = bp->tx_tail; tail != head; tail = NEXT_TX(tail)) {
+			struct ring_info *rp = &bp->tx_skb[tail];
+			struct sk_buff *skb = rp->skb;
+
+			BUG_ON(skb == NULL);
+
+			rmb();
+
+			dma_unmap_single(&bp->pdev->dev, rp->mapping, skb->len,
+							 DMA_TO_DEVICE);
+			rp->skb = NULL;
+			dev_kfree_skb_irq(skb);
+		}
+
 		bp->tx_head = bp->tx_tail = 0;
 	}
 
@@ -1061,7 +1084,7 @@ static int macb_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	return phy_mii_ioctl(phydev, if_mii(rq), cmd);
 }
 
-static int __devinit macb_probe(struct platform_device *pdev)
+static int __init macb_probe(struct platform_device *pdev)
 {
 	struct eth_platform_data *pdata;
 	struct resource *regs;
@@ -1225,7 +1248,7 @@ err_out:
 	return err;
 }
 
-static int __devexit macb_remove(struct platform_device *pdev)
+static int __exit macb_remove(struct platform_device *pdev)
 {
 	struct net_device *dev;
 	struct macb *bp;
@@ -1253,8 +1276,7 @@ static int __devexit macb_remove(struct platform_device *pdev)
 }
 
 static struct platform_driver macb_driver = {
-	.probe		= macb_probe,
-	.remove		= __devexit_p(macb_remove),
+	.remove		= __exit_p(macb_remove),
 	.driver		= {
 		.name		= "macb",
 	},
@@ -1262,7 +1284,7 @@ static struct platform_driver macb_driver = {
 
 static int __init macb_init(void)
 {
-	return platform_driver_register(&macb_driver);
+	return platform_driver_probe(&macb_driver, macb_probe);
 }
 
 static void __exit macb_exit(void)

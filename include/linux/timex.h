@@ -137,6 +137,7 @@ struct timex {
 #define ADJ_TIMECONST		0x0020	/* pll time constant */
 #define ADJ_TICK		0x4000	/* tick value */
 #define ADJ_OFFSET_SINGLESHOT	0x8001	/* old-fashioned adjtime */
+#define ADJ_OFFSET_SS_READ	0xa001  /* read-only adjtime */
 
 /* xntp 3.4 compatibility names */
 #define MOD_OFFSET	ADJ_OFFSET
@@ -231,7 +232,14 @@ static inline int ntp_synced(void)
 #else
 #define NTP_INTERVAL_FREQ  (HZ)
 #endif
-#define NTP_INTERVAL_LENGTH (NSEC_PER_SEC/NTP_INTERVAL_FREQ)
+
+#define CLOCK_TICK_OVERFLOW	(LATCH * HZ - CLOCK_TICK_RATE)
+#define CLOCK_TICK_ADJUST	(((s64)CLOCK_TICK_OVERFLOW * NSEC_PER_SEC) / \
+					(s64)CLOCK_TICK_RATE)
+
+/* Because using NSEC_PER_SEC would be too easy */
+#define NTP_INTERVAL_LENGTH ((((s64)TICK_USEC * NSEC_PER_USEC * USER_HZ) + \
+			      CLOCK_TICK_ADJUST) / NTP_INTERVAL_FREQ)
 
 /* Returns how long ticks are at present, in ns / 2^(SHIFT_SCALE-10). */
 extern u64 current_tick_length(void);
@@ -242,6 +250,8 @@ extern int do_adjtimex(struct timex *);
 
 /* Don't use! Compatibility define for existing users. */
 #define tickadj	(500/HZ ? : 1)
+
+int read_current_timer(unsigned long *timer_val);
 
 #endif /* KERNEL */
 

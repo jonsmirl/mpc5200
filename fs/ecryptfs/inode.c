@@ -120,22 +120,9 @@ ecryptfs_do_create(struct inode *directory_inode,
 	rc = ecryptfs_create_underlying_file(lower_dir_dentry->d_inode,
 					     ecryptfs_dentry, mode, nd);
 	if (rc) {
-		struct inode *ecryptfs_inode = ecryptfs_dentry->d_inode;
-		struct ecryptfs_inode_info *inode_info =
-			ecryptfs_inode_to_private(ecryptfs_inode);
-
-		printk(KERN_WARNING "%s: Error creating underlying file; "
-		       "rc = [%d]; checking for existing\n", __FUNCTION__, rc);
-		if (inode_info) {
-			mutex_lock(&inode_info->lower_file_mutex);
-			if (!inode_info->lower_file) {
-				mutex_unlock(&inode_info->lower_file_mutex);
-				printk(KERN_ERR "%s: Failure to set underlying "
-				       "file; rc = [%d]\n", __FUNCTION__, rc);
-				goto out_lock;
-			}
-			mutex_unlock(&inode_info->lower_file_mutex);
-		}
+		printk(KERN_ERR "%s: Failure to create dentry in lower fs; "
+		       "rc = [%d]\n", __FUNCTION__, rc);
+		goto out_lock;
 	}
 	rc = ecryptfs_interpose(lower_dentry, ecryptfs_dentry,
 				directory_inode->i_sb, 0);
@@ -378,8 +365,7 @@ static struct dentry *ecryptfs_lookup(struct inode *dir, struct dentry *dentry,
 		dentry->d_sb)->mount_crypt_stat;
 	if (mount_crypt_stat->flags & ECRYPTFS_ENCRYPTED_VIEW_ENABLED) {
 		if (crypt_stat->flags & ECRYPTFS_METADATA_IN_XATTR)
-			file_size = ((crypt_stat->extent_size
-				      * crypt_stat->num_header_extents_at_front)
+			file_size = (crypt_stat->num_header_bytes_at_front
 				     + i_size_read(lower_dentry->d_inode));
 		else
 			file_size = i_size_read(lower_dentry->d_inode);
@@ -451,6 +437,7 @@ static int ecryptfs_unlink(struct inode *dir, struct dentry *dentry)
 	dentry->d_inode->i_nlink =
 		ecryptfs_inode_to_lower(dentry->d_inode)->i_nlink;
 	dentry->d_inode->i_ctime = dir->i_ctime;
+	d_drop(dentry);
 out_unlock:
 	unlock_parent(lower_dentry);
 	return rc;
@@ -697,7 +684,7 @@ ecryptfs_put_link(struct dentry *dentry, struct nameidata *nd, void *ptr)
  * @crypt_stat: Crypt_stat associated with file
  * @upper_size: Size of the upper file
  *
- * Calculate the requried size of the lower file based on the
+ * Calculate the required size of the lower file based on the
  * specified size of the upper file. This calculation is based on the
  * number of headers in the underlying file and the extent size.
  *
@@ -709,8 +696,7 @@ upper_size_to_lower_size(struct ecryptfs_crypt_stat *crypt_stat,
 {
 	loff_t lower_size;
 
-	lower_size = (crypt_stat->extent_size
-		      * crypt_stat->num_header_extents_at_front);
+	lower_size = crypt_stat->num_header_bytes_at_front;
 	if (upper_size != 0) {
 		loff_t num_extents;
 
@@ -887,11 +873,11 @@ static int ecryptfs_setattr(struct dentry *dentry, struct iattr *ia)
 			if (!(mount_crypt_stat->flags
 			      & ECRYPTFS_PLAINTEXT_PASSTHROUGH_ENABLED)) {
 				rc = -EIO;
-				printk(KERN_WARNING "Attempt to read file that "
+				printk(KERN_WARNING "Either the lower file "
 				       "is not in a valid eCryptfs format, "
-				       "and plaintext passthrough mode is not "
+				       "or the key could not be retrieved. "
+				       "Plaintext passthrough mode is not "
 				       "enabled; returning -EIO\n");
-
 				mutex_unlock(&crypt_stat->cs_mutex);
 				goto out;
 			}
@@ -966,7 +952,7 @@ out:
 	return rc;
 }
 
-ssize_t
+static ssize_t
 ecryptfs_getxattr(struct dentry *dentry, const char *name, void *value,
 		  size_t size)
 {
