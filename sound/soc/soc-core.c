@@ -953,7 +953,7 @@ static int soc_match_pcm(struct snd_soc_machine *machine)
 	if (ret < 0) {
 		printk(KERN_ERR "asoc: failed to register soundcard for codec %s\n",
 				machine->name);
-		goto out;
+		goto out_mutex;
 	}
 
 	err = snd_soc_dapm_sys_add(machine);
@@ -961,8 +961,9 @@ static int soc_match_pcm(struct snd_soc_machine *machine)
 		printk(KERN_WARNING "asoc: failed to add dapm sysfs entries\n");
 	machine->is_probed = 1;
 
-out:
+out_mutex:
 	mutex_unlock(&machine->mutex);
+out:
 	return 0;
 }
 
