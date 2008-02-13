@@ -58,13 +58,12 @@
 #define AD1939_BCLKSRC_ADC_PLL		(1<<7)	/* DAC I2SCLK from int. PLL */
 
 struct ad1939_setup_data {
-	unsigned char i2c_address;
 	unsigned char tdm_mode;		/* one of AD1939_TDM_MODE_* */
 	unsigned char pll_src;		/* one of AD1939_PLL_SRC_* */
 	unsigned char dac_adc_clksrc;	/* AD1939_{B,}CLKSRC_* or'ed together */
 };
 
-extern struct snd_soc_codec_device soc_codec_dev_ad1939;
-extern struct snd_soc_codec_dai ad1939_dai;
+extern const char ad1939_codec_id[];
+extern const char ad1939_codec_dai_id[];
 
 #endif

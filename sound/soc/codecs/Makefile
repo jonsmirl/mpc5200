@@ -1,4 +1,5 @@
 snd-soc-ac97-objs := ac97.o
+snd-soc-ad1939-objs := ad1939.o
 snd-soc-ak4535-objs := ak4535.o
 snd-soc-tlv320-objs := tlv320.o
 snd-soc-uda1380-objs := uda1380.o
@@ -22,6 +23,7 @@ snd-soc-cs4270-objs := cs4270.o
 snd-soc-tlv320aic3x-objs := tlv320aic3x.o
 
 obj-$(CONFIG_SND_SOC_AC97_CODEC)	+= snd-soc-ac97.o
+obj-$(CONFIG_SND_SOC_AD1939)	+= snd-soc-ad1939.o
 obj-$(CONFIG_SND_SOC_AK4535)	+= snd-soc-ak4535.o
 obj-$(CONFIG_SND_SOC_TLV320)	+= snd-soc-tlv320.o
 obj-$(CONFIG_SND_SOC_UDA1380)	+= snd-soc-uda1380.o

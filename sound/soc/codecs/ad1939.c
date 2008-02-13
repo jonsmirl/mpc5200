@@ -29,20 +29,22 @@
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/pm.h>
-#include <linux/i2c.h>
-#include <linux/device.h>
+#include <linux/platform_device.h>
 #include <linux/workqueue.h>
 #include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
-#include <sound/soc.h>
+#include <sound/soc-codec.h>
+#include <sound/soc-dai.h>
+#include <sound/soc-machine.h>
 #include <sound/soc-dapm.h>
 #include <sound/initval.h>
 
 #include "ad1939.h"
 
 #define AUDIO_NAME "AD1939"
+#define AD1939_VERSION	"0.2"
 
 #define msg(x...) printk(KERN_INFO AUDIO_NAME ": " x)
 
@@ -54,8 +56,9 @@
 #define dbg(x...)	do {} while(0)
 #endif
 
-struct ad1939_private {
+struct ad1939_data {
 	struct snd_soc_codec *codec;
+	struct snd_soc_dai *dai;
 	unsigned long sysclk;
 	unsigned char tdm_mode;
 };
@@ -65,76 +68,60 @@ static const u16 ad1939_regcache[AD1939_REGCOUNT] __devinitdata = {
 	0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0
 };
 
-#if defined(CONFIG_I2C) || defined(CONFIG_I2C_MODULE)
-static int ad1939_i2c_write(struct snd_soc_codec *codec, unsigned int r,
-			    unsigned int v)
+static inline unsigned int ad1939_read_reg_cache(struct snd_soc_codec *codec,
+	unsigned int reg)
 {
-	struct i2c_msg msg;
-	struct i2c_client *c;
-	u8 data[2];
-	u16 *cache = codec->reg_cache;
-	int ret;
-
-	if (cache[r] == v)
-		return 0;
-
-	/* oh noes, now we have to talk to the codec */
-	c = (struct i2c_client *)codec->control_data;
-	data[0] = r & 0xff;
-	data[1] = v & 0xff;
-	msg.addr = c->addr;
-	msg.flags = 0;	/* write */
-	msg.buf = &data[0];
-	msg.len = 2;
-
-	ret = i2c_transfer(c->adapter, &msg, 1);
-	if (ret == 1)
-		cache[r] = v;
-	return (ret == 1) ? 0 : -EIO;
+	u8 *cache = codec->reg_cache;
+	if (reg >= AD1939_REGCOUNT)
+		return -1;
+	return cache[reg];
 }
 
-static unsigned int ad1939_i2c_read(struct snd_soc_codec *codec,
-				    unsigned int r)
+static inline unsigned int ad1939_read(struct snd_soc_codec *codec,
+	unsigned int reg)
 {
-	struct i2c_msg msg[2];
-	struct i2c_client *c;
-	u16 *cache = codec->reg_cache;
-	u8 data[2];
-	int ret;
-
+	u8 data;
 	/* the PLLCTL1 has one read-only bit: PLL lock indicator.
 	 * all other regs keep what was set
 	 */
-	if (likely(r != AD1939_PLLCTL1))
-		return cache[r];
+	if (likely(reg != AD1939_PLLCTL1))
+		return ad1939_read_reg_cache(codec, reg);
 
-	c = (struct i2c_client *)codec->control_data;
-	data[0] = r & 0xff;
-	msg[0].addr = c->addr;
-	msg[0].flags = 0;
-	msg[0].buf = &data[0];
-	msg[0].len = 1;
-	
-	msg[1].addr = c->addr;
-	msg[1].flags = I2C_M_RD;
-	msg[1].buf = &data[1];
-	msg[1].len = 1;
+	data = reg & 0xff;
+	if (codec->machine_read(codec->control_data, (long)&data, 1) != 1)
+		return -EIO;
 
-	ret = i2c_transfer(c->adapter, &msg[0], 2);
-	return (ret == 2) ? data[1] : -EIO;
-}
-#endif
+	return data;
+};
 
-static inline unsigned int ad1939_read(struct snd_soc_codec *codec,
-				unsigned int r)
+/*
+ * write ad1939 register cache
+ */
+static inline void ad1939_write_reg_cache(struct snd_soc_codec *codec,
+	u16 reg, unsigned int value)
 {
-	return codec->read(codec, r);
+	u8 *cache = codec->reg_cache;
+	if (reg >= AD1939_REGCOUNT)
+		return;
+	cache[reg] = value;
 }
 
-static inline int ad1939_write(struct snd_soc_codec *codec,
-			       unsigned int r, unsigned int v)
+/*
+ * write to the AD1939 register space
+ */
+static int ad1939_write(struct snd_soc_codec *codec, unsigned int reg,
+	unsigned int value)
 {
-	return codec->write(codec, r, v);
+	u8 data[2];
+
+	data[0] = reg & 0xff;
+	data[1] = value & 0xff;
+
+	ad1939_write_reg_cache (codec, reg, value);
+	if (codec->machine_write(codec->control_data, (long)data, 2) == 2)
+		return 0;
+	else
+		return -EIO;
 }
 
 /***** controls ******/
@@ -177,11 +164,11 @@ static int ad1939_add_controls(struct snd_soc_codec *codec,
 
 
 static int ad1939_hw_params(struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params)
+	struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
 {
-	struct snd_soc_pcm_link *pcm_link = substream->private_data;
-	struct snd_soc_codec *codec = pcm_link->codec;
-	struct ad1939_private *ad = codec->private_data;
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	struct snd_soc_codec *codec = pcm_runtime->codec;
+	struct ad1939_data *ad = codec->private_data;
 	unsigned char dac0, dac1, dac2, adc0, adc1, adc2;
 	unsigned long rate;
 	unsigned int bits;
@@ -373,42 +360,41 @@ static int ad1939_set_dai_fmt(struct snd_soc_dai *codec_dai,
 	return 0;
 }
 
-static int ad1939_dapm_event(struct snd_soc_codec *codec, int event)
+static int ad1939_set_bias_level(struct snd_soc_codec *codec, 
+	enum snd_soc_dapm_bias_level level)
 {
 	unsigned char pll0, adc0, dac0;
 
 	/* the codec doesn't really have  sophisticated PM like the
-	 * WM8731 for example; one can merely turn off DAC, ADC and
+	 * AD1939 for example; one can merely turn off DAC, ADC and
 	 * the internal PLL
 	 */
 	pll0 = ad1939_read(codec, AD1939_PLLCTL0) & 0xfe;
 	dac0 = ad1939_read(codec, AD1939_DACCTL0) & 0xfe;
 	adc0 = ad1939_read(codec, AD1939_ADCCTL0) & 0xfe;
 
-	switch (event)
-	{
-	case SNDRV_CTL_POWER_D1:
-	case SNDRV_CTL_POWER_D2:
-	case SNDRV_CTL_POWER_D0:
+	switch (level) {
+	case SND_SOC_BIAS_ON:
+	case SND_SOC_BIAS_PREPARE:
 		ad1939_write(codec, AD1939_PLLCTL0, pll0);
 		ad1939_write(codec, AD1939_DACCTL0, dac0);
 		ad1939_write(codec, AD1939_ADCCTL0, adc0);
 		break;
-	case SNDRV_CTL_POWER_D3hot:
-	case SNDRV_CTL_POWER_D3cold:
+	case SND_SOC_BIAS_STANDBY:
+	case SND_SOC_BIAS_OFF:
 		/* turn of internal PLL and DAC/ADCs */
 		ad1939_write(codec, AD1939_PLLCTL0, pll0 | 1);
 		ad1939_write(codec, AD1939_DACCTL0, dac0 | 1);
 		ad1939_write(codec, AD1939_ADCCTL0, adc0 | 1);
 		break;
 	}
-	codec->dapm_state = event;
+	codec->bias_level = level;
 	return 0;
 }
 
 static int ad1939_digmute(struct snd_soc_dai *dai, int mute)
 {
-	dai->codec->write(dai->codec, AD1939_DACMUTE, mute ? 0xff : 0);
+	ad1939_write(dai->codec, AD1939_DACMUTE, mute ? 0xff : 0);
 	return 0;
 }
 
@@ -416,7 +402,7 @@ static int ad1939_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 		int clk_id, unsigned int freq, int dir)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
-	struct ad1939_private *ad = codec->private_data;
+	struct ad1939_data *ad = codec->private_data;
 
 	dbg("sysck id %d f %d dir %d\n", clk_id, freq, dir);
 	switch (freq) {
@@ -430,22 +416,15 @@ static int ad1939_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 	return 0;
 }
 
-static int ad1939_init(struct snd_soc_device *socdev)
+/*
+ * initialise the AD1939 codec
+ */
+static int ad1939_codec_init(struct snd_soc_codec *codec,
+	struct snd_soc_machine *machine)
 {
-	struct snd_soc_codec *codec = socdev->codec;
-	struct ad1939_setup_data *setup = socdev->codec_data;
-	struct ad1939_private *ad = codec->private_data;
+	struct ad1939_setup_data *setup = codec->platform_data;
+	struct ad1939_data *ad = codec->private_data;
 	unsigned char r0, r1;
-	int ret;
-
-	codec->owner = THIS_MODULE;
-	codec->dapm_event = ad1939_dapm_event;
-	codec->dai = &ad1939_dai;
-	codec->num_dai = 1;
-	codec->reg_cache_size = sizeof(ad1939_regcache);
-	codec->reg_cache = kzalloc(sizeof(ad1939_regcache), GFP_KERNEL);
-	if (!codec->reg_cache)
-		return -ENOMEM;
 
 	/* "initialize" the codec with default data */
 	for (r0 = 0; r0 < AD1939_REGCOUNT; r0++)
@@ -478,235 +457,18 @@ static int ad1939_init(struct snd_soc_device *socdev)
 	ad1939_write(codec, AD1939_DACCTL1, r0);
 	ad1939_write(codec, AD1939_ADCCTL2, r1);
 
-	ad1939_add_controls(codec);
-	ad1939_dapm_event(codec, SNDRV_CTL_POWER_D0);
-
-	ret = snd_soc_register_card(socdev);
-	if (ret < 0) {
-		msg("failed to register card\n");
-		goto card_err;
-	}
-
-	return 0;
-
-card_err:
-	snd_soc_free_pcms(socdev);
-	snd_soc_dapm_free(socdev);
-	kfree(codec->reg_cache);
-	return ret;
-}
-
-#if defined(CONFIG_I2C) || defined(CONFIG_I2C_MODULE)
-
-static unsigned short normal_i2c[] = { 0, I2C_CLIENT_END };
-
-/* Magic definition of all other variables and things */
-I2C_CLIENT_INSMOD;
-
-static struct i2c_driver ad1939_i2c_driver;
-static struct i2c_client client_template;
-
-/* If the i2c layer weren't so broken, we could pass this kind of data
-   around */
-static struct snd_soc_device *ad1939_socdev;
-
-static int ad1939_codec_probe(struct i2c_adapter *adap, int addr, int kind)
-{
-	struct snd_soc_device *socdev = ad1939_socdev;
-	struct snd_soc_codec *codec = socdev->codec;
-	struct ad1939_setup_data *setup = socdev->codec_data;
-	struct i2c_client *i2c;
-	int ret;
-
-	if (addr != setup->i2c_address)
-		return -ENODEV;
-
-	client_template.adapter = adap;
-	client_template.addr = addr;
-
-	i2c = kmemdup(&client_template, sizeof(client_template), GFP_KERNEL);
-	if (i2c == NULL) {
-		kfree(codec);
-		return -ENOMEM;
-	}
-	i2c_set_clientdata(i2c, codec);
-	codec->control_data = i2c;
-
-	ret = i2c_attach_client(i2c);
-	if (ret < 0) {
-		msg("failed to attach codec at addr %x\n", addr);
-		goto err;
-	}
-
-	codec->read = ad1939_i2c_read;
-	codec->write = ad1939_i2c_write;
-
-	ret = ad1939_init(socdev);
-	if (ret < 0) {
-		msg("failed to initialise AD1939 codec\n");
-		goto err;
-	}
-	return ret;
-
-err:
-	kfree(codec);
-	kfree(i2c);
-	return ret;
-}
-
-static int ad1939_i2c_detach(struct i2c_client *client)
-{
-	struct snd_soc_codec* codec = i2c_get_clientdata(client);
-
-	i2c_detach_client(client);
-	kfree(codec->reg_cache);
-	kfree(client);
+	ad1939_add_controls(codec, machine->card);
+	ad1939_set_bias_level(codec, SND_SOC_BIAS_ON);
 
 	return 0;
 }
 
-static int ad1939_i2c_attach(struct i2c_adapter *adap)
-{
-	return i2c_probe(adap, &addr_data, ad1939_codec_probe);
-}
-
-/* corgi i2c codec control layer */
-static struct i2c_driver ad1939_i2c_driver = {
-	.driver = {
-		.name = "AD1939",
-		.owner = THIS_MODULE,
-	},
-	.id =	103, /* I2C_DRIVERID_AD1939 */
-	.attach_adapter = ad1939_i2c_attach,
-	.detach_client =  ad1939_i2c_detach,
-	.command =        NULL,
-};
-
-static struct i2c_client client_template = {
-	.name =   "AD1939",
-	.driver = &ad1939_i2c_driver,
-};
-#endif	/* I2C */
-
-static int ad1939_probe(struct platform_device *pdev)
-{
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct ad1939_setup_data *setup;
-	struct snd_soc_codec *codec;
-	struct ad1939_private *ad;
-	int ret;
-
-	ret = -ENOMEM;
-	setup = socdev->codec_data;
-	codec = kzalloc(sizeof(struct snd_soc_codec), GFP_KERNEL);
-	if (codec == NULL)
-		goto out;
-
-	ad = kzalloc(sizeof(struct ad1939_private), GFP_KERNEL);
-	if (ad == NULL) {
-		kfree(codec);
-		goto out;
-	}
-	ad->codec = codec;
-	codec->private_data = ad;
-	socdev->codec = codec;
-	mutex_init(&codec->mutex);
-	INIT_LIST_HEAD(&codec->dapm_widgets);
-	INIT_LIST_HEAD(&codec->dapm_paths);
-
-	ad1939_socdev = socdev;
-#if defined(CONFIG_I2C) || defined(CONFIG_I2C_MODULE)
-	if (setup->i2c_address) {
-		normal_i2c[0] = setup->i2c_address;
-		ret = i2c_add_driver(&ad1939_i2c_driver);
-		if (ret != 0)
-			msg("can't add i2c driver");
-	}
-#endif
-	ret = 0;
-out:
-	return ret;
-}
-
-static int ad1939_remove(struct platform_device *pdev)
-{
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->codec;
-
-	if (codec->control_data)
-		ad1939_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
-
-	snd_soc_free_pcms(socdev);
-	snd_soc_dapm_free(socdev);
-#if defined(CONFIG_I2C) || defined(CONFIG_I2C_MODULE)
-	i2c_del_driver(&ad1939_i2c_driver);
-#endif
-	kfree(codec->private_data);
-	kfree(codec);
-
-	return 0;
-}
-/*
- * initialise the WM8731 codec
- */
-static int ad1939_probe_codec(struct snd_soc_codec *codec,
+static void ad1939_codec_exit(struct snd_soc_codec *codec,
 	struct snd_soc_machine *machine)
 {
-	int reg;
-
-	ad1939_reset(codec);
-
-	/* power on device */
-	ad1939_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
-
-	/* set the update bits */
-	reg = ad1939_read_reg_cache(codec, WM8731_LOUT1V);
-	ad1939_write(codec, WM8731_LOUT1V, reg | 0x0100);
-	reg = ad1939_read_reg_cache(codec, WM8731_ROUT1V);
-	ad1939_write(codec, WM8731_ROUT1V, reg | 0x0100);
-	reg = ad1939_read_reg_cache(codec, WM8731_LINVOL);
-	ad1939_write(codec, WM8731_LINVOL, reg | 0x0100);
-	reg = ad1939_read_reg_cache(codec, WM8731_RINVOL);
-	ad1939_write(codec, WM8731_RINVOL, reg | 0x0100);
-	
-	ad1939_add_controls(codec, machine->card);
-	ad1939_add_widgets(codec, machine);
-
-	return 0;
+	ad1939_set_bias_level(codec, SND_SOC_BIAS_OFF);
 }
 
-static struct snd_soc_codec_ops ad1939_codec_ops = {
-	.dapm_event	= ad1939_dapm_event,
-	.read		= ad1939_read_reg_cache,
-	.write		= ad1939_write,
-	.probe_codec	= ad1939_probe_codec,
-};
-
-static int ad1939_codec_probe(struct device *dev)
-{
-	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
-
-	info("WM8731 Audio Codec %s", WM8731_VERSION);
-
-	codec->reg_cache = kmemdup(ad1939_reg, sizeof(ad1939_reg), GFP_KERNEL);
-	if (codec->reg_cache == NULL)
-		return -ENOMEM;
-	codec->reg_cache_size = sizeof(ad1939_reg);
-	
-	codec->owner = THIS_MODULE;
-	codec->ops = &ad1939_codec_ops;
-	return 0;
-}
-
-static int ad1939_codec_remove(struct device *dev)
-{
-	struct snd_soc_codec *codec = to_snd_soc_codec(dev);
-	
-	if (codec->control_data)
-		ad1939_dapm_event(codec, SNDRV_CTL_POWER_D3cold);
-	kfree(codec->reg_cache);
-	return 0;
-}
 
 #define AD1939_RATES	\
 	(SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 | \
@@ -715,8 +477,7 @@ static int ad1939_codec_remove(struct device *dev)
 #define AD1939_FORMATS	\
 	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE)
 
-
-static const struct snd_soc_pcm_stream ad1939_dai_playback = {
+static struct snd_soc_dai_caps ad1939_playback = {
 	.stream_name	= "Playback",
 	.channels_min	= 2,
 	.channels_max	= 8,
@@ -724,7 +485,7 @@ static const struct snd_soc_pcm_stream ad1939_dai_playback = {
 	.formats	= AD1939_FORMATS,
 };
 
-static const struct snd_soc_pcm_stream ad1939_dai_capture = {
+static struct snd_soc_dai_caps ad1939_capture = {
 	.stream_name	= "Capture",
 	.channels_min	= 2,
 	.channels_max	= 4,
@@ -732,98 +493,127 @@ static const struct snd_soc_pcm_stream ad1939_dai_capture = {
 	.formats	= AD1939_FORMATS,
 };
 
-/* dai ops, called by machine drivers */
-static const struct snd_soc_dai_ops ad1939_dai_ops = {
-	.digital_mute	= ad1939_mute,
+static struct snd_soc_dai_ops ad1939_dai_ops = {
+	/* alsa ops */
+	.hw_params	= ad1939_hw_params,
+	
+	/* dai ops */
+	.digital_mute	= ad1939_digmute,
 	.set_sysclk	= ad1939_set_dai_sysclk,
 	.set_fmt	= ad1939_set_dai_fmt,
 };
 
-/* audio ops, called by alsa */
-static const struct snd_soc_ops ad1939_dai_audio_ops = {
-	.hw_params	= ad1939_hw_params,
-	.prepare	= ad1939_prepare,
-	.shutdown	= ad1939_shutdown,
-};
+/* for modprobe */
+const char ad1939_codec_id[] = "ad1939-codec";
+EXPORT_SYMBOL_GPL(ad1939_codec_id);
 
-static int ad1939_dai_probe(struct device *dev)
+const char ad1939_codec_dai_id[] = "ad1939-codec-dai";
+EXPORT_SYMBOL_GPL(ad1939_codec_dai_id);
+
+static int ad1939_dai_probe(struct ad1939_data *ad1939, struct device *dev)
 {
-	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
-	struct ad1939_priv *ad1939;
-	
-	ad1939 = kzalloc(sizeof(struct ad1939_priv), GFP_KERNEL);
-	if (ad1939 == NULL)
+	struct snd_soc_dai *dai;
+	int ret;
+
+	dai = snd_soc_dai_allocate();
+	if (dai == NULL)
 		return -ENOMEM;
-	
-	dai->private_data = ad1939;
+
+	dai->name = ad1939_codec_dai_id;
 	dai->ops = &ad1939_dai_ops;
-	dai->audio_ops = &ad1939_dai_audio_ops;
-	dai->capture = &ad1939_dai_capture;
-	dai->playback = &ad1939_dai_playback;
+	dai->playback = &ad1939_playback;
+	dai->capture = &ad1939_capture;
+	dai->dev = dev;
+	ret = snd_soc_register_codec_dai(dai);
+	if (ret < 0) {
+		snd_soc_dai_free(dai);
+		return ret;
+	}
+	ad1939->dai = dai;
 	return 0;
 }
 
-static int ad1939_dai_remove(struct device *dev)
+static int ad1939_codec_probe(struct platform_device *pdev)
 {
-	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
-	kfree(dai->private_data);
+	struct snd_soc_codec *codec;
+	struct ad1939_data *ad1939;
+	int ret;
+
+	printk(KERN_INFO "AD1939 Audio Codec %s", AD1939_VERSION);
+
+	codec = snd_soc_codec_allocate();
+	if (codec == NULL)
+		return -ENOMEM;
+
+	ad1939 = kzalloc(sizeof(struct ad1939_data), GFP_KERNEL);
+	if (ad1939 == NULL) {
+		ret = -ENOMEM;
+		goto ad1939_err;
+	}
+
+	codec->dev = &pdev->dev;
+	codec->name = ad1939_codec_id;
+	codec->set_bias_level = ad1939_set_bias_level;
+	codec->codec_read = ad1939_read_reg_cache;
+	codec->codec_write = ad1939_write;
+	codec->init = ad1939_codec_init;
+	codec->exit = ad1939_codec_exit;
+	codec->reg_cache_size = AD1939_REGCOUNT;
+	codec->reg_cache_step = 1;
+	codec->private_data = ad1939;
+	platform_set_drvdata(pdev, codec);
+		
+	ret = snd_soc_register_codec(codec);
+	if (ret < 0)
+		goto codec_err;
+	ret = ad1939_dai_probe(ad1939, &pdev->dev);
+	if (ret < 0)
+		goto dai_err;
+	return ret;
+
+dai_err:
+	snd_soc_register_codec(codec);
+codec_err:
+	kfree(ad1939);
+ad1939_err:
+	snd_soc_codec_free(codec);
+	return ret;
+}
+
+static int ad1939_codec_remove(struct platform_device *pdev)
+{
+	struct snd_soc_codec *codec = platform_get_drvdata(pdev);
+	struct ad1939_data *ad1939 = codec->private_data;
+	
+	snd_soc_unregister_codec_dai(ad1939->dai);
+	snd_soc_dai_free(ad1939->dai);
+	kfree(ad1939);
+	snd_soc_unregister_codec(codec);
+	snd_soc_codec_free(codec);
 	return 0;
 }
 
-const char ad1939_codec[SND_SOC_CODEC_NAME_SIZE] = "ad1939-codec";
-EXPORT_SYMBOL_GPL(ad1939_codec);
-
-static struct snd_soc_device_driver ad1939_codec_driver = {
-	.type	= SND_SOC_BUS_TYPE_CODEC,
-	.driver	= {
-		.name 		= ad1939_codec,
+static struct platform_driver ad1939_codec_driver = {
+	.driver = {
+		.name		= ad1939_codec_id,
 		.owner		= THIS_MODULE,
-		.bus 		= &asoc_bus_type,
-		.probe		= ad1939_codec_probe,
-		.remove		= __devexit_p(ad1939_codec_remove),
-		.suspend	= ad1939_suspend,
-		.resume		= ad1939_resume,
 	},
-};
-
-const char ad1939_hifi_dai[SND_SOC_CODEC_NAME_SIZE] = "ad1939-hifi-dai";
-EXPORT_SYMBOL_GPL(ad1939_hifi_dai);
-
-static struct snd_soc_device_driver ad1939_hifi_dai_driver = {
-	.type	= SND_SOC_BUS_TYPE_DAI,
-	.driver	= {
-		.name 		= ad1939_hifi_dai,
-		.owner		= THIS_MODULE,
-		.bus 		= &asoc_bus_type,
-		.probe		= ad1939_dai_probe,
-		.remove		= __devexit_p(ad1939_dai_remove),
-	},
+	.probe		= ad1939_codec_probe,
+	.remove		= __devexit_p(ad1939_codec_remove),
 };
 
 static __init int ad1939_init(void)
 {
-	int ret = 0;
-	
-	ret = driver_register(&ad1939_codec_driver.driver);
-	if (ret < 0)
-		return ret;
-	ret = driver_register(&ad1939_hifi_dai_driver.driver);
-	if (ret < 0) {
-		driver_unregister(&ad1939_codec_driver.driver);
-		return ret;
-	}
-	return ret;
+	return platform_driver_register(&ad1939_codec_driver);
 }
 
 static __exit void ad1939_exit(void)
 {
-	driver_unregister(&ad1939_hifi_dai_driver.driver);
-	driver_unregister(&ad1939_codec_driver.driver);
+	platform_driver_unregister(&ad1939_codec_driver);
 }
 
 module_init(ad1939_init);
 module_exit(ad1939_exit);
-
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("ASoC AD1939 I2S Codec driver");
