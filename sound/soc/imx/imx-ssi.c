@@ -425,9 +425,11 @@ static int imx_ssi_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 static int imx_ssi_startup(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *cpu_dai)
 {
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+	
 	/* we cant really change any SSI values after SSI is enabled
 	 * need to fix in software for max flexibility - lrg */
-	if (cpu_dai->active)
+	if (pcm_runtime->playback_active || pcm_runtime->capture_active)
 		return 0;
 
 	/* reset the SSI port - Sect 45.4.4 */
@@ -498,7 +500,7 @@ static int imx_ssi_hw_tx_params(struct snd_pcm_substream *substream,
 	}
 
 	/* enable interrupts */
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2)
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1)
 		stcr |= SSI_STCR_TFEN0;
 	else
 		stcr |= SSI_STCR_TFEN1;
@@ -546,7 +548,7 @@ static int imx_ssi_hw_rx_params(struct snd_pcm_substream *substream,
 	}
 
 	/* enable interrupts */
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2)
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1)
 		srcr |= SSI_SRCR_RFEN0;
 	else
 		srcr |= SSI_SRCR_RFEN1;
@@ -675,7 +677,7 @@ static int imx_ssi_trigger(struct snd_pcm_substream *substream, int cmd,
 		return -EINVAL;
 	}
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2)
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1)
 		SSI1_SCR = scr;
 	else
 		SSI2_SCR = scr;
@@ -686,22 +688,24 @@ static int imx_ssi_trigger(struct snd_pcm_substream *substream, int cmd,
 static void imx_ssi_shutdown(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *cpu_dai)
 {
+	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
+
 	/* shutdown SSI if neither Tx or Rx is active */
-	if (!cpu_dai->active) {
+	if (pcm_runtime->playback_active || pcm_runtime->capture_active)
+		return;
+		
 
-		if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
+		if (--ssi_active[SSI1_PORT] > 1)
+			return;
 
-			if (--ssi_active[SSI1_PORT] > 1)
-				return;
-
-			SSI1_SCR = 0;
-			clk_disable(ssi_clk0);
-		} else {
-			if (--ssi_active[SSI2_PORT])
-				return;
-			SSI2_SCR = 0;
-			clk_disable(ssi_clk1);
-		}
+		SSI1_SCR = 0;
+		clk_disable(ssi_clk0);
+	} else {
+		if (--ssi_active[SSI2_PORT])
+			return;
+		SSI2_SCR = 0;
+		clk_disable(ssi_clk1);
 	}
 }
 
