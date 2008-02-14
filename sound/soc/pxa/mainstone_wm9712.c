@@ -201,7 +201,7 @@ static int mainstone_wm9712_suspend(struct platform_device *pdev,
 	
 	mst_audio_suspend_mask = MST_MSCWR2;
 	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
-	return snd_soc_suspend(machine, state);
+	return snd_soc_suspend_pcms(machine, state);
 }
 
 static int mainstone_wm9712_resume(struct platform_device *pdev)
@@ -209,7 +209,7 @@ static int mainstone_wm9712_resume(struct platform_device *pdev)
 	struct snd_soc_machine *machine = platform_get_drvdata(pdev);
 	
 	MST_MSCWR2 &= mst_audio_suspend_mask | ~MST_MSCWR2_AC97_SPKROFF;
-	return snd_soc_resume(machine);
+	return snd_soc_resume_pcms(machine);
 }
 
 #else
