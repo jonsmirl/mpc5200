@@ -929,7 +929,7 @@ static int wm8350_pcm_trigger(struct snd_pcm_substream *substream,
 	int cmd, struct snd_soc_dai *codec_dai)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
-	int master = wm8350_codec_read(codec, WM8350_AI_DAC_CONTROL) &
+	int master = wm8350_codec_cache_read(codec, WM8350_AI_DAC_CONTROL) &
 		WM8350_BCLK_MSTR;
 	int enabled = 0;
 	

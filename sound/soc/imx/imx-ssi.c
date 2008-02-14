@@ -194,7 +194,7 @@ static int imx_ssi_set_dai_sysclk(struct snd_soc_dai *cpu_dai,
 {
 	u32 scr;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2)
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1)
 		scr = SSI1_SCR;
 	else
 		scr = SSI2_SCR;
@@ -213,7 +213,7 @@ static int imx_ssi_set_dai_sysclk(struct snd_soc_dai *cpu_dai,
 		return -EINVAL;
 	}
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2)
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1)
 		SSI1_SCR = scr;
 	else
 		SSI2_SCR = scr;
@@ -230,7 +230,7 @@ static int imx_ssi_set_dai_clkdiv(struct snd_soc_dai *cpu_dai,
 {
 	u32 stccr, srccr;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		if (SSI1_SCR & SSI_SCR_SSIEN)
 			return 0;
 
@@ -273,7 +273,7 @@ static int imx_ssi_set_dai_clkdiv(struct snd_soc_dai *cpu_dai,
 		return -EINVAL;
 	}
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		SSI1_STCCR = stccr;
 		SSI1_SRCCR = srccr;
 	} else {
@@ -292,7 +292,7 @@ static int imx_ssi_set_dai_tdm_slot(struct snd_soc_dai *cpu_dai,
 {
 	u32 stmsk, srmsk, stccr;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		if (SSI1_SCR & SSI_SCR_SSIEN)
 			return 0;
 		stccr = SSI1_STCCR;
@@ -306,7 +306,7 @@ static int imx_ssi_set_dai_tdm_slot(struct snd_soc_dai *cpu_dai,
 	stccr &= ~SSI_STCCR_DC_MASK;
 	stccr |= SSI_STCCR_DC(slots - 1);
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		SSI1_STMSK = stmsk;
 		SSI1_SRMSK = srmsk;
 		SSI1_SRCCR = SSI1_STCCR = stccr;
@@ -330,7 +330,7 @@ static int imx_ssi_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 {
 	u32 stcr = 0, srcr = 0, scr;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2)
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1)
 		scr = SSI1_SCR & ~(SSI_SCR_SYN | SSI_SCR_NET);
 	else
 		scr = SSI2_SCR & ~(SSI_SCR_SYN | SSI_SCR_NET);
@@ -363,7 +363,7 @@ static int imx_ssi_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 	}
 
 	/* DAI clock inversion */
-	switch(fmt & SND_SOC_DAIFMT_INV_MASK) {
+	switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
 	case SND_SOC_DAIFMT_IB_IF:
 		stcr |= SSI_STCR_TFSI;
 		stcr &= ~SSI_STCR_TSCKP;
@@ -387,7 +387,7 @@ static int imx_ssi_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 	}
 
 	/* DAI clock master masks */
-	switch(fmt & SND_SOC_DAIFMT_MASTER_MASK) {
+	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBS_CFS:
 		stcr |= SSI_STCR_TFDIR | SSI_STCR_TXDIR;
 		srcr |= SSI_SRCR_RFDIR | SSI_SRCR_RXDIR;
@@ -410,14 +410,14 @@ static int imx_ssi_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 	if (fmt & SND_SOC_DAIFMT_TDM)
 		scr |= SSI_SCR_NET;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		SSI1_STCR = stcr;
 		SSI1_SRCR = srcr;
 		SSI1_SCR = scr;
 	} else {
 		SSI2_STCR = stcr;
 		SSI2_SRCR = srcr;
-		SSI1_SCR = scr;
+		SSI2_SCR = scr;
 	}
 	return 0;
 }
@@ -431,7 +431,7 @@ static int imx_ssi_startup(struct snd_pcm_substream *substream,
 		return 0;
 
 	/* reset the SSI port - Sect 45.4.4 */
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 
 		if (!ssi_clk0)
 			return -EINVAL;
@@ -474,7 +474,7 @@ static int imx_ssi_hw_tx_params(struct snd_pcm_substream *substream,
 {
 	u32 stccr, stcr, sier;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		stccr = SSI1_STCCR & ~SSI_STCCR_WL_MASK;
 		stcr = SSI1_STCR;
 		sier = SSI1_SIER;
@@ -485,7 +485,7 @@ static int imx_ssi_hw_tx_params(struct snd_pcm_substream *substream,
 	}
 
 	/* DAI data (word) size */
-	switch(params_format(params)) {
+	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
 		stccr |= SSI_STCCR_WL(16);
 		break;
@@ -502,10 +502,9 @@ static int imx_ssi_hw_tx_params(struct snd_pcm_substream *substream,
 		stcr |= SSI_STCR_TFEN0;
 	else
 		stcr |= SSI_STCR_TFEN1;
-	sier |= SSI_SIER_TDMAE | SSI_SIER_TFE0_EN | SSI_SIER_TFE1_EN |
-		SSI_SIER_TUE0_EN | SSI_SIER_TUE1_EN;
+	sier |= SSI_SIER_TDMAE;  
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		SSI1_STCR = stcr;
 		SSI1_STCCR = stccr;
 		SSI1_SIER = sier;
@@ -523,7 +522,7 @@ static int imx_ssi_hw_rx_params(struct snd_pcm_substream *substream,
 {
 	u32 srccr, srcr, sier;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		srccr = SSI1_SRCCR & ~SSI_SRCCR_WL_MASK;
 		srcr = SSI1_SRCR;
 		sier = SSI1_SIER;
@@ -551,10 +550,9 @@ static int imx_ssi_hw_rx_params(struct snd_pcm_substream *substream,
 		srcr |= SSI_SRCR_RFEN0;
 	else
 		srcr |= SSI_SRCR_RFEN1;
-	sier |= SSI_SIER_RDMAE | SSI_SIER_RFF0_EN | SSI_SIER_RFF1_EN |
-		SSI_SIER_ROE0_EN | SSI_SIER_ROE1_EN;;
+	sier |= SSI_SIER_RDMAE;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		SSI1_SRCR = srcr;
 		SSI1_SRCCR = srccr;
 		SSI1_SIER = sier;
@@ -592,8 +590,7 @@ static int imx_ssi_hw_params(struct snd_pcm_substream *substream,
 		}
 
 		/* cant change any parameters when SSI is running */
-		if (cpu_dai->id == IMX_DAI_SSI0 ||
-			cpu_dai->id == IMX_DAI_SSI2) {
+		if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 			if (SSI1_SCR & SSI_SCR_SSIEN)
 				return 0;
 		} else {
@@ -619,8 +616,7 @@ static int imx_ssi_hw_params(struct snd_pcm_substream *substream,
 		}
 
 		/* cant change any parameters when SSI is running */
-		if (cpu_dai->id == IMX_DAI_SSI0 ||
-			cpu_dai->id == IMX_DAI_SSI2) {
+		if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 			if (SSI1_SCR & SSI_SCR_SSIEN)
 				return 0;
 		} else {
@@ -638,7 +634,7 @@ static int imx_ssi_prepare(struct snd_pcm_substream *substream,
 
 	/* enable the SSI port, note that no other port config
 	 * should happen after SSIEN is set */
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		scr = SSI1_SCR;
 		SSI1_SCR = scr | SSI_SCR_SSIEN;
 	} else {
@@ -653,7 +649,7 @@ static int imx_ssi_trigger(struct snd_pcm_substream *substream, int cmd,
 {
 	u32 scr;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2)
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1)
 		scr = SSI1_SCR;
 	else
 		scr = SSI2_SCR;
@@ -693,8 +689,7 @@ static void imx_ssi_shutdown(struct snd_pcm_substream *substream,
 	/* shutdown SSI if neither Tx or Rx is active */
 	if (!cpu_dai->active) {
 
-		if (cpu_dai->id == IMX_DAI_SSI0 ||
-			cpu_dai->id == IMX_DAI_SSI2) {
+		if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 
 			if (--ssi_active[SSI1_PORT] > 1)
 				return;
@@ -708,6 +703,46 @@ static void imx_ssi_shutdown(struct snd_pcm_substream *substream,
 			clk_disable(ssi_clk1);
 		}
 	}
+}
+
+static int ssi1_underrun_counter = 0;
+static int ssi2_underrun_counter = 0;
+static int ssi1_overrun_counter = 0;
+static int ssi2_overrun_counter = 0;
+
+static ssize_t ssi_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "ssi1: %d %d ssi2: %d %d\n", 
+		ssi1_underrun_counter, ssi1_overrun_counter,
+		ssi2_underrun_counter, ssi2_overrun_counter);
+}
+static DEVICE_ATTR(errors, 0444, ssi_show, NULL);
+
+static irqreturn_t ssi1_irq(int irq, void *dev_id)
+{
+	u32 sisr = SSI1_SISR;
+	
+	if (sisr & (SSI_SIER_TUE0_EN | SSI_SIER_TUE1_EN))
+		ssi1_underrun_counter++;
+	if (sisr & (SSI_SIER_ROE0_EN | SSI_SIER_ROE1_EN))
+		ssi1_overrun_counter++;
+	
+	SSI1_SISR = sisr;
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t ssi2_irq(int irq, void *dev_id)
+{
+	u32 sisr = SSI2_SISR;
+	
+	if (sisr & (SSI_SIER_TUE0_EN | SSI_SIER_TUE1_EN))
+		ssi2_underrun_counter++;
+	if (sisr & (SSI_SIER_ROE0_EN | SSI_SIER_ROE1_EN))
+		ssi2_overrun_counter++;
+	
+	SSI2_SISR = sisr;
+	return IRQ_HANDLED;
 }
 
 #define IMX_SSI_RATES \
@@ -765,7 +800,8 @@ const char imx_ssi_id2_1[] = "ssi-2.1";
 EXPORT_SYMBOL_GPL(imx_ssi_id2_1);
 
 
-/* we could pass in some platform data here to set up our AUDMUX etc. */
+/* we could pass in some platform data here to set up our AUDMUX etc. 
+ * consider splitting into 2 platform devices */
 static int imx_ssi_probe(struct platform_device *pdev)
 {
 	struct ssi_data *ssi;
@@ -775,7 +811,20 @@ static int imx_ssi_probe(struct platform_device *pdev)
 	ssi = kzalloc(sizeof(*ssi), GFP_KERNEL);
 	if (ssi == NULL)
 		return -ENOMEM;
+		
+	ret = request_irq(INT_SSI1, ssi1_irq, 0, "ssi1", pdev);
+	if (ret < 0) {
+		printk(KERN_ERR "%s: failed to request irq %s\n", __func__, "ssi1");
+		goto irq1_err;
+	} 
 
+	ret = request_irq(INT_SSI2, ssi2_irq, 0, "ssi2", pdev);
+	if (ret < 0) {
+		printk(KERN_ERR "%s: failed to request irq %s\n", __func__, "ssi2");
+		goto irq2_err;
+	}
+
+	platform_set_drvdata(pdev, ssi);
 	for (i = 0; i < 4; i++) {
 		ssi->dai[i] = snd_soc_dai_allocate();
 		if (ssi->dai[i] == NULL) {
@@ -791,9 +840,22 @@ static int imx_ssi_probe(struct platform_device *pdev)
 		if (ret < 0)
 			goto unwind_reg;
 	}
-
-	platform_set_drvdata(pdev, ssi);
+	
+	ret = device_create_file(&pdev->dev, &dev_attr_errors);
+	if (ret < 0) {
+		printk(KERN_WARNING "%s: failed to add sysfs entry\n", __func__);
+		goto unwind_reg;
+	}
+	
+	/* enable SSI interrupts */
+	SSI1_SIER = SSI_SIER_TIE | SSI_SIER_TUE0_EN | SSI_SIER_TFE0_EN |
+		SSI_SIER_TFE1_EN | SSI_SIER_TUE1_EN | SSI_SIER_RFF0_EN | 
+		SSI_SIER_RFF1_EN | SSI_SIER_ROE0_EN | SSI_SIER_ROE1_EN;
+	SSI2_SIER = SSI_SIER_TIE | SSI_SIER_TUE0_EN | SSI_SIER_TFE0_EN |
+		SSI_SIER_TFE1_EN | SSI_SIER_TUE1_EN | SSI_SIER_RFF0_EN | 
+		SSI_SIER_RFF1_EN | SSI_SIER_ROE0_EN | SSI_SIER_ROE1_EN;
 	return ret;
+
 unwind_reg:
 	snd_soc_dai_free(ssi->dai[i]);
 unwind_create:
@@ -802,6 +864,11 @@ unwind_create:
 		snd_soc_unregister_platform_dai(ssi->dai[i]);
 		snd_soc_dai_free(ssi->dai[i]);
 	}
+	free_irq(INT_SSI2, pdev);
+irq2_err:	
+	free_irq(INT_SSI1, pdev);
+irq1_err:	
+	kfree(ssi);
 	return ret;
 }
 
@@ -810,10 +877,14 @@ static int imx_ssi_remove(struct platform_device *pdev)
 	struct ssi_data *ssi = platform_get_drvdata(pdev);
 	int i;
 
+	device_remove_file(&pdev->dev, &dev_attr_errors);
 	for (i = 3; i >= 0; i--) {
 		snd_soc_unregister_platform_dai(ssi->dai[i]);
 		snd_soc_dai_free(ssi->dai[i]);
 	}
+	kfree(ssi);
+	free_irq(INT_SSI1, pdev);
+	free_irq(INT_SSI2, pdev);
 	return 0;
 }
 
