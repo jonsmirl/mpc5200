@@ -336,8 +336,26 @@ static struct platform_driver mainstone_wm9713_driver = {
 	},
 };
 
+static struct platform_device codec = {
+	.name		= "wm9713-codec",
+	.id		= -1,
+};
+
+static struct platform_device platform = {
+	.name		= "Mainstone-WM9713",
+	.id		= -1,
+};
+
+static struct platform_device *devices[] = {
+	&codec,
+	&platform,
+};
+
+
+
 static int __init mainstone_asoc_init(void)
 {
+	platform_add_devices(&devices[0], ARRAY_SIZE(devices));
 	return platform_driver_register(&mainstone_wm9713_driver);
 }
 
