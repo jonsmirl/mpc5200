@@ -220,9 +220,11 @@ static int imx32ads_hifi_hw_params(struct snd_pcm_substream *substream,
 	snd_soc_dai_set_clkdiv(codec_dai, WM8350_BCLK_CLKDIV,
 		wm8350_audio[i].bclkdiv);
 
-	/* DAI is synchronous and clocked with DAC LRCLK */
+	/* DAI is synchronous and clocked with DAC LRCLK & ADC LRC*/
 	snd_soc_dai_set_clkdiv(codec_dai,
 			WM8350_DACLR_CLKDIV, wm8350_audio[i].lr_rate);
+	snd_soc_dai_set_clkdiv(codec_dai,
+			WM8350_ADCLR_CLKDIV, wm8350_audio[i].lr_rate);
 
 	/* now configure DAC and ADC clocks */
 	snd_soc_dai_set_clkdiv(codec_dai,
@@ -262,16 +264,17 @@ static void imx32ads_shutdown(struct snd_pcm_substream *substream)
 	if (!codec->active)
 		snd_soc_dai_set_pll(codec_dai, 0, 0, 0);
 	state->lr_clk_active--;
-	
+
 	/*
 	 * We need to keep track of active streams in master mode and 
 	 * switch LRC source if necessary.
 	 */ 
+
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 		state->capture_active = 0;
 	else
 		state->playback_active = 0;
-		
+
 	if (state->capture_active)
 		wm8350_set_bits(wm8350, WM8350_CLOCK_CONTROL_2,
 				WM8350_LRC_ADC_SEL);
