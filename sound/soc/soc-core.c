@@ -1789,14 +1789,21 @@ int snd_soc_pcm_create(struct snd_soc_machine *machine,
 {
 	struct soc_pcm_config *_config;
 
-	if (config->name == NULL || !config->playback || !config->capture)
+	if (config->name == NULL)
 		return -EINVAL;
+	if (!config->playback && !config->capture) {
+		printk(KERN_ERR "asoc: invalid codec for new pcm %s\n",
+		       config->name);
+		return -EINVAL;
+	}
 	if (config->codec == NULL || config->codec_dai == NULL) {
-		printk(KERN_ERR "asoc: invalid codec for new pcm\n");
+		printk(KERN_ERR "asoc: invalid codec for new pcm %s\n",
+		       config->name);
 		return -EINVAL;
 	}
 	if (config->platform == NULL || config->cpu_dai == NULL) {
-		printk(KERN_ERR "asoc: invalid cpu for new pcm\n");
+		printk(KERN_ERR "asoc: invalid cpu for new pcm %s\n",
+		       config->name);
 		return -EINVAL;
 	}
 
