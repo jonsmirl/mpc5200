@@ -44,6 +44,17 @@ int snd_soc_pcm_create(struct snd_soc_machine *machine,
 	struct snd_soc_pcm_config *config);
 
 /**
+ * snd_soc_create_pcms - create several ASoC PCM.
+ * @machine: Machine
+ * @configs: Array of PCM configurations
+ * @num:     Size of array
+ *
+ * Joins a liscodec and platform DAI together and creates a ALSA PCM(s).
+ */
+int snd_soc_create_pcms(struct snd_soc_machine *machine,
+			struct snd_soc_pcm_config *config, int num);
+
+/**
  * snd_soc_machine_register - registers ASoC machine .
  * @machine: machine
  *

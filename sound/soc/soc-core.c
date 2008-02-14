@@ -1813,6 +1813,28 @@ int snd_soc_pcm_create(struct snd_soc_machine *machine,
 }
 EXPORT_SYMBOL_GPL(snd_soc_pcm_create);
 
+int snd_soc_create_pcms(struct snd_soc_machine *machine,
+			struct snd_soc_pcm_config *config, int num)
+{
+	int i, ret;
+
+	for (i = 0; i < num; i++) {
+		ret = snd_soc_pcm_create(machine, &config[i]);
+		if (ret != 0) {
+			if (config[i].name)
+				printk(KERN_ERR "asoc %s: Failed to register %s\n",
+				       machine->name, config[i].name);
+			else
+				printk(KERN_ERR "asoc %s: Failed to register unnamed PCM\n",
+				       machine->name);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(snd_soc_create_pcms);
+
 int snd_soc_machine_register(struct snd_soc_machine *machine)
 {
 	mutex_lock(&client_mutex);
