@@ -212,34 +212,36 @@ static int mainstone_wm9713_init(struct snd_soc_machine *machine)
 	return 0;
 }
 
-static struct snd_soc_pcm_config hifi_pcm_config = {
-	.name		= "HiFi",
-	.codec		= wm9713_codec_id,
-	.codec_dai	= wm9713_codec_hifi_dai_id,
-//	.platform	= pxa_platform_id,
-//	.cpu_dai	= pxa_ac97_hifi_dai_id,
-	.playback	= 1,
-	.capture	= 1,
-};
-
-static struct snd_soc_pcm_config voice_pcm_config = {
-	.name		= "HiFi",
-	.codec		= wm9713_codec_id,
-	.codec_dai	= wm9713_codec_voice_dai_id,
-//	.platform	= pxa_platform_id,
-//	.cpu_dai	= pxa2xx_ssp2_dai_id,
-	.ops		= &mainstone_voice_ops,
-	.playback	= 1,
-	.capture	= 1,
-};
-
-static struct snd_soc_pcm_config aux_pcm_config = {
-	.name		= "Aux",
-	.codec		= wm9713_codec_id,
-	.codec_dai	= wm9713_codec_aux_dai_id,
-//	.platform	= pxa_platform_id,
-//	.cpu_dai	= pxa_ac97_aux_dai_id,
-	.playback	= 1,
+static struct snd_soc_pcm_config pcm_configs[] = {
+	{
+		.name		= "HiFi",
+		.codec		= wm9713_codec_id,
+		.codec_dai	= wm9713_codec_hifi_dai_id,
+		.platform	= pxa_platform_id,
+		.cpu_dai	= pxa_ac97_hifi_dai_id,
+		.playback	= 1,
+		.capture	= 1,
+	},
+#if 0
+	{	
+		.name		= "Voice",
+		.codec		= wm9713_codec_id,
+		.codec_dai	= wm9713_codec_voice_dai_id,
+		.platform	= pxa_platform_id,
+		.cpu_dai	= pxa2xx_ssp2_dai_id,
+		.ops		= &mainstone_voice_ops,
+		.playback	= 1,
+		.capture	= 1,
+	},
+#endif
+	{
+		.name		= "Aux",
+		.codec		= wm9713_codec_id,
+		.codec_dai	= wm9713_codec_aux_dai_id,
+		.platform	= pxa_platform_id,
+		.cpu_dai	= pxa_ac97_aux_dai_id,
+		.playback	= 1,
+	},
 };
 
 /*
@@ -268,15 +270,8 @@ static int mainstone_wm9713_probe(struct platform_device *pdev)
 	machine->private_data = pdev;
 	platform_set_drvdata(pdev, machine);
 	
-	ret = snd_soc_pcm_create(machine, &hifi_pcm_config);
-	if (ret < 0)
-		goto err;
-	
-	ret = snd_soc_pcm_create(machine, &aux_pcm_config);
-	if (ret < 0)
-		goto err;
-		
-	ret = snd_soc_pcm_create(machine, &voice_pcm_config);
+	ret = snd_soc_create_pcms(machine, &pcm_configs[0],
+				  ARRAY_SIZE(pcm_configs));
 	if (ret < 0)
 		goto err;
 	
