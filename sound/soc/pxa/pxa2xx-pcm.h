@@ -13,17 +13,6 @@
 #ifndef _PXA2XX_PCM_H
 #define _PXA2XX_PCM_H
 
-/* 
- * PXA Digital Audio Interface ID's 
- */
-#define PXA2XX_DAI_I2S			0
-#define PXA2XX_DAI_AC97_HIFI		1
-#define PXA2XX_DAI_AC97_AUX		2
-#define PXA2XX_DAI_AC97_MIC		3
-#define PXA2XX_DAI_SSP1			4
-#define PXA2XX_DAI_SSP2			5
-#define PXA2XX_DAI_SSP3			6
-
 /*
  * PXA Audio Clocking.
  */
