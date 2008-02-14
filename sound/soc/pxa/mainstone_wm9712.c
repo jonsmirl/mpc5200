@@ -89,7 +89,7 @@ static int mainstone_wm9712_init(struct snd_soc_machine *machine)
 	snd_soc_codec_set_io(codec, mainstone_wm9712_read, 
 		mainstone_wm9712_write, codec->ac97);
 		
-	ac97_ops = snd_soc_get_ac97_ops(machine, PXA2XX_DAI_AC97_HIFI);
+	ac97_ops = snd_soc_get_ac97_ops(machine, pxa_ac97_hifi_dai_id);
 	
 	/* register with AC97 bus for ad-hoc driver access */
 	ret = snd_soc_new_ac97_codec(codec, ac97_ops, machine->card, 0, 0);
