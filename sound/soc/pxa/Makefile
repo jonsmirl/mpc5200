@@ -3,10 +3,14 @@ snd-soc-pxa2xx-objs := pxa2xx-pcm.o
 snd-soc-pxa2xx-i2s-objs += pxa2xx-i2s.o
 snd-soc-pxa2xx-ac97-objs += pxa2xx-ac97.o
 snd-soc-pxa2xx-ssp-objs += pxa2xx-ssp.o
+snd-soc-pxa3xx-ac97-objs := pxa3xx-ac97.o
 
 obj-$(CONFIG_SND_PXA2XX_SOC) += snd-soc-pxa2xx.o
 obj-$(CONFIG_SND_PXA2XX_SOC_SSP) += snd-soc-pxa2xx-ssp.o
 obj-$(CONFIG_SND_PXA2XX_SOC_AC97) += snd-soc-pxa2xx-ac97.o
+
+obj-$(CONFIG_SND_PXA3XX_SOC_AC97) += snd-soc-pxa3xx-ac97.o
+
 
 # PXA Machine Support
 snd-soc-corgi-objs := corgi.o
