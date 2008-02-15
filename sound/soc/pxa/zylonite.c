@@ -58,23 +58,24 @@ static const char *audio_map[][3] = {
 	{NULL, NULL, NULL},
 };
 
-static struct snd_soc_pcm_config hifi_pcm_config = {
-	.name		= "HiFi",
-	.codec		= wm9713_codec_id,
-	.codec_dai	= wm9713_codec_hifi_dai_id,
-	.platform	= pxa_platform_id,
-	.cpu_dai	= pxa_ac97_hifi_dai_id,
-	.playback	= 1,
-	.capture	= 1,
-};
-
-static struct snd_soc_pcm_config aux_pcm_config = {
-	.name		= "Aux",
-	.codec		= wm9713_codec_id,
-	.codec_dai	= wm9713_codec_aux_dai_id,
-	.platform	= pxa_platform_id,
-	.cpu_dai	= pxa_ac97_aux_dai_id,
-	.playback	= 1,
+static struct snd_soc_pcm_config pcm_configs[] = {
+	{
+		.name		= "HiFi",
+		.codec		= wm9713_codec_id,
+		.codec_dai	= wm9713_codec_hifi_dai_id,
+		.platform	= pxa_platform_id,
+		.cpu_dai	= pxa3xx_ac97_hifi_dai_id,
+		.playback	= 1,
+		.capture	= 1,
+	},
+	{
+		.name		= "Aux",
+		.codec		= wm9713_codec_id,
+		.codec_dai	= wm9713_codec_aux_dai_id,
+		.platform	= pxa_platform_id,
+		.cpu_dai	= pxa3xx_ac97_aux_dai_id,
+		.playback	= 1,
+	},
 };
 
 static int zylonite_init(struct snd_soc_machine *machine)
@@ -101,8 +102,8 @@ static int zylonite_init(struct snd_soc_machine *machine)
 	ac97_ops->reset(codec->ac97);
 	ac97_ops->warm_reset(codec->ac97);
 	if (ac97_ops->read(codec->ac97, AC97_VENDOR_ID1) == 0) {
-		printk(KERN_ERR "AC97 link error\n");
-		return ret;
+		printk(KERN_ERR "Failed to read vendor ID register\n");
+		return -ENODEV;
 	}
 
 	snd_soc_codec_init(codec, machine);
@@ -129,8 +130,8 @@ static int zylonite_probe(struct platform_device *pdev)
 	/* Most Zylonite based systems use POUT to provide MCLK to the
 	 * WM9713 but the board has the option of using either that or
 	 * AC97_SYSCLK */
-	mclk = clk_get(&pdev->dev, "POUT");
-	if (!mclk) {
+	mclk = clk_get(&pdev->dev, "CLK_POUT");
+	if (IS_ERR(mclk)) {
 		dev_err(&pdev->dev, "Unable to obtain MCLK source\n");
 		return -ENODEV;
 	}
@@ -146,19 +147,10 @@ static int zylonite_probe(struct platform_device *pdev)
 	machine->private_data = pdev;
 	platform_set_drvdata(pdev, machine);
 
-	ret = snd_soc_pcm_create(machine, &hifi_pcm_config);
+	ret = snd_soc_create_pcms(machine, &pcm_configs[0],
+				  ARRAY_SIZE(pcm_configs));
 	if (ret < 0)
 		goto err;
-
-	ret = snd_soc_pcm_create(machine, &aux_pcm_config);
-	if (ret < 0)
-		goto err;
-		
-#if 0	
-	ret = snd_soc_pcm_create(machine, &voice_pcm_config);
-	if (ret < 0)
-		goto err;
-#endif
 	
 	ret = snd_soc_machine_register(machine);
 	if (ret < 0)
