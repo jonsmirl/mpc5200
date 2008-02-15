@@ -23,7 +23,6 @@
 #include <linux/device.h>
 #include <linux/i2c.h>
 #include <linux/platform_device.h>
-#include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/soc.h>
@@ -90,7 +89,7 @@ static int mainstone_wm9712_init(struct snd_soc_machine *machine)
 	snd_soc_codec_set_io(codec, mainstone_wm9712_read, 
 		mainstone_wm9712_write, codec->ac97);
 		
-	ac97_ops = snd_soc_get_ac97_ops(machine, PXA2XX_DAI_AC97_HIFI);
+	ac97_ops = snd_soc_get_ac97_ops(machine, pxa_ac97_hifi_dai_id);
 	
 	/* register with AC97 bus for ad-hoc driver access */
 	ret = snd_soc_new_ac97_codec(codec, ac97_ops, machine->card, 0, 0);
@@ -202,7 +201,7 @@ static int mainstone_wm9712_suspend(struct platform_device *pdev,
 	
 	mst_audio_suspend_mask = MST_MSCWR2;
 	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
-	return snd_soc_suspend(machine, state);
+	return snd_soc_suspend_pcms(machine, state);
 }
 
 static int mainstone_wm9712_resume(struct platform_device *pdev)
@@ -210,7 +209,7 @@ static int mainstone_wm9712_resume(struct platform_device *pdev)
 	struct snd_soc_machine *machine = platform_get_drvdata(pdev);
 	
 	MST_MSCWR2 &= mst_audio_suspend_mask | ~MST_MSCWR2_AC97_SPKROFF;
-	return snd_soc_resume(machine);
+	return snd_soc_resume_pcms(machine);
 }
 
 #else

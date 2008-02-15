@@ -1789,14 +1789,21 @@ int snd_soc_pcm_create(struct snd_soc_machine *machine,
 {
 	struct soc_pcm_config *_config;
 
-	if (config->name == NULL || !config->playback || !config->capture)
+	if (config->name == NULL)
 		return -EINVAL;
+	if (!config->playback && !config->capture) {
+		printk(KERN_ERR "asoc: invalid codec for new pcm %s\n",
+		       config->name);
+		return -EINVAL;
+	}
 	if (config->codec == NULL || config->codec_dai == NULL) {
-		printk(KERN_ERR "asoc: invalid codec for new pcm\n");
+		printk(KERN_ERR "asoc: invalid codec for new pcm %s\n",
+		       config->name);
 		return -EINVAL;
 	}
 	if (config->platform == NULL || config->cpu_dai == NULL) {
-		printk(KERN_ERR "asoc: invalid cpu for new pcm\n");
+		printk(KERN_ERR "asoc: invalid cpu for new pcm %s\n",
+		       config->name);
 		return -EINVAL;
 	}
 
@@ -1812,6 +1819,28 @@ int snd_soc_pcm_create(struct snd_soc_machine *machine,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_pcm_create);
+
+int snd_soc_create_pcms(struct snd_soc_machine *machine,
+			struct snd_soc_pcm_config *config, int num)
+{
+	int i, ret;
+
+	for (i = 0; i < num; i++) {
+		ret = snd_soc_pcm_create(machine, &config[i]);
+		if (ret != 0) {
+			if (config[i].name)
+				printk(KERN_ERR "asoc %s: Failed to register %s\n",
+				       machine->name, config[i].name);
+			else
+				printk(KERN_ERR "asoc %s: Failed to register unnamed PCM\n",
+				       machine->name);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(snd_soc_create_pcms);
 
 int snd_soc_machine_register(struct snd_soc_machine *machine)
 {
