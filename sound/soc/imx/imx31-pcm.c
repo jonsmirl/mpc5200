@@ -249,7 +249,7 @@ static int imx31_pcm_hw_params(struct snd_pcm_substream *substream,
 		break;
 	case SNDRV_PCM_FORMAT_S20_3LE:
 	case SNDRV_PCM_FORMAT_S24_LE:
-		dma->params.word_size = TRANSFER_24BIT;
+		dma->params.word_size = TRANSFER_32BIT;
 		break;
 	}
 
