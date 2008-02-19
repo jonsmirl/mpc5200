@@ -33,6 +33,8 @@
 #include "pxa2xx-pcm.h"
 #include "../codecs/wm9713.h"
 
+static struct clk *mclk;
+
 static const struct snd_soc_dapm_widget zylonite_dapm_widgets[] = {
 SND_SOC_DAPM_HP("Audio Jack Headphones", NULL),
 SND_SOC_DAPM_MIC("Audio Jack Microphone", NULL),
@@ -132,18 +134,22 @@ static int zylonite_init(struct snd_soc_machine *machine)
 static int zylonite_probe(struct platform_device *pdev)
 {
 	struct snd_soc_machine *machine;
-	struct clk *mclk;
 	int ret;
 
 	/* Most Zylonite based systems use POUT to provide MCLK to the
 	 * WM9713 but the board has the option of using either that or
-	 * AC97_SYSCLK */
+	 * AC97CLK based on the configuration of SW15.  The
+	 * appropriate source should be selected here.
+	 */
 	mclk = clk_get(&pdev->dev, "CLK_POUT");
 	if (IS_ERR(mclk)) {
 		dev_err(&pdev->dev, "Unable to obtain MCLK source\n");
 		return -ENODEV;
 	}
 	clk_enable(mclk);
+
+	dev_dbg(&pdev->dev, "MCLK rate: %luHz\n",
+		clk_get_rate(mclk));
 
 	machine = snd_soc_machine_create("zylonite", &pdev->dev, 
 		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
