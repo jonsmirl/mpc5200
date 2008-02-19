@@ -17,7 +17,6 @@
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 
-#include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/soc.h>
@@ -26,9 +25,10 @@
 #include <sound/ac97_codec.h>
 
 #include <asm/mach-types.h>
-#include <asm/arch/pxa-regs.h>
+#include <asm/arch/gpio.h>
 #include <asm/arch/hardware.h>
-#include <asm/arch/audio.h>
+#include <asm/arch/mfp-pxa320.h>
+#include <asm/arch/pxa-regs.h>
 
 #include "pxa2xx-pcm.h"
 #include "../codecs/wm9713.h"
@@ -85,24 +85,32 @@ static int zylonite_init(struct snd_soc_machine *machine)
 	int i, ret;
 
 	codec = snd_soc_get_codec(machine, wm9713_codec_id);
-	if (codec == NULL)
+	if (codec == NULL) {
+		printk(KERN_ERR "Unable to obtain WM9713 codec\n");
 		return -ENODEV;
+	}
 	
-	ac97_ops = snd_soc_get_ac97_ops(machine, pxa_ac97_hifi_dai_id);
-	if (!ac97_ops)
+	ac97_ops = snd_soc_get_ac97_ops(machine, pxa3xx_ac97_hifi_dai_id);
+	if (!ac97_ops) {
+		printk(KERN_ERR "Unable to obtain AC97 operations\n");
 		return -ENODEV;
+	}
 
 	/* register with AC97 bus for ad-hoc driver access */
 	ret = snd_soc_new_ac97_codec(codec, ac97_ops, machine->card, 0, 0);
-	if (ret < 0)
+	if (ret < 0) {
+		printk(KERN_ERR "Unable to instantiate AC97 codec\n");
 		return ret;
+	}
 
 	/* do a cold reset for the controller and then try
 	 * a warm reset followed by an optional cold reset for codec */
 	ac97_ops->reset(codec->ac97);
 	ac97_ops->warm_reset(codec->ac97);
-	if (ac97_ops->read(codec->ac97, AC97_VENDOR_ID1) == 0) {
-		printk(KERN_ERR "Failed to read vendor ID register\n");
+
+	if (ac97_ops->read(codec->ac97, AC97_VENDOR_ID1) != 0x574d) {
+		printk(KERN_ERR "Unable to read codec vendor ID\n");
+
 		return -ENODEV;
 	}
 
@@ -159,6 +167,7 @@ static int zylonite_probe(struct platform_device *pdev)
 	return ret;
 
 err:
+	dev_err(&pdev->dev, "probe() failed: %d\n", ret);
 	snd_soc_machine_free(machine);
 	return ret;
 }
