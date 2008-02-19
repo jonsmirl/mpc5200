@@ -28,7 +28,7 @@
  *     Usually controlled at codec probe/remove, although can be set
  *     at stream time if power is not needed for sidetone, etc.
  *  2. Platform/Machine domain - physically connected inputs and outputs
- *     Is platform/machine and user action specific, is set in the machine
+ *     Is platform/soc_card and user action specific, is set in the soc_card
  *     driver and by userspace e.g when HP are inserted
  *  3. Path domain - Internal codec path mixers
  *     Are automatically set when mixer and mux settings are
@@ -264,14 +264,14 @@ enum snd_soc_dapm_type {
 	snd_soc_dapm_line,	/* line input/output */
 	snd_soc_dapm_switch,	/* analog switch */
 	snd_soc_dapm_vmid,	/* codec bias/vmid - to minimise pops */
-	snd_soc_dapm_pre,	/* machine specific pre widget - exec first */
-	snd_soc_dapm_post,	/* machine specific post widget - exec last */
+	snd_soc_dapm_pre,	/* soc_card specific pre widget - exec first */
+	snd_soc_dapm_post,	/* soc_card specific post widget - exec last */
 };
 
 struct snd_soc_dapm_widget;
 struct snd_soc_dapm_path;
 struct snd_soc_dapm_pin;
-struct snd_soc_machine;
+struct snd_soc_card;
 struct snd_soc_codec;
 struct snd_soc_pcm_runtime;
 
@@ -286,12 +286,12 @@ int snd_soc_dapm_get_enum_double(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
 int snd_soc_dapm_put_enum_double(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
-int snd_soc_dapm_new_control(struct snd_soc_machine *machine,
+int snd_soc_dapm_new_control(struct snd_soc_card *soc_card,
 	struct snd_soc_codec *codec, const struct snd_soc_dapm_widget *widget);
 
 /**
  * snd_soc_dapm_add_route - adds DAPM audio route.
- * @machine: SoC machine
+ * @soc_card: SoC soc_card
  * @sink_name: sink (audio route destination) name.
  * @control_name: ALSA kcontrol name - or NULL for no kcontrol.
  * @source_name: source (audio route start) name.
@@ -299,44 +299,44 @@ int snd_soc_dapm_new_control(struct snd_soc_machine *machine,
  * Adds a DAPM audio route between source and sink. The route connection
  * status is controlled by the ALSA kcontrol. i.e. a MUX or Mixer.
  */
-int snd_soc_dapm_add_route(struct snd_soc_machine *machine,
+int snd_soc_dapm_add_route(struct snd_soc_card *soc_card,
 	const char *sink_name, const char *control_name, const char *src_name);
 
 /**
  * snd_soc_dapm_init - Initialise DAPM.
- * @machine: SoC machine
+ * @soc_card: SoC soc_card
  *
  * Initialises DAPM resources after any new widgets or routes have been added.
  */
-int snd_soc_dapm_init(struct snd_soc_machine *machine);
+int snd_soc_dapm_init(struct snd_soc_card *soc_card);
 
 /**
  * snd_soc_dapm_exit - Frees DAPM resources.
- * @machine: SoC machine
+ * @soc_card: SoC soc_card
  *
  * Frees all DAPM resources.
  */
-void snd_soc_dapm_exit(struct snd_soc_machine *machine);
+void snd_soc_dapm_exit(struct snd_soc_card *soc_card);
 
 /**
  * snd_soc_dapm_set_policy - Set DAPM policy.
- * @machine: SoC machine
+ * @soc_card: SoC soc_card
  *
  * Sets the DAPM power switching policy.
  */
-int snd_soc_dapm_set_policy(struct snd_soc_machine *machine,
+int snd_soc_dapm_set_policy(struct snd_soc_card *soc_card,
 	enum snd_soc_dapm_policy policy);
 
 /**
  * snd_soc_dapm_stream_event - Send DAPM stream event.
- * @machine: SoC machine
+ * @soc_card: SoC soc_card
  * @stream: stream name
  * @event: event to send
  *
  * Sends a device event to the dapm core. The core then makes any
- * necessary machine or codec power changes.
+ * necessary soc_card or codec power changes.
  */
-int snd_soc_dapm_stream_event(struct snd_soc_machine *machine, char *stream,
+int snd_soc_dapm_stream_event(struct snd_soc_card *soc_card, char *stream,
 	enum snd_soc_dapm_stream_event event);
 
 /**
@@ -344,14 +344,14 @@ int snd_soc_dapm_stream_event(struct snd_soc_machine *machine, char *stream,
  * @codec: SoC codec
  * @level: bias (power) level.
  *
- * Sets machine and codec to new bias (power) level.
+ * Sets soc_card and codec to new bias (power) level.
  */
 int snd_soc_dapm_set_bias(struct snd_soc_pcm_runtime *pcm_runtime,
 	enum snd_soc_dapm_bias_level level);
 
 /**
  * snd_soc_dapm_enable_pin - enable pin.
- * @machine: SoC machine
+ * @soc_card: SoC soc_card
  * @pin: pin name
  *
  * Enables input/output pin and it's parents or children widgets iff there is
@@ -359,30 +359,30 @@ int snd_soc_dapm_set_bias(struct snd_soc_pcm_runtime *pcm_runtime,
  * NOTE: snd_soc_dapm_resync() needs to be called after this for DAPM to
  * do any widget power switching.
  */
-int snd_soc_dapm_enable_pin(struct snd_soc_machine *machine, char *pin);
+int snd_soc_dapm_enable_pin(struct snd_soc_card *soc_card, char *pin);
 
 /**
  * snd_soc_dapm_disable_pin - disable pin.
- * @machine: SoC machine
+ * @soc_card: SoC soc_card
  * @pin: pin name
  *
  * Disables input/output pin and it's parents or children widgets.
  * NOTE: snd_soc_dapm_resync() needs to be called after this for DAPM to
  * do any widget power switching.
  */
-int snd_soc_dapm_disable_pin(struct snd_soc_machine *machine, char *pin);
+int snd_soc_dapm_disable_pin(struct snd_soc_card *soc_card, char *pin);
 
 /**
  * snd_soc_dapm_sync - disable pin.
- * @machine: SoC machine
+ * @soc_card: SoC soc_card
  *
  * Resynchronises DAPM widget power state with pin, stream and audio path
  * state changes. This may cause DAPM power switching.
  */
-int snd_soc_dapm_sync(struct snd_soc_machine *machine);
+int snd_soc_dapm_sync(struct snd_soc_card *soc_card);
 
 /* dapm sys fs - used by the core */
-int snd_soc_dapm_sys_add(struct snd_soc_machine *machine);
+int snd_soc_dapm_sys_add(struct snd_soc_card *soc_card);
 
 /*
  * DAPM audio route.
@@ -418,7 +418,7 @@ struct snd_soc_dapm_widget {
 	char *name;			/* widget name */
 	char *sname;			/* stream name */
 	struct snd_soc_codec *codec;
-	struct snd_soc_machine *machine;
+	struct snd_soc_card *soc_card;
 	struct list_head list;
 
 	/* Runtime dapm control and status */

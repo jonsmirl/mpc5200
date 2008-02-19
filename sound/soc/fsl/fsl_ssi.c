@@ -469,7 +469,7 @@ static void fsl_ssi_shutdown(struct snd_pcm_substream *substream)
 /**
  * fsl_ssi_set_sysclk: set the clock frequency and direction
  *
- * This function is called by the machine driver to tell us what the clock
+ * This function is called by the soc_card driver to tell us what the clock
  * frequency and direction are.
  *
  * Currently, we only support operating as a clock slave (SND_SOC_CLOCK_IN),
@@ -490,7 +490,7 @@ static int fsl_ssi_set_sysclk(struct snd_soc_cpu_dai *cpu_dai,
 /**
  * fsl_ssi_set_fmt: set the serial format.
  *
- * This function is called by the machine driver to tell us what serial
+ * This function is called by the soc_card driver to tell us what serial
  * format to use.
  *
  * Currently, we only support I2S mode.  Return an error if the format is
@@ -543,7 +543,7 @@ static ssize_t fsl_sysfs_ssi_show(struct device *dev,
 /**
  * fsl_ssi_create_dai: create a snd_soc_cpu_dai structure
  *
- * This function is called by the machine driver to create a snd_soc_cpu_dai
+ * This function is called by the soc_card driver to create a snd_soc_cpu_dai
  * structure.  The function creates an ssi_private object, which contains
  * the snd_soc_cpu_dai.  It also creates the sysfs statistics device.
  */

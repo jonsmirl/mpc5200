@@ -459,22 +459,22 @@ static const char *audio_map[][3] = {
 };
 
 static int wm9712_add_widgets(struct snd_soc_codec *codec, 
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	int i;
 
 	for(i = 0; i < ARRAY_SIZE(wm9712_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(machine, codec, 
+		snd_soc_dapm_new_control(soc_card, codec, 
 			&wm9712_dapm_widgets[i]);
 	}
 
 	/* set up audio path audio_mapnects */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(machine, audio_map[i][0],
+		snd_soc_dapm_add_route(soc_card, audio_map[i][0],
 			audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_init(machine);
+	snd_soc_dapm_init(soc_card);
 	return 0;
 }
 
@@ -486,7 +486,7 @@ static unsigned int wm9712_ac97_read(struct snd_soc_codec *codec,
 	if (reg == AC97_RESET || reg == AC97_GPIO_STATUS ||
 		reg == AC97_VENDOR_ID1 || reg == AC97_VENDOR_ID2 ||
 		reg == AC97_REC_GAIN) {
-			codec->machine_read(codec->ac97, (long)&val, reg);
+			codec->soc_card_read(codec->ac97, (long)&val, reg);
 			return val;
 		} else {
 			reg = reg >> 1;
@@ -501,7 +501,7 @@ static int wm9712_ac97_write(struct snd_soc_codec *codec, unsigned int reg,
 {
 	u16 *cache = codec->reg_cache;
 
-	codec->machine_write(codec->ac97, val, reg);
+	codec->soc_card_write(codec->ac97, val, reg);
 	reg = reg >> 1;
 	if (reg <= (ARRAY_SIZE(wm9712_reg)))
 		cache[reg] = val;
@@ -599,7 +599,7 @@ static int wm9712_resume(struct platform_device *pdev)
 		if (i == AC97_INT_PAGING || i == AC97_POWERDOWN ||
 			(i > 0x58 && i != 0x5c))
 			continue;
-		codec->machine_write(codec->ac97, i, cache[i>>1]);
+		codec->soc_card_write(codec->ac97, i, cache[i>>1]);
 	}
 
 	if (codec->suspend_bias_level == SND_SOC_BIAS_ON)
@@ -609,15 +609,15 @@ static int wm9712_resume(struct platform_device *pdev)
 }
 
 static int wm9712_codec_init(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	/* set alc mux to none */
 	wm9712_ac97_write(codec, AC97_VIDEO, 
 		wm9712_ac97_read(codec, AC97_VIDEO) | 0x3000);
 
 	wm9712_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
-	wm9712_add_controls(codec, machine->card);
-	wm9712_add_widgets(codec, machine);
+	wm9712_add_controls(codec, soc_card->card);
+	wm9712_add_widgets(codec, soc_card);
 	
 	return 0;
 }

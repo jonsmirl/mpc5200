@@ -109,7 +109,7 @@ static int wm8731_write(struct snd_soc_codec *codec, unsigned int reg,
 	data[1] = value & 0x00ff;
 
 	wm8731_write_reg_cache (codec, reg, value);
-	if (codec->machine_write(codec->control_data, (long)data, 2) == 2)
+	if (codec->soc_card_write(codec->control_data, (long)data, 2) == 2)
 		return 0;
 	else
 		return -EIO;
@@ -218,22 +218,22 @@ static const char *intercon[][3] = {
 };
 
 static int wm8731_add_widgets(struct snd_soc_codec *codec, 
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	int i;
 
 	for(i = 0; i < ARRAY_SIZE(wm8731_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(machine, codec, 
+		snd_soc_dapm_new_control(soc_card, codec, 
 			&wm8731_dapm_widgets[i]);
 	}
 
 	/* set up audio path interconnects */
 	for(i = 0; intercon[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(machine, intercon[i][0],
+		snd_soc_dapm_add_route(soc_card, intercon[i][0],
 			intercon[i][1], intercon[i][2]);
 	}
 
-	snd_soc_dapm_init(machine);
+	snd_soc_dapm_init(soc_card);
 	return 0;
 }
 
@@ -478,7 +478,7 @@ static int wm8731_resume(struct platform_device *pdev)
 	for (i = 0; i < ARRAY_SIZE(wm8731_reg); i++) {
 		data[0] = (i << 1) | ((cache[i] >> 8) & 0x0001);
 		data[1] = cache[i] & 0x00ff;
-		codec->machine_write(codec->control_data, (long)data, 2);
+		codec->soc_card_write(codec->control_data, (long)data, 2);
 	}
 	wm8731_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 	wm8731_set_bias_level(codec, codec->suspend_bias_level);
@@ -489,7 +489,7 @@ static int wm8731_resume(struct platform_device *pdev)
  * initialise the WM8731 codec
  */
 static int wm8731_codec_init(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	int reg;
 
@@ -508,14 +508,14 @@ static int wm8731_codec_init(struct snd_soc_codec *codec,
 	reg = wm8731_read_reg_cache(codec, WM8731_RINVOL);
 	wm8731_write(codec, WM8731_RINVOL, reg & ~0x0100);
 		
-	wm8731_add_controls(codec, machine->card);
-	wm8731_add_widgets(codec, machine);
+	wm8731_add_controls(codec, soc_card->card);
+	wm8731_add_widgets(codec, soc_card);
 
 	return 0;
 }
 
 static void wm8731_codec_exit(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	wm8731_set_bias_level(codec, SND_SOC_BIAS_OFF);
 }

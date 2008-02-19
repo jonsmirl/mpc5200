@@ -21,7 +21,7 @@
 #include <linux/workqueue.h>
 
 struct snd_soc_platform;
-struct snd_soc_machine;
+struct snd_soc_card;
 struct snd_soc_dai;
 struct snd_pcm_ops;
 struct snd_card;
@@ -77,7 +77,7 @@ void snd_soc_unregister_platform_dai(struct snd_soc_dai *dai);
 
 /**
  * snd_soc_set_runtime_hwparams - register hw params
- * @substream: parent machine
+ * @substream: parent soc_card
  * @hw: platform ID name
  *
  * Registers a PCM's hardware runtime parameters with core.
@@ -101,7 +101,7 @@ struct snd_soc_platform {
 	struct mutex mutex;
 	struct list_head list;
 	struct list_head dai_list;
-	struct snd_soc_machine *machine;
+	struct snd_soc_card *soc_card;
 	
 	/* platform ALSA ops - optional */
 	const struct snd_pcm_ops *pcm_ops;

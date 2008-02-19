@@ -87,7 +87,7 @@ static struct au1xpsc_pcm {
 
 
 /*
- * These settings are somewhat okay, at least on my machine audio plays almost
+ * These settings are somewhat okay, at least on my soc_card audio plays almost
  * skip-free. Especially the 64kB buffer seems to help a LOT.
  */
 #define AU1XPSC_PERIOD_MIN_BYTES	1024

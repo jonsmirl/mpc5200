@@ -23,7 +23,7 @@
 extern struct snd_soc_cpu_dai sh4_hac_dai[2];
 extern struct snd_soc_platform sh7760_soc_platform;
 
-static int machine_init(struct snd_soc_codec *codec)
+static int soc_card_init(struct snd_soc_codec *codec)
 {
 	snd_soc_dapm_sync_endpoints(codec);
 	return 0;
@@ -34,18 +34,18 @@ static struct snd_soc_dai_link sh7760_ac97_dai = {
 	.stream_name = "AC97 HiFi",
 	.cpu_dai = &sh4_hac_dai[0],	/* HAC0 */
 	.codec_dai = &ac97_dai,
-	.init = machine_init,
+	.init = soc_card_init,
 	.ops = NULL,
 };
 
-static struct snd_soc_machine sh7760_ac97_soc_machine  = {
+static struct snd_soc_card sh7760_ac97_soc_soc_card  = {
 	.name = "SH7760 AC97",
 	.dai_link = &sh7760_ac97_dai,
 	.num_links = 1,
 };
 
 static struct snd_soc_device sh7760_ac97_snd_devdata = {
-	.machine = &sh7760_ac97_soc_machine,
+	.soc_card = &sh7760_ac97_soc_soc_card,
 	.platform = &sh7760_soc_platform,
 	.codec_dev = &soc_codec_dev_ac97,
 };
@@ -87,5 +87,5 @@ module_init(sh7760_ac97_init);
 module_exit(sh7760_ac97_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("Generic SH7760 AC97 sound machine");
+MODULE_DESCRIPTION("Generic SH7760 AC97 sound soc_card");
 MODULE_AUTHOR("Manuel Lauss <mano@roarinelk.homelinux.net>");

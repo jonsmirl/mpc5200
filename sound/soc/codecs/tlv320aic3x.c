@@ -28,7 +28,7 @@
  *   accordance with documentation
  *  ---------------------------------------
  *
- *  Hence the machine layer should disable unsupported inputs/outputs by
+ *  Hence the soc_card layer should disable unsupported inputs/outputs by
  *  snd_soc_dapm_set_endpoint(codec, "MONO_LOUT", 0), etc.
  */
 
@@ -1181,7 +1181,7 @@ static int aic3x_i2c_attach(struct i2c_adapter *adap)
 	return i2c_probe(adap, &addr_data, aic3x_codec_probe);
 }
 
-/* machine i2c codec control layer */
+/* soc_card i2c codec control layer */
 static struct i2c_driver aic3x_i2c_driver = {
 	.driver = {
 		.name = "aic3x I2C Codec",

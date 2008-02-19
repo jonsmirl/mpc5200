@@ -63,7 +63,7 @@
 #include "pxa2xx-ac97.h"
 #include "pxa2xx-ssp.h"
 
-static struct snd_soc_machine mainstone;
+static struct snd_soc_card mainstone;
 
 /* Do specific baseband PCM voice startup here */
 static int baseband_startup(struct snd_pcm_substream *substream)
@@ -163,7 +163,7 @@ static struct snd_soc_dai_link mainstone_dai[] = {
 },
 };
 
-static struct snd_soc_machine mainstone = {
+static struct snd_soc_card mainstone = {
 	.name = "Mainstone",
 	.probe = mainstone_probe,
 	.remove = mainstone_remove,
@@ -174,7 +174,7 @@ static struct snd_soc_machine mainstone = {
 };
 
 static struct snd_soc_device mainstone_snd_ac97_devdata = {
-	.machine = &mainstone,
+	.soc_card = &mainstone,
 	.platform = &pxa2xx_soc_platform,
 	.codec_dev = &soc_codec_dev_wm9713,
 };

@@ -254,7 +254,7 @@ static struct snd_soc_dai_link eti_b1_dai = {
 	.ops = &eti_b1_ops,
 };
 
-static struct snd_soc_machine snd_soc_machine_eti_b1 = {
+static struct snd_soc_card snd_soc_card_eti_b1 = {
 	.name = "ETI_B1_WM8731",
 	.dai_link = &eti_b1_dai,
 	.num_links = 1,
@@ -265,7 +265,7 @@ static struct wm8731_setup_data eti_b1_wm8731_setup = {
 };
 
 static struct snd_soc_device eti_b1_snd_devdata = {
-	.machine = &snd_soc_machine_eti_b1,
+	.soc_card = &snd_soc_card_eti_b1,
 	.platform = &at91_soc_platform,
 	.codec_dev = &soc_codec_dev_wm8731,
 	.codec_data = &eti_b1_wm8731_setup,

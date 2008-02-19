@@ -54,7 +54,7 @@
 #define NEO_CAPTURE_HEADSET		7
 #define NEO_CAPTURE_BLUETOOTH		8
 
-static struct snd_soc_machine neo1973;
+static struct snd_soc_card neo1973;
 static struct i2c_client *i2c;
 
 static int neo1973_hifi_hw_params(struct snd_pcm_substream *substream,
@@ -397,7 +397,7 @@ static const struct snd_soc_dapm_widget wm8753_dapm_widgets[] = {
 };
 
 
-/* example machine audio_mapnections */
+/* example soc_card audio_mapnections */
 static const char* audio_map[][3] = {
 
 	/* Connections to the lm4857 amp */
@@ -475,7 +475,7 @@ static const struct snd_kcontrol_new wm8753_neo1973_controls[] = {
 };
 
 /*
- * This is an example machine initialisation for a wm8753 connected to a
+ * This is an example soc_card initialisation for a wm8753 connected to a
  * neo1973 II. It is missing logic to detect hp/mic insertions and logic
  * to re-route the audio in such an event.
  */
@@ -555,7 +555,7 @@ static struct snd_soc_dai_link neo1973_dai[] = {
 },
 };
 
-static struct snd_soc_machine neo1973 = {
+static struct snd_soc_card neo1973 = {
 	.name = "neo1973",
 	.dai_link = neo1973_dai,
 	.num_links = ARRAY_SIZE(neo1973_dai),
@@ -566,7 +566,7 @@ static struct wm8753_setup_data neo1973_wm8753_setup = {
 };
 
 static struct snd_soc_device neo1973_snd_devdata = {
-	.machine = &neo1973,
+	.soc_card = &neo1973,
 	.platform = &s3c24xx_soc_platform,
 	.codec_dev = &soc_codec_dev_wm8753,
 	.codec_data = &neo1973_wm8753_setup,

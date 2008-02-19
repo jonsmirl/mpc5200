@@ -173,22 +173,22 @@ static const char *intercon[][3] = {
 };
 
 static int wm8711_add_widgets(struct snd_soc_codec *codec, 
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	int i;
 
 	for(i = 0; i < ARRAY_SIZE(wm8711_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(machine, codec, 
+		snd_soc_dapm_new_control(soc_card, codec, 
 			&wm8711_dapm_widgets[i]);
 	}
 
 	/* set up audio path interconnects */
 	for(i = 0; intercon[i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(machine, intercon[i][0], 
+		snd_soc_dapm_connect_input(soc_card, intercon[i][0], 
 			intercon[i][1], intercon[i][2]);
 	}
 
-	snd_soc_dapm_new_widgets(machine);
+	snd_soc_dapm_new_widgets(soc_card);
 	return 0;
 }
 
@@ -445,7 +445,7 @@ static int wm8711_resume(struct device *dev)
  * initialise the WM8711 codec
  */
 static int wm8711_codec_io_probe(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	int reg;
 
@@ -460,8 +460,8 @@ static int wm8711_codec_io_probe(struct snd_soc_codec *codec,
 	reg = wm8711_read_reg_cache(codec, WM8711_ROUT1V);
 	wm8711_write(codec, WM8711_ROUT1V, reg | 0x0100);
 	
-	wm8711_add_controls(codec, machine->card);
-	wm8711_add_widgets(codec, machine);
+	wm8711_add_controls(codec, soc_card->card);
+	wm8711_add_widgets(codec, soc_card);
 
 	return 0;
 }
@@ -516,7 +516,7 @@ static const struct snd_soc_pcm_stream wm8711_dai_playback = {
 	.formats	= WM8711_FORMATS,
 };
 
-/* dai ops, called by machine drivers */
+/* dai ops, called by soc_card drivers */
 static const struct snd_soc_dai_ops wm8711_dai_ops = {
 	.digital_mute	= wm8711_mute,
 	.set_sysclk	= wm8711_set_dai_sysclk,

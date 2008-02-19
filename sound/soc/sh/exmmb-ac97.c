@@ -40,15 +40,15 @@ extern struct snd_soc_platform sh7760_soc_platform;
 extern struct snd_ac97_bus_ops soc_ac97_ops;
 
 /*
- * Initialise the machine audio subsystem.
+ * Initialise the soc_card audio subsystem.
  */
-static int exm7760_ac97_machine_init(struct snd_soc_codec *codec)
+static int exm7760_ac97_soc_card_init(struct snd_soc_codec *codec)
 {
-	MSG("machine_init() enter\n");
+	MSG("soc_card_init() enter\n");
 
 	snd_soc_dapm_sync_endpoints(codec);
 
-	MSG("machine_init() leave\n");
+	MSG("soc_card_init() leave\n");
 	return 0;
 }
 
@@ -57,18 +57,18 @@ static struct snd_soc_dai_link exm7760_ac97_dai = {
 	.stream_name = "AC97 HiFi",
 	.cpu_dai = &sh4_hac_dai[0],	/* SH7760 HAC channel 0 */
 	.codec_dai = &ac97_dai,
-	.init = exm7760_ac97_machine_init,
+	.init = exm7760_ac97_soc_card_init,
 	.ops = NULL,
 };
 
-static struct snd_soc_machine snd_soc_machine_exm97 = {
+static struct snd_soc_card snd_soc_card_exm97 = {
 	.name = "EXM32 Motherboard AC97",
 	.dai_link = &exm7760_ac97_dai,
 	.num_links = 1,
 };
 
 static struct snd_soc_device exm7760_ac97_snd_devdata = {
-	.machine = &snd_soc_machine_exm97,
+	.soc_card = &snd_soc_card_exm97,
 	.platform = &sh7760_soc_platform,
 	.codec_dev = &soc_codec_dev_ac97,
 };
