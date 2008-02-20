@@ -132,7 +132,11 @@ static int zylonite_init(struct snd_soc_card *card)
 		return ret;
 	}
 
-	/* set up system-specific audio path audio_mapnects */
+	for(i = 0; i < ARRAY_SIZE(zylonite_dapm_widgets); i++) {
+		snd_soc_dapm_new_control(card, codec,
+					 &zylonite_dapm_widgets[i]);
+	}
+
 	for (i = 0; audio_map[i][0] != NULL; i++) {
 		snd_soc_dapm_add_route(card, audio_map[i][0], 
 			audio_map[i][1], audio_map[i][2]);
