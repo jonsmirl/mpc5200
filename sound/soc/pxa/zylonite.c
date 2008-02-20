@@ -130,6 +130,10 @@ static int zylonite_init(struct snd_soc_card *card)
 			audio_map[i][1], audio_map[i][2]);
 	}
 
+	/* The on-board speaker can't be disconnected */
+	snd_soc_dapm_enable_pin(card, "Speaker");
+
+	/* Until we implement jack detect */
 	snd_soc_dapm_enable_pin(card, "Audio Jack Headphones");
 
 	snd_soc_dapm_sync(card);
