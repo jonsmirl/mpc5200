@@ -1623,16 +1623,30 @@ int snd_soc_dai_digital_mute(struct snd_soc_dai *dai, int mute)
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_digital_mute);
 
-int snd_soc_register_codec_dai(struct snd_soc_dai *dai)
+struct snd_soc_dai *snd_soc_register_codec_dai(
+	struct snd_soc_dai_new *template, struct device *dev)
 {
-	BUG_ON(!dai->dev);
-	BUG_ON(!dai->name);
+	struct snd_soc_dai *dai;
+		
+	BUG_ON(!dev);
+	BUG_ON(!template->name);
 
+	dai = kzalloc(sizeof(*dai), GFP_KERNEL);
+	if (dai == NULL)
+		return NULL;
+
+	INIT_LIST_HEAD(&dai->list);
+	dai->dev = dev;
+	dai->ops = template->ops;
+	dai->playback = template->playback;
+	dai->capture = template->capture;
+	dai->name = template->name;
+	dai->ac97_control = template->ac97_control;
 	mutex_lock(&client_mutex);
 	list_add(&dai->list, &codec_dai_list);
 	mutex_unlock(&client_mutex);
 	soc_match_soc_card_pcms();
-	return 0;
+	return dai;
 }
 EXPORT_SYMBOL_GPL(snd_soc_register_codec_dai);
 
@@ -1641,6 +1655,7 @@ void snd_soc_unregister_codec_dai(struct snd_soc_dai *dai_runtime)
 	mutex_lock(&client_mutex);
 	list_del(&dai_runtime->list);
 	mutex_unlock(&client_mutex);
+	kfree(dai_runtime);
 }
 EXPORT_SYMBOL_GPL(snd_soc_unregister_codec_dai);
 
@@ -1665,26 +1680,52 @@ void snd_soc_unregister_codec(struct snd_soc_codec *codec)
 }
 EXPORT_SYMBOL_GPL(snd_soc_unregister_codec);
 
-int snd_soc_register_platform_dai(struct snd_soc_dai *dai)
+struct snd_soc_dai *snd_soc_register_platform_dai(
+	struct snd_soc_dai_new *template, struct device *dev)
 {
-	BUG_ON(!dai->dev);
-	BUG_ON(!dai->name);
+	struct snd_soc_dai *dai;
+		
+	BUG_ON(!dev);
+	BUG_ON(!template->name);
 
+	dai = kzalloc(sizeof(*dai), GFP_KERNEL);
+	if (dai == NULL)
+		return NULL;
+
+	INIT_LIST_HEAD(&dai->list);
+	dai->dev = dev;
+	dai->ops = template->ops;
+	dai->playback = template->playback;
+	dai->capture = template->capture;
+	dai->name = template->name;
+	dai->ac97_control = template->ac97_control;
 	mutex_lock(&client_mutex);
 	list_add(&dai->list, &cpu_dai_list);
 	mutex_unlock(&client_mutex);
 	soc_match_soc_card_pcms();
-	return 0;
+	return dai;
 }
-EXPORT_SYMBOL_GPL(snd_soc_register_platform_dai);
 
 void snd_soc_unregister_platform_dai(struct snd_soc_dai *dai_runtime)
 {
 	mutex_lock(&client_mutex);
 	list_del(&dai_runtime->list);
 	mutex_unlock(&client_mutex);
+	kfree(dai_runtime);
 }
-EXPORT_SYMBOL_GPL(snd_soc_unregister_platform_dai);
+
+#if 0
+int snd_soc_register_platform_dais(struct snd_soc_dai_new *template, 
+	int num, struct device *dev)
+{
+	int i, ret;
+	
+	for (i = 0; i < num; i++) {
+		ret = snd_soc_register_platform_dai(template++, dev);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(snd_soc_register_platform_dais);
+#endif
 
 int snd_soc_register_platform(struct snd_soc_platform *platform)
 {
@@ -1721,19 +1762,6 @@ struct snd_soc_codec *snd_soc_codec_allocate(void)
 	return codec;
 }
 EXPORT_SYMBOL_GPL(snd_soc_codec_allocate);
-
-struct snd_soc_dai *snd_soc_dai_allocate(void)
-{
-	struct snd_soc_dai *dai;
-
-	dai = kzalloc(sizeof(*dai), GFP_KERNEL);
-	if (dai == NULL)
-		return NULL;
-
-	INIT_LIST_HEAD(&dai->list);
-	return dai;
-}
-EXPORT_SYMBOL_GPL(snd_soc_dai_allocate);
 
 struct snd_soc_platform *snd_soc_platform_allocate(void)
 {

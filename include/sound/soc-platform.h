@@ -25,6 +25,7 @@ struct snd_soc_card;
 struct snd_soc_dai;
 struct snd_pcm_ops;
 struct snd_card;
+struct snd_soc_dai_new;
 
 /**
  * snd_soc_register_platform - register ASoC platform driver.
@@ -65,8 +66,8 @@ static inline void snd_soc_platform_free(struct snd_soc_platform *platform)
  *
  * Registers a platform Digital Audio Interfaces with ASoC core.
  */
-int snd_soc_register_platform_dai(struct snd_soc_dai *dai);
-
+struct snd_soc_dai *snd_soc_register_platform_dai(
+	struct snd_soc_dai_new *template, struct device *dev);
 /**
  * snd_soc_unregister_platform_dai - unregisters a  platform DAI.
  * @dai: pointer to DAI
