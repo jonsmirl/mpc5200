@@ -18,7 +18,7 @@
  *  Features:
  *    o Changes power status of internal codec blocks depending on the
  *      dynamic configuration of codec internal audio paths and active
- *      DAC's/ADC's.
+ *      DACs/ADCs.
  *    o Platform power domain - can support external components i.e. amps and
  *      mic/meadphone insertion events.
  *    o Automatic Mic Bias support
