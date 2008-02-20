@@ -749,13 +749,6 @@ found:
 	return 0;
 }
 
-static int wm9713_set_dai_pll(struct snd_soc_dai *codec_dai,
-		int pll_id, unsigned int freq_in, unsigned int freq_out)
-{
-	struct snd_soc_codec *codec = codec_dai->codec;
-	return wm9713_set_pll(codec, pll_id, freq_in, freq_out);
-}
-
 /*
  * Tristate the PCM DAI lines, tristate can be disabled by calling
  * wm9713_set_dai_fmt()
@@ -1088,7 +1081,6 @@ static struct snd_soc_dai_ops wm9713_voice_dai_ops = {
 	
 	/* dai ops */
 	.set_clkdiv = wm9713_set_dai_clkdiv,
-	.set_pll = wm9713_set_dai_pll,
 	.set_fmt = wm9713_set_dai_fmt,
 	.set_tristate = wm9713_set_dai_tristate,
 };
@@ -1209,6 +1201,7 @@ static int wm9713_codec_probe(struct platform_device *pdev)
 	codec->dev = &pdev->dev;
 	codec->name = wm9713_codec_id;
 	codec->private_data = wm9713;
+	codec->set_pll = wm9713_set_pll,
 
 	ret = snd_soc_register_codec(codec);
  	if (ret < 0)
