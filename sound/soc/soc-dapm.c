@@ -18,7 +18,7 @@
  *  Features:
  *    o Changes power status of internal codec blocks depending on the
  *      dynamic configuration of codec internal audio paths and active
- *      DAC's/ADC's.
+ *      DACs/ADCs.
  *    o Platform power domain - can support external components i.e. amps and
  *      mic/meadphone insertion events.
  *    o Automatic Mic Bias support
@@ -848,11 +848,15 @@ static int snd_soc_dapm_set_pin(struct snd_soc_card *soc_card,
 
 	list_for_each_entry(w, &soc_card->dapm_widgets, list) {
 		if (!strcmp(w->name, pin)) {
+			dbg("dapm: %s: pin %s\n", soc_card->name, pin);
 			w->connected = status;
+			return 0;
 		}
 	}
 
-	return 0;
+	dbg("dapm: %s: configuring unknown pin %s\n", soc_card->name, pin);
+
+	return -EINVAL;
 }
 
 /**
