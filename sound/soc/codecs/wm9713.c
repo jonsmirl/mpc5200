@@ -1215,7 +1215,10 @@ static int wm9713_codec_probe(struct platform_device *pdev)
 	ret = wm9713_voice_dai_probe(wm9713, &pdev->dev);
 	if (ret < 0)
 		goto voice_dai_err;
- 	platform_set_drvdata(pdev, wm9713);
+
+	codec->private_data = wm9713;
+ 	platform_set_drvdata(pdev, codec);
+
 	return ret;
 	
 voice_dai_err:
