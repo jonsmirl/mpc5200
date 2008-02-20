@@ -60,6 +60,12 @@ static const char *audio_map[][3] = {
 	{NULL, NULL, NULL},
 };
 
+static struct snd_soc_ops zylonite_hifi_ops = {
+};
+
+static struct snd_soc_ops zylonite_aux_ops = {
+};
+
 static struct snd_soc_pcm_config pcm_configs[] = {
 	{
 		.name		= "HiFi",
@@ -69,6 +75,7 @@ static struct snd_soc_pcm_config pcm_configs[] = {
 		.cpu_dai	= pxa_ac97_hifi_dai_id,
 		.playback	= 1,
 		.capture	= 1,
+		.ops		= &zylonite_hifi_ops,
 	},
 	{
 		.name		= "Aux",
@@ -77,6 +84,7 @@ static struct snd_soc_pcm_config pcm_configs[] = {
 		.platform	= pxa_platform_id,
 		.cpu_dai	= pxa_ac97_aux_dai_id,
 		.playback	= 1,
+		.ops		= &zylonite_aux_ops,
 	},
 };
 
