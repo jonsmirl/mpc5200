@@ -66,7 +66,7 @@ static struct snd_soc_pcm_config pcm_configs[] = {
 		.codec		= wm9713_codec_id,
 		.codec_dai	= wm9713_codec_hifi_dai_id,
 		.platform	= pxa_platform_id,
-		.cpu_dai	= pxa3xx_ac97_hifi_dai_id,
+		.cpu_dai	= pxa_ac97_hifi_dai_id,
 		.playback	= 1,
 		.capture	= 1,
 	},
@@ -75,31 +75,31 @@ static struct snd_soc_pcm_config pcm_configs[] = {
 		.codec		= wm9713_codec_id,
 		.codec_dai	= wm9713_codec_aux_dai_id,
 		.platform	= pxa_platform_id,
-		.cpu_dai	= pxa3xx_ac97_aux_dai_id,
+		.cpu_dai	= pxa_ac97_aux_dai_id,
 		.playback	= 1,
 	},
 };
 
-static int zylonite_init(struct snd_soc_machine *machine)
+static int zylonite_init(struct snd_soc_card *card)
 {
 	struct snd_soc_codec *codec;
 	struct snd_ac97_bus_ops *ac97_ops;
 	int i, ret;
 
-	codec = snd_soc_get_codec(machine, wm9713_codec_id);
+	codec = snd_soc_get_codec(card, wm9713_codec_id);
 	if (codec == NULL) {
 		printk(KERN_ERR "Unable to obtain WM9713 codec\n");
 		return -ENODEV;
 	}
 	
-	ac97_ops = snd_soc_get_ac97_ops(machine, pxa3xx_ac97_hifi_dai_id);
+	ac97_ops = snd_soc_get_ac97_ops(card, pxa_ac97_hifi_dai_id);
 	if (!ac97_ops) {
 		printk(KERN_ERR "Unable to obtain AC97 operations\n");
 		return -ENODEV;
 	}
 
 	/* register with AC97 bus for ad-hoc driver access */
-	ret = snd_soc_new_ac97_codec(codec, ac97_ops, machine->card, 0, 0);
+	ret = snd_soc_new_ac97_codec(codec, ac97_ops, card->card, 0, 0);
 	if (ret < 0) {
 		printk(KERN_ERR "Unable to instantiate AC97 codec\n");
 		return ret;
@@ -116,24 +116,30 @@ static int zylonite_init(struct snd_soc_machine *machine)
 		return -ENODEV;
 	}
 
-	snd_soc_codec_init(codec, machine);
+	snd_soc_codec_init(codec, card);
+
+	ret = snd_soc_codec_set_pll(codec, 0, clk_get_rate(mclk), 1);
+	if (ret != 0) {
+		dev_err(codec->dev, "Unable to configure PLL: %d\n", ret);
+		return ret;
+	}
 
 	/* set up system-specific audio path audio_mapnects */
-	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(machine, audio_map[i][0], 
+	for (i = 0; audio_map[i][0] != NULL; i++) {
+		snd_soc_dapm_add_route(card, audio_map[i][0], 
 			audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_enable_pin(machine, "Audio Jack Headphones");
+	snd_soc_dapm_enable_pin(card, "Audio Jack Headphones");
 
-	snd_soc_dapm_sync(machine);
+	snd_soc_dapm_sync(card);
 	
 	return 0;
 }
 
 static int zylonite_probe(struct platform_device *pdev)
 {
-	struct snd_soc_machine *machine;
+	struct snd_soc_card *card;
 	int ret;
 
 	/* Most Zylonite based systems use POUT to provide MCLK to the
@@ -151,22 +157,22 @@ static int zylonite_probe(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "MCLK rate: %luHz\n",
 		clk_get_rate(mclk));
 
-	machine = snd_soc_machine_create("zylonite", &pdev->dev, 
+	card = snd_soc_card_create("zylonite", &pdev->dev, 
 		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
-	if (machine == NULL)
+	if (card == NULL)
 		return -ENOMEM;
 
-	machine->longname = "Zylonite";
-	machine->init = zylonite_init,
-	machine->private_data = pdev;
-	platform_set_drvdata(pdev, machine);
+	card->longname = "Zylonite";
+	card->init = zylonite_init,
+	card->private_data = pdev;
+	platform_set_drvdata(pdev, card);
 
-	ret = snd_soc_create_pcms(machine, &pcm_configs[0],
+	ret = snd_soc_create_pcms(card, &pcm_configs[0],
 				  ARRAY_SIZE(pcm_configs));
 	if (ret < 0)
 		goto err;
 	
-	ret = snd_soc_machine_register(machine);
+	ret = snd_soc_card_register(card);
 	if (ret < 0)
 		goto err;
 
@@ -174,15 +180,15 @@ static int zylonite_probe(struct platform_device *pdev)
 
 err:
 	dev_err(&pdev->dev, "probe() failed: %d\n", ret);
-	snd_soc_machine_free(machine);
+	snd_soc_card_free(card);
 	return ret;
 }
 
 static int __exit zylonite_remove(struct platform_device *pdev)
 {
-	struct snd_soc_machine *machine = platform_get_drvdata(pdev);
+	struct snd_soc_card *card = platform_get_drvdata(pdev);
 
-	snd_soc_machine_free(machine);
+	snd_soc_card_free(card);
 	return 0;
 }
 
@@ -191,14 +197,14 @@ static int __exit zylonite_remove(struct platform_device *pdev)
 static int zylonite_suspend(struct platform_device *pdev, 
 	pm_message_t state)
 {
-	struct snd_soc_machine *machine = platform_get_drvdata(pdev);
-	return snd_soc_suspend(machine, state);
+	struct snd_soc_card *card = platform_get_drvdata(pdev);
+	return snd_soc_suspend(card, state);
 }
 
 static int zylonite_resume(struct platform_device *pdev)
 {
-	struct snd_soc_machine *machine = platform_get_drvdata(pdev);
-	return snd_soc_resume(machine);
+	struct snd_soc_card *card = platform_get_drvdata(pdev);
+	return snd_soc_resume(card);
 }
 
 #else
