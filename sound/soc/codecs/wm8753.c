@@ -154,7 +154,7 @@ static int wm8753_write(struct snd_soc_codec *codec, unsigned int reg,
 	data[1] = value & 0x00ff;
 
 	wm8753_write_reg_cache (codec, reg, value);
-	if (codec->machine_write(codec->control_data, (long)data, 2) == 2)
+	if (codec->soc_card_write(codec->control_data, (long)data, 2) == 2)
 		return 0;
 	else
 		return -EIO;
@@ -682,21 +682,21 @@ static const char *audio_map[][3] = {
 };
 
 static int wm8753_add_widgets(struct snd_soc_codec *codec, 
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(wm8753_dapm_widgets); i++)
-		snd_soc_dapm_new_control(machine, codec, 
+		snd_soc_dapm_new_control(soc_card, codec, 
 			&wm8753_dapm_widgets[i]);
 
 	/* set up the WM8753 audio map */
 	for (i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(machine, audio_map[i][0],
+		snd_soc_dapm_add_route(soc_card, audio_map[i][0],
 			audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_init(machine);
+	snd_soc_dapm_init(soc_card);
 	return 0;
 }
 
@@ -1324,7 +1324,7 @@ static int wm8753_resume(struct platform_device *pdev)
 			continue;
 		data[0] = ((i + 1) << 1) | ((cache[i] >> 8) & 0x0001);
 		data[1] = cache[i] & 0x00ff;
-		codec->machine_write(codec->control_data, (long)data, 2);
+		codec->soc_card_write(codec->control_data, (long)data, 2);
 	}
 
 	wm8753_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
@@ -1341,7 +1341,7 @@ static int wm8753_resume(struct platform_device *pdev)
 }
 
 static int wm8753_codec_init(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	int reg;
 
@@ -1375,8 +1375,8 @@ static int wm8753_codec_init(struct snd_soc_codec *codec,
 	reg = wm8753_read_reg_cache(codec, WM8753_RINVOL);
 	wm8753_write(codec, WM8753_RINVOL, reg | 0x0100);
 	
-	wm8753_add_controls(codec, machine->card);
-	wm8753_add_widgets(codec, machine);
+	wm8753_add_controls(codec, soc_card->card);
+	wm8753_add_widgets(codec, soc_card);
 	return 0;
 }
 
@@ -1400,7 +1400,7 @@ static int run_delayed_work(struct delayed_work *dwork)
 }
 
 static void wm8753_codec_exit(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	run_delayed_work(&codec->delayed_work);
 	wm8753_set_bias_level(codec, SND_SOC_BIAS_OFF);

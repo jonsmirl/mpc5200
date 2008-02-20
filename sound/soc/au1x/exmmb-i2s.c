@@ -36,7 +36,7 @@
 #define MSG(x...)	do {} while (0)
 #endif
 
-static int exm1200_mobo_i2s_machine_hw_params(struct snd_pcm_substream *substream,
+static int exm1200_mobo_i2s_soc_card_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -44,7 +44,7 @@ static int exm1200_mobo_i2s_machine_hw_params(struct snd_pcm_substream *substrea
 	struct snd_soc_cpu_dai *cpu_dai = rtd->dai->cpu_dai;
 	int ret;
 
-	MSG("machine_hw_params() enter\n");
+	MSG("soc_card_hw_params() enter\n");
 
 	/* set codec and i2s interfaces to slave mode */
 	ret = codec_dai->dai_ops.set_fmt(codec_dai, SND_SOC_DAIFMT_LEFT_J |
@@ -69,19 +69,19 @@ static int exm1200_mobo_i2s_machine_hw_params(struct snd_pcm_substream *substrea
 
 	ret = 0;
 out:
-	MSG("machine_hw_params() leave\n");
+	MSG("soc_card_hw_params() leave\n");
 	return ret;
 }
 
-/* machine Alsa PCM operations */
+/* soc_card Alsa PCM operations */
 static struct snd_soc_ops exm1200_mobo_i2s_ops = {
-	.hw_params = exm1200_mobo_i2s_machine_hw_params,
+	.hw_params = exm1200_mobo_i2s_soc_card_hw_params,
 };
 
 /*
- * Initialise the machine audio subsystem.
+ * Initialise the soc_card audio subsystem.
  */
-static int exm1200_mobo_i2s_machine_init(struct snd_soc_codec *codec)
+static int exm1200_mobo_i2s_soc_card_init(struct snd_soc_codec *codec)
 {
 	/* EXM32 Motherboard uses the codec in MASTER mode (DSP possible)
 	 *  with ADC (recording) data output at the SAI_SDOUT/SAI_SPCLK pins,
@@ -123,11 +123,11 @@ static struct snd_soc_dai_link exm1200_mobo_i2s_dai = {
 	.stream_name = "CS4251X",
 	.cpu_dai = &au1xpsc_i2s_dai[1],	/* we use PSC1 for I2S */
 	.codec_dai = &cs4251x_dai,
-	.init = exm1200_mobo_i2s_machine_init,
+	.init = exm1200_mobo_i2s_soc_card_init,
 	.ops = &exm1200_mobo_i2s_ops,
 };
 
-static struct snd_soc_machine snd_soc_machine_template = {
+static struct snd_soc_card snd_soc_card_template = {
 	.name = "EXM32 Motherboard I2S",
 	.dai_link = &exm1200_mobo_i2s_dai,
 	.num_links = 1,
@@ -140,7 +140,7 @@ static struct cs4251x_setup_data exm1200_mobo_i2s_codec_setup = {
 };
 
 static struct snd_soc_device exm1200_mobo_i2s_snd_devdata = {
-	.machine = &snd_soc_machine_template,
+	.soc_card = &snd_soc_card_template,
 	.platform = &au1xpsc_soc_platform,
 	.codec_dev = &soc_codec_dev_cs4251x,
 	.codec_data = &exm1200_mobo_i2s_codec_setup,

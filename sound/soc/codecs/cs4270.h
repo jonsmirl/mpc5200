@@ -14,13 +14,13 @@
 
 /*
  * The ASoC codec DAI structure for the CS4270.  Assign this structure to
- * the .codec_dai field of your machine driver's snd_soc_dai_link structure.
+ * the .codec_dai field of your soc_card driver's snd_soc_dai_link structure.
  */
 extern struct snd_soc_codec_dai cs4270_dai;
 
 /*
  * The ASoC codec device structure for the CS4270.  Assign this structure
- * to the .codec_dev field of your machine driver's snd_soc_device
+ * to the .codec_dev field of your soc_card driver's snd_soc_device
  * structure.
  */
 extern struct snd_soc_codec_device soc_codec_device_cs4270;

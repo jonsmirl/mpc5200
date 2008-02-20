@@ -168,14 +168,14 @@ static struct snd_soc_ops smdk2440_ops = {
 	.hw_params = smdk2440_hw_params,
 };
 
-/* smdk2440 machine dapm widgets */
+/* smdk2440 soc_card dapm widgets */
 static const struct snd_soc_dapm_widget smdk2440_dapm_widgets[] = {
 SND_SOC_DAPM_HP("Headphone Jack", NULL),
 SND_SOC_DAPM_MIC("Mic Jack", NULL),
 SND_SOC_DAPM_LINE("Line Jack", NULL),
 };
 
-/* smdk2440 machine audio map (connections to the codec pins) */
+/* smdk2440 soc_card audio map (connections to the codec pins) */
 static const char* audio_map[][3] = {
 	/* headphone connected to  HPOUT */
 	{"Headphone Jack", NULL, "HPOUT"},
@@ -224,8 +224,8 @@ static struct snd_soc_dai_link s3c24xx_dai = {
 	.ops = &smdk2440_ops,
 };
 
-/* smdk2440 audio machine driver */
-static struct snd_soc_machine snd_soc_machine_smdk2440 = {
+/* smdk2440 audio soc_card driver */
+static struct snd_soc_card snd_soc_card_smdk2440 = {
 	.name = "SMDK2440",
 	.dai_link = &s3c24xx_dai,
 	.num_links = 1,
@@ -237,7 +237,7 @@ static struct uda1380_setup_data smdk2440_uda1380_setup = {
 
 /* s3c24xx audio subsystem */
 static struct snd_soc_device s3c24xx_snd_devdata = {
-	.machine = &snd_soc_machine_smdk2440,
+	.soc_card = &snd_soc_card_smdk2440,
 	.platform = &s3c24xx_soc_platform,
 	.codec_dev = &soc_codec_dev_uda1380,
 	.codec_data = &smdk2440_uda1380_setup,
@@ -267,8 +267,8 @@ static int __init smdk2440_init(void)
 {
 	int ret;
 
-	if (!machine_is_smdk2440() && !machine_is_s3c2440()) {
-		DBG("%d\n",machine_arch_type);
+	if (!soc_card_is_smdk2440() && !soc_card_is_s3c2440()) {
+		DBG("%d\n",soc_card_arch_type);
 		DBG("Not a SMDK2440\n");
 		return -ENODEV;
 	}

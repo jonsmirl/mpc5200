@@ -109,7 +109,7 @@
 	.private_value = (unsigned long)&xenum }
 
 struct snd_soc_codec;
-struct snd_soc_machine;
+struct snd_soc_card;
 struct snd_soc_dai;
 struct snd_ac97_bus_ops;
 struct snd_kcontrol;
@@ -146,7 +146,7 @@ struct snd_soc_codec {
 	struct mutex mutex;
 	struct list_head list;
 	struct list_head dai_list;		/* list of DAI's */
-	struct snd_soc_machine *machine;	/* parent machine */
+	struct snd_soc_card *soc_card;	/* parent soc_card */
 	int num;
 	/*
 	 *  Codec power control and state. Optional.
@@ -162,27 +162,27 @@ struct snd_soc_codec {
 	 * codec init/exit IO.
 	 */
 	int (*init)(struct snd_soc_codec *codec, 
-		struct snd_soc_machine *machine);
+		struct snd_soc_card *soc_card);
 	void (*exit)(struct snd_soc_codec *codec, 
-		struct snd_soc_machine *machine);
+		struct snd_soc_card *soc_card);
 	
 	/* 
 	 * Codec control IO.
 	 * 
 	 * All codec IO is performed by calling codec_read() and codec_write().
 	 * codec_read/write() formats the IO data for the codec and then calls
-	 * the machine_read and machine_write respectively to physically
+	 * the soc_card_read and soc_card_write respectively to physically
 	 * perform the IO operation.
 	 * 
-	 * The machine_read and machine_write functions can either wrap the
+	 * The soc_card_read and soc_card_write functions can either wrap the
 	 * kernel I2C, SPI read and write functions or do custom IO. 
 	 */
 	unsigned int (*codec_read)(struct snd_soc_codec *codec, 
 		unsigned int reg);
 	int (*codec_write)(struct snd_soc_codec *codec, unsigned int reg, 
 		unsigned int value);
-	int (*machine_write)(void *control_data, long data, int bytes);
-	int (*machine_read)(void *control_data, long data, int bytes);
+	int (*soc_card_write)(void *control_data, long data, int bytes);
+	int (*soc_card_read)(void *control_data, long data, int bytes);
 	void *control_data; 			/* codec control data */
 	
 	

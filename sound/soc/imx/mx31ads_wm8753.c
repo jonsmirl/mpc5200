@@ -35,7 +35,7 @@
 #include "imx31-pcm.h"
 #include "imx-ssi.h"
 
-static struct snd_soc_machine *imx31ads_mach;
+static struct snd_soc_card *imx31ads_mach;
 
 static int mx31ads_hifi_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
@@ -261,7 +261,7 @@ struct snd_soc_pcm_link_ops voice_pcm = {
 	.new	= voice_pcm_new,
 };
 
-/* example machine audio_mapnections */
+/* example soc_card audio_mapnections */
 static const char* audio_map[][3] = {
 
 	/* mic is connected to mic1 - with bias */
@@ -305,36 +305,36 @@ static int imx31ads_wm8753_write(void *control_data, long data, int size)
 		(char*) data, size);
 }
 
-static int imx31ads_mach_probe(struct snd_soc_machine *machine)
+static int imx31ads_mach_probe(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_codec *codec;
 	struct snd_soc_pcm_link *pcm_link;
 	int i, ret;
 	
-	pcm_link = list_first_entry(&machine->active_list, 
+	pcm_link = list_first_entry(&soc_card->active_list, 
 		struct snd_soc_pcm_link, active_list);
 	codec = pcm_link->codec;
 		
 	/* set up imx31ads codec pins */
-	snd_soc_dapm_set_endpoint(machine, "RXP", 0);
-	snd_soc_dapm_set_endpoint(machine, "RXN", 0);
-	snd_soc_dapm_set_endpoint(machine, "MIC2", 0);
+	snd_soc_dapm_set_endpoint(soc_card, "RXP", 0);
+	snd_soc_dapm_set_endpoint(soc_card, "RXN", 0);
+	snd_soc_dapm_set_endpoint(soc_card, "MIC2", 0);
 
 	/* add imx31ads specific controls */
 	for (i = 0; i < ARRAY_SIZE(wm8753_imx31ads_controls); i++) {
-		if ((ret = snd_ctl_add(machine->card,
+		if ((ret = snd_ctl_add(soc_card->card,
 				snd_soc_cnew(&wm8753_imx31ads_controls[i],
-					machine, NULL))) < 0)
+					soc_card, NULL))) < 0)
 			return ret;
 	}
 
 	/* set up imx31ads specific audio path audio_mapnects */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(machine, audio_map[i][0], 
+		snd_soc_dapm_connect_input(soc_card, audio_map[i][0], 
 			audio_map[i][1], audio_map[i][2]);
 	}
 	
-	snd_soc_dapm_sync_endpoints(machine);
+	snd_soc_dapm_sync_endpoints(soc_card);
 	
 	codec->control_data = imx31ads_mach->private_data;
 	codec->mach_write = imx31ads_wm8753_write;
@@ -351,7 +351,7 @@ static int imx31ads_mach_probe(struct snd_soc_machine *machine)
 	return 0;
 }
 
-struct snd_soc_machine_ops imx31ads_mach_ops = {
+struct snd_soc_card_ops imx31ads_mach_ops = {
 	.mach_probe = imx31ads_mach_probe,	
 };
 
@@ -405,7 +405,7 @@ static int wm8753_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	return ret;
 
 link_err:
-	snd_soc_machine_free(imx31ads_mach);
+	snd_soc_card_free(imx31ads_mach);
 attach_err:
 	i2c_detach_client(i2c);
 	kfree(i2c);
@@ -414,7 +414,7 @@ attach_err:
 
 static int wm8753_i2c_detach(struct i2c_client *client)
 {
-	snd_soc_machine_free(imx31ads_mach);
+	snd_soc_card_free(imx31ads_mach);
 	i2c_detach_client(client);
 	kfree(client);
 	return 0;
@@ -448,26 +448,26 @@ static struct i2c_client client_template = {
  */
 static int __init imx31ads_wm8753_probe(struct platform_device *pdev)
 {
-	struct snd_soc_machine *machine;
+	struct snd_soc_card *soc_card;
 	int ret;
 
-	machine = kzalloc(sizeof(struct snd_soc_machine), GFP_KERNEL);
-	if (machine == NULL)
+	soc_card = kzalloc(sizeof(struct snd_soc_card), GFP_KERNEL);
+	if (soc_card == NULL)
 		return -ENOMEM;
 
-	machine->owner = THIS_MODULE;
-	machine->pdev = pdev;
-	machine->name = "IMX31ADS";
-	machine->longname = "WM8753";
-	machine->ops = &imx31ads_mach_ops;
-	pdev->dev.driver_data = machine;
+	soc_card->owner = THIS_MODULE;
+	soc_card->pdev = pdev;
+	soc_card->name = "IMX31ADS";
+	soc_card->longname = "WM8753";
+	soc_card->ops = &imx31ads_mach_ops;
+	pdev->dev.driver_data = soc_card;
 
 	/* register card */
-	imx31ads_mach = machine;
-	ret = snd_soc_new_card(machine, 2, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
+	imx31ads_mach = soc_card;
+	ret = snd_soc_new_card(soc_card, 2, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
 	if (ret < 0) {
 		printk(KERN_ERR "%s: failed to create pcms\n", __func__);
-		kfree(machine);
+		kfree(soc_card);
 		return ret;
 	}
 	
@@ -482,17 +482,17 @@ static int __init imx31ads_wm8753_probe(struct platform_device *pdev)
 	return ret;
 	
 err:
-	kfree(machine);
+	kfree(soc_card);
 	return ret;
 }
 
 static int __exit imx31ads_wm8753_remove(struct platform_device *pdev)
 {
-	struct snd_soc_machine *machine = pdev->dev.driver_data;
+	struct snd_soc_card *soc_card = pdev->dev.driver_data;
 	
 	i2c_del_driver(&wm8753_i2c_driver);
 	imx31ads_mach = NULL;
-	kfree(machine);
+	kfree(soc_card);
 	return 0;
 }
 
@@ -500,19 +500,19 @@ static int __exit imx31ads_wm8753_remove(struct platform_device *pdev)
 static int imx31ads_wm8753_suspend(struct platform_device *pdev, 
 	pm_message_t state)
 {
-	struct snd_soc_machine *machine = pdev->dev.driver_data;
-	return snd_soc_suspend(machine, state);
+	struct snd_soc_card *soc_card = pdev->dev.driver_data;
+	return snd_soc_suspend(soc_card, state);
 }
 
 static int imx31ads_wm8753_resume(struct platform_device *pdev)
 {
-	struct snd_soc_machine *machine = pdev->dev.driver_data;
-	return snd_soc_resume(machine);
+	struct snd_soc_card *soc_card = pdev->dev.driver_data;
+	return snd_soc_resume(soc_card);
 }
 
 #else
-#define imx31ads_machine_suspend NULL
-#define imx31ads_machine_resume  NULL
+#define imx31ads_soc_card_suspend NULL
+#define imx31ads_soc_card_resume  NULL
 #endif
 
 static struct platform_driver imx31ads_wm8753_driver = {

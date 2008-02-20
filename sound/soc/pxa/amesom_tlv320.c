@@ -127,12 +127,12 @@ static int amesom_tlv320_write(void *control_data, long data, int size)
 /*
  * Logic for a tlv320 as connected on a Sharp SL-C7x0 Device
  */
-static int amesom_init(struct snd_soc_machine *machine)
+static int amesom_init(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_codec *codec;
 	int i, ret;
 	
-	codec = snd_soc_get_codec(machine, tlv320_codec_id);
+	codec = snd_soc_get_codec(soc_card, tlv320_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
 		
@@ -143,9 +143,9 @@ static int amesom_init(struct snd_soc_machine *machine)
 	pxa_gpio_mode(GPIO14_SSP2FRMS_MD);
 	
 	snd_soc_codec_set_io(codec, NULL, amesom_tlv320_write, 
-		machine->private_data);
+		soc_card->private_data);
 	
-	snd_soc_codec_init(codec, machine);
+	snd_soc_codec_init(codec, soc_card);
 	
 	return 0;
 }
@@ -163,7 +163,7 @@ static struct snd_soc_pcm_config hifi_pcm_config = {
 
 static int tlv320_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 {
-	struct snd_soc_machine *machine;
+	struct snd_soc_card *soc_card;
 	struct i2c_client *i2c;
 	int ret;
 
@@ -183,25 +183,25 @@ static int tlv320_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 		goto attach_err;
 	}
 	
-	machine = snd_soc_machine_create("amesom", &i2c->dev, 
+	soc_card = snd_soc_card_create("amesom", &i2c->dev, 
 		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
-	if (machine == NULL)
+	if (soc_card == NULL)
 		return -ENOMEM;
 
-	machine->longname = "tlv320";
-	machine->init = amesom_init;
-	machine->private_data = i2c;
-	i2c_set_clientdata(i2c, machine);
+	soc_card->longname = "tlv320";
+	soc_card->init = amesom_init;
+	soc_card->private_data = i2c;
+	i2c_set_clientdata(i2c, soc_card);
 	
-	ret = snd_soc_pcm_create(machine, &hifi_pcm_config);
+	ret = snd_soc_pcm_create(soc_card, &hifi_pcm_config);
 	if (ret < 0)
 		goto err;
 	
-	ret = snd_soc_machine_register(machine);
+	ret = snd_soc_card_register(soc_card);
 	return ret;
 
 err:
-	snd_soc_machine_free(machine);
+	snd_soc_card_free(soc_card);
 attach_err:
 	i2c_detach_client(i2c);
 	kfree(i2c);
@@ -210,9 +210,9 @@ attach_err:
 
 static int tlv320_i2c_detach(struct i2c_client *client)
 {
-	struct snd_soc_machine *machine = i2c_get_clientdata(client);
+	struct snd_soc_card *soc_card = i2c_get_clientdata(client);
 	 
-	snd_soc_machine_free(machine);
+	snd_soc_card_free(soc_card);
 	i2c_detach_client(client);
 	kfree(client);
 	return 0;

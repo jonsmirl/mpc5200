@@ -36,7 +36,7 @@
 #include "pxa2xx-pcm.h"
 #include "pxa2xx-ac97.h"
 
-static struct snd_soc_machine mainstone;
+static struct snd_soc_card mainstone;
 static long mst_audio_suspend_mask;
 
 static int mainstone_suspend(struct platform_device *pdev, pm_message_t state)
@@ -64,7 +64,7 @@ static int mainstone_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct snd_soc_machine_config codecs[] = {
+static struct snd_soc_card_config codecs[] = {
 {
 	.name = "AC97",
 	.sname = "AC97 HiFi",
@@ -77,7 +77,7 @@ static struct snd_soc_machine_config codecs[] = {
 },
 };
 
-static struct snd_soc_machine mainstone = {
+static struct snd_soc_card mainstone = {
 	.name = "Mainstone",
 	.probe = mainstone_probe,
 	.remove = mainstone_remove,
@@ -88,7 +88,7 @@ static struct snd_soc_machine mainstone = {
 };
 
 static struct snd_soc_device mainstone_snd_devdata = {
-	.machine = &mainstone,
+	.soc_card = &mainstone,
 	.platform = &pxa2xx_soc_platform,
 	.codec_dev = &soc_codec_dev_ac97,
 };

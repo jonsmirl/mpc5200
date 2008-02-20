@@ -261,7 +261,7 @@ static int tlv320_write_block (struct snd_soc_codec *codec,
  * initialise the WM8731 codec
  */
 static int tlv320_codec_init(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	int ret, len;
 	static const unsigned char *data;

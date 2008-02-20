@@ -370,7 +370,7 @@ static int s3c24xx_i2s_set_clkdiv(struct snd_soc_cpu_dai *cpu_dai,
 }
 
 /*
- * To avoid duplicating clock code, allow machine driver to
+ * To avoid duplicating clock code, allow soc_card driver to
  * get the clockrate from here.
  */
 u32 s3c24xx_i2s_get_clockrate(void)

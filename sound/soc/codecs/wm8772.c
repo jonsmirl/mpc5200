@@ -445,7 +445,7 @@ static int wm8772_resume(struct device *dev)
  * initialise the WM8772 codec
  */
 static int wm8772_codec_io_probe(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	int reg;
 
@@ -470,7 +470,7 @@ static int wm8772_codec_io_probe(struct snd_soc_codec *codec,
 	reg = wm8772_read_reg_cache(codec, WM8772_RDAC3VOL);
 	wm8772_write(codec, WM8772_RDAC3VOL, reg | 0x0100);
 	
-	wm8772_add_controls(codec, machine->card);
+	wm8772_add_controls(codec, soc_card->card);
 	return 0;
 }
 
@@ -530,7 +530,7 @@ static const struct snd_soc_pcm_stream wm8772_dai_capture = {
 	.formats	= WM8772_FORMATS,
 };
 
-/* dai ops, called by machine drivers */
+/* dai ops, called by soc_card drivers */
 static const struct snd_soc_dai_ops wm8772_dai_ops = {
 	.set_sysclk	= wm8772_set_dai_sysclk,
 	.set_fmt	= wm8772_set_dai_fmt,

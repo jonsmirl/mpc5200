@@ -20,7 +20,7 @@
  *
  *  TODO:
  *   o Add hw rules to enforce rates, etc.
- *   o More testing with other codecs/machines.
+ *   o More testing with other codecs/soc_cards.
  *   o Add more codecs and platforms to ensure good API coverage.
  *   o Support TDM on PCM and I2S
  */
@@ -56,7 +56,7 @@ static LIST_HEAD(platform_list);
 static LIST_HEAD(codec_list);
 static LIST_HEAD(cpu_dai_list);
 static LIST_HEAD(codec_dai_list);
-static LIST_HEAD(machine_list);
+static LIST_HEAD(soc_card_list);
 
 struct soc_pcm_config {
 	struct snd_soc_pcm_config *config;
@@ -131,12 +131,12 @@ static int soc_ac97_dev_register(struct snd_soc_codec *codec, const char *name)
 	return 0;
 }
 
-static int soc_ac97_pcm_create(struct snd_soc_machine *machine)
+static int soc_ac97_pcm_create(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime;
 	int ret = 0;
 	
-	list_for_each_entry(pcm_runtime, &machine->pcm_list, list) {
+	list_for_each_entry(pcm_runtime, &soc_card->pcm_list, list) {
 		if (pcm_runtime->cpu_dai->ac97_control) {
 			ret = soc_ac97_dev_register(pcm_runtime->codec,
 				pcm_runtime->name);
@@ -154,7 +154,7 @@ out:
 /*
  * Called by ALSA when a PCM substream is opened, the runtime->hw record is
  * then initialized and any private data can be allocated. This also calls
- * startup for the cpu DAI, platform, machine and codec DAI.
+ * startup for the cpu DAI, platform, soc_card and codec DAI.
  */
 static int soc_pcm_open(struct snd_pcm_substream *substream)
 {
@@ -296,7 +296,7 @@ static void close_delayed_work(struct work_struct *work)
 			delayed_work.work);
 	struct snd_soc_codec *codec = pcm_runtime->codec;
 	struct snd_soc_dai *codec_dai = pcm_runtime->codec_dai;
-	struct snd_soc_machine *machine = pcm_runtime->machine;
+	struct snd_soc_card *soc_card = pcm_runtime->soc_card;
 
 	mutex_lock(&pcm_mutex);
 
@@ -317,7 +317,7 @@ static void close_delayed_work(struct work_struct *work)
 		}
 
 		pcm_runtime->pop_wait = 0;
-		snd_soc_dapm_stream_event(machine,
+		snd_soc_dapm_stream_event(soc_card,
 			codec_dai->playback->stream_name,
 			SND_SOC_DAPM_STREAM_STOP);
 
@@ -334,7 +334,7 @@ static void close_delayed_work(struct work_struct *work)
 
 /*
  * Called by ALSA when a PCM substream is closed. Private data can be
- * freed here. The cpu DAI, codec DAI, machine and platform are also
+ * freed here. The cpu DAI, codec DAI, soc_card and platform are also
  * shutdown.
  */
 static int soc_codec_close(struct snd_pcm_substream *substream)
@@ -344,7 +344,7 @@ static int soc_codec_close(struct snd_pcm_substream *substream)
 	struct snd_soc_dai *cpu_dai = pcm_runtime->cpu_dai;
 	struct snd_soc_dai *codec_dai = pcm_runtime->codec_dai;
 	struct snd_soc_codec *codec = pcm_runtime->codec;
-	struct snd_soc_machine *machine = pcm_runtime->machine;
+	struct snd_soc_card *soc_card = pcm_runtime->soc_card;
 
 	mutex_lock(&pcm_mutex);
 
@@ -373,7 +373,7 @@ static int soc_codec_close(struct snd_pcm_substream *substream)
 			msecs_to_jiffies(pmdown_time));
 	} else {
 		/* capture streams can be powered down now */
-		snd_soc_dapm_stream_event(machine,
+		snd_soc_dapm_stream_event(soc_card,
 			codec_dai->capture->stream_name,
 			SND_SOC_DAPM_STREAM_STOP);
 
@@ -398,7 +398,7 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 	struct snd_soc_dai *cpu_dai = pcm_runtime->cpu_dai;
 	struct snd_soc_dai *codec_dai = pcm_runtime->codec_dai;
 	struct snd_soc_codec *codec = pcm_runtime->codec;
-	struct snd_soc_machine *machine = pcm_runtime->machine;
+	struct snd_soc_card *soc_card = pcm_runtime->soc_card;
 	int ret = 0;
 
 	mutex_lock(&pcm_mutex);
@@ -406,7 +406,7 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 	if (pcm_runtime->ops->prepare) {
 		ret = pcm_runtime->ops->prepare(substream);
 		if (ret < 0) {
-			printk(KERN_ERR "asoc: machine prepare error\n");
+			printk(KERN_ERR "asoc: soc_card prepare error\n");
 			goto out;
 		}
 	}
@@ -440,7 +440,7 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 	if (pcm_runtime->pop_wait) {
 		/* we are waiting for the delayed work to start */
 		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
-				snd_soc_dapm_stream_event(machine,
+				snd_soc_dapm_stream_event(soc_card,
 					codec_dai->capture->stream_name,
 					SND_SOC_DAPM_STREAM_START);
 		else {
@@ -456,11 +456,11 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 			snd_soc_dapm_set_bias(pcm_runtime, SND_SOC_BIAS_PREPARE);
 
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-				snd_soc_dapm_stream_event(machine,
+				snd_soc_dapm_stream_event(soc_card,
 					codec_dai->playback->stream_name,
 					SND_SOC_DAPM_STREAM_START);
 			else
-				snd_soc_dapm_stream_event(machine,
+				snd_soc_dapm_stream_event(soc_card,
 					codec_dai->capture->stream_name,
 					SND_SOC_DAPM_STREAM_START);
 
@@ -471,11 +471,11 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 		} else {
 			/* codec already powered - power on widgets */
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-				snd_soc_dapm_stream_event(machine,
+				snd_soc_dapm_stream_event(soc_card,
 					codec_dai->playback->stream_name,
 					SND_SOC_DAPM_STREAM_START);
 			else
-				snd_soc_dapm_stream_event(machine,
+				snd_soc_dapm_stream_event(soc_card,
 					codec_dai->capture->stream_name,
 					SND_SOC_DAPM_STREAM_START);
 			if (codec_dai->ops->digital_mute)
@@ -507,7 +507,7 @@ static int soc_pcm_hw_params(struct snd_pcm_substream *substream,
 	if (pcm_runtime->ops->hw_params) {
 		ret = pcm_runtime->ops->hw_params(substream, params);
 		if (ret < 0) {
-			printk(KERN_ERR "asoc: machine hw_params failed\n");
+			printk(KERN_ERR "asoc: soc_card hw_params failed\n");
 			goto out;
 		}
 	}
@@ -576,7 +576,7 @@ static int soc_pcm_hw_free(struct snd_pcm_substream *substream)
 	if (!codec->active && codec_dai->ops->digital_mute)
 		codec_dai->ops->digital_mute(codec_dai, 1);
 
-	/* free any machine hw params */
+	/* free any soc_card hw params */
 	if (pcm_runtime->ops->hw_free)
 		pcm_runtime->ops->hw_free(substream);
 
@@ -635,13 +635,13 @@ static struct snd_pcm_ops soc_pcm_ops = {
 
 #ifdef CONFIG_PM
 /**
- * snd_soc_machine_suspend - suspend machine
- * @machine: soc machine
+ * snd_soc_card_suspend - suspend soc_card
+ * @soc_card: soc soc_card
  *
- * Mutes, then suspends all machine PCM's. NOTE: machine driver will still 
+ * Mutes, then suspends all soc_card PCM's. NOTE: soc_card driver will still 
  * have to suspend codecs/platform.
  */
-int snd_soc_suspend_pcms(struct snd_soc_machine *machine, pm_message_t state)
+int snd_soc_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state)
 {
 	struct snd_soc_dai *codec_dai;
 	struct snd_soc_codec *codec;
@@ -649,36 +649,36 @@ int snd_soc_suspend_pcms(struct snd_soc_machine *machine, pm_message_t state)
 	char *stream;
 
 	/* mute any active DAC's */
-	list_for_each_entry(pcm_runtime, &machine->pcm_list, list) {
+	list_for_each_entry(pcm_runtime, &soc_card->pcm_list, list) {
 		codec_dai = pcm_runtime->codec_dai;
 		if (codec_dai->ops->digital_mute &&
 			pcm_runtime->playback_active)
 			codec_dai->ops->digital_mute(codec_dai, 1);
 	}
 
-	snd_power_change_state(machine->card, SNDRV_CTL_POWER_D3cold);
+	snd_power_change_state(soc_card->card, SNDRV_CTL_POWER_D3cold);
 
 	/* suspend all pcm's */
-	list_for_each_entry(pcm_runtime, &machine->pcm_list, list)
+	list_for_each_entry(pcm_runtime, &soc_card->pcm_list, list)
 		snd_pcm_suspend_all(pcm_runtime->pcm);
 
 	/* close any waiting streams and save state */
-	list_for_each_entry(pcm_runtime, &machine->pcm_list, list) {
+	list_for_each_entry(pcm_runtime, &soc_card->pcm_list, list) {
 		codec = pcm_runtime->codec;
 		run_delayed_work(&pcm_runtime->delayed_work);
 		codec->suspend_bias_level = codec->bias_level;
 	}
 
 	/* DAPM power down */
-	list_for_each_entry(pcm_runtime, &machine->pcm_list, list) {
+	list_for_each_entry(pcm_runtime, &soc_card->pcm_list, list) {
 		codec_dai = pcm_runtime->codec_dai;
 		stream = codec_dai->playback->stream_name;
 		if (stream != NULL)
-			snd_soc_dapm_stream_event(machine, stream,
+			snd_soc_dapm_stream_event(soc_card, stream,
 				SND_SOC_DAPM_STREAM_SUSPEND);
 		stream = codec_dai->capture->stream_name;
 		if (stream != NULL)
-			snd_soc_dapm_stream_event(machine, stream,
+			snd_soc_dapm_stream_event(soc_card, stream,
 				SND_SOC_DAPM_STREAM_SUSPEND);
 	}
 
@@ -686,49 +686,49 @@ int snd_soc_suspend_pcms(struct snd_soc_machine *machine, pm_message_t state)
 }
 
 /**
- * snd_soc_machine_resume - resume machine
- * @machine: soc machine
+ * snd_soc_card_resume - resume soc_card
+ * @soc_card: soc soc_card
  *
- * Resumes and unmutes all machine PCM's. NOTE: machine driver will still 
+ * Resumes and unmutes all soc_card PCM's. NOTE: soc_card driver will still 
  * have to resume codecs/platform.
  */
-int snd_soc_resume_pcms(struct snd_soc_machine *machine)
+int snd_soc_resume_pcms(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_dai *codec_dai;
 	struct snd_soc_pcm_runtime *pcm_runtime;
 	char *stream;
 
-	list_for_each_entry(pcm_runtime, &machine->pcm_list, list) {
+	list_for_each_entry(pcm_runtime, &soc_card->pcm_list, list) {
 		codec_dai = pcm_runtime->codec_dai;
 		stream = codec_dai->playback->stream_name;
 		if (stream != NULL)
-			snd_soc_dapm_stream_event(machine, stream,
+			snd_soc_dapm_stream_event(soc_card, stream,
 				SND_SOC_DAPM_STREAM_RESUME);
 		stream = codec_dai->capture->stream_name;
 		if (stream != NULL)
-			snd_soc_dapm_stream_event(machine, stream,
+			snd_soc_dapm_stream_event(soc_card, stream,
 				SND_SOC_DAPM_STREAM_RESUME);
 	}
 
 	/* unmute any active DAC's */
-	list_for_each_entry(pcm_runtime, &machine->pcm_list, list) {
+	list_for_each_entry(pcm_runtime, &soc_card->pcm_list, list) {
 		codec_dai = pcm_runtime->codec_dai;
 		if (codec_dai->ops->digital_mute &&
 			pcm_runtime->playback_active)
 			codec_dai->ops->digital_mute(codec_dai, 0);
 	}
 
-	snd_power_change_state(machine->card, SNDRV_CTL_POWER_D3hot);
+	snd_power_change_state(soc_card->card, SNDRV_CTL_POWER_D3hot);
 	return 0;
 }
 
 #else
-int snd_soc_suspend_pcms(struct snd_soc_machine *machine, pm_message_t state)
+int snd_soc_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state)
 {
 	return 0;
 }
 
-int snd_soc_resume_pcms(struct snd_soc_machine *machine)
+int snd_soc_resume_pcms(struct snd_soc_card *soc_card)
 {
 	return 0;
 }
@@ -736,8 +736,8 @@ int snd_soc_resume_pcms(struct snd_soc_machine *machine)
 EXPORT_SYMBOL_GPL(snd_soc_suspend_pcms);
 EXPORT_SYMBOL_GPL(snd_soc_resume_pcms);
 
-/* Creates a new PCM based upon a pcm_config in the machine driver */  
-static int soc_create_pcm(struct snd_soc_machine *machine,
+/* Creates a new PCM based upon a pcm_config in the soc_card driver */  
+static int soc_create_pcm(struct snd_soc_card *soc_card,
 	struct soc_pcm_config *pcm_config)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime;
@@ -758,7 +758,7 @@ static int soc_create_pcm(struct snd_soc_machine *machine,
 		    codec->num == config->codec_num && 
 		    try_module_get(codec->dev->driver->owner)) {
 			dbg("ASoC %s %s: Match for %s.%d %s.%d\n",
-			    machine->name, config->name,
+			    soc_card->name, config->name,
 			    config->codec, config->codec_num,
 			    codec->name, codec->num);
 			
@@ -766,7 +766,7 @@ static int soc_create_pcm(struct snd_soc_machine *machine,
 			goto codec_dai;
 		} else {
 			dbg("ASoC %s %s: No match for %s.%d %s.%d\n",
-			    machine->name, config->name,
+			    soc_card->name, config->name,
 			    config->codec, config->codec_num,
 			    codec->name, codec->num);
 		}
@@ -782,14 +782,14 @@ codec_dai:
 		if (!strcmp(config->codec_dai, codec_dai->name) &&
 		    try_module_get(codec_dai->dev->driver->owner)) {
 			dbg("ASoC %s %s: Match for %s %s\n",
-			    machine->name, config->name,
+			    soc_card->name, config->name,
 			    config->codec_dai, codec_dai->name);
 
 			pcm_config->codec_dai = codec_dai;
 			goto platform;
 		} else {
 			dbg("ASoC %s %s: No match for %s %s\n",
-			    machine->name, config->name,
+			    soc_card->name, config->name,
 			    config->codec_dai, codec_dai->name);
 		}
 	}
@@ -804,14 +804,14 @@ platform:
 		if (!strcmp(config->platform, platform->name) &&
 		    try_module_get(platform->dev->driver->owner)) {
 			dbg("ASoC %s %s: Match for %s %s\n",
-			    machine->name, config->name,
+			    soc_card->name, config->name,
 			    config->platform, platform->name);
 
 			pcm_config->platform = platform;
 			goto cpu_dai;
 		} else {
 			dbg("ASoC %s %s: No match for %s %s\n",
-			    machine->name, config->name,
+			    soc_card->name, config->name,
 			    config->platform, platform->name);
 		}
 	}
@@ -826,14 +826,14 @@ cpu_dai:
 		if (!strcmp(config->cpu_dai, cpu_dai->name) &&
 		    try_module_get(cpu_dai->dev->driver->owner)) {
 			dbg("ASoC %s %s: Match for %s %s\n",
-			    machine->name, config->name,
+			    soc_card->name, config->name,
 			    config->cpu_dai, cpu_dai->name);
 
 			pcm_config->cpu_dai = cpu_dai;
 			goto check;
 		} else {
 			dbg("ASoC %s %s: No match for %s %s\n",
-			    machine->name, config->name,
+			    soc_card->name, config->name,
 			    config->cpu_dai, cpu_dai->name);
 		}
 	}
@@ -844,7 +844,7 @@ check:
 	    !pcm_config->platform || !pcm_config->cpu_dai) {
 		dbg("ASoC %s %s: incomplete codec %d (DAI %d) platform"
 		    " %d (DAI %d)\n", 
-		    machine->name, config->name,
+		    soc_card->name, config->name,
 		    !pcm_config->codec == 0, !pcm_config->codec_dai == 0,
 		    !pcm_config->platform == 0, !pcm_config->cpu_dai == 0);
 		return 0;
@@ -858,15 +858,15 @@ check:
 	INIT_DELAYED_WORK(&pcm_runtime->delayed_work, close_delayed_work);
 	pcm_runtime->codec_dai = pcm_config->codec_dai;
 	pcm_runtime->cpu_dai = pcm_config->cpu_dai;
-	pcm_runtime->machine = machine;
+	pcm_runtime->soc_card = soc_card;
 	pcm_runtime->name = config->name;
 	codec = pcm_runtime->codec = pcm_config->codec;
 	platform = pcm_runtime->platform = pcm_config->platform;
 	pcm_config->cpu_dai->platform = pcm_config->platform;
 	pcm_config->codec_dai->codec = pcm_config->codec;
 		
-	ret = snd_pcm_new(machine->card, (char*)pcm_runtime->name,
-		machine->pcms++, config->playback, config->capture, &pcm);
+	ret = snd_pcm_new(soc_card->card, (char*)pcm_runtime->name,
+		soc_card->pcms++, config->playback, config->capture, &pcm);
 	if (ret < 0) {
 		printk(KERN_ERR "asoc: can't create pcm for codec %s\n", codec->name);
 		goto err;
@@ -891,7 +891,7 @@ check:
 	if (config->capture)
 		snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &soc_pcm_ops);
 
-	ret = platform->pcm_new(platform, machine->card,
+	ret = platform->pcm_new(platform, soc_card->card,
 		config->playback, config->capture, pcm);
 	if (ret < 0) {
 		printk(KERN_ERR "asoc: platform pcm constructor failed\n");
@@ -901,7 +901,7 @@ check:
 	pcm->private_free = platform->pcm_free;
 	printk(KERN_INFO "asoc: %s <-> %s mapping ok\n", codec_dai->name,
 		cpu_dai->name);
-	list_add(&pcm_runtime->list, &machine->pcm_list);
+	list_add(&pcm_runtime->list, &soc_card->pcm_list);
 	return 1;
 err:
 	module_put(pcm_runtime->codec->dev->driver->owner);
@@ -912,69 +912,69 @@ err:
 	return ret;
 }
 
-static int soc_match_pcm(struct snd_soc_machine *machine)
+static int soc_match_pcm(struct snd_soc_card *soc_card)
 {
 	struct soc_pcm_config *config;
 	int ret, err;
 
 	/* scan and build each pcm configuration */
-	list_for_each_entry(config, &machine->config_list, list) {
-		config->ready = soc_create_pcm(machine, config);
+	list_for_each_entry(config, &soc_card->config_list, list) {
+		config->ready = soc_create_pcm(soc_card, config);
 		if (config->ready < 0)
 			return config->ready;
 	}
 
-	/* are all pcm's ready - then register machine */
-	list_for_each_entry(config, &machine->config_list, list) {
+	/* are all pcm's ready - then register soc_card */
+	list_for_each_entry(config, &soc_card->config_list, list) {
 		if (config->ready == 0)
 			return 0;
 	}
 
 #ifdef CONFIG_SND_SOC_AC97_BUS
-	ret = soc_ac97_pcm_create(machine);
+	ret = soc_ac97_pcm_create(soc_card);
 	if (ret < 0) {
 		printk(KERN_ERR "asoc: failed to register AC97 device\n");
 		goto out;
 	}
 #endif
 
-	if (machine->init) {
-		ret = machine->init(machine);
+	if (soc_card->init) {
+		ret = soc_card->init(soc_card);
 		if (ret < 0)
 			goto out;
 	}
-	mutex_lock(&machine->mutex);
-	snprintf(machine->card->shortname, sizeof(machine->card->shortname),
-		 "%s", machine->name);
-	snprintf(machine->card->longname, sizeof(machine->card->longname),
-		 "%s (%s)", machine->name, machine->longname);
+	mutex_lock(&soc_card->mutex);
+	snprintf(soc_card->card->shortname, sizeof(soc_card->card->shortname),
+		 "%s", soc_card->name);
+	snprintf(soc_card->card->longname, sizeof(soc_card->card->longname),
+		 "%s (%s)", soc_card->name, soc_card->longname);
 
-	ret = snd_card_register(machine->card);
+	ret = snd_card_register(soc_card->card);
 	if (ret < 0) {
 		printk(KERN_ERR "asoc: failed to register soundcard for codec %s\n",
-				machine->name);
+				soc_card->name);
 		goto out_mutex;
 	}
 
-	err = snd_soc_dapm_sys_add(machine);
+	err = snd_soc_dapm_sys_add(soc_card);
 	if (err < 0)
 		printk(KERN_WARNING "asoc: failed to add dapm sysfs entries\n");
-	machine->is_probed = 1;
+	soc_card->is_probed = 1;
 
 out_mutex:
-	mutex_unlock(&machine->mutex);
+	mutex_unlock(&soc_card->mutex);
 out:
 	return 0;
 }
 
-static void soc_match_machine_pcms(void)
+static void soc_match_soc_card_pcms(void)
 {
-	struct snd_soc_machine *machine;
+	struct snd_soc_card *soc_card;
 
 	mutex_lock(&client_mutex);
-	list_for_each_entry(machine, &machine_list, list) {
-		if (machine->is_registered && !machine->is_probed)
-			soc_match_pcm(machine);
+	list_for_each_entry(soc_card, &soc_card_list, list) {
+		if (soc_card->is_registered && !soc_card->is_probed)
+			soc_match_pcm(soc_card);
 	}
 	mutex_unlock(&client_mutex);
 }
@@ -1073,14 +1073,14 @@ EXPORT_SYMBOL_GPL(snd_soc_new_ac97_codec);
  */
 void snd_soc_free_ac97_codec(struct snd_soc_pcm_runtime *pcm_runtime)
 {
-	struct snd_soc_machine *machine = pcm_runtime->machine;
+	struct snd_soc_card *soc_card = pcm_runtime->soc_card;
 	struct snd_ac97 *ac97 = pcm_runtime->codec->ac97;
 	
-	mutex_lock(&machine->mutex);
+	mutex_lock(&soc_card->mutex);
 	kfree(ac97->bus);
 	kfree(ac97);
 	pcm_runtime->codec->ac97 = NULL;
-	mutex_unlock(&machine->mutex);
+	mutex_unlock(&soc_card->mutex);
 }
 EXPORT_SYMBOL_GPL(snd_soc_free_ac97_codec);
 
@@ -1631,7 +1631,7 @@ int snd_soc_register_codec_dai(struct snd_soc_dai *dai)
 	mutex_lock(&client_mutex);
 	list_add(&dai->list, &codec_dai_list);
 	mutex_unlock(&client_mutex);
-	soc_match_machine_pcms();
+	soc_match_soc_card_pcms();
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_register_codec_dai);
@@ -1652,7 +1652,7 @@ int snd_soc_register_codec(struct snd_soc_codec *codec)
 	mutex_lock(&client_mutex);
 	list_add(&codec->list, &codec_list);
 	mutex_unlock(&client_mutex);
-	soc_match_machine_pcms();
+	soc_match_soc_card_pcms();
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_register_codec);
@@ -1673,7 +1673,7 @@ int snd_soc_register_platform_dai(struct snd_soc_dai *dai)
 	mutex_lock(&client_mutex);
 	list_add(&dai->list, &cpu_dai_list);
 	mutex_unlock(&client_mutex);
-	soc_match_machine_pcms();
+	soc_match_soc_card_pcms();
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_register_platform_dai);
@@ -1694,7 +1694,7 @@ int snd_soc_register_platform(struct snd_soc_platform *platform)
 	mutex_lock(&client_mutex);
 	list_add(&platform->list, &platform_list);
 	mutex_unlock(&client_mutex);
-	soc_match_machine_pcms();
+	soc_match_soc_card_pcms();
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_register_platform);
@@ -1749,42 +1749,42 @@ struct snd_soc_platform *snd_soc_platform_allocate(void)
 }
 EXPORT_SYMBOL_GPL(snd_soc_platform_allocate);
 
-struct snd_soc_machine *snd_soc_machine_create(const char *name,
+struct snd_soc_card *snd_soc_card_create(const char *name,
 	struct device *parent, int idx, const char *xid)
 {
-	struct snd_soc_machine *machine;
+	struct snd_soc_card *soc_card;
 
-	machine = kzalloc(sizeof(*machine), GFP_KERNEL);
-	if (machine == NULL)
+	soc_card = kzalloc(sizeof(*soc_card), GFP_KERNEL);
+	if (soc_card == NULL)
 		return NULL;
 	
-	machine->name = kstrdup(name, GFP_KERNEL);
-	if (machine->name == NULL) {
-		kfree(machine);
+	soc_card->name = kstrdup(name, GFP_KERNEL);
+	if (soc_card->name == NULL) {
+		kfree(soc_card);
 		return NULL;
 	}
 	
-	machine->dev = parent;
-	mutex_init(&machine->mutex);
-	INIT_LIST_HEAD(&machine->dapm_widgets);
-	INIT_LIST_HEAD(&machine->dapm_paths);
-	INIT_LIST_HEAD(&machine->pcm_list);
-	INIT_LIST_HEAD(&machine->config_list);
+	soc_card->dev = parent;
+	mutex_init(&soc_card->mutex);
+	INIT_LIST_HEAD(&soc_card->dapm_widgets);
+	INIT_LIST_HEAD(&soc_card->dapm_paths);
+	INIT_LIST_HEAD(&soc_card->pcm_list);
+	INIT_LIST_HEAD(&soc_card->config_list);
 
 	/* register a sound card */
-	machine->card = snd_card_new(idx, xid, THIS_MODULE, 0);
-	if (!machine->card) {
-		printk(KERN_ERR "asoc: can't create sound card for machine %s\n",
-			machine->name);
-		kfree(machine);
+	soc_card->card = snd_card_new(idx, xid, THIS_MODULE, 0);
+	if (!soc_card->card) {
+		printk(KERN_ERR "asoc: can't create sound card for soc_card %s\n",
+			soc_card->name);
+		kfree(soc_card);
 		return ERR_PTR(-ENODEV);
 	}
-	machine->card->dev = parent;
-	return machine;
+	soc_card->card->dev = parent;
+	return soc_card;
 }
-EXPORT_SYMBOL_GPL(snd_soc_machine_create);
+EXPORT_SYMBOL_GPL(snd_soc_card_create);
 
-int snd_soc_pcm_create(struct snd_soc_machine *machine,
+int snd_soc_pcm_create(struct snd_soc_card *soc_card,
 	struct snd_soc_pcm_config *config)
 {
 	struct soc_pcm_config *_config;
@@ -1813,27 +1813,27 @@ int snd_soc_pcm_create(struct snd_soc_machine *machine,
 
 	_config->config = config;
 	mutex_lock(&client_mutex);
-	list_add(&_config->list, &machine->config_list);
+	list_add(&_config->list, &soc_card->config_list);
 	mutex_unlock(&client_mutex);
-	soc_match_machine_pcms();
+	soc_match_soc_card_pcms();
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_pcm_create);
 
-int snd_soc_create_pcms(struct snd_soc_machine *machine,
+int snd_soc_create_pcms(struct snd_soc_card *soc_card,
 			struct snd_soc_pcm_config *config, int num)
 {
 	int i, ret;
 
 	for (i = 0; i < num; i++) {
-		ret = snd_soc_pcm_create(machine, &config[i]);
+		ret = snd_soc_pcm_create(soc_card, &config[i]);
 		if (ret != 0) {
 			if (config[i].name)
 				printk(KERN_ERR "asoc %s: Failed to register %s\n",
-				       machine->name, config[i].name);
+				       soc_card->name, config[i].name);
 			else
 				printk(KERN_ERR "asoc %s: Failed to register unnamed PCM\n",
-				       machine->name);
+				       soc_card->name);
 			return ret;
 		}
 	}
@@ -1842,38 +1842,38 @@ int snd_soc_create_pcms(struct snd_soc_machine *machine,
 }
 EXPORT_SYMBOL_GPL(snd_soc_create_pcms);
 
-int snd_soc_machine_register(struct snd_soc_machine *machine)
+int snd_soc_card_register(struct snd_soc_card *soc_card)
 {
 	mutex_lock(&client_mutex);
-	machine->is_registered = 1;
-	list_add(&machine->list, &machine_list);
+	soc_card->is_registered = 1;
+	list_add(&soc_card->list, &soc_card_list);
 	mutex_unlock(&client_mutex);
-	soc_match_machine_pcms();
+	soc_match_soc_card_pcms();
 	return 0;
 }
-EXPORT_SYMBOL_GPL(snd_soc_machine_register);
+EXPORT_SYMBOL_GPL(snd_soc_card_register);
 
-void snd_soc_machine_free(struct snd_soc_machine *machine)
+void snd_soc_card_free(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime, *_pcm_runtime;
 	struct soc_pcm_config *config;
 
-	snd_card_free(machine->card);
+	snd_card_free(soc_card->card);
 	
-	list_for_each_entry_safe(pcm_runtime, _pcm_runtime, &machine->pcm_list, list)
+	list_for_each_entry_safe(pcm_runtime, _pcm_runtime, &soc_card->pcm_list, list)
 		run_delayed_work(&pcm_runtime->delayed_work);
 
-	if (machine->exit && machine->is_probed)
-		machine->exit(machine);
+	if (soc_card->exit && soc_card->is_probed)
+		soc_card->exit(soc_card);
 
-	list_for_each_entry_safe(pcm_runtime, _pcm_runtime, &machine->pcm_list, list) {
+	list_for_each_entry_safe(pcm_runtime, _pcm_runtime, &soc_card->pcm_list, list) {
 #ifdef CONFIG_SND_SOC_AC97_BUS
 		if (pcm_runtime->cpu_dai->ac97_control)
 			soc_ac97_dev_unregister(pcm_runtime->codec);
 #endif
 		kfree(pcm_runtime);
 	}
-	list_for_each_entry(config, &machine->config_list, list) {
+	list_for_each_entry(config, &soc_card->config_list, list) {
 		if (config->codec)
 			module_put(config->codec->dev->driver->owner);
 		if (config->codec_dai)
@@ -1883,16 +1883,16 @@ void snd_soc_machine_free(struct snd_soc_machine *machine)
 		if (config->cpu_dai)
 			module_put(config->cpu_dai->dev->driver->owner);
 	}
-	kfree(machine);
+	kfree(soc_card);
 }
-EXPORT_SYMBOL_GPL(snd_soc_machine_free);
+EXPORT_SYMBOL_GPL(snd_soc_card_free);
 
-struct snd_soc_codec *snd_soc_get_codec(struct snd_soc_machine *machine,
+struct snd_soc_codec *snd_soc_get_codec(struct snd_soc_card *soc_card,
 	const char *codec_id)
 {
 	struct soc_pcm_config *config;
 
-	list_for_each_entry(config, &machine->config_list, list) {
+	list_for_each_entry(config, &soc_card->config_list, list) {
 		if (config->codec && !strcmp(config->codec->name, codec_id))
 			return config->codec;
 	}
@@ -1900,12 +1900,12 @@ struct snd_soc_codec *snd_soc_get_codec(struct snd_soc_machine *machine,
 }
 EXPORT_SYMBOL_GPL(snd_soc_get_codec);
 
-struct snd_soc_platform * snd_soc_get_platform(struct snd_soc_machine *machine,
+struct snd_soc_platform * snd_soc_get_platform(struct snd_soc_card *soc_card,
 	const char *platform_id)
 {
 	struct soc_pcm_config *config;
 
-	list_for_each_entry(config, &machine->config_list, list) {
+	list_for_each_entry(config, &soc_card->config_list, list) {
 		if (config->platform && !strcmp(config->platform->name, platform_id))
 			return config->platform;
 	}
@@ -1913,12 +1913,12 @@ struct snd_soc_platform * snd_soc_get_platform(struct snd_soc_machine *machine,
 }
 EXPORT_SYMBOL_GPL(snd_soc_get_platform);
 
-struct snd_soc_pcm_runtime *snd_soc_get_pcm(struct snd_soc_machine *machine,
+struct snd_soc_pcm_runtime *snd_soc_get_pcm(struct snd_soc_card *soc_card,
 	const char *pcm_id)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime;
 
-	list_for_each_entry(pcm_runtime, &machine->pcm_list, list) {
+	list_for_each_entry(pcm_runtime, &soc_card->pcm_list, list) {
 		if (!strcmp(pcm_runtime->name, pcm_id))
 			return pcm_runtime;
 	}
@@ -1926,12 +1926,12 @@ struct snd_soc_pcm_runtime *snd_soc_get_pcm(struct snd_soc_machine *machine,
 }
 EXPORT_SYMBOL_GPL(snd_soc_get_pcm);
 
-struct snd_ac97_bus_ops *snd_soc_get_ac97_ops(struct snd_soc_machine *machine,
+struct snd_ac97_bus_ops *snd_soc_get_ac97_ops(struct snd_soc_card *soc_card,
 					      const char *dai_id)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime;
 
-	list_for_each_entry(pcm_runtime, &machine->pcm_list, list) {
+	list_for_each_entry(pcm_runtime, &soc_card->pcm_list, list) {
 		if (strcmp(pcm_runtime->cpu_dai->name, dai_id) == 0)
 			return pcm_runtime->cpu_dai->ops->ac97_ops;
 	}
@@ -1940,17 +1940,17 @@ struct snd_ac97_bus_ops *snd_soc_get_ac97_ops(struct snd_soc_machine *machine,
 EXPORT_SYMBOL_GPL(snd_soc_get_ac97_ops);
 
 void snd_soc_codec_set_io(struct snd_soc_codec *codec,
-	int (*machine_read)(void *, long, int),
-	int (*machine_write)(void *, long, int), void *control_data)
+	int (*soc_card_read)(void *, long, int),
+	int (*soc_card_write)(void *, long, int), void *control_data)
 {
 	codec->control_data = control_data;
-	codec->machine_read = machine_read;
-	codec->machine_write = machine_write;
+	codec->soc_card_read = soc_card_read;
+	codec->soc_card_write = soc_card_write;
 }
 EXPORT_SYMBOL_GPL(snd_soc_codec_set_io);
 
 int snd_soc_codec_init(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	int ret;
 
@@ -1961,17 +1961,17 @@ int snd_soc_codec_init(struct snd_soc_codec *codec,
 		return ret;
 	}
 	if (codec->init)
-		ret = codec->init(codec, machine);
+		ret = codec->init(codec, soc_card);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(snd_soc_codec_init);
 
 void snd_soc_codec_exit(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	device_remove_file(codec->dev, &dev_attr_codec_reg);
 	if (codec->exit)
-		codec->exit(codec, machine);
+		codec->exit(codec, soc_card);
 }
 EXPORT_SYMBOL_GPL(snd_soc_codec_exit);
 

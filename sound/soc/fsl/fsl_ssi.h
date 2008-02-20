@@ -199,7 +199,7 @@ struct ccsr_ssi {
 /* Instantiation data for an SSI interface
  *
  * This structure contains all the information that the the SSI driver needs
- * to instantiate an SSI interface with ALSA.  The machine driver should
+ * to instantiate an SSI interface with ALSA.  The soc_card driver should
  * create this structure, fill it in, call fsl_ssi_create_dai(), and then
  * delete the structure.
  *

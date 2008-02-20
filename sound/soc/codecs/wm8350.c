@@ -749,22 +749,22 @@ static const char *audio_map[][3] = {
 };
 
 static int wm8350_add_widgets(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	int i;
 
 	for(i = 0; i < ARRAY_SIZE(wm8350_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(machine, codec,
+		snd_soc_dapm_new_control(soc_card, codec,
 			&wm8350_dapm_widgets[i]);
 	}
 
 	/* set up audio path audio_map */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(machine, audio_map[i][0],
+		snd_soc_dapm_add_route(soc_card, audio_map[i][0],
 			audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_init(machine);
+	snd_soc_dapm_init(soc_card);
 	return 0;
 }
 
@@ -1328,7 +1328,7 @@ static int wm8350_resume(struct platform_device *pdev)
 }
 
 static int wm8350_codec_init(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	struct wm8350* wm8350 = codec->control_data;
 	struct wm8350_data *wm8350_data = codec->private_data;
@@ -1348,8 +1348,8 @@ static int wm8350_codec_init(struct snd_soc_codec *codec,
 	codec->bias_level = SND_SOC_BIAS_OFF;
 	wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
-	wm8350_add_controls(codec, machine->card);
-	wm8350_add_widgets(codec, machine);
+	wm8350_add_controls(codec, soc_card->card);
+	wm8350_add_widgets(codec, soc_card);
 
 	/* read OUT1 & OUT2 volumes */
 	out1->left_vol = (wm8350_reg_read(wm8350, WM8350_LOUT1_VOLUME) &
@@ -1390,11 +1390,11 @@ static int run_delayed_work(struct delayed_work *dwork)
 }
 
 static void wm8350_codec_exit(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	run_delayed_work(&codec->delayed_work);
 	wm8350_set_bias_level(codec, SND_SOC_BIAS_OFF);
-	snd_soc_dapm_free(machine);
+	snd_soc_dapm_free(soc_card);
 }
 
 /* for modprobe */
