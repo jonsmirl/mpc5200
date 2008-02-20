@@ -45,8 +45,8 @@ SND_SOC_DAPM_SPK("Speaker", NULL),
 static const char *audio_map[][3] = {
 
         /* Audio jack has both microphone and headphones */
-	{"Audio Jack Headphones", NULL, "HPOUTL"},
-	{"Audio Jack Headphones", NULL, "HPOUTR"},
+	{"Audio Jack Headphones", NULL, "HPL"},
+	{"Audio Jack Headphones", NULL, "HPR"},
 	{"Audio Jack Microphone", NULL, "COMP1"}, /* ??? */
 	{"Mic Bias", NULL, "Audio Jack Microphone"},
 
