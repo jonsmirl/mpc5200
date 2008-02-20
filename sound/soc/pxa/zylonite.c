@@ -68,6 +68,15 @@ static struct snd_soc_ops zylonite_aux_ops = {
 
 static struct snd_soc_pcm_config pcm_configs[] = {
 	{
+		.name		= "Aux",
+		.codec		= wm9713_codec_id,
+		.codec_dai	= wm9713_codec_aux_dai_id,
+		.platform	= pxa_platform_id,
+		.cpu_dai	= pxa_ac97_aux_dai_id,
+		.playback	= 1,
+		.ops		= &zylonite_aux_ops,
+	},
+	{
 		.name		= "HiFi",
 		.codec		= wm9713_codec_id,
 		.codec_dai	= wm9713_codec_hifi_dai_id,
@@ -76,15 +85,6 @@ static struct snd_soc_pcm_config pcm_configs[] = {
 		.playback	= 1,
 		.capture	= 1,
 		.ops		= &zylonite_hifi_ops,
-	},
-	{
-		.name		= "Aux",
-		.codec		= wm9713_codec_id,
-		.codec_dai	= wm9713_codec_aux_dai_id,
-		.platform	= pxa_platform_id,
-		.cpu_dai	= pxa_ac97_aux_dai_id,
-		.playback	= 1,
-		.ops		= &zylonite_aux_ops,
 	},
 };
 
