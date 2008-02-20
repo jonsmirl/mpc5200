@@ -165,6 +165,17 @@ struct snd_soc_codec {
 		struct snd_soc_card *soc_card);
 	void (*exit)(struct snd_soc_codec *codec, 
 		struct snd_soc_card *soc_card);
+
+	/*
+	 * Codec-wide clocking configuration - all optional.
+	 * Called by soc_card drivers, usually in their init().
+	 */
+	int (*set_sysclk)(struct snd_soc_codec *dai, int clk_id,
+		unsigned int freq, int dir);
+	int (*set_clkdiv)(struct snd_soc_codec *dai,
+		int div_id, int div);
+	int (*set_pll)(struct snd_soc_codec *dai,
+		int pll_id, unsigned int freq_in, unsigned int freq_out);
 	
 	/* 
 	 * Codec control IO.
@@ -287,6 +298,41 @@ int snd_soc_register_codec_dai(struct snd_soc_dai *dai);
  * Unregisters codec Digital Audio Interfaces with ASoC core.
  */
 void snd_soc_unregister_codec_dai(struct snd_soc_dai *dai);
+
+/**
+ * snd_soc_codec_set_sysclk - configure codec system or master clock.
+ * @codec: codec
+ * @clk_id: Codec specific clock ID
+ * @freq: new clock frequency in Hz
+ * @dir: new clock direction - input/output.
+ *
+ * Configures the codec master (MCLK) or system (SYSCLK) clocking.
+ */
+int snd_soc_codec_set_sysclk(struct snd_soc_codec *codec, int clk_id,
+	unsigned int freq, int dir);
+
+/**
+ * snd_soc_codec_set_clkdiv - configure codec clock dividers.
+ * @codec: codec
+ * @clk_id: Codec specific clock divider ID
+ * @div: new clock divisor.
+ *
+ * Configures codec clock dividers.
+ */
+int snd_soc_dai_set_clkdiv(struct snd_soc_dai *dai,
+	int div_id, int div);
+
+/**
+ * snd_soc_codec_set_pll - configure codec PLL.
+ * @codec: codec
+ * @pll_id: DAI specific PLL ID
+ * @freq_in: PLL input clock frequency in Hz
+ * @freq_out: requested PLL output clock frequency in Hz
+ *
+ * Configures and enables PLL to generate output clock based on input clock.
+ */
+int snd_soc_codec_set_pll(struct snd_soc_codec *codec,
+	int pll_id, unsigned int freq_in, unsigned int freq_out);
 
 /* Codec read and write */
 #define snd_soc_read(codec, reg) codec->codec_read(codec, reg)

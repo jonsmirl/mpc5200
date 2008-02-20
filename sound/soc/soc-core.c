@@ -1556,6 +1556,36 @@ int snd_soc_put_volsw_2r(struct snd_kcontrol *kcontrol,
 }
 EXPORT_SYMBOL_GPL(snd_soc_put_volsw_2r);
 
+int snd_soc_codec_set_sysclk(struct snd_soc_codec *codec, int clk_id,
+	unsigned int freq, int dir)
+{
+	if (codec->set_sysclk)
+		return codec->set_sysclk(codec, clk_id, freq, dir);
+	else
+		return -EINVAL;
+}
+EXPORT_SYMBOL_GPL(snd_soc_codec_set_sysclk);
+
+int snd_soc_codec_set_clkdiv(struct snd_soc_codec *codec,
+	int div_id, int div)
+{
+	if (codec->set_clkdiv)
+		return codec->set_clkdiv(codec, div_id, div);
+	else
+		return -EINVAL;
+}
+EXPORT_SYMBOL_GPL(snd_soc_codec_set_clkdiv);
+
+int snd_soc_codec_set_pll(struct snd_soc_codec *codec,
+	int pll_id, unsigned int freq_in, unsigned int freq_out)
+{
+	if (codec->set_pll)
+		return codec->set_pll(codec, pll_id, freq_in, freq_out);
+	else
+		return -EINVAL;
+}
+EXPORT_SYMBOL_GPL(snd_soc_codec_set_pll);
+
 int snd_soc_dai_set_sysclk(struct snd_soc_dai *dai, int clk_id,
 	unsigned int freq, int dir)
 {
