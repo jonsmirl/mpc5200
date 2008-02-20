@@ -203,7 +203,7 @@ static int soc_pcm_open(struct snd_pcm_substream *substream)
 		}
 	}
 
-	/* Check that the codec and cpu DAI's are compatible */
+	/* Check that the codec and cpu DAIs are compatible */
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		struct snd_soc_dai_caps *codec_caps = codec_dai->playback;
 		struct snd_soc_dai_caps *cpu_caps = cpu_dai->playback;
