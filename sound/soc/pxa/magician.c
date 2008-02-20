@@ -58,38 +58,38 @@ static int magician_in_sel = MAGICIAN_MIC;
 
 extern struct platform_device magician_cpld;
 
-static void magician_ext_control(struct snd_soc_machine *machine)
+static void magician_ext_control(struct snd_soc_card *soc_card)
 {
 	if (magician_spk_func == MAGICIAN_SPK_ON)
-		snd_soc_dapm_enable_pin(machine "Speaker");
+		snd_soc_dapm_enable_pin(soc_card "Speaker");
 	else
-		snd_soc_dapm_disable_pin(machine "Speaker");
+		snd_soc_dapm_disable_pin(soc_card "Speaker");
 	
 	if (magician_hp_func == MAGICIAN_HP_ON)
-		snd_soc_dapm_enable_pin(machine "Headphone Jack");
+		snd_soc_dapm_enable_pin(soc_card "Headphone Jack");
 	else
-		snd_soc_dapm_disable_pin(machine "Headphone Jack");
+		snd_soc_dapm_disable_pin(soc_card "Headphone Jack");
 
 	switch (magician_in_sel) {
 	case MAGICIAN_MIC:
-		snd_soc_dapm_disable_pin(machine, "Headset Mic");
-		snd_soc_dapm_enable_pin(machine, "Call Mic");
+		snd_soc_dapm_disable_pin(soc_card, "Headset Mic");
+		snd_soc_dapm_enable_pin(soc_card, "Call Mic");
 		break;
 	case MAGICIAN_MIC_EXT:
-		snd_soc_dapm_disable_pin(machine, "Call Mic");
-		snd_soc_dapm_enable_pin(machine, "Headset Mic");
+		snd_soc_dapm_disable_pin(soc_card, "Call Mic");
+		snd_soc_dapm_enable_pin(soc_card, "Headset Mic");
 		break;
 	}
-	snd_soc_dapm_sync(machine);
+	snd_soc_dapm_sync(soc_card);
 }
 
 static int magician_startup(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
-	struct snd_soc_machine *machine = pcm_runtime->machine;
+	struct snd_soc_card *soc_card = pcm_runtime->soc_card;
 
 	/* check the jack status at stream startup */
-	magician_ext_control(machine);
+	magician_ext_control(soc_card);
 
 	return 0;
 }
@@ -269,13 +269,13 @@ static int magician_get_jack(struct snd_kcontrol * kcontrol,
 static int magician_set_hp(struct snd_kcontrol * kcontrol,
 			     struct snd_ctl_elem_value * ucontrol)
 {
-	struct snd_soc_machine *machine = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_card *soc_card = snd_kcontrol_chip(kcontrol);
 
 	if (magician_hp_func == ucontrol->value.integer.value[0])
 		return 0;
 
 	magician_hp_func = ucontrol->value.integer.value[0];
-	magician_ext_control(machine);
+	magician_ext_control(soc_card);
 	return 1;
 }
 
@@ -289,13 +289,13 @@ static int magician_get_spk(struct snd_kcontrol * kcontrol,
 static int magician_set_spk(struct snd_kcontrol * kcontrol,
 			    struct snd_ctl_elem_value * ucontrol)
 {
-	struct snd_soc_machine *machine = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_card *soc_card = snd_kcontrol_chip(kcontrol);
 
 	if (magician_spk_func == ucontrol->value.integer.value[0])
 		return 0;
 
 	magician_spk_func = ucontrol->value.integer.value[0];
-	magician_ext_control(machine);
+	magician_ext_control(soc_card);
 	return 1;
 }
 
@@ -309,7 +309,7 @@ static int magician_get_input(struct snd_kcontrol * kcontrol,
 static int magician_set_input(struct snd_kcontrol * kcontrol,
 			      struct snd_ctl_elem_value * ucontrol)
 {
-	struct snd_soc_machine *machine = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_card *soc_card = snd_kcontrol_chip(kcontrol);
 
 	if (magician_in_sel == ucontrol->value.integer.value[0])
 		return 0;
@@ -366,7 +366,7 @@ static int magician_mic_bias(struct snd_soc_dapm_widget *w, int event)
 	return 0;
 }
 
-/* magician machine dapm widgets */
+/* magician soc_card dapm widgets */
 static const struct snd_soc_dapm_widget uda1380_dapm_widgets[] = {
 	SND_SOC_DAPM_HP("Headphone Jack", magician_hp_power),
 	SND_SOC_DAPM_SPK("Speaker", magician_spk_power),
@@ -374,7 +374,7 @@ static const struct snd_soc_dapm_widget uda1380_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Headset Mic", magician_mic_bias),
 };
 
-/* magician machine audio_map */
+/* magician soc_card audio_map */
 static const char *audio_map[][3] = {
 
 	/* Headphone connected to VOUTL, VOUTR */
@@ -428,22 +428,22 @@ static int magician_uda1380_write(void *control_data, long data, int size)
 /*
  * Logic for a uda1380 as connected on a HTC Magician
  */
-static int magician_uda1380_init(struct snd_soc_machine *machine)
+static int magician_uda1380_init(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_codec *codec;
 	int i, err;
 	
-	codec = snd_soc_get_codec(machine, uda1380_codec_id);
+	codec = snd_soc_get_codec(soc_card, uda1380_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
 
 	/* NC codec pins */
-	snd_soc_dapm_disable_pin(machine, "VOUTLHP");
-	snd_soc_dapm_disable_pin(machine, "VOUTRHP");
+	snd_soc_dapm_disable_pin(soc_card, "VOUTLHP");
+	snd_soc_dapm_disable_pin(soc_card, "VOUTRHP");
 
 	/* FIXME: is anything connected here? */
-	snd_soc_dapm_disable_pin(machine, "VINL");
-	snd_soc_dapm_disable_pin(machine, "VINR");
+	snd_soc_dapm_disable_pin(soc_card, "VINL");
+	snd_soc_dapm_disable_pin(soc_card, "VINR");
 
 	/* Add magician specific controls */
 	for (i = 0; i < ARRAY_SIZE(uda1380_magician_controls); i++) {
@@ -464,12 +464,12 @@ static int magician_uda1380_init(struct snd_soc_machine *machine)
 				audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_sync(machine);
+	snd_soc_dapm_sync(soc_card);
 	
 	snd_soc_codec_set_io(codec, NULL, magician_uda1380_write, 
-		machine->private_data);
+		soc_card->private_data);
 	
-	snd_soc_codec_init(codec, machine);
+	snd_soc_codec_init(codec, soc_card);
 	return 0;
 }
 
@@ -495,7 +495,7 @@ static struct snd_soc_pcm_config capture_pcm_config = {
 
 static int magician_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 {
-	struct snd_soc_machine *machine;
+	struct snd_soc_card *soc_card;
 	struct i2c_client *i2c;
 	int ret;
 
@@ -515,29 +515,29 @@ static int magician_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 		goto attach_err;
 	}
 	
-	machine = snd_soc_machine_create("magician", &i2c->dev, 
+	soc_card = snd_soc_card_create("magician", &i2c->dev, 
 		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
-	if (machine == NULL)
+	if (soc_card == NULL)
 		return -ENOMEM;
 
-	machine->longname = "magician";
-	machine->init = magician_uda1380_init;
-	machine->private_data = i2c;
-	i2c_set_clientdata(i2c, machine);
+	soc_card->longname = "magician";
+	soc_card->init = magician_uda1380_init;
+	soc_card->private_data = i2c;
+	i2c_set_clientdata(i2c, soc_card);
 	
-	ret = snd_soc_pcm_create(machine, &playback_pcm_config);
+	ret = snd_soc_pcm_create(soc_card, &playback_pcm_config);
 	if (ret < 0)
 		goto err;
 		
-	ret = snd_soc_pcm_create(machine, &capture_pcm_config);
+	ret = snd_soc_pcm_create(soc_card, &capture_pcm_config);
 	if (ret < 0)
 		goto err;
 	
-	ret = snd_soc_machine_register(machine);
+	ret = snd_soc_card_register(soc_card);
 	return ret;
 
 err:
-	snd_soc_machine_free(machine);
+	snd_soc_card_free(soc_card);
 attach_err:
 	i2c_detach_client(i2c);
 	kfree(i2c);
@@ -546,9 +546,9 @@ attach_err:
 
 static int magician_i2c_detach(struct i2c_client *client)
 {
-	struct snd_soc_machine *machine = i2c_get_clientdata(client);
+	struct snd_soc_card *soc_card = i2c_get_clientdata(client);
 	 
-	snd_soc_machine_free(machine);
+	snd_soc_card_free(soc_card);
 	i2c_detach_client(client);
 	kfree(client);
 	return 0;
@@ -579,7 +579,7 @@ static int __init magician_init(void)
 {
 	int ret;
 
-	if (!machine_is_magician())
+	if (!soc_card_is_magician())
 		return -ENODEV;
 
 	magician_egpio_enable(&magician_cpld, EGPIO_NR_MAGICIAN_CODEC_POWER);

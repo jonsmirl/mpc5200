@@ -54,7 +54,7 @@
 
 /* DMA global data.  This structure is used by fsl_dma_open() to determine
  * which DMA channels to assign to a substream.  Unfortunately, ASoC V1 does
- * not allow the machine driver to provide this information to the PCM
+ * not allow the soc_card driver to provide this information to the PCM
  * driver in advance, and there's no way to differentiate between the two
  * DMA controllers.  So for now, this driver only supports one SSI device
  * using two DMA channels.  We cannot support multiple DMA devices.
@@ -279,7 +279,7 @@ static irqreturn_t fsl_dma_isr(int irq, void *dev_id)
  * fsl_dma_new: initialize this PCM driver.
  *
  * This function is called when the codec driver calls snd_soc_new_pcms(),
- * once for each .dai_link in the machine driver's snd_soc_machine
+ * once for each .dai_link in the soc_card driver's snd_soc_card
  * structure.
  */
 static int fsl_dma_new(struct snd_card *card, struct snd_soc_codec_dai *dai,

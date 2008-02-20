@@ -765,7 +765,7 @@ static int cs_remove(struct platform_device *pdev)
  * initialise the WM8731 codec
  */
 static int cs4251x_probe_codec(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	int reg;
 
@@ -784,8 +784,8 @@ static int cs4251x_probe_codec(struct snd_soc_codec *codec,
 	reg = cs4251x_read_reg_cache(codec, WM8731_RINVOL);
 	cs4251x_write(codec, WM8731_RINVOL, reg | 0x0100);
 	
-	cs4251x_add_controls(codec, machine->card);
-	cs4251x_add_widgets(codec, machine);
+	cs4251x_add_controls(codec, soc_card->card);
+	cs4251x_add_widgets(codec, soc_card);
 
 	return 0;
 }
@@ -848,7 +848,7 @@ static const struct snd_soc_pcm_stream cs4251x_dai_capture = {
 	.formats	= WM8731_FORMATS,
 };
 
-/* dai ops, called by machine drivers */
+/* dai ops, called by soc_card drivers */
 static const struct snd_soc_dai_ops cs4251x_dai_ops = {
 	.digital_mute	= cs4251x_mute,
 	.set_sysclk	= cs4251x_set_dai_sysclk,

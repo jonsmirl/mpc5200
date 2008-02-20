@@ -67,7 +67,7 @@
 #include "pxa2xx-i2s.h"
 #include "pxa2xx-ssp.h"
 
-static struct snd_soc_machine mainstone;
+static struct snd_soc_card mainstone;
 
 /* Do specific bluetooth PCM startup here */
 static int bt_startup(struct snd_pcm_substream *substream)
@@ -145,7 +145,7 @@ static int mainstone_remove(struct platform_device *pdev)
 /*
  * Machine audio functions.
  *
- * The machine now has 3 extra audio controls.
+ * The soc_card now has 3 extra audio controls.
  *
  * Jack function: Sets function (device plugged into Jack) to nothing (Off)
  *                or Headphones.
@@ -158,68 +158,68 @@ static int mainstone_remove(struct platform_device *pdev)
  *  internal audio paths.
  */
 
-static int machine_jack_func = 0;
-static int machine_spk_func = 0;
-static int machine_mic_func = 0;
+static int soc_card_jack_func = 0;
+static int soc_card_spk_func = 0;
+static int soc_card_mic_func = 0;
 
-static int machine_get_jack(struct snd_kcontrol *kcontrol,
+static int soc_card_get_jack(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
-	ucontrol->value.integer.value[0] = machine_jack_func;
+	ucontrol->value.integer.value[0] = soc_card_jack_func;
 	return 0;
 }
 
-static int machine_set_jack(struct snd_kcontrol *kcontrol,
+static int soc_card_set_jack(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_codec *codec =  snd_kcontrol_chip(kcontrol);
-	machine_jack_func = ucontrol->value.integer.value[0];
-	snd_soc_dapm_set_endpoint(codec, "Headphone Jack", machine_jack_func);
+	soc_card_jack_func = ucontrol->value.integer.value[0];
+	snd_soc_dapm_set_endpoint(codec, "Headphone Jack", soc_card_jack_func);
 	return 0;
 }
 
-static int machine_get_spk(struct snd_kcontrol *kcontrol,
+static int soc_card_get_spk(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
-	ucontrol->value.integer.value[0] = machine_spk_func;
+	ucontrol->value.integer.value[0] = soc_card_spk_func;
 	return 0;
 }
 
-static int machine_set_spk(struct snd_kcontrol *kcontrol,
+static int soc_card_set_spk(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_codec *codec =  snd_kcontrol_chip(kcontrol);
 
-	if (machine_spk_func == ucontrol->value.integer.value[0])
+	if (soc_card_spk_func == ucontrol->value.integer.value[0])
 		return 0;
 
-	machine_spk_func = ucontrol->value.integer.value[0];
-	snd_soc_dapm_set_endpoint(codec, "Spk", machine_spk_func);
+	soc_card_spk_func = ucontrol->value.integer.value[0];
+	snd_soc_dapm_set_endpoint(codec, "Spk", soc_card_spk_func);
 	return 1;
 }
 
-static int machine_get_mic(struct snd_kcontrol *kcontrol,
+static int soc_card_get_mic(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
-	ucontrol->value.integer.value[0] = machine_spk_func;
+	ucontrol->value.integer.value[0] = soc_card_spk_func;
 	return 0;
 }
 
-static int machine_set_mic(struct snd_kcontrol *kcontrol,
+static int soc_card_set_mic(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_codec *codec =  snd_kcontrol_chip(kcontrol);
 
-	if (machine_spk_func == ucontrol->value.integer.value[0])
+	if (soc_card_spk_func == ucontrol->value.integer.value[0])
 		return 0;
 
-	machine_spk_func = ucontrol->value.integer.value[0];
-	snd_soc_dapm_set_endpoint(codec, "Mic", machine_mic_func);
+	soc_card_spk_func = ucontrol->value.integer.value[0];
+	snd_soc_dapm_set_endpoint(codec, "Mic", soc_card_mic_func);
 	return 1;
 }
 
 /* turns on board speaker amp on/off */
-static int machine_amp_event(struct snd_soc_dapm_widget *w, int event)
+static int soc_card_amp_event(struct snd_soc_dapm_widget *w, int event)
 {
 #if 0
 	if (SND_SOC_DAPM_EVENT_ON(event))
@@ -230,14 +230,14 @@ static int machine_amp_event(struct snd_soc_dapm_widget *w, int event)
 	return 0;
 }
 
-/* machine dapm widgets */
-static const struct snd_soc_dapm_widget machine_dapm_widgets[] = {
+/* soc_card dapm widgets */
+static const struct snd_soc_dapm_widget soc_card_dapm_widgets[] = {
 SND_SOC_DAPM_HP("Headphone Jack", NULL),
-SND_SOC_DAPM_SPK("Spk", machine_amp_event),
+SND_SOC_DAPM_SPK("Spk", soc_card_amp_event),
 SND_SOC_DAPM_MIC("Mic", NULL),
 };
 
-/* machine connections to the codec pins */
+/* soc_card connections to the codec pins */
 static const char* audio_map[][3] = {
 
 	/* headphone connected to LOUT1, ROUT1 */
@@ -258,23 +258,23 @@ static const char* audio_map[][3] = {
 static const char* jack_function[] = {"Off", "Headphone"};
 static const char* spk_function[] = {"Off", "On"};
 static const char* mic_function[] = {"Off", "On"};
-static const struct soc_enum machine_ctl_enum[] = {
+static const struct soc_enum soc_card_ctl_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, jack_function),
 	SOC_ENUM_SINGLE_EXT(2, spk_function),
 	SOC_ENUM_SINGLE_EXT(2, mic_function),
 };
 
-static const struct snd_kcontrol_new wm8753_machine_controls[] = {
-	SOC_ENUM_EXT("Jack Function", machine_ctl_enum[0], machine_get_jack, machine_set_jack),
-	SOC_ENUM_EXT("Speaker Function", machine_ctl_enum[1], machine_get_spk, machine_set_spk),
-	SOC_ENUM_EXT("Mic Function", machine_ctl_enum[2], machine_get_mic, machine_set_mic),
+static const struct snd_kcontrol_new wm8753_soc_card_controls[] = {
+	SOC_ENUM_EXT("Jack Function", soc_card_ctl_enum[0], soc_card_get_jack, soc_card_set_jack),
+	SOC_ENUM_EXT("Speaker Function", soc_card_ctl_enum[1], soc_card_get_spk, soc_card_set_spk),
+	SOC_ENUM_EXT("Mic Function", soc_card_ctl_enum[2], soc_card_get_mic, soc_card_set_mic),
 };
 
 static int mainstone_wm8753_init(struct snd_soc_codec *codec)
 {
 	int i, err;
 
-	/* not used on this machine - e.g. will never be powered up */
+	/* not used on this soc_card - e.g. will never be powered up */
 	snd_soc_dapm_set_endpoint(codec, "OUT3", 0);
 	snd_soc_dapm_set_endpoint(codec, "OUT4", 0);
 	snd_soc_dapm_set_endpoint(codec, "MONO2", 0);
@@ -285,19 +285,19 @@ static int mainstone_wm8753_init(struct snd_soc_codec *codec)
 	snd_soc_dapm_set_endpoint(codec, "RXN", 0);
 	snd_soc_dapm_set_endpoint(codec, "MIC2", 0);
 
-	/* Add machine specific controls */
-	for (i = 0; i < ARRAY_SIZE(wm8753_machine_controls); i++) {
+	/* Add soc_card specific controls */
+	for (i = 0; i < ARRAY_SIZE(wm8753_soc_card_controls); i++) {
 		if ((err = snd_ctl_add(codec->card,
-				snd_soc_cnew(&wm8753_machine_controls[i],codec, NULL))) < 0)
+				snd_soc_cnew(&wm8753_soc_card_controls[i],codec, NULL))) < 0)
 			return err;
 	}
 
-	/* Add machine specific widgets */
-	for(i = 0; i < ARRAY_SIZE(machine_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(codec, &machine_dapm_widgets[i]);
+	/* Add soc_card specific widgets */
+	for(i = 0; i < ARRAY_SIZE(soc_card_dapm_widgets); i++) {
+		snd_soc_dapm_new_control(codec, &soc_card_dapm_widgets[i]);
 	}
 
-	/* Set up machine specific audio path audio_mapnects */
+	/* Set up soc_card specific audio path audio_mapnects */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
 		snd_soc_dapm_connect_input(codec, audio_map[i][0], audio_map[i][1], audio_map[i][2]);
 	}
@@ -322,7 +322,7 @@ static struct snd_soc_dai_link mainstone_dai[] = {
 },
 };
 
-static struct snd_soc_machine mainstone = {
+static struct snd_soc_card mainstone = {
 	.name = "Mainstone",
 	.probe = mainstone_probe,
 	.remove = mainstone_remove,
@@ -333,7 +333,7 @@ static struct snd_soc_machine mainstone = {
 };
 
 static struct snd_soc_device mainstone_snd_wm8753_devdata = {
-	.machine = &mainstone,
+	.soc_card = &mainstone,
 	.platform = &pxa2xx_soc_platform,
 	.codec_dev = &soc_codec_dev_wm8753,
 };

@@ -1,5 +1,5 @@
 /*
- * linux/sound/soc-machine.h -- ALSA SoC Layer
+ * linux/sound/soc-card.h -- ALSA SoC Layer
  *
  * Author:		Liam Girdwood
  * Created:		Aug 11th 2005
@@ -17,156 +17,156 @@
 #include <linux/workqueue.h>
 
 struct snd_soc_pcm_runtime;
-struct snd_soc_machine;
+struct snd_soc_card;
 struct snd_soc_ops;
 struct snd_soc_pcm_config;
 
 /**
- * snd_soc_machine_create - create new ASoC machine.
- * @name: machine name
+ * snd_soc_card_create - create new ASoC soc_card.
+ * @name: soc_card name
  * @parent: parent device
  * @idx: sound card index
  * @xid: sound card ID
  *
- * Creates a new ASoC audio machine device and sound card.
+ * Creates a new ASoC audio soc_card device and sound card.
  */
-struct snd_soc_machine *snd_soc_machine_create(const char *name,
+struct snd_soc_card *snd_soc_card_create(const char *name,
 	struct device *parent, int idx, const char *xid);
 
 
 /**
  * snd_soc_pcm_create - create new ASoC PCM.
- * @machine: Machine
+ * @soc_card: Machine
  *
  * Joins a codec and platform DAI together and creates a ALSA PCM(s).
  */
-int snd_soc_pcm_create(struct snd_soc_machine *machine,
+int snd_soc_pcm_create(struct snd_soc_card *soc_card,
 	struct snd_soc_pcm_config *config);
 
 /**
  * snd_soc_create_pcms - create several ASoC PCM.
- * @machine: Machine
+ * @soc_card: Machine
  * @configs: Array of PCM configurations
  * @num:     Size of array
  *
  * Joins a liscodec and platform DAI together and creates a ALSA PCM(s).
  */
-int snd_soc_create_pcms(struct snd_soc_machine *machine,
+int snd_soc_create_pcms(struct snd_soc_card *soc_card,
 			struct snd_soc_pcm_config *config, int num);
 
 /**
- * snd_soc_machine_register - registers ASoC machine .
- * @machine: machine
+ * snd_soc_card_register - registers ASoC soc_card .
+ * @soc_card: soc_card
  *
- * Registers a machine and it's PCMs. This should be called after all
+ * Registers a soc_card and it's PCMs. This should be called after all
  * codecs, platforms and PCM's have been created.
  */
-int snd_soc_machine_register(struct snd_soc_machine *machine);
+int snd_soc_card_register(struct snd_soc_card *soc_card);
 
 /**
- * snd_soc_machine_free - free machine.
- * @machine: machine
+ * snd_soc_card_free - free soc_card.
+ * @soc_card: soc_card
  *
- * Frees all machine resources. Can be called at any time during machine
+ * Frees all soc_card resources. Can be called at any time during soc_card
  * initialisation process.
  */
-void snd_soc_machine_free(struct snd_soc_machine *machine);
+void snd_soc_card_free(struct snd_soc_card *soc_card);
 
 /**
- * snd_soc_suspend_pcms - suspends machine pcms.
- * @machine: machine
+ * snd_soc_suspend_pcms - suspends soc_card pcms.
+ * @soc_card: soc_card
  * @state: suspend state
  *
- * Suspends all machine pcms.
+ * Suspends all soc_card pcms.
  */
-int snd_soc_suspend_pcms(struct snd_soc_machine *machine, pm_message_t state);
+int snd_soc_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state);
 
 /**
- * snd_soc_resume_pcms - resume machine pcms.
- * @machine: machine
+ * snd_soc_resume_pcms - resume soc_card pcms.
+ * @soc_card: soc_card
  *
- * Resumes machine pcms.
+ * Resumes soc_card pcms.
  */
-int snd_soc_resume_pcms(struct snd_soc_machine *machine);
+int snd_soc_resume_pcms(struct snd_soc_card *soc_card);
 
 /**
  * snd_soc_get_pcm - get pcm.
- * @machine: machine
+ * @soc_card: soc_card
  * @pcm_id: pcm ID
  *
  * Gets pcm from ID.
  */
-struct snd_soc_pcm_runtime *snd_soc_get_pcm(struct snd_soc_machine *machine,
+struct snd_soc_pcm_runtime *snd_soc_get_pcm(struct snd_soc_card *soc_card,
 	const char *pcm_id);
 
 /**
  * snd_soc_get_ac97_ops - get AC97 operations.
- * @machine: machine
+ * @soc_card: soc_card
  * @dai_id:  ID
  *
  * Gets AC97 operations from Digital Audio Interface.
  */
-struct snd_ac97_bus_ops *snd_soc_get_ac97_ops(struct snd_soc_machine *machine,
+struct snd_ac97_bus_ops *snd_soc_get_ac97_ops(struct snd_soc_card *soc_card,
 					      const char *dai_id);
 
 /**
  * snd_soc_get_codec - get codec.
- * @machine: machine
+ * @soc_card: soc_card
  * @codec_id: codec ID
  *
  * Gets codec from ID.
  */
-struct snd_soc_codec *snd_soc_get_codec(struct snd_soc_machine *machine,
+struct snd_soc_codec *snd_soc_get_codec(struct snd_soc_card *soc_card,
 	const char *codec_id);
 
 /**
  * snd_soc_get_platform - get platform.
- * @machine: machine
+ * @soc_card: soc_card
  * @codec_id: platform ID
  *
  * Gets platform from ID.
  */
-struct snd_soc_platform * snd_soc_get_platform(struct snd_soc_machine *machine,
+struct snd_soc_platform * snd_soc_get_platform(struct snd_soc_card *soc_card,
 	const char *platform_id);
 
 /**
  * snd_soc_codec_set_io - initialise codec IO.
  * @codec: codec
- * @machine_read: read function called by codec.
- * @machine_write: write function called by codec.
+ * @soc_card_read: read function called by codec.
+ * @soc_card_write: write function called by codec.
  * @control_data: IO control data - usually I2C, SPI, etc pointer
  *
- * Initialises the codec IO system with the machines codec IO mechanism. 
+ * Initialises the codec IO system with the soc_cards codec IO mechanism. 
  */
 void snd_soc_codec_set_io(struct snd_soc_codec *codec,
-	int (*machine_read)(void *, long, int),
-	int (*machine_write)(void *, long, int), void *control_data);
+	int (*soc_card_read)(void *, long, int),
+	int (*soc_card_write)(void *, long, int), void *control_data);
 
 /**
  * snd_soc_codec_init - initialises codec
  * @codec: codec
- * @machine: machine
+ * @soc_card: soc_card
  *
  * Initialises codec hardware. Can perform IO and must only be called after a
  * successful call to snd_soc_codec_set_io(). 
  */
 int snd_soc_codec_init(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine);
+	struct snd_soc_card *soc_card);
 
 /**
  * snd_soc_codec_exit - shutsdown codec hw
  * @codec: codec
- * @machine: machine
+ * @soc_card: soc_card
  *
  * Shutsdown codec hardware.
  */
 void snd_soc_codec_exit(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine);
+	struct snd_soc_card *soc_card);
 
 /*
  * PCM configuration information.
  *
- * Defines every ASoC PCM in machine driver i.e. valid Digital Audio Interface
+ * Defines every ASoC PCM in soc_card driver i.e. valid Digital Audio Interface
  * with two endpoints (e.g codec and platform).
  */
 struct snd_soc_pcm_config {
@@ -178,7 +178,7 @@ struct snd_soc_pcm_config {
 	const char *cpu_dai;		/* platform dai identification */
 	int playback;			/* alsa playback pcms */
 	int capture;			/* alsa capture alsa pcms */
-	struct snd_soc_ops *ops;	/* machine pcm ops */
+	struct snd_soc_ops *ops;	/* soc_card pcm ops */
 };
 
 struct snd_soc_ops {
@@ -211,7 +211,7 @@ struct snd_soc_pcm_runtime {
 	struct snd_soc_dai *cpu_dai;
 	struct snd_soc_dai *codec_dai;
 	struct snd_soc_platform *platform;
-	struct snd_soc_machine *machine;
+	struct snd_soc_card *soc_card;
 
 	/* ALSA audio operations - optional */
 	struct snd_soc_ops *ops;
@@ -227,12 +227,12 @@ struct snd_soc_pcm_runtime {
 
 
 /*
- * ASoC machine
+ * ASoC soc_card
  *
  * The ASoC sound card. This glues the codecs to the platforms and provides
- * machine specific operations per PCM along with any othe machine specifics.
+ * soc_card specific operations per PCM along with any othe soc_card specifics.
  */
-struct snd_soc_machine {
+struct snd_soc_card {
 	const char *name;
 	const char *longname;
 
@@ -244,13 +244,13 @@ struct snd_soc_machine {
 	int is_registered;
 	int is_probed;
 
-	/* init() and exit() - init is called by snd_soc_machine_register()
-	 * whilst exit by snd_soc_machine_free() */
-	int (*init)(struct snd_soc_machine *machine);
-	void (*exit)(struct snd_soc_machine *machine);
+	/* init() and exit() - init is called by snd_soc_card_register()
+	 * whilst exit by snd_soc_card_free() */
+	int (*init)(struct snd_soc_card *soc_card);
+	void (*exit)(struct snd_soc_card *soc_card);
 	
 	/* bias power level */
-	int (*set_bias_level)(struct snd_soc_machine *machine,
+	int (*set_bias_level)(struct snd_soc_card *soc_card,
 		enum snd_soc_dapm_bias_level level);
 	enum snd_soc_dapm_bias_level bias_level;
 

@@ -37,7 +37,7 @@
 #include <sound/pcm_params.h>
 #include <sound/soc-codec.h>
 #include <sound/soc-dai.h>
-#include <sound/soc-machine.h>
+#include <sound/soc-card.h>
 #include <sound/soc-dapm.h>
 #include <sound/initval.h>
 
@@ -88,7 +88,7 @@ static inline unsigned int ad1939_read(struct snd_soc_codec *codec,
 		return ad1939_read_reg_cache(codec, reg);
 
 	data = reg & 0xff;
-	if (codec->machine_read(codec->control_data, (long)&data, 1) != 1)
+	if (codec->soc_card_read(codec->control_data, (long)&data, 1) != 1)
 		return -EIO;
 
 	return data;
@@ -118,7 +118,7 @@ static int ad1939_write(struct snd_soc_codec *codec, unsigned int reg,
 	data[1] = value & 0xff;
 
 	ad1939_write_reg_cache (codec, reg, value);
-	if (codec->machine_write(codec->control_data, (long)data, 2) == 2)
+	if (codec->soc_card_write(codec->control_data, (long)data, 2) == 2)
 		return 0;
 	else
 		return -EIO;
@@ -420,7 +420,7 @@ static int ad1939_set_dai_sysclk(struct snd_soc_dai *codec_dai,
  * initialise the AD1939 codec
  */
 static int ad1939_codec_init(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	struct ad1939_setup_data *setup = codec->platform_data;
 	struct ad1939_data *ad = codec->private_data;
@@ -457,14 +457,14 @@ static int ad1939_codec_init(struct snd_soc_codec *codec,
 	ad1939_write(codec, AD1939_DACCTL1, r0);
 	ad1939_write(codec, AD1939_ADCCTL2, r1);
 
-	ad1939_add_controls(codec, machine->card);
+	ad1939_add_controls(codec, soc_card->card);
 	ad1939_set_bias_level(codec, SND_SOC_BIAS_ON);
 
 	return 0;
 }
 
 static void ad1939_codec_exit(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	ad1939_set_bias_level(codec, SND_SOC_BIAS_OFF);
 }

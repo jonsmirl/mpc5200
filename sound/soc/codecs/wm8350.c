@@ -68,6 +68,13 @@ struct wm8350_data {
 	struct wm8350_output out2;
 };
 
+static unsigned int wm8350_codec_cache_read(struct snd_soc_codec *codec,
+	unsigned int reg)
+{
+	struct wm8350* wm8350 = codec->control_data;
+	return wm8350->reg_cache[reg];
+}
+
 static unsigned int wm8350_codec_read(struct snd_soc_codec *codec,
 	unsigned int reg)
 {
@@ -742,22 +749,22 @@ static const char *audio_map[][3] = {
 };
 
 static int wm8350_add_widgets(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	int i;
 
 	for(i = 0; i < ARRAY_SIZE(wm8350_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(machine, codec,
+		snd_soc_dapm_new_control(soc_card, codec,
 			&wm8350_dapm_widgets[i]);
 	}
 
-	/* set up audio path audio_mapnects */
+	/* set up audio path audio_map */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(machine, audio_map[i][0],
+		snd_soc_dapm_add_route(soc_card, audio_map[i][0],
 			audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_init(machine);
+	snd_soc_dapm_init(soc_card);
 	return 0;
 }
 
@@ -915,6 +922,37 @@ static int wm8350_set_dai_fmt(struct snd_soc_dai *codec_dai,
 	wm8350_codec_write(codec, WM8350_AI_DAC_CONTROL, master);
 	wm8350_codec_write(codec, WM8350_DAC_LR_RATE, dac_lrc);
 	wm8350_codec_write(codec, WM8350_ADC_LR_RATE, adc_lrc);
+	return 0;
+}
+
+static int wm8350_pcm_trigger(struct snd_pcm_substream *substream,
+	int cmd, struct snd_soc_dai *codec_dai)
+{
+	struct snd_soc_codec *codec = codec_dai->codec;
+	int master = wm8350_codec_cache_read(codec, WM8350_AI_DAC_CONTROL) &
+		WM8350_BCLK_MSTR;
+	int enabled = 0;
+	
+	/* Check that the DACs or ADCs are enabled since they are
+	 * required for LRC in master mode. The DACs or ADCs need a
+	 * valid audio path i.e. pin -> ADC or DAC -> pin before
+	 * the LRC will be enabled in master mode. */ 
+	if (!master && cmd != SNDRV_PCM_TRIGGER_START)
+		return 0;
+		
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		enabled = wm8350_codec_cache_read(codec, WM8350_POWER_MGMT_4) &
+			(WM8350_ADCR_ENA | WM8350_ADCL_ENA);
+	} else {
+		enabled = wm8350_codec_cache_read(codec, WM8350_POWER_MGMT_4) &
+			(WM8350_DACR_ENA | WM8350_DACL_ENA);
+	}
+	
+	if (!enabled) {
+		printk(KERN_ERR "%s: invalid audio path - no clocks available\n",
+			__func__);
+		return -EINVAL;
+	}
 	return 0;
 }
 
@@ -1254,6 +1292,7 @@ static struct snd_soc_dai_caps wm8350_capture = {
 static struct snd_soc_dai_ops wm8350_dai_ops = {
 	/* alsa ops */
 	.hw_params	= wm8350_pcm_hw_params,
+	.trigger	= wm8350_pcm_trigger,
 	/* dai ops */
 	.digital_mute	= wm8350_mute,
 	.set_fmt	= wm8350_set_dai_fmt,
@@ -1289,7 +1328,7 @@ static int wm8350_resume(struct platform_device *pdev)
 }
 
 static int wm8350_codec_init(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	struct wm8350* wm8350 = codec->control_data;
 	struct wm8350_data *wm8350_data = codec->private_data;
@@ -1309,8 +1348,8 @@ static int wm8350_codec_init(struct snd_soc_codec *codec,
 	codec->bias_level = SND_SOC_BIAS_OFF;
 	wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
-	wm8350_add_controls(codec, machine->card);
-	wm8350_add_widgets(codec, machine);
+	wm8350_add_controls(codec, soc_card->card);
+	wm8350_add_widgets(codec, soc_card);
 
 	/* read OUT1 & OUT2 volumes */
 	out1->left_vol = (wm8350_reg_read(wm8350, WM8350_LOUT1_VOLUME) &
@@ -1351,11 +1390,11 @@ static int run_delayed_work(struct delayed_work *dwork)
 }
 
 static void wm8350_codec_exit(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	run_delayed_work(&codec->delayed_work);
 	wm8350_set_bias_level(codec, SND_SOC_BIAS_OFF);
-	snd_soc_dapm_free(machine);
+	snd_soc_dapm_free(soc_card);
 }
 
 /* for modprobe */

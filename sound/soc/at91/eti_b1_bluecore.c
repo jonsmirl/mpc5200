@@ -138,7 +138,7 @@ static struct snd_soc_codec_device soc_codec_dev_bluecore = {
 
 
 /*
- * CSR BlueCore PCM interface machine driver operations.
+ * CSR BlueCore PCM interface soc_card driver operations.
  *
  * Only hw_params() is required, and only the CPU_DAI needs to be
  * initiailzed, as there is no real CODEC DAI.  The CODEC DAI
@@ -190,14 +190,14 @@ static struct snd_soc_dai_link eti_b1_bcore_dai = {
 	.ops = &eti_b1_bcore_ops,
 };
 
-static struct snd_soc_machine snd_soc_machine_eti_b1_bcore = {
+static struct snd_soc_card snd_soc_card_eti_b1_bcore = {
 	.name = "ETI_B1_BLUECORE",
 	.dai_link = &eti_b1_bcore_dai,
 	.num_links = 1,
 };
 
 static struct snd_soc_device eti_b1_bcore_snd_devdata = {
-	.machine = &snd_soc_machine_eti_b1_bcore,
+	.soc_card = &snd_soc_card_eti_b1_bcore,
 	.platform = &at91_soc_platform,
 	.codec_dev = &soc_codec_dev_bluecore,
 };

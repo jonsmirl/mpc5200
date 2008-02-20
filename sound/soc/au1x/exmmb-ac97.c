@@ -39,13 +39,13 @@
 /*
  * Alsa operations
  * Only implement the required operations for your platform.
- * These operations are specific to the machine only.
+ * These operations are specific to the soc_card only.
  */
 
 /*
- * Initialise the machine audio subsystem.
+ * Initialise the soc_card audio subsystem.
  */
-static int exm1200_mobo_ac97_machine_init(struct snd_soc_codec *codec)
+static int exm1200_mobo_ac97_soc_card_init(struct snd_soc_codec *codec)
 {
 	snd_soc_dapm_sync_endpoints(codec);
 	return 0;
@@ -57,12 +57,12 @@ static struct snd_soc_dai_link exm1200_mobo_ac97_dai = {
 	.stream_name = "AC97 HiFi",
 	.cpu_dai = &au1xpsc_ac97_dai[1],	/* we use PSC1 for I2S */
 	.codec_dai = &ac97_dai,
-	.init = exm1200_mobo_ac97_machine_init,
+	.init = exm1200_mobo_ac97_soc_card_init,
 	.ops = NULL,
 };
 
-/* template audio machine driver */
-static struct snd_soc_machine snd_soc_machine_exm97 = {
+/* template audio soc_card driver */
+static struct snd_soc_card snd_soc_card_exm97 = {
 	.name = "EXM32 Motherboard AC97",
 	.dai_link = &exm1200_mobo_ac97_dai,
 	.num_links = 1,
@@ -70,7 +70,7 @@ static struct snd_soc_machine snd_soc_machine_exm97 = {
 
 /* template audio subsystem */
 static struct snd_soc_device exm1200_mobo_ac97_snd_devdata = {
-	.machine = &snd_soc_machine_exm97,
+	.soc_card = &snd_soc_card_exm97,
 	.platform = &au1xpsc_soc_platform,
 	.codec_dev = &soc_codec_dev_ac97,
 };

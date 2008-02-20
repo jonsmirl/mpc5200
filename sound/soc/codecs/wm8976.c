@@ -363,22 +363,22 @@ static const char *audio_map[][3] = {
 };
 
 static int wm8976_add_widgets(struct snd_soc_codec *codec, 
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	int i;
 
 	for(i = 0; i < ARRAY_SIZE(wm8976_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(machine, codec, 
+		snd_soc_dapm_new_control(soc_card, codec, 
 			&wm8976_dapm_widgets[i]);
 	}
 
 	/* set up audio path map */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_connect_input(machine, audio_map[i][0], 
+		snd_soc_dapm_connect_input(soc_card, audio_map[i][0], 
 			audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_new_widgets(machine);
+	snd_soc_dapm_new_widgets(soc_card);
 	return 0;
 }
 
@@ -665,15 +665,15 @@ static int wm8976_resume(struct device *dev)
  * initialise the WM8976 codec
  */
 static int wm8976_codec_io_probe(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	wm8976_reset(codec);
 
 	/* power on device */
 	wm8976_dapm_event(codec, SNDRV_CTL_POWER_D3hot);
 	
-	wm8976_add_controls(codec, machine->card);
-	wm8976_add_widgets(codec, machine);
+	wm8976_add_controls(codec, soc_card->card);
+	wm8976_add_widgets(codec, soc_card);
 
 	return 0;
 }
@@ -736,7 +736,7 @@ static const struct snd_soc_pcm_stream wm8976_dai_capture = {
 	.formats	= WM8976_FORMATS,
 };
 
-/* dai ops, called by machine drivers */
+/* dai ops, called by soc_card drivers */
 static const struct snd_soc_dai_ops wm8976_dai_ops = {
 	.digital_mute = wm8976_digital_mute,
 	.set_fmt = wm8976_set_fmt,

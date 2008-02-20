@@ -16,7 +16,7 @@
 #include <sound/soc-codec.h>
 #include <sound/soc-dai.h>
 #include <sound/soc-platform.h>
-#include <sound/soc-machine.h>
+#include <sound/soc-card.h>
 
 #define SND_SOC_VERSION "0.31"
 

@@ -232,7 +232,7 @@ struct snd_soc_dai_ops {
 
 	/*
 	 * DAI clocking configuration - all optional.
-	 * Called by machine drivers, usually in their hw_params().
+	 * Called by soc_card drivers, usually in their hw_params().
 	 */
 	int (*set_sysclk)(struct snd_soc_dai *dai, int clk_id,
 		unsigned int freq, int dir);
@@ -243,7 +243,7 @@ struct snd_soc_dai_ops {
 
 	/*
 	 * DAI format configuration - all optional.
-	 * Called by machine drivers, usually in their hw_params().
+	 * Called by soc_card drivers, usually in their hw_params().
 	 */
 	int (*set_fmt)(struct snd_soc_dai *dai,
 		unsigned int fmt);

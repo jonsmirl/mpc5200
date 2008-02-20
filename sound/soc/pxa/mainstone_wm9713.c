@@ -122,14 +122,14 @@ static struct snd_soc_ops mainstone_voice_ops = {
 	.hw_params = mainstone_voice_hw_params,
 };
 
-/* mainstone machine dapm widgets */
+/* mainstone soc_card dapm widgets */
 static const struct snd_soc_dapm_widget mainstone_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Mic 1", NULL),
 	SND_SOC_DAPM_MIC("Mic 2", NULL),
 	SND_SOC_DAPM_MIC("Mic 3", NULL),
 };
 
-/* example machine audio_mapnections */
+/* example soc_card audio_mapnections */
 static const char* audio_map[][3] = {
 
 	/* mic is connected to mic1 - with bias */
@@ -159,23 +159,23 @@ static int mainstone_wm9713_read(void *control_data, long val, int reg)
 	return 0;
 }
 
-static int mainstone_wm9713_init(struct snd_soc_machine *machine)
+static int mainstone_wm9713_init(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_codec *codec;
 	struct snd_ac97_bus_ops *ac97_ops;
 	int i, ret;
 
-	codec = snd_soc_get_codec(machine, wm9713_codec_id);
+	codec = snd_soc_get_codec(soc_card, wm9713_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
 	
 	snd_soc_codec_set_io(codec, mainstone_wm9713_read, 
 		mainstone_wm9713_write, codec->ac97);
 		
-	ac97_ops = snd_soc_get_ac97_ops(machine, pxa_ac97_hifi_dai_id);
+	ac97_ops = snd_soc_get_ac97_ops(soc_card, pxa_ac97_hifi_dai_id);
 	
 	/* register with AC97 bus for ad-hoc driver access */
-	ret = snd_soc_new_ac97_codec(codec, ac97_ops, machine->card, 0, 0);
+	ret = snd_soc_new_ac97_codec(codec, ac97_ops, soc_card->card, 0, 0);
 	if (ret < 0)
 		return ret;
 		
@@ -188,25 +188,25 @@ static int mainstone_wm9713_init(struct snd_soc_machine *machine)
 		return ret;
 	}
 
-	snd_soc_codec_init(codec, machine);
+	snd_soc_codec_init(codec, soc_card);
 
 	/* set up mainstone codec pins */
-	snd_soc_dapm_disable_pin(machine, "RXP");
-	snd_soc_dapm_disable_pin(machine, "RXN");
+	snd_soc_dapm_disable_pin(soc_card, "RXP");
+	snd_soc_dapm_disable_pin(soc_card, "RXN");
 
 	/* Add mainstone specific widgets */
 	for(i = 0; i < ARRAY_SIZE(mainstone_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(machine, codec, 
+		snd_soc_dapm_new_control(soc_card, codec, 
 			&mainstone_dapm_widgets[i]);
 	}
 
 	/* set up mainstone specific audio path audio_mapnects */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(machine, audio_map[i][0], 
+		snd_soc_dapm_add_route(soc_card, audio_map[i][0], 
 			audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_sync(machine);
+	snd_soc_dapm_sync(soc_card);
 	
 	MST_MSCWR2 &= ~MST_MSCWR2_AC97_SPKROFF;
 	return 0;
@@ -245,13 +245,13 @@ static struct snd_soc_pcm_config pcm_configs[] = {
 };
 
 /*
- * This is an example machine initialisation for a wm9713 connected to a
+ * This is an example soc_card initialisation for a wm9713 connected to a
  * Mainstone II. It is missing logic to detect hp/mic insertions and logic
  * to re-route the audio in such an event.
  */
 static int mainstone_wm9713_probe(struct platform_device *pdev)
 {
-	struct snd_soc_machine *machine;
+	struct snd_soc_card *soc_card;
 	int ret;
 
 	/* mainstone wm8753 voice interface */
@@ -260,34 +260,34 @@ static int mainstone_wm9713_probe(struct platform_device *pdev)
 	pxa_gpio_mode(GPIO22_SSP2CLKS_MD);
 	pxa_gpio_mode(GPIO88_SSP2FRMS_MD);
 
-	machine = snd_soc_machine_create("mainstone_wm9713", &pdev->dev, 
+	soc_card = snd_soc_card_create("mainstone_wm9713", &pdev->dev, 
 		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
-	if (machine == NULL)
+	if (soc_card == NULL)
 		return -ENOMEM;
 
-	machine->longname = "WM9713";
-	machine->init = mainstone_wm9713_init,
-	machine->private_data = pdev;
-	platform_set_drvdata(pdev, machine);
+	soc_card->longname = "WM9713";
+	soc_card->init = mainstone_wm9713_init,
+	soc_card->private_data = pdev;
+	platform_set_drvdata(pdev, soc_card);
 	
-	ret = snd_soc_create_pcms(machine, &pcm_configs[0],
+	ret = snd_soc_create_pcms(soc_card, &pcm_configs[0],
 				  ARRAY_SIZE(pcm_configs));
 	if (ret < 0)
 		goto err;
 	
-	ret = snd_soc_machine_register(machine);
+	ret = snd_soc_card_register(soc_card);
 	return ret;
 	
 err:
-	snd_soc_machine_free(machine);
+	snd_soc_card_free(soc_card);
 	return ret;
 }
 
 static int __exit mainstone_wm9713_remove(struct platform_device *pdev)
 {
-	struct snd_soc_machine *machine = platform_get_drvdata(pdev);
+	struct snd_soc_card *soc_card = platform_get_drvdata(pdev);
 
-	snd_soc_machine_free(machine);
+	snd_soc_card_free(soc_card);
 
 	/* disable speaker */
 	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
@@ -300,19 +300,19 @@ static long mst_audio_suspend_mask;
 static int mainstone_wm9713_suspend(struct platform_device *pdev, 
 	pm_message_t state)
 {
-	struct snd_soc_machine *machine = platform_get_drvdata(pdev);
+	struct snd_soc_card *soc_card = platform_get_drvdata(pdev);
 	
 	mst_audio_suspend_mask = MST_MSCWR2;
 	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
-	return snd_soc_suspend_pcms(machine, state);
+	return snd_soc_suspend_pcms(soc_card, state);
 }
 
 static int mainstone_wm9713_resume(struct platform_device *pdev)
 {
-	struct snd_soc_machine *machine = platform_get_drvdata(pdev);
+	struct snd_soc_card *soc_card = platform_get_drvdata(pdev);
 	
 	MST_MSCWR2 &= mst_audio_suspend_mask | ~MST_MSCWR2_AC97_SPKROFF;
-	return snd_soc_resume_pcms(machine);
+	return snd_soc_resume_pcms(soc_card);
 }
 
 #else

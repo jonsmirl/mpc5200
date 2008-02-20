@@ -15,11 +15,11 @@
  * 1) Software mode is supported.  Stand-alone mode is automatically
  *    selected if I2C is disabled or if a CS4270 is not found on the I2C
  *    bus.  However, stand-alone mode is only partially implemented because
- *    there is no mechanism yet for this driver and the machine driver to
+ *    there is no mechanism yet for this driver and the soc_card driver to
  *    communicate the values of the M0, M1, MCLK1, and MCLK2 pins.
  * 2) Only I2C is supported, not SPI
  * 3) Only Master mode is supported, not Slave.
- * 4) The machine driver's 'startup' function must call
+ * 4) The soc_card driver's 'startup' function must call
  *    cs4270_set_dai_sysclk() with the value of MCLK.
  * 5) Only I2S and left-justified modes are supported
  * 6) Power management is not supported
@@ -185,7 +185,7 @@ static struct {
  * a standard sample rate.  If there's a match, then it is added to the list
  * of support sample rates.
  *
- * This function must be called by the machine driver's 'startup' function,
+ * This function must be called by the soc_card driver's 'startup' function,
  * otherwise the list of supported sample rates will not be available in
  * time for ALSA.
  *
@@ -197,7 +197,7 @@ static struct {
  * only be selected with divide-by-1.5, but there is an errate that make
  * this selection difficult.
  *
- * In addition, there is no mechanism for communicating with the machine
+ * In addition, there is no mechanism for communicating with the soc_card
  * driver what the input settings can be.  This would need to be implemented
  * for stand-alone mode to work.
  */
@@ -689,7 +689,7 @@ EXPORT_SYMBOL_GPL(cs4270_dai);
 /*
  * ASoC probe function
  *
- * This function is called when the machine driver calls
+ * This function is called when the soc_card driver calls
  * platform_device_add().
  */
 static int cs4270_probe(struct platform_device *pdev)
@@ -786,7 +786,7 @@ static int cs4270_remove(struct platform_device *pdev)
 /*
  * ASoC codec device structure
  *
- * Assign this variable to the codec_dev field of the machine driver's
+ * Assign this variable to the codec_dev field of the soc_card driver's
  * snd_soc_device structure.
  */
 struct snd_soc_codec_device soc_codec_device_cs4270 = {

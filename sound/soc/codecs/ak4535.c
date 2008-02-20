@@ -72,10 +72,10 @@ static inline unsigned int ak4535_read(struct snd_soc_codec *codec,
 	u8 data;
 	data = reg;
 
-	if (codec->machine_write(codec->control_data, (long)&data, 1) != 1)
+	if (codec->soc_card_write(codec->control_data, (long)&data, 1) != 1)
 		return -EIO;
 
-	if (codec->machine_read(codec->control_data, (long)&data, 1) != 1)
+	if (codec->soc_card_read(codec->control_data, (long)&data, 1) != 1)
 		return -EIO;
 
 	return data;
@@ -109,7 +109,7 @@ static int ak4535_write(struct snd_soc_codec *codec, unsigned int reg,
 	data[1] = value & 0xff;
 
 	ak4535_write_reg_cache (codec, reg, value);
-	if (codec->machine_write(codec->control_data, (long)data, 2) == 2)
+	if (codec->soc_card_write(codec->control_data, (long)data, 2) == 2)
 		return 0;
 	else
 		return -EIO;
@@ -330,22 +330,22 @@ static const char *audio_map[][3] = {
 };
 
 static int ak4535_add_widgets(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	int i;
 
 	for(i = 0; i < ARRAY_SIZE(ak4535_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(machine, codec, 
+		snd_soc_dapm_new_control(soc_card, codec, 
 			&ak4535_dapm_widgets[i]);
 	}
 
 	/* set up audio path audio_map interconnects */
 	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(machine, audio_map[i][0],
+		snd_soc_dapm_add_route(soc_card, audio_map[i][0],
 			audio_map[i][1], audio_map[i][2]);
 	}
 
-	snd_soc_dapm_init(machine);
+	snd_soc_dapm_init(soc_card);
 	return 0;
 }
 
@@ -476,19 +476,19 @@ static int ak4535_resume(struct platform_device *pdev)
  * initialise the AK4535 codec
  */
 static int ak4535_codec_init(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	/* power on device */
 	ak4535_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 	
-	ak4535_add_controls(codec, machine->card);
-	ak4535_add_widgets(codec, machine);
+	ak4535_add_controls(codec, soc_card->card);
+	ak4535_add_widgets(codec, soc_card);
 
 	return 0;
 }
 
 static void ak4535_codec_exit(struct snd_soc_codec *codec,
-	struct snd_soc_machine *machine)
+	struct snd_soc_card *soc_card)
 {
 	ak4535_set_bias_level(codec, SND_SOC_BIAS_OFF);
 }
