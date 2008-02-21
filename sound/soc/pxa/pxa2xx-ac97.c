@@ -72,10 +72,9 @@ static unsigned short pxa2xx_ac97_read(struct snd_ac97 *ac97,
 	else
 		reg_addr = ac97->num ? &SAC_REG_BASE : &PAC_REG_BASE;
 #endif
-
 	reg_addr += (reg >> 1);
 
-#ifdef CONFIG_PXA27x
+#ifndef CONFIG_PXA27x
 	if (reg == AC97_GPIO_STATUS) {
 		/* read from controller cache */
 		val = *reg_addr;
@@ -123,7 +122,6 @@ static void pxa2xx_ac97_write(struct snd_ac97 *ac97, unsigned short reg,
 	else
 		reg_addr = ac97->num ? &SAC_REG_BASE : &PAC_REG_BASE;
 #endif
-
 	reg_addr += (reg >> 1);
 
 	GSR = GSR_CDONE | GSR_SDONE;
@@ -145,8 +143,8 @@ static void pxa2xx_ac97_warm_reset(struct snd_ac97 *ac97)
 	gsr_bits = 0;
 
 #ifdef CONFIG_PXA27x
-	/* warm reset broken on Bulverde, so manually keep AC97 reset
-	   high */
+	/* warm reset broken on Bulverde,
+	   so manually keep AC97 reset high */
 	pxa_gpio_mode(113 | GPIO_OUT | GPIO_DFLT_HIGH);
 	udelay(10);
 	GCR |= GCR_WARM_RST;
@@ -216,7 +214,7 @@ static void pxa2xx_ac97_cold_reset(struct snd_ac97 *ac97)
 	GCR |= GCR_SDONE_IE|GCR_CDONE_IE;
 }
 
-static irqreturn_t pxa2xx_ac97_irq(int irq, void *dai_id)
+static irqreturn_t pxa2xx_ac97_irq(int irq, void *dev_id)
 {
 	long status;
 
@@ -227,10 +225,9 @@ static irqreturn_t pxa2xx_ac97_irq(int irq, void *dai_id)
 		wake_up(&gsr_wq);
 
 #ifdef CONFIG_PXA27x
-		/* Although we don't use those we still need
-		 * to clear them since they tend to spuriously
-		 * trigger when MMC is used (hardware bug? go
-		 * figure)... */
+		/* Although we don't use those we still need to clear them
+		   since they tend to spuriously trigger when MMC
+		   is used (hardware bug? go figure)... */
 		MISR = MISR_EOC;
 		PISR = PISR_EOC;
 		MCSR = MCSR_EOC;
