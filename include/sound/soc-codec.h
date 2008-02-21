@@ -114,6 +114,7 @@ struct snd_soc_dai;
 struct snd_ac97_bus_ops;
 struct snd_kcontrol;
 struct snd_kcontrol_new;
+struct snd_soc_dai_new;
 
 /*
  * Enumerated kcontrol
@@ -289,7 +290,8 @@ static inline void snd_soc_codec_free(struct snd_soc_codec *codec)
  *
  * Registers codec Digital Audio Interfaces with ASoC core.
  */
-int snd_soc_register_codec_dai(struct snd_soc_dai *dai);
+struct snd_soc_dai *snd_soc_register_codec_dai(
+	struct snd_soc_dai_new *template, struct device *dev);
 
 /**
  * snd_soc_unregister_codec_dai - add DAI to codec.

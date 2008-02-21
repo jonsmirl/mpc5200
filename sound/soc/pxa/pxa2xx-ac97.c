@@ -139,8 +139,8 @@ static void pxa2xx_ac97_warm_reset(struct snd_ac97 *ac97)
 	gsr_bits = 0;
 
 	if (cpu_is_pxa27x()) {
-		/* warm reset broken on Bulverde, so manually keep
-		 * AC97 reset high */
+		/* warm reset broken on Bulverde,
+		   so manually keep AC97 reset high */
 		pxa_gpio_mode(113 | GPIO_OUT | GPIO_DFLT_HIGH);
 		udelay(10);
 		GCR |= GCR_WARM_RST;

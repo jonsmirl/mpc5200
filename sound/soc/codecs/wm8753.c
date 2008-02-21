@@ -1500,72 +1500,56 @@ EXPORT_SYMBOL_GPL(wm8753_codec_hifi_dai_id);
 const char wm8753_codec_voice_dai_id[] = "wm8753-codec-voice-dai";
 EXPORT_SYMBOL_GPL(wm8753_codec_voice_dai_id);
 
-static int wm8753_voice_dai_probe(struct wm8753_codec_priv *wm8753, 
-	struct device *dev)
+struct snd_soc_dai_new wm8753_hifi_dai = {
+	.name		= wm8753_codec_hifi_dai_id,
+	.playback	= &wm8753_hifi_playback,
+	.capture	= &wm8753_capture,
+	.ops		= &wm8753_hifi_dai_ops,
+};
+
+struct snd_soc_dai_new wm8753_voice_dai = {
+	.name		= wm8753_codec_voice_dai_id,
+	.playback	= &wm8753_voice_playback,
+	.capture	= &wm8753_capture,
+	.ops		= &wm8753_voice_dai_ops,
+};
+
+static struct snd_soc_dai *wm8753_voice_dai_probe(
+	struct wm8753_codec_priv *wm8753, struct device *dev)
 {
 	struct wm8753_dai_priv *dai_priv;
 	struct snd_soc_dai *voice_dai;
-	int ret;
 	
 	dai_priv = kzalloc(sizeof(struct wm8753_dai_priv), GFP_KERNEL);
 	if (dai_priv == NULL)
-		return -ENOMEM;
+		return NULL;
 	
-	voice_dai = snd_soc_dai_allocate();
+	voice_dai = snd_soc_register_codec_dai(&wm8753_hifi_dai, dev);
 	if (voice_dai == NULL) {
 		kfree(dai_priv);
-		return -ENOMEM;
+		return NULL;
 	}
-	
-	voice_dai->name	= wm8753_codec_voice_dai_id;
-	voice_dai->ops	= &wm8753_voice_dai_ops;
-	voice_dai->playback	= &wm8753_voice_playback;
-	voice_dai->capture	= &wm8753_capture;
-	voice_dai->dev	= dev;
 	voice_dai->private_data = dai_priv;
-	ret = snd_soc_register_codec_dai(voice_dai);
-	if (ret < 0) {
-		snd_soc_dai_free(voice_dai);
-		kfree(dai_priv);
-		return ret;
-	}
-	
-	wm8753->voice_dai = voice_dai;
-	return 0;
+	return voice_dai;
 }
 
-static int wm8753_hifi_dai_probe(struct wm8753_codec_priv *wm8753, 
-	struct device *dev)
+static struct snd_soc_dai *wm8753_hifi_dai_probe(
+	struct wm8753_codec_priv *wm8753, struct device *dev)
 {
 	struct wm8753_dai_priv *dai_priv;
 	struct snd_soc_dai *hifi_dai;
-	int ret;
 	
 	dai_priv = kzalloc(sizeof(struct wm8753_dai_priv), GFP_KERNEL);
 	if (dai_priv == NULL)
-		return -ENOMEM;
+		return NULL;
 	
-	hifi_dai = snd_soc_dai_allocate();
+	hifi_dai = snd_soc_register_codec_dai(&wm8753_voice_dai, dev);
 	if (hifi_dai == NULL) {
 		kfree(dai_priv);
-		return -ENOMEM;
+		return NULL;
 	}
-	
-	hifi_dai->name	= wm8753_codec_hifi_dai_id;
-	hifi_dai->ops	= &wm8753_hifi_dai_ops;
-	hifi_dai->playback	= &wm8753_hifi_playback;
-	hifi_dai->capture	= &wm8753_capture;
-	hifi_dai->dev	= dev;
 	hifi_dai->private_data = dai_priv;
-	ret = snd_soc_register_codec_dai(hifi_dai);
-	if (ret < 0) {
-		snd_soc_dai_free(hifi_dai);
-		kfree(dai_priv);
-		return ret;
-	}
-	
-	wm8753->hifi_dai = hifi_dai;
-	return 0;
+	return hifi_dai;
 }
 
 static int wm8753_codec_probe(struct platform_device *pdev)
@@ -1603,11 +1587,11 @@ static int wm8753_codec_probe(struct platform_device *pdev)
  	ret = snd_soc_register_codec(codec);
  	if (ret < 0)
  		goto codec_err;
- 	ret = wm8753_hifi_dai_probe(wm8753, &pdev->dev);
-	if (ret < 0)
+ 	wm8753->hifi_dai = wm8753_hifi_dai_probe(wm8753, &pdev->dev);
+	if (wm8753->hifi_dai == NULL)
 		goto hifi_err;
-	ret = wm8753_voice_dai_probe(wm8753, &pdev->dev);
-	if (ret < 0)
+	wm8753->voice_dai = wm8753_voice_dai_probe(wm8753, &pdev->dev);
+	if (wm8753->voice_dai == NULL)
 		goto voice_err;
 		
  	platform_set_drvdata(pdev, codec);
@@ -1615,7 +1599,6 @@ static int wm8753_codec_probe(struct platform_device *pdev)
 voice_err:
 	kfree(wm8753->hifi_dai->private_data);
 	snd_soc_unregister_codec_dai(wm8753->hifi_dai);
-	snd_soc_dai_free(wm8753->hifi_dai);
 hifi_err:	
 	snd_soc_unregister_codec(codec);
 codec_err:
@@ -1634,12 +1617,10 @@ static int wm8753_codec_remove(struct platform_device *pdev)
 	/* free hifi */
 	kfree(wm8753->hifi_dai->private_data);
 	snd_soc_unregister_codec_dai(wm8753->hifi_dai);
-	snd_soc_dai_free(wm8753->hifi_dai);
 	
 	/* free voice */
 	kfree(wm8753->voice_dai->private_data);
 	snd_soc_unregister_codec_dai(wm8753->voice_dai);
-	snd_soc_dai_free(wm8753->voice_dai);
 	
 	/* free codec */
 	snd_soc_unregister_codec(codec);

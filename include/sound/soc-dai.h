@@ -96,27 +96,9 @@
 #define SND_SOC_CLOCK_IN		0
 #define SND_SOC_CLOCK_OUT		1
 
-
 struct snd_soc_dai_ops;
 struct snd_soc_dai;
 struct snd_ac97_bus_ops;
-
-/**
- * snd_soc_dai_allocate - allocate and initialize a DAI.
- * @codec: codec driver
- *
- * Allocates and initializes struct dai before calling register.
- */
-struct snd_soc_dai *snd_soc_dai_allocate(void);
-
-/**
- * snd_soc_dai_free - free codec.
- * @codec: codec driver
- */
-static inline void snd_soc_dai_free(struct snd_soc_dai *dai)
-{
-	kfree(dai);
-}
 
 /*
  * Digital Audio Interface control and clocking API.
@@ -276,6 +258,18 @@ struct snd_soc_dai_ops {
 
 	/* AC97 bus operations - for ac97 control interface only */
 	struct snd_ac97_bus_ops *ac97_ops;
+};
+
+struct snd_soc_dai_new {
+	const char *name;
+	int id;
+	int ac97_control; /* are we an AC97 control interface */
+
+	/* playback and capture capabilities */
+	struct snd_soc_dai_caps *playback;
+	struct snd_soc_dai_caps *capture;
+
+	struct snd_soc_dai_ops *ops;
 };
 
 /*

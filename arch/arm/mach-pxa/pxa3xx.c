@@ -119,6 +119,9 @@ static unsigned long clk_pxa3xx_ac97_getrate(struct clk *clk)
 
 	ac97_div = AC97_DIV;
 
+	/* This may loose precision for some rates but won't for the 
+	 * standard 24.576MHz.
+	 */
 	rate /= (ac97_div >> 12) & 0x7fff;
 	rate *= (ac97_div & 0xfff);
 
