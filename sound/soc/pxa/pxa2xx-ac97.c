@@ -64,7 +64,7 @@ static unsigned short pxa2xx_ac97_read(struct snd_ac97 *ac97,
 	mutex_lock(&car_mutex);
 
 	/* set up primary or secondary codec/modem space */
-#ifdef CONFIG_PXA27xx
+#ifdef CONFIG_PXA27x
 	reg_addr = ac97->num ? &SAC_REG_BASE : &PAC_REG_BASE;
 #else
 	if (reg == AC97_GPIO_STATUS)
@@ -186,7 +186,7 @@ static void pxa2xx_ac97_cold_reset(struct snd_ac97 *ac97)
 	GCR &= ~GCR_COLD_RST;  /* then assert nCRST */
 
 	gsr_bits = 0;
-#ifdef CONFIG_PXA27xx
+#ifdef CONFIG_PXA27x
 	/* PXA27x Developers Manual section 13.5.2.2.1 */
 	clk_enable(ac97conf_clk);
 	udelay(5);
@@ -226,7 +226,7 @@ static irqreturn_t pxa2xx_ac97_irq(int irq, void *dai_id)
 		gsr_bits |= status;
 		wake_up(&gsr_wq);
 
-#ifdef CONFIG_PXA27xx
+#ifdef CONFIG_PXA27x
 		/* Although we don't use those we still need
 		 * to clear them since they tend to spuriously
 		 * trigger when MMC is used (hardware bug? go
@@ -442,7 +442,7 @@ static int pxa2xx_ac97_probe(struct platform_device *pdev)
 	if (ac97 == NULL)
 		return -ENOMEM;
 
-#ifdef CONFIG_PXA27xx
+#ifdef CONFIG_PXA27x
 	/* Use GPIO 113 as AC97 Reset on Bulverde */
 	pxa_gpio_mode(113 | GPIO_ALT_FN_2_OUT);
 	
