@@ -749,13 +749,6 @@ found:
 	return 0;
 }
 
-static int wm9713_set_dai_pll(struct snd_soc_dai *codec_dai,
-		int pll_id, unsigned int freq_in, unsigned int freq_out)
-{
-	struct snd_soc_codec *codec = codec_dai->codec;
-	return wm9713_set_pll(codec, pll_id, freq_in, freq_out);
-}
-
 /*
  * Tristate the PCM DAI lines, tristate can be disabled by calling
  * wm9713_set_dai_fmt()
@@ -1088,7 +1081,6 @@ static struct snd_soc_dai_ops wm9713_voice_dai_ops = {
 	
 	/* dai ops */
 	.set_clkdiv = wm9713_set_dai_clkdiv,
-	.set_pll = wm9713_set_dai_pll,
 	.set_fmt = wm9713_set_dai_fmt,
 	.set_tristate = wm9713_set_dai_tristate,
 };
@@ -1106,75 +1098,24 @@ EXPORT_SYMBOL_GPL(wm9713_codec_aux_dai_id);
 const char wm9713_codec_voice_dai_id[] = "wm9713-codec-voice-dai";
 EXPORT_SYMBOL_GPL(wm9713_codec_voice_dai_id);
 
-static int wm9713_hifi_dai_probe(struct wm9713_data *wm9713, 
-	struct device *dev)
-{
-	struct snd_soc_dai *dai;
-	int ret;
+struct snd_soc_dai_new wm9713_hifi_dai = {
+	.name		= wm9713_codec_hifi_dai_id,
+	.playback	= &wm9713_hifi_playback,
+	.capture	= &wm9713_capture,
+	.ops		= &wm9713_hifi_dai_ops,
+};
 
-	dai = snd_soc_dai_allocate();
-	if (dai == NULL)
-		return -ENOMEM;
+struct snd_soc_dai_new wm9713_voice_dai = {
+	.name		= wm9713_codec_voice_dai_id,
+	.playback	= &wm9713_voice_playback,
+	.ops		= &wm9713_voice_dai_ops,
+};
 
-	dai->name = wm9713_codec_hifi_dai_id;
-	dai->ops = &wm9713_hifi_dai_ops;
-	dai->playback = &wm9713_hifi_playback;
-	dai->capture = &wm9713_capture;
-	dai->dev = dev;
-	ret = snd_soc_register_codec_dai(dai);
-	if (ret < 0) {
-		snd_soc_dai_free(dai);
-		return ret;
-	}
-	wm9713->hifi_dai = dai;
-	return 0;
-}
-
-static int wm9713_voice_dai_probe(struct wm9713_data *wm9713, 
-	struct device *dev)
-{
-	struct snd_soc_dai *dai;
-	int ret;
-
-	dai = snd_soc_dai_allocate();
-	if (dai == NULL)
-		return -ENOMEM;
-
-	dai->name = wm9713_codec_voice_dai_id;
-	dai->ops = &wm9713_voice_dai_ops;
-	dai->playback = &wm9713_voice_playback;
-	dai->dev = dev;
-	ret = snd_soc_register_codec_dai(dai);
-	if (ret < 0) {
-		snd_soc_dai_free(dai);
-		return ret;
-	}
-	wm9713->voice_dai = dai;
-	return 0;
-}
-
-static int wm9713_aux_dai_probe(struct wm9713_data *wm9713, 
-	struct device *dev)
-{
-	struct snd_soc_dai *dai;
-	int ret;
-
-	dai = snd_soc_dai_allocate();
-	if (dai == NULL)
-		return -ENOMEM;
-
-	dai->name = wm9713_codec_aux_dai_id;
-	dai->ops = &wm9713_aux_dai_ops;
-	dai->playback = &wm9713_aux_playback;
-	dai->dev = dev;
-	ret = snd_soc_register_codec_dai(dai);
-	if (ret < 0) {
-		snd_soc_dai_free(dai);
-		return ret;
-	}
-	wm9713->aux_dai = dai;
-	return 0;
-}
+struct snd_soc_dai_new wm9713_aux_dai = {
+	.name		= wm9713_codec_aux_dai_id,
+	.playback	= &wm9713_aux_playback,
+	.ops		= &wm9713_aux_dai_ops,
+};
 
 static int wm9713_codec_probe(struct platform_device *pdev)
 {
@@ -1209,28 +1150,30 @@ static int wm9713_codec_probe(struct platform_device *pdev)
 	codec->dev = &pdev->dev;
 	codec->name = wm9713_codec_id;
 	codec->private_data = wm9713;
+	codec->set_pll = wm9713_set_pll,
 
 	ret = snd_soc_register_codec(codec);
  	if (ret < 0)
  		goto codec_err;
- 	ret = wm9713_hifi_dai_probe(wm9713, &pdev->dev);
-	if (ret < 0)
+ 	wm9713->hifi_dai = snd_soc_register_codec_dai(&wm9713_hifi_dai, &pdev->dev);
+	if (wm9713->hifi_dai == NULL)
 		goto hifi_dai_err;
-	ret = wm9713_aux_dai_probe(wm9713, &pdev->dev);
-	if (ret < 0)
+	wm9713->aux_dai = snd_soc_register_codec_dai(&wm9713_aux_dai, &pdev->dev);
+	if (wm9713->aux_dai == NULL)
 		goto aux_dai_err;
-	ret = wm9713_voice_dai_probe(wm9713, &pdev->dev);
-	if (ret < 0)
+	wm9713->voice_dai = snd_soc_register_codec_dai(&wm9713_voice_dai, &pdev->dev);
+	if (wm9713->voice_dai == NULL)
 		goto voice_dai_err;
- 	platform_set_drvdata(pdev, wm9713);
+
+	codec->private_data = wm9713;
+ 	platform_set_drvdata(pdev, codec);
+
 	return ret;
 	
 voice_dai_err:
 	snd_soc_unregister_codec_dai(wm9713->aux_dai);
-	snd_soc_dai_free(wm9713->aux_dai);
 aux_dai_err:
 	snd_soc_unregister_codec_dai(wm9713->hifi_dai);
-	snd_soc_dai_free(wm9713->hifi_dai);
 hifi_dai_err:
 	snd_soc_unregister_codec(codec);
 codec_err:
@@ -1248,13 +1191,8 @@ static int wm9713_codec_remove(struct platform_device *pdev)
 	struct wm9713_data *wm9713 = codec->private_data;
 	
 	snd_soc_unregister_codec_dai(wm9713->hifi_dai);
-	snd_soc_dai_free(wm9713->hifi_dai);
-	
 	snd_soc_unregister_codec_dai(wm9713->aux_dai);
-	snd_soc_dai_free(wm9713->aux_dai);
-	
 	snd_soc_unregister_codec_dai(wm9713->aux_dai);
-	snd_soc_dai_free(wm9713->voice_dai);
 	
 	snd_soc_unregister_codec(codec);
 	kfree(codec->reg_cache);

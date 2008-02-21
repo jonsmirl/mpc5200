@@ -16,6 +16,7 @@
 #include <linux/interrupt.h>
 #include <linux/wait.h>
 #include <linux/delay.h>
+#include <linux/clk.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -34,6 +35,9 @@
 static DEFINE_MUTEX(car_mutex);
 static DECLARE_WAIT_QUEUE_HEAD(gsr_wq);
 static volatile long gsr_bits;
+static struct clk *ac97_clk;
+static struct clk *ac97conf_clk;
+
 
 struct pxa_ac97_data {
 	struct snd_soc_dai *dai[3];
@@ -58,23 +62,23 @@ static unsigned short pxa2xx_ac97_read(struct snd_ac97 *ac97,
 	mutex_lock(&car_mutex);
 
 	/* set up primary or secondary codec/modem space */
-#ifdef CONFIG_PXA27x
-	reg_addr = ac97->num ? &SAC_REG_BASE : &PAC_REG_BASE;
-#else
-	if (reg == AC97_GPIO_STATUS)
-		reg_addr = ac97->num ? &SMC_REG_BASE : &PMC_REG_BASE;
-	else
+	if (cpu_is_pxa27x()) {
 		reg_addr = ac97->num ? &SAC_REG_BASE : &PAC_REG_BASE;
-#endif
+	} else {
+		if (reg == AC97_GPIO_STATUS)
+			reg_addr = ac97->num ? &SMC_REG_BASE : &PMC_REG_BASE;
+		else
+			reg_addr = ac97->num ? &SAC_REG_BASE : &PAC_REG_BASE;
+	}
 	reg_addr += (reg >> 1);
 
-#ifndef CONFIG_PXA27x
-	if (reg == AC97_GPIO_STATUS) {
-		/* read from controller cache */
-		val = *reg_addr;
-		goto out;
+	if (cpu_is_pxa27x()) {
+		if (reg == AC97_GPIO_STATUS) {
+			/* read from controller cache */
+			val = *reg_addr;
+			goto out;
+		}
 	}
-#endif
 
 	/* start read access across the ac97 link */
 	GSR = GSR_CDONE | GSR_SDONE;
@@ -108,14 +112,14 @@ static void pxa2xx_ac97_write(struct snd_ac97 *ac97, unsigned short reg,
 	mutex_lock(&car_mutex);
 
 	/* set up primary or secondary codec/modem space */
-#ifdef CONFIG_PXA27x
-	reg_addr = ac97->num ? &SAC_REG_BASE : &PAC_REG_BASE;
-#else
-	if (reg == AC97_GPIO_STATUS)
-		reg_addr = ac97->num ? &SMC_REG_BASE : &PMC_REG_BASE;
-	else
+	if (cpu_is_pxa27x()) {
 		reg_addr = ac97->num ? &SAC_REG_BASE : &PAC_REG_BASE;
-#endif
+	} else {
+		if (reg == AC97_GPIO_STATUS)
+			reg_addr = ac97->num ? &SMC_REG_BASE : &PMC_REG_BASE;
+		else
+			reg_addr = ac97->num ? &SAC_REG_BASE : &PAC_REG_BASE;
+	}
 	reg_addr += (reg >> 1);
 
 	GSR = GSR_CDONE | GSR_SDONE;
@@ -133,18 +137,18 @@ static void pxa2xx_ac97_warm_reset(struct snd_ac97 *ac97)
 {
 	gsr_bits = 0;
 
-#ifdef CONFIG_PXA27x
-	/* warm reset broken on Bulverde,
-	   so manually keep AC97 reset high */
-	pxa_gpio_mode(113 | GPIO_OUT | GPIO_DFLT_HIGH);
-	udelay(10);
-	GCR |= GCR_WARM_RST;
-	pxa_gpio_mode(113 | GPIO_ALT_FN_2_OUT);
-	udelay(500);
-#else
-	GCR |= GCR_WARM_RST | GCR_PRIRDY_IEN | GCR_SECRDY_IEN;
-	wait_event_timeout(gsr_wq, gsr_bits & (GSR_PCR | GSR_SCR), 1);
-#endif
+	if (cpu_is_pxa27x()) {
+		/* warm reset broken on Bulverde,
+		   so manually keep AC97 reset high */
+		pxa_gpio_mode(113 | GPIO_OUT | GPIO_DFLT_HIGH);
+		udelay(10);
+		GCR |= GCR_WARM_RST;
+		pxa_gpio_mode(113 | GPIO_ALT_FN_2_OUT);
+		udelay(500);
+	} else {
+		GCR |= GCR_WARM_RST | GCR_PRIRDY_IEN | GCR_SECRDY_IEN;
+		wait_event_timeout(gsr_wq, gsr_bits & (GSR_PCR | GSR_SCR), 1);
+	}
 
 	if (!((GSR | gsr_bits) & (GSR_PCR | GSR_SCR)))
 		printk(KERN_INFO "%s: warm reset timeout (GSR=%#lx)\n",
@@ -160,18 +164,18 @@ static void pxa2xx_ac97_cold_reset(struct snd_ac97 *ac97)
 	GCR &= ~GCR_COLD_RST;  /* then assert nCRST */
 
 	gsr_bits = 0;
-#ifdef CONFIG_PXA27x
-	/* PXA27x Developers Manual section 13.5.2.2.1 */
-	pxa_set_cken(CKEN_AC97CONF, 1);
-	udelay(5);
-	pxa_set_cken(CKEN_AC97CONF, 0);
-	GCR = GCR_COLD_RST;
-	udelay(50);
-#else
-	GCR = GCR_COLD_RST;
-	GCR |= GCR_CDONE_IE|GCR_SDONE_IE;
-	wait_event_timeout(gsr_wq, gsr_bits & (GSR_PCR | GSR_SCR), 1);
-#endif
+	if (cpu_is_pxa27x()) {
+		/* PXA27x Developers Manual section 13.5.2.2.1 */
+		clk_enable(ac97conf_clk);
+		udelay(5);
+		clk_disable(ac97conf_clk);
+		GCR = GCR_COLD_RST;
+		udelay(50);
+	} else {
+		GCR = GCR_COLD_RST;
+		GCR |= GCR_CDONE_IE|GCR_SDONE_IE;
+		wait_event_timeout(gsr_wq, gsr_bits & (GSR_PCR | GSR_SCR), 1);
+	}
 
 	if (!((GSR | gsr_bits) & (GSR_PCR | GSR_SCR)))
 		printk(KERN_INFO "%s: cold reset timeout (GSR=%#lx)\n",
@@ -191,14 +195,15 @@ static irqreturn_t pxa2xx_ac97_irq(int irq, void *dai_id)
 		gsr_bits |= status;
 		wake_up(&gsr_wq);
 
-#ifdef CONFIG_PXA27x
-		/* Although we don't use those we still need to clear them
-		   since they tend to spuriously trigger when MMC is used
-		   (hardware bug? go figure)... */
-		MISR = MISR_EOC;
-		PISR = PISR_EOC;
-		MCSR = MCSR_EOC;
-#endif
+		if (cpu_is_pxa27x()) {
+			/* Although we don't use those we still need
+			 * to clear them since they tend to spuriously
+			 * trigger when MMC is used (hardware bug? go
+			 * figure)... */
+			MISR = MISR_EOC;
+			PISR = PISR_EOC;
+			MCSR = MCSR_EOC;
+		}
 
 		return IRQ_HANDLED;
 	}
@@ -254,14 +259,14 @@ static struct pxa2xx_pcm_dma_params pxa2xx_ac97_pcm_mic_mono_in = {
 };
 
 #ifdef CONFIG_PM
-static int pxa2xx_ac97_suspend(struct device *dev, pm_message_t state)
+static int pxa2xx_ac97_suspend(struct platform_device *dev, pm_message_t state)
 {
 	GCR |= GCR_ACLINK_OFF;
-	pxa_set_cken(CKEN_AC97, 0);
+	clk_disable(ac97_clk);
 	return 0;
 }
 
-static int pxa2xx_ac97_resume(struct device *dev)
+static int pxa2xx_ac97_resume(struct platform_device *dev)
 {
 	pxa_gpio_mode(GPIO31_SYNC_AC97_MD);
 	pxa_gpio_mode(GPIO30_SDATA_OUT_AC97_MD);
@@ -271,7 +276,7 @@ static int pxa2xx_ac97_resume(struct device *dev)
 	/* Use GPIO 113 as AC97 Reset on Bulverde */
 	pxa_gpio_mode(113 | GPIO_ALT_FN_2_OUT);
 #endif
-	pxa_set_cken(CKEN_AC97, 1);
+	clk_enable(ac97_clk);
 	return 0;
 }
 
@@ -389,7 +394,7 @@ static struct snd_soc_dai_ops pxa_ac97_mic_ops = {
 };
 
 /* IRQ and GPIO's could be platform data */
-static int pxa_ac97_probe(struct platform_device *pdev)
+static int pxa2xx_ac97_probe(struct platform_device *pdev)
 {
 	struct pxa_ac97_data *ac97;
 	int ret, i;
@@ -406,11 +411,23 @@ static int pxa_ac97_probe(struct platform_device *pdev)
 	if (ac97 == NULL)
 		return -ENOMEM;
 
-#ifdef CONFIG_PXA27x
-	/* Use GPIO 113 as AC97 Reset on Bulverde */
-	pxa_gpio_mode(113 | GPIO_ALT_FN_2_OUT);
-#endif
-	pxa_set_cken(CKEN_AC97, 1);
+	if (cpu_is_pxa27x()) {
+		/* Use GPIO 113 as AC97 Reset on Bulverde */
+		pxa_gpio_mode(113 | GPIO_ALT_FN_2_OUT);
+
+		ac97conf_clk = clk_get(&pdev->dev, "AC97CONFCLK");
+		if (IS_ERR(ac97conf_clk)) {
+			ret = -ENODEV;
+			goto unwind_data;
+		}
+	}
+
+	ac97_clk = clk_get(&pdev->dev, "AC97CLK");
+	if (IS_ERR(ac97_clk)) {
+		ret = -ENODEV;
+		goto unwind_data;
+	}
+	clk_enable(ac97_clk);
 
 	for (i = 0; i < 3; i++) {
 		ac97->dai[i] = snd_soc_dai_allocate();
@@ -448,17 +465,19 @@ unwind_create:
 		snd_soc_unregister_platform_dai(ac97->dai[i]);
 		snd_soc_dai_free(ac97->dai[i]);
 	}
+unwind_data:
+	kfree(ac97);
 	return ret;
 }
 
-static int pxa_ac97_remove(struct platform_device *pdev)
+static int pxa2xx_ac97_remove(struct platform_device *pdev)
 {
 	struct pxa_ac97_data *ac97 = platform_get_drvdata(pdev);
 	int i;
 
 	GCR |= GCR_ACLINK_OFF;
 	free_irq(IRQ_AC97, ac97->dai[0]);
-	pxa_set_cken(CKEN_AC97, 0);
+	clk_disable(ac97_clk);
 
 	for (i = 0; i < 3; i++) {
 		snd_soc_unregister_platform_dai(ac97->dai[i]);
@@ -474,8 +493,10 @@ static struct platform_driver pxa_ac97_driver = {
 		.name		= "pxa2xx-ac97",
 		.owner		= THIS_MODULE,
 	},
-	.probe		= pxa_ac97_probe,
-	.remove		= __devexit_p(pxa_ac97_remove),
+	.probe		= pxa2xx_ac97_probe,
+	.remove		= __devexit_p(pxa2xx_ac97_remove),
+	.suspend	= pxa2xx_ac97_suspend,
+	.resume		= pxa2xx_ac97_resume,
 };
 
 static __init int pxa_ac97_init(void)
