@@ -144,10 +144,10 @@ static int soc_ac97_pcm_create(struct snd_soc_card *soc_card)
 		if (pcm_runtime->cpu_dai->ac97_control) {
 			ret = soc_ac97_dev_register(pcm_runtime->codec,
 				pcm_runtime->name);
-			if (ret < 0) {
+			if (ret < 0) 
 				printk(KERN_ERR "asoc: AC97 device register failed\n");
-				goto out;
-			}
+
+			return ret;
 		}
 	}
 out:
