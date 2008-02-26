@@ -101,7 +101,9 @@ static int run_delayed_work(struct delayed_work *dwork)
 static int soc_ac97_dev_unregister(struct snd_soc_codec *codec)
 {
 	struct snd_ac97 *ac97 = codec->ac97;
-	
+
+	BUG_ON(!codec->ac97);
+
 	if (ac97->dev.bus)
 		device_unregister(&ac97->dev);
 	return 0;
@@ -115,6 +117,8 @@ static int soc_ac97_dev_register(struct snd_soc_codec *codec, const char *name)
 {
 	struct snd_ac97 *ac97 = codec->ac97;
 	int err;
+
+	BUG_ON(!codec->ac97);
 
 	ac97->dev.bus = &ac97_bus_type;
 	ac97->dev.parent = NULL;
