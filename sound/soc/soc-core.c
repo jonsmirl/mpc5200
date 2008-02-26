@@ -934,6 +934,12 @@ static int soc_match_pcm(struct snd_soc_card *soc_card)
 			return 0;
 	}
 
+	if (soc_card->init) {
+		ret = soc_card->init(soc_card);
+		if (ret < 0)
+			goto out;
+	}
+
 #ifdef CONFIG_SND_SOC_AC97_BUS
 	ret = soc_ac97_pcm_create(soc_card);
 	if (ret < 0) {
@@ -942,11 +948,6 @@ static int soc_match_pcm(struct snd_soc_card *soc_card)
 	}
 #endif
 
-	if (soc_card->init) {
-		ret = soc_card->init(soc_card);
-		if (ret < 0)
-			goto out;
-	}
 	mutex_lock(&soc_card->mutex);
 	snprintf(soc_card->card->shortname, sizeof(soc_card->card->shortname),
 		 "%s", soc_card->name);
