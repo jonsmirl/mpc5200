@@ -129,6 +129,32 @@ struct soc_enum {
 	void *dapm;
 };
 
+struct snd_soc_codec_new {
+	const char *name;
+	short reg_cache_size;
+	short reg_cache_step;
+
+	int (*set_bias_level)(struct snd_soc_codec *codec,
+		enum snd_soc_dapm_bias_level level);
+
+	int (*init)(struct snd_soc_codec *codec,
+		struct snd_soc_card *soc_card);
+	void (*exit)(struct snd_soc_codec *codec,
+		struct snd_soc_card *soc_card);
+
+	int (*set_sysclk)(struct snd_soc_codec *codec, int clk_id,
+		unsigned int freq, int dir);
+	int (*set_clkdiv)(struct snd_soc_codec *codec,
+		int div_id, int div);
+	int (*set_pll)(struct snd_soc_codec *codec,
+		int pll_id, unsigned int freq_in, unsigned int freq_out);
+
+	unsigned int (*codec_read)(struct snd_soc_codec *codec,
+		unsigned int reg);
+	int (*codec_write)(struct snd_soc_codec *codec, unsigned int reg,
+		unsigned int value);
+};
+
 /*
  * SoC Audio Codec.
  *
@@ -171,11 +197,11 @@ struct snd_soc_codec {
 	 * Codec-wide clocking configuration - all optional.
 	 * Called by soc_card drivers, usually in their init().
 	 */
-	int (*set_sysclk)(struct snd_soc_codec *dai, int clk_id,
+	int (*set_sysclk)(struct snd_soc_codec *codec, int clk_id,
 		unsigned int freq, int dir);
-	int (*set_clkdiv)(struct snd_soc_codec *dai,
+	int (*set_clkdiv)(struct snd_soc_codec *codec,
 		int div_id, int div);
-	int (*set_pll)(struct snd_soc_codec *dai,
+	int (*set_pll)(struct snd_soc_codec *codec,
 		int pll_id, unsigned int freq_in, unsigned int freq_out);
 	
 	/* 
@@ -257,7 +283,8 @@ struct snd_kcontrol *snd_soc_cnew(const struct snd_kcontrol_new *_template,
  *
  * Registers a codec driver with ASoC core.
  */
-int snd_soc_register_codec(struct snd_soc_codec *codec);
+struct snd_soc_codec *snd_soc_register_codec(
+	struct snd_soc_codec_new *codec, struct device *dev);
 
 /**
  * snd_soc_unregister_codec - unregister ASoC codec driver.
@@ -267,22 +294,6 @@ int snd_soc_register_codec(struct snd_soc_codec *codec);
  */
 void snd_soc_unregister_codec(struct snd_soc_codec *codec);
 
-/**
- * snd_soc_codec_allocate - allocate and initialize a codec.
- * @codec: codec driver
- *
- * Allocates and initializes struct codec before calling register.
- */
-struct snd_soc_codec *snd_soc_codec_allocate(void);
-
-/**
- * snd_soc_codec_free - free codec.
- * @codec: codec driver
- */
-static inline void snd_soc_codec_free(struct snd_soc_codec *codec)
-{
-	kfree(codec);
-}
 
 /**
  * snd_soc_register_codec_dai - register a codec DAI.

@@ -26,6 +26,7 @@ struct snd_soc_dai;
 struct snd_pcm_ops;
 struct snd_card;
 struct snd_soc_dai_new;
+struct snd_soc_platform_new;
 
 /**
  * snd_soc_register_platform - register ASoC platform driver.
@@ -33,7 +34,8 @@ struct snd_soc_dai_new;
  *
  * Registers a platform driver with ASoC core.
  */
-int snd_soc_register_platform(struct snd_soc_platform *platform);
+struct snd_soc_platform *snd_soc_register_platform(
+	struct snd_soc_platform_new *template, struct device *dev);
 
 /**
  * snd_soc_unregister_platform - unregister ASoC platform driver.
@@ -85,6 +87,16 @@ void snd_soc_unregister_platform_dai(struct snd_soc_dai *dai);
  */
 int snd_soc_set_runtime_hwparams(struct snd_pcm_substream *substream,
 	const struct snd_pcm_hardware *hw);
+
+struct snd_soc_platform_new {
+	const char *name;
+	const struct snd_pcm_ops *pcm_ops;
+
+	int (*pcm_new)(struct snd_soc_platform *platform,
+		struct snd_card *card, int playback, int capture,
+		struct snd_pcm *pcm);
+	void (*pcm_free)(struct snd_pcm *pcm);
+};
 
 /*
  * ASoC platform interface
