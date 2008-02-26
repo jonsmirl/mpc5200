@@ -1739,6 +1739,7 @@ struct snd_soc_dai *snd_soc_register_platform_dai(
 	soc_match_soc_card_pcms();
 	return dai;
 }
+EXPORT_SYMBOL_GPL(snd_soc_register_platform_dai);
 
 void snd_soc_unregister_platform_dai(struct snd_soc_dai *dai_runtime)
 {
@@ -1747,6 +1748,7 @@ void snd_soc_unregister_platform_dai(struct snd_soc_dai *dai_runtime)
 	mutex_unlock(&client_mutex);
 	kfree(dai_runtime);
 }
+EXPORT_SYMBOL_GPL(snd_soc_unregister_platform_dai);
 
 #if 0
 int snd_soc_register_platform_dais(struct snd_soc_dai_new *template, 
