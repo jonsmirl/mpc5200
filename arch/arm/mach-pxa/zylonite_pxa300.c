@@ -62,6 +62,7 @@ static mfp_cfg_t common_mfp_cfg[] __initdata = {
 	GPIO110_UART3_RXD | MFP_LPM_EDGE_FALL,
 
 	/* AC97 */
+	MFP_CFG_DRV(GPIO17, AF0, DS03X),
 	GPIO23_AC97_nACRESET,
 	GPIO24_AC97_SYSCLK,
 	GPIO29_AC97_BITCLK,

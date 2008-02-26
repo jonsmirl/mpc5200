@@ -7,7 +7,7 @@ config SND_PXA2XX_SOC
 	  to select the audio interfaces to support below.
 
 config SND_PXA2XX_SOC_AC97
-	tristate
+	tristate "SoC support for AC97 on PXA chips"
 	select AC97_BUS
 	select SND_SOC_AC97_BUS
 
@@ -15,6 +15,10 @@ config SND_PXA2XX_SOC_I2S
 	tristate
 
 config SND_PXA2XX_SOC_SSP
+	tristate
+	select PXA_SSP
+
+config SND_PXA3XX_SOC_SSP
 	tristate
 	select PXA_SSP
 
@@ -117,6 +121,14 @@ config SND_PXA2XX_SOC_MAINSTONE_WM9712
 	help
 	  Say Y if you want to add support for SoC voice audio on Mainstone
 	  with the WM9712.
+
+config SND_PXA3XX_SOC_ZYLONITE
+	tristate "SoC audio support for Marvell Zylonite"
+	depends on SND_PXA2XX_SOC && MACH_ZYLONITE
+	select SND_PXA2XX_SOC_AC97
+	select SND_SOC_WM9713
+	help
+	  Say Y if you want to add support for SoC voice audio on Zylonite
 
 config SND_PXA2XX_SOC_E800
 	tristate "SoC AC97 Audio support for e800"

@@ -848,6 +848,7 @@ static int snd_soc_dapm_set_pin(struct snd_soc_card *soc_card,
 
 	list_for_each_entry(w, &soc_card->dapm_widgets, list) {
 		if (!strcmp(w->name, pin)) {
+			dbg("dapm: %s: pin %s\n", soc_card->name, pin);
 			w->connected = status;
 			return 0;
 		}

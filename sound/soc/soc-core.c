@@ -1871,6 +1871,11 @@ int snd_soc_pcm_create(struct snd_soc_card *soc_card,
 		       config->name);
 		return -EINVAL;
 	}
+	if (!config->ops) {
+		printk(KERN_ERR "asoc: no operations new pcm %s\n",
+		       config->name);
+		return -EINVAL;
+	}
 
 	_config = kzalloc(sizeof(*_config), GFP_KERNEL);
 	if (_config == NULL)
