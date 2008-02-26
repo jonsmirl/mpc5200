@@ -393,19 +393,34 @@ static struct snd_soc_dai_ops pxa_ac97_mic_ops = {
 	.ac97_ops 	= &pxa2xx_ac97_ops,
 };
 
+struct snd_soc_dai_new dais[] = {
+	{
+		.name         = pxa_ac97_hifi_dai_id,
+		.ac97_control = 1,
+		.playback     = &pxa_ac97_hifi_playback,
+		.capture      = &pxa_ac97_hifi_capture,
+		.ops          = &pxa_ac97_hifi_ops,
+	},
+	{
+		.name         = pxa_ac97_aux_dai_id,
+		.ac97_control = 1,
+		.playback     = &pxa_ac97_aux_playback,
+		.capture      = &pxa_ac97_aux_capture,
+		.ops          = &pxa_ac97_aux_ops,
+	},
+	{
+		.name         = pxa_ac97_mic_dai_id,
+		.ac97_control = 1,
+		.capture      = &pxa_ac97_mic_capture,
+		.ops          = &pxa_ac97_mic_ops,
+	},
+};
+
 /* IRQ and GPIO's could be platform data */
 static int pxa2xx_ac97_probe(struct platform_device *pdev)
 {
 	struct pxa_ac97_data *ac97;
 	int ret, i;
-	const char *id[] = {pxa_ac97_hifi_dai_id, pxa_ac97_aux_dai_id, 
-		pxa_ac97_mic_dai_id};
-	struct snd_soc_dai_caps *caps[][2] = {
-		{&pxa_ac97_hifi_playback, &pxa_ac97_hifi_capture},
-		{&pxa_ac97_aux_playback, &pxa_ac97_aux_capture},
-		{NULL, &pxa_ac97_mic_capture}};
-	static struct snd_soc_dai_ops *ops[] = {&pxa_ac97_hifi_ops,
-		&pxa_ac97_aux_ops, &pxa_ac97_mic_ops};
 
 	ac97 = kzalloc(sizeof(struct pxa_ac97_data), GFP_KERNEL);
 	if (ac97 == NULL)
@@ -429,20 +444,13 @@ static int pxa2xx_ac97_probe(struct platform_device *pdev)
 	}
 	clk_enable(ac97_clk);
 
-	for (i = 0; i < 3; i++) {
-		ac97->dai[i] = snd_soc_dai_allocate();
+	for (i = 0; i < ARRAY_SIZE(dais); i++) {
+		ac97->dai[i] = snd_soc_register_platform_dai(&dais[i],
+							     &pdev->dev);
 		if (ac97->dai[i] == NULL) {
 			ret = -ENOMEM;
 			goto unwind_create;
 		}
-		ac97->dai[i]->ops = ops[i];
-		ac97->dai[i]->playback = caps[i][0];
-		ac97->dai[i]->capture = caps[i][1];
-		ac97->dai[i]->dev = &pdev->dev;
-		ac97->dai[i]->name = id[i];
-		ret = snd_soc_register_platform_dai(ac97->dai[i]);
-		if (ret < 0)
-			goto unwind_reg;
 	}
 
 	ret = request_irq(IRQ_AC97, pxa2xx_ac97_irq, IRQF_DISABLED, "AC97", 
@@ -457,13 +465,11 @@ static int pxa2xx_ac97_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, ac97);
 	return ret;
-unwind_reg:
-	snd_soc_dai_free(ac97->dai[i]);
+
 unwind_create:
 	i--;
 	for (; i >= 0; i--) {
 		snd_soc_unregister_platform_dai(ac97->dai[i]);
-		snd_soc_dai_free(ac97->dai[i]);
 	}
 unwind_data:
 	kfree(ac97);
@@ -480,9 +486,8 @@ static int pxa2xx_ac97_remove(struct platform_device *pdev)
 	clk_disable(ac97_clk);
 
 	for (i = 0; i < 3; i++) {
-		snd_soc_unregister_platform_dai(ac97->dai[i]);
 		kfree(ac97->dai[i]->private_data);
-		snd_soc_dai_free(ac97->dai[i]);
+		snd_soc_unregister_platform_dai(ac97->dai[i]);
 	}
 
 	return 0;
