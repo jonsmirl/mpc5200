@@ -150,7 +150,6 @@ static int soc_ac97_pcm_create(struct snd_soc_card *soc_card)
 			return ret;
 		}
 	}
-out:
 	return ret;
 }
 #endif
