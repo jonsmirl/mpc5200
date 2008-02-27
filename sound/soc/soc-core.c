@@ -104,28 +104,36 @@ static int soc_ac97_dev_unregister(struct snd_soc_codec *codec)
 
 	BUG_ON(!codec->ac97);
 
-	if (ac97->dev.bus)
+	if (ac97->dev.bus) {
 		device_unregister(&ac97->dev);
+		ac97->dev.bus = 0;
+	}
 	return 0;
 }
 
-/* stop no dev release warning */
-static void soc_ac97_device_release(struct device *dev){}
+static void soc_ac97_device_release(struct device *dev)
+{
+	/* A SoC AC97 device has no resources to free, it only talks
+	 * through bus operations.
+	 */
+}
 
-/* register ac97 codec to bus */
-static int soc_ac97_dev_register(struct snd_soc_codec *codec, const char *name)
+static int soc_ac97_dev_register(struct snd_soc_codec *codec)
 {
 	struct snd_ac97 *ac97 = codec->ac97;
 	int err;
 
 	BUG_ON(!codec->ac97);
 
+	if (ac97->dev.bus)
+		return 0;
+
 	ac97->dev.bus = &ac97_bus_type;
-	ac97->dev.parent = NULL;
+	ac97->dev.parent = codec->dev;
 	ac97->dev.release = soc_ac97_device_release;
 
 	snprintf(ac97->dev.bus_id, BUS_ID_SIZE, "%d-%d:%s",
-		 0, 0, name);
+		 ac97->num, ac97->addr, codec->name);
 	err = device_register(&ac97->dev);
 	if (err < 0) {
 		snd_printk(KERN_ERR "Can't register ac97 bus\n");
@@ -142,12 +150,12 @@ static int soc_ac97_pcm_create(struct snd_soc_card *soc_card)
 	
 	list_for_each_entry(pcm_runtime, &soc_card->pcm_list, list) {
 		if (pcm_runtime->cpu_dai->ac97_control) {
-			ret = soc_ac97_dev_register(pcm_runtime->codec,
-				pcm_runtime->name);
-			if (ret < 0) 
+			ret = soc_ac97_dev_register(pcm_runtime->codec);
+			if (ret < 0) {
 				printk(KERN_ERR "asoc: AC97 device register failed\n");
 
-			return ret;
+				return ret;
+			}
 		}
 	}
 	return ret;
@@ -1075,18 +1083,14 @@ EXPORT_SYMBOL_GPL(snd_soc_new_ac97_codec);
  *
  * Frees AC97 codec device resources.
  */
-void snd_soc_free_ac97_codec(struct snd_soc_pcm_runtime *pcm_runtime)
+void snd_soc_free_ac97_codec(struct snd_soc_codec *codec)
 {
-	struct snd_soc_card *soc_card = pcm_runtime->soc_card;
-	struct snd_ac97 *ac97 = pcm_runtime->codec->ac97;
+	struct snd_ac97 *ac97 = codec->ac97;
 	
-	mutex_lock(&soc_card->mutex);
 	kfree(ac97->bus);
 	kfree(ac97);
-	pcm_runtime->codec->ac97 = NULL;
-	mutex_unlock(&soc_card->mutex);
+	codec->ac97 = NULL;
 }
-EXPORT_SYMBOL_GPL(snd_soc_free_ac97_codec);
 
 /**
  * snd_soc_update_bits - update codec register bits
@@ -1936,15 +1940,18 @@ void snd_soc_card_free(struct snd_soc_card *soc_card)
 		soc_card->exit(soc_card);
 
 	list_for_each_entry_safe(pcm_runtime, _pcm_runtime, &soc_card->pcm_list, list) {
-#ifdef CONFIG_SND_SOC_AC97_BUS
-		if (pcm_runtime->cpu_dai->ac97_control)
-			soc_ac97_dev_unregister(pcm_runtime->codec);
-#endif
 		kfree(pcm_runtime);
 	}
 	list_for_each_entry(config, &soc_card->config_list, list) {
-		if (config->codec)
+		if (config->codec) {
+#ifdef CONFIG_SND_SOC_AC97_BUS
+			if (config->codec->ac97) {
+				soc_ac97_dev_unregister(config->codec);
+				snd_soc_free_ac97_codec(config->codec);
+			}
+#endif
 			module_put(config->codec->dev->driver->owner);
+		}
 		if (config->codec_dai)
 			module_put(config->codec_dai->dev->driver->owner);
 		if (config->platform)
@@ -1952,6 +1959,7 @@ void snd_soc_card_free(struct snd_soc_card *soc_card)
 		if (config->cpu_dai)
 			module_put(config->cpu_dai->dev->driver->owner);
 	}
+	list_del(&soc_card->list);	
 	kfree(soc_card);
 }
 EXPORT_SYMBOL_GPL(snd_soc_card_free);
