@@ -1723,12 +1723,13 @@ struct snd_soc_codec *snd_soc_register_codec(
 	codec->set_pll = template->set_pll;
 	codec->codec_read = template->codec_read;
 	codec->codec_write = template->codec_write;
+	codec->dev = dev;
 
 	mutex_lock(&client_mutex);
 	list_add(&codec->list, &codec_list);
 	mutex_unlock(&client_mutex);
 	soc_match_soc_card_pcms();
-	return 0;
+	return codec;
 }
 EXPORT_SYMBOL_GPL(snd_soc_register_codec);
 
@@ -1795,12 +1796,13 @@ struct snd_soc_platform *snd_soc_register_platform(
 	platform->pcm_ops = template->pcm_ops;
 	platform->pcm_new = template->pcm_new;
 	platform->pcm_free = template->pcm_free;
+	platform->dev = dev;
 
 	mutex_lock(&client_mutex);
 	list_add(&platform->list, &platform_list);
 	mutex_unlock(&client_mutex);
 	soc_match_soc_card_pcms();
-	return 0;
+	return platform;
 }
 EXPORT_SYMBOL_GPL(snd_soc_register_platform);
 
