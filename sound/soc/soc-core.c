@@ -1959,7 +1959,8 @@ void snd_soc_card_free(struct snd_soc_card *soc_card)
 		if (config->cpu_dai)
 			module_put(config->cpu_dai->dev->driver->owner);
 	}
-	list_del(&soc_card->list);	
+	snd_soc_dapm_free(soc_card);
+	list_del(&soc_card->list);
 	kfree(soc_card);
 }
 EXPORT_SYMBOL_GPL(snd_soc_card_free);
