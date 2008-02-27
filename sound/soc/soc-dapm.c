@@ -1402,7 +1402,6 @@ void snd_soc_dapm_free(struct snd_soc_card *soc_card)
 	snd_soc_dapm_sys_remove(soc_card);
 	dapm_free_widgets(soc_card);
 }
-EXPORT_SYMBOL_GPL(snd_soc_dapm_free);
 
 /* Module information */
 MODULE_AUTHOR("Liam Girdwood, liam.girdwood@wolfsonmicro.com, www.wolfsonmicro.com");
