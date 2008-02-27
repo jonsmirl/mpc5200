@@ -486,10 +486,12 @@ static int pxa2xx_ac97_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto unwind_create;
 
+#ifndef CONFIG_PXA3xx
 	pxa_gpio_mode(GPIO31_SYNC_AC97_MD);
 	pxa_gpio_mode(GPIO30_SDATA_OUT_AC97_MD);
 	pxa_gpio_mode(GPIO28_BITCLK_AC97_MD);
 	pxa_gpio_mode(GPIO29_SDATA_IN_AC97_MD);
+#endif
 
 	platform_set_drvdata(pdev, ac97);
 	return ret;
