@@ -1946,6 +1946,7 @@ void snd_soc_card_free(struct snd_soc_card *soc_card)
 		if (config->codec) {
 #ifdef CONFIG_SND_SOC_AC97_BUS
 			if (config->codec->ac97) {
+				snd_soc_codec_exit(config->codec, soc_card);
 				soc_ac97_dev_unregister(config->codec);
 				snd_soc_free_ac97_codec(config->codec);
 			}
