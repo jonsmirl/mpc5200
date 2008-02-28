@@ -48,6 +48,9 @@
 #define dbg(format, arg...)
 #endif
 
+/* dapm sys fs - used by the core */
+int snd_soc_dapm_sys_add(struct snd_soc_card *soc_card);
+
 static DEFINE_MUTEX(pcm_mutex);
 static DEFINE_MUTEX(io_mutex);
 static DEFINE_MUTEX(client_mutex);
@@ -1195,6 +1198,39 @@ struct snd_kcontrol *snd_soc_cnew(const struct snd_kcontrol_new *_template,
 	return snd_ctl_new1(&template, data);
 }
 EXPORT_SYMBOL_GPL(snd_soc_cnew);
+
+/**
+ * snd_soc_add_new_controls - create and add new controls
+ * @_template: control template
+ * @data: control private data
+ * @num: number of controls
+ *
+ * Create new mixer controls from template controls and add to
+ * the sound card.
+ *
+ * Returns 0 for success, else error. On error all resources can be freed
+ * with a call to snd_soc_card_free().
+ */
+int snd_soc_add_new_controls(struct snd_soc_card *soc_card,
+	const struct snd_kcontrol_new *_template, void *data, int num)
+{
+	struct snd_kcontrol *control;
+	int i, ret;
+
+	for (i = 0; i < num; i++) {
+		control = snd_soc_cnew(_template++, data, NULL);
+		if (control == NULL)
+			return -ENOMEM;
+
+		ret = snd_ctl_add(soc_card->card, control);
+		if (ret < 0) {
+			kfree(control);
+			return ret;
+		}
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(snd_soc_add_new_controls);
 
 /**
  * snd_soc_info_enum_double - enumerated double mixer info callback

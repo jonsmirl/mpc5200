@@ -239,7 +239,7 @@ struct snd_soc_codec {
 /*
  * KControls.
  *
- * Called by the convenience macros to get/set/info kcontrols.
+ * Called by the convenience macros to get/put/info kcontrols.
  */
 int snd_soc_info_enum_double(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_info *uinfo);
@@ -276,6 +276,21 @@ int snd_soc_put_volsw_2r(struct snd_kcontrol *kcontrol,
  */
 struct snd_kcontrol *snd_soc_cnew(const struct snd_kcontrol_new *_template,
 	void *data, char *long_name);
+
+/**
+ * snd_soc_add_new_controls - create and add new controls
+ * @soc_card: soc sound card
+ * @_template: control template
+ * @data: control private data
+ * @num: number of controls
+ *
+ * Create new mixer controls from template controls and add to
+ * the sound card.
+ *
+ * Returns 0 for success, else error.
+ */
+int snd_soc_add_new_controls(struct snd_soc_card *soc_card,
+	const struct snd_kcontrol_new *_template, void *data, int num);
 
 /**
  * snd_soc_register_codec - register ASoC codec driver.

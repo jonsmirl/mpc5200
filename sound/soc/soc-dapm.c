@@ -451,7 +451,7 @@ static int is_connected_input_ep(struct snd_soc_dapm_widget *widget)
 static int dapm_power_widgets_ext(struct snd_soc_dapm_widget *w)
 {
 	int in, out, power, power_change, ret;
-	
+
 	/* all other widgets */
 	in = is_connected_input_ep(w);
 	dapm_clear_walk(w->soc_card);
@@ -491,7 +491,7 @@ static int dapm_power_widgets_ext(struct snd_soc_dapm_widget *w)
 				if (ret < 0)
 					return ret;
 			}
-		} 
+		}
 	} else if (power_change)
 		/* no event handler */
 		dapm_update_bits(w);
@@ -554,10 +554,10 @@ static int dapm_power_widgets(struct snd_soc_card *soc_card, int event)
 			/* programmable gain/attenuation */
 			if (w->id == snd_soc_dapm_pga) {
 				int on;
-				
+
 				if (w->event)
 					goto ext;
-				
+
 				in = is_connected_input_ep(w);
 				dapm_clear_walk(w->soc_card);
 				out = is_connected_output_ep(w);
@@ -608,7 +608,7 @@ static int dapm_power_widgets(struct snd_soc_card *soc_card, int event)
 				}
 				continue;
 			}
-ext:			
+ext:
 			/* widgets with external callbacks */
 			ret = dapm_power_widgets_ext(w);
 			if (ret < 0)
@@ -874,20 +874,7 @@ int snd_soc_dapm_sync(struct snd_soc_card *soc_card)
 }
 EXPORT_SYMBOL_GPL(snd_soc_dapm_sync);
 
-/**
- * snd_soc_dapm_add_route - Add a DAPM route between dapm widgets
- * @codec: audio codec
- * @sink: name of target widget
- * @control: mixer control name
- * @source: name of source name
- *
- * Connects 2 dapm widgets together via a named audio path. The sink is
- * the widget receiving the audio signal, whilst the source is the sender
- * of the audio signal.
- *
- * Returns 0 for success else error.
- */
-int snd_soc_dapm_add_route(struct snd_soc_card *soc_card, const char *sink,
+static int soc_dapm_add_route(struct snd_soc_card *soc_card, const char *sink,
 	const char * control, const char *source)
 {
 	struct snd_soc_dapm_path *path;
@@ -990,7 +977,35 @@ err:
 	kfree(path);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(snd_soc_dapm_add_route);
+
+/**
+ * snd_soc_dapm_add_routes - Add a DAPM route between dapm widgets
+ * @soc_card: soc sound card
+ * @route: audio routes
+ * @num: number of routes
+ *
+ * Connects 2 dapm widgets together via a named audio path. The sink is
+ * the widget receiving the audio signal, whilst the source is the sender
+ * of the audio signal.
+ *
+ * Returns 0 for success else error. On error all resources can be freed
+ * with a call to snd_soc_card_free().
+ */
+int snd_soc_dapm_add_routes(struct snd_soc_card *soc_card,
+	const struct snd_soc_dapm_route *route, int num)
+{
+	int i, ret;
+
+	for (i = 0; i < num; i++) {
+		ret = soc_dapm_add_route(soc_card, route->sink, route->control,
+					 route->source);
+		if (ret < 0)
+			return ret;
+		route++;
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(snd_soc_dapm_add_routes);
 
 /**
  * snd_soc_dapm_init - initialise and add any new dapm widgets
@@ -1239,16 +1254,7 @@ out:
 }
 EXPORT_SYMBOL_GPL(snd_soc_dapm_put_enum_double);
 
-/**
- * snd_soc_dapm_new_control - create new dapm control
- * @codec: audio codec
- * @widget: widget template
- *
- * Creates a new dapm control based upon the template.
- *
- * Returns 0 for success else error.
- */
-int snd_soc_dapm_new_control(struct snd_soc_card *soc_card,
+static int soc_dapm_new_control(struct snd_soc_card *soc_card,
 	struct snd_soc_codec *codec, const struct snd_soc_dapm_widget *widget)
 {
 	struct snd_soc_dapm_widget *w;
@@ -1267,7 +1273,34 @@ int snd_soc_dapm_new_control(struct snd_soc_card *soc_card,
 	w->connected = 1;
 	return 0;
 }
-EXPORT_SYMBOL_GPL(snd_soc_dapm_new_control);
+
+/**
+ * snd_soc_dapm_new_controls - create new dapm controls
+ * @soc_card: soc sound card.
+ * @codec: audio codec
+ * @widget: widget
+ * @num: number of widgets
+ *
+ * Creates new dapm controls based upon the templates.
+ *
+ * Returns 0 for success else error. On error all resources can be freed
+ * with a call to snd_soc_card_free().
+ */
+int snd_soc_dapm_new_controls(struct snd_soc_card *soc_card,
+	struct snd_soc_codec *codec, const struct snd_soc_dapm_widget *widget,
+	int num)
+{
+	int i, ret;
+
+	for (i = 0; i < num; i++) {
+		ret = soc_dapm_new_control(soc_card, codec, widget);
+		if (ret < 0)
+			return ret;
+		widget++;
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(snd_soc_dapm_new_controls);
 
 /**
  * snd_soc_dapm_stream_event - send a stream event to the dapm core
