@@ -197,22 +197,6 @@ SOC_SINGLE("3D Lower Cut-off Switch", AC97_REC_GAIN_MIC, 4, 1, 0),
 SOC_SINGLE("3D Depth", AC97_REC_GAIN_MIC, 0, 15, 1),
 };
 
-/* add non dapm controls */
-static int wm9713_add_controls(struct snd_soc_codec *codec, 
-	struct snd_card *card)
-{
-	int err, i;
-
-	for (i = 0; i < ARRAY_SIZE(wm9713_snd_ac97_controls); i++) {
-		err = snd_ctl_add(card,
-				snd_soc_cnew(&wm9713_snd_ac97_controls[i],
-				codec, NULL));
-		if (err < 0)
-			return err;
-	}
-	return 0;
-}
-
 /* We have to create a fake left and right HP mixers because
  * the codec only has a single control that is shared by both channels.
  * This makes it impossible to determine the audio path using the current
@@ -459,7 +443,7 @@ SND_SOC_DAPM_INPUT("MIC2B"),
 SND_SOC_DAPM_VMID("VMID"),
 };
 
-static const char *audio_map[][3] = {
+static const struct snd_soc_dapm_route audio_map[] = {
 	/* left HP mixer */
 	{"Left HP Mixer", "PC Beep Playback Switch", "PCBEEP"},
 	{"Left HP Mixer", "Voice Playback Switch",   "Voice DAC"},
@@ -608,28 +592,26 @@ static const char *audio_map[][3] = {
 	{"Capture Mono Mux", "Stereo", "Capture Mixer"},
 	{"Capture Mono Mux", "Left", "Left Capture Source"},
 	{"Capture Mono Mux", "Right", "Right Capture Source"},
-
-	{NULL, NULL, NULL},
 };
 
-static int wm9713_add_widgets(struct snd_soc_codec *codec, 
+static int wm9713_add_widgets(struct snd_soc_codec *codec,
 	struct snd_soc_card *soc_card)
 {
-	int i;
+	int ret;
 
-	for(i = 0; i < ARRAY_SIZE(wm9713_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(soc_card, codec, 
-			&wm9713_dapm_widgets[i]);
-	}
+	ret = snd_soc_dapm_new_controls(soc_card, codec,
+					wm9713_dapm_widgets,
+					ARRAY_SIZE(wm9713_dapm_widgets));
+	if (ret < 0)
+		return ret;
 
 	/* set up audio path audio_map */
-	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(soc_card, audio_map[i][0],
-			audio_map[i][1], audio_map[i][2]);
-	}
+	ret = snd_soc_dapm_add_routes(soc_card, audio_map,
+				     ARRAY_SIZE(audio_map));
+	if (ret < 0)
+		return ret;
 
-	snd_soc_dapm_init(soc_card);
-	return 0;
+	return snd_soc_dapm_init(soc_card);
 }
 
 static unsigned int wm9713_ac97_read(struct snd_soc_codec *codec,
@@ -1019,7 +1001,8 @@ static int wm9713_codec_init(struct snd_soc_codec *codec,
 	reg = wm9713_ac97_read(codec, AC97_CD) & 0x7fff;
 	wm9713_ac97_write(codec, AC97_CD, reg);
 	
-	wm9713_add_controls(codec, soc_card->card);
+	snd_soc_add_new_controls(soc_card, wm9713_snd_ac97_controls, codec,
+		ARRAY_SIZE(wm9713_snd_ac97_controls));
 	wm9713_add_widgets(codec, soc_card);
 	
 	return 0;
@@ -1117,6 +1100,16 @@ struct snd_soc_dai_new wm9713_aux_dai = {
 	.ops		= &wm9713_aux_dai_ops,
 };
 
+static struct snd_soc_codec_new wm9713_codec = {
+	.name		= wm9713_codec_id,
+	.reg_cache_size = sizeof(wm9713_reg),
+	.reg_cache_step = 2,
+	.set_bias_level	= wm9713_set_bias_level,
+	.init		= wm9713_codec_init,
+	.codec_read	= wm9713_ac97_read,
+	.codec_write	= wm9713_ac97_write,
+};
+
 static int wm9713_codec_probe(struct platform_device *pdev)
 {
 	struct wm9713_data *wm9713;
@@ -1125,7 +1118,7 @@ static int wm9713_codec_probe(struct platform_device *pdev)
 
 	printk(KERN_INFO "WM9713/WM9714 SoC Audio Codec %s\n", WM9713_VERSION);
 
-	codec = snd_soc_codec_allocate();
+	codec = snd_soc_new_codec(&wm9713_codec, (char *) wm9713_reg);
 	if (codec == NULL)
 		return -ENOMEM;
 
@@ -1134,30 +1127,15 @@ static int wm9713_codec_probe(struct platform_device *pdev)
 		ret =  -ENOMEM;
 		goto priv_err;
 	}
-	
-	codec->reg_cache = kmemdup(wm9713_reg, sizeof(wm9713_reg), GFP_KERNEL);
-	if (codec->reg_cache == NULL) {
-		ret =  -ENOMEM;
-		goto cache_err;
-	}
-	
-	codec->reg_cache_size = sizeof(wm9713_reg);
-	codec->reg_cache_step = 2;
-	codec->set_bias_level = wm9713_set_bias_level;
-	codec->codec_read = wm9713_ac97_read;
-	codec->codec_write = wm9713_ac97_write;
-	codec->init = wm9713_codec_init;
-	codec->dev = &pdev->dev;
-	codec->name = wm9713_codec_id;
 	codec->private_data = wm9713;
-	codec->set_pll = wm9713_set_pll,
+	platform_set_drvdata(pdev, codec);
 
-	ret = snd_soc_register_codec(codec);
+	ret = snd_soc_register_codec(codec, &pdev->dev);
  	if (ret < 0)
  		goto codec_err;
  	wm9713->hifi_dai = snd_soc_register_codec_dai(&wm9713_hifi_dai, &pdev->dev);
 	if (wm9713->hifi_dai == NULL)
-		goto hifi_dai_err;
+		goto codec_err;
 	wm9713->aux_dai = snd_soc_register_codec_dai(&wm9713_aux_dai, &pdev->dev);
 	if (wm9713->aux_dai == NULL)
 		goto aux_dai_err;
@@ -1165,23 +1143,16 @@ static int wm9713_codec_probe(struct platform_device *pdev)
 	if (wm9713->voice_dai == NULL)
 		goto voice_dai_err;
 
-	codec->private_data = wm9713;
- 	platform_set_drvdata(pdev, codec);
-
 	return ret;
 	
 voice_dai_err:
 	snd_soc_unregister_codec_dai(wm9713->aux_dai);
 aux_dai_err:
 	snd_soc_unregister_codec_dai(wm9713->hifi_dai);
-hifi_dai_err:
-	snd_soc_unregister_codec(codec);
 codec_err:
-	kfree(codec->reg_cache);
-cache_err:
 	kfree(wm9713);
 priv_err:
-	snd_soc_codec_free(codec);
+	snd_soc_free_codec(codec);
 	return ret;
 }
 
@@ -1194,10 +1165,8 @@ static int wm9713_codec_remove(struct platform_device *pdev)
 	snd_soc_unregister_codec_dai(wm9713->aux_dai);
 	snd_soc_unregister_codec_dai(wm9713->aux_dai);
 	
-	snd_soc_unregister_codec(codec);
-	kfree(codec->reg_cache);
 	kfree(codec->private_data);
-	snd_soc_codec_free(codec);
+	snd_soc_free_codec(codec);
 	return 0;
 }
 
