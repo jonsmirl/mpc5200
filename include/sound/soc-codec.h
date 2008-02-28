@@ -293,22 +293,30 @@ int snd_soc_add_new_controls(struct snd_soc_card *soc_card,
 	const struct snd_kcontrol_new *_template, void *data, int num);
 
 /**
- * snd_soc_register_codec - register ASoC codec driver.
+ * snd_soc_register_codec - register codec driver.
  * @codec: codec driver
  *
  * Registers a codec driver with ASoC core.
  */
-struct snd_soc_codec *snd_soc_register_codec(
-	struct snd_soc_codec_new *codec, struct device *dev);
+int snd_soc_register_codec(struct snd_soc_codec *codec, struct device *dev);
 
 /**
- * snd_soc_unregister_codec - unregister ASoC codec driver.
+ * snd_soc_new_codec - register codec driver.
+ * @template: new codec driver template
+ * @cache: default register cache or NULL
+ *
+ * Creates a new codec and allocates resources including register cache.
+ */
+struct snd_soc_codec *snd_soc_new_codec(
+	struct snd_soc_codec_new *template, const char *cache);
+
+/**
+ * snd_soc_free_codec - unregister and free codec.
  * @codec: codec driver
  *
- * Unregisters a codec driver with ASoC core.
+ * Unregisters codec with core and frees all resources.
  */
-void snd_soc_unregister_codec(struct snd_soc_codec *codec);
-
+void snd_soc_free_codec(struct snd_soc_codec *codec);
 
 /**
  * snd_soc_register_codec_dai - register a codec DAI.

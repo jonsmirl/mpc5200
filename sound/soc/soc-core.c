@@ -652,7 +652,7 @@ static struct snd_pcm_ops soc_pcm_ops = {
  * snd_soc_card_suspend - suspend soc_card
  * @soc_card: soc soc_card
  *
- * Mutes, then suspends all soc_card PCM's. NOTE: soc_card driver will still 
+ * Mutes, then suspends all soc_card PCM's. NOTE: soc_card driver will still
  * have to suspend codecs/platform.
  */
 int snd_soc_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state)
@@ -703,7 +703,7 @@ int snd_soc_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state)
  * snd_soc_card_resume - resume soc_card
  * @soc_card: soc soc_card
  *
- * Resumes and unmutes all soc_card PCM's. NOTE: soc_card driver will still 
+ * Resumes and unmutes all soc_card PCM's. NOTE: soc_card driver will still
  * have to resume codecs/platform.
  */
 int snd_soc_resume_pcms(struct snd_soc_card *soc_card)
@@ -750,7 +750,7 @@ int snd_soc_resume_pcms(struct snd_soc_card *soc_card)
 EXPORT_SYMBOL_GPL(snd_soc_suspend_pcms);
 EXPORT_SYMBOL_GPL(snd_soc_resume_pcms);
 
-/* Creates a new PCM based upon a pcm_config in the soc_card driver */  
+/* Creates a new PCM based upon a pcm_config in the soc_card driver */
 static int soc_create_pcm(struct snd_soc_card *soc_card,
 	struct soc_pcm_config *pcm_config)
 {
@@ -769,13 +769,13 @@ static int soc_create_pcm(struct snd_soc_card *soc_card,
 	/* yes, then check codec list */
 	list_for_each_entry(codec, &codec_list, list) {
 		if (!strcmp(config->codec, codec->name) &&
-		    codec->num == config->codec_num && 
+		    codec->num == config->codec_num &&
 		    try_module_get(codec->dev->driver->owner)) {
 			dbg("ASoC %s %s: Match for %s.%d %s.%d\n",
 			    soc_card->name, config->name,
 			    config->codec, config->codec_num,
 			    codec->name, codec->num);
-			
+
 			pcm_config->codec = codec;
 			goto codec_dai;
 		} else {
@@ -857,7 +857,7 @@ check:
 	if (!pcm_config->codec || !pcm_config->codec_dai ||
 	    !pcm_config->platform || !pcm_config->cpu_dai) {
 		dbg("ASoC %s %s: incomplete codec %d (DAI %d) platform"
-		    " %d (DAI %d)\n", 
+		    " %d (DAI %d)\n",
 		    soc_card->name, config->name,
 		    !pcm_config->codec == 0, !pcm_config->codec_dai == 0,
 		    !pcm_config->platform == 0, !pcm_config->cpu_dai == 0);
@@ -878,7 +878,7 @@ check:
 	platform = pcm_runtime->platform = pcm_config->platform;
 	pcm_config->cpu_dai->platform = pcm_config->platform;
 	pcm_config->codec_dai->codec = pcm_config->codec;
-		
+
 	ret = snd_pcm_new(soc_card->card, (char*)pcm_runtime->name,
 		soc_card->pcms++, config->playback, config->capture, &pcm);
 	if (ret < 0) {
@@ -1045,10 +1045,10 @@ int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
 	int num, int bus_no)
 {
 	struct snd_ac97 *ac97;
-	
+
 	snd_assert(codec != NULL, return -EINVAL);
 	snd_assert(ops != NULL, return -EINVAL);
-	
+
 	mutex_lock(&codec->mutex);
 
 	ac97 = kzalloc(sizeof(struct snd_ac97), GFP_KERNEL);
@@ -1074,7 +1074,7 @@ int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
 
 	snd_soc_codec_set_io(codec, soc_ac97_read, soc_ac97_write,
 			     codec->ac97);
-		
+
 	mutex_unlock(&codec->mutex);
 	return 0;
 }
@@ -1089,7 +1089,7 @@ EXPORT_SYMBOL_GPL(snd_soc_new_ac97_codec);
 void snd_soc_free_ac97_codec(struct snd_soc_codec *codec)
 {
 	struct snd_ac97 *ac97 = codec->ac97;
-	
+
 	kfree(ac97->bus);
 	kfree(ac97);
 	codec->ac97 = NULL;
@@ -1701,7 +1701,7 @@ struct snd_soc_dai *snd_soc_register_codec_dai(
 	struct snd_soc_dai_new *template, struct device *dev)
 {
 	struct snd_soc_dai *dai;
-		
+
 	BUG_ON(!dev);
 	BUG_ON(!template->name);
 
@@ -1733,56 +1733,75 @@ void snd_soc_unregister_codec_dai(struct snd_soc_dai *dai_runtime)
 }
 EXPORT_SYMBOL_GPL(snd_soc_unregister_codec_dai);
 
-struct snd_soc_codec *snd_soc_register_codec(
-	struct snd_soc_codec_new *template, struct device *dev)
+struct snd_soc_codec *snd_soc_new_codec(
+	struct snd_soc_codec_new *template, const char *cache)
 {
 	struct snd_soc_codec *codec;
 
-	BUG_ON(!dev);
 	BUG_ON(!template->name);
 
 	codec = kzalloc(sizeof(*codec), GFP_KERNEL);
 	if (codec == NULL)
 		return NULL;
 
+	if (cache) {
+		codec->reg_cache = kmemdup(cache, template->reg_cache_size,
+			GFP_KERNEL);
+		if (codec->reg_cache == NULL) {
+			kfree(codec);
+			return NULL;
+		}
+	}
+
 	mutex_init(&codec->mutex);
 	INIT_LIST_HEAD(&codec->list);
 	INIT_LIST_HEAD(&codec->dai_list);
+
 	codec->name = template->name;
 	codec->reg_cache_size = template->reg_cache_size;
 	codec->reg_cache_step = template->reg_cache_step;
 	codec->set_bias_level = template->set_bias_level;
 	codec->init = template->init;
 	codec->exit = template->exit;
-	codec->set_sysclk = template->set_sysclk;
-	codec->set_clkdiv = template->set_clkdiv;
-	codec->set_pll = template->set_pll;
+//	codec->set_sysclk = template->set_sysclk;
+//	codec->set_clkdiv = template->set_clkdiv;
+//	codec->set_pll = template->set_pll;
 	codec->codec_read = template->codec_read;
 	codec->codec_write = template->codec_write;
-	codec->dev = dev;
+
+	return codec;
+}
+EXPORT_SYMBOL_GPL(snd_soc_new_codec);
+
+int snd_soc_register_codec(struct snd_soc_codec *codec, struct device *dev)
+{
+	BUG_ON(!dev);
 
 	mutex_lock(&client_mutex);
+	codec->dev = dev;
 	list_add(&codec->list, &codec_list);
 	mutex_unlock(&client_mutex);
 	soc_match_soc_card_pcms();
-	return codec;
+	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_register_codec);
 
-void snd_soc_unregister_codec(struct snd_soc_codec *codec)
+void snd_soc_free_codec(struct snd_soc_codec *codec)
 {
 	mutex_lock(&client_mutex);
 	list_del(&codec->list);
 	mutex_unlock(&client_mutex);
+	if (codec->reg_cache)
+		kfree(codec->reg_cache);
 	kfree(codec);
 }
-EXPORT_SYMBOL_GPL(snd_soc_unregister_codec);
+EXPORT_SYMBOL_GPL(snd_soc_free_codec);
 
 struct snd_soc_dai *snd_soc_register_platform_dai(
 	struct snd_soc_dai_new *template, struct device *dev)
 {
 	struct snd_soc_dai *dai;
-		
+
 	BUG_ON(!dev);
 	BUG_ON(!template->name);
 
@@ -1814,12 +1833,11 @@ void snd_soc_unregister_platform_dai(struct snd_soc_dai *dai_runtime)
 }
 EXPORT_SYMBOL_GPL(snd_soc_unregister_platform_dai);
 
-struct snd_soc_platform *snd_soc_register_platform(
-	struct snd_soc_platform_new *template, struct device *dev)
+struct snd_soc_platform *snd_soc_new_platform(
+	struct snd_soc_platform_new *template)
 {
 	struct snd_soc_platform *platform;
 
-	BUG_ON(!dev);
 	BUG_ON(!template->name);
 
 	platform = kzalloc(sizeof(*platform), GFP_KERNEL);
@@ -1832,24 +1850,33 @@ struct snd_soc_platform *snd_soc_register_platform(
 	platform->pcm_ops = template->pcm_ops;
 	platform->pcm_new = template->pcm_new;
 	platform->pcm_free = template->pcm_free;
-	platform->dev = dev;
+
+	return platform;
+}
+EXPORT_SYMBOL_GPL(snd_soc_new_platform);
+
+int snd_soc_register_platform(struct snd_soc_platform *platform,
+	struct device *dev)
+{
+	BUG_ON(!dev);
 
 	mutex_lock(&client_mutex);
+	platform->dev = dev;
 	list_add(&platform->list, &platform_list);
 	mutex_unlock(&client_mutex);
 	soc_match_soc_card_pcms();
-	return platform;
+	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_register_platform);
 
-void snd_soc_unregister_platform(struct snd_soc_platform *platform)
+void snd_soc_free_platform(struct snd_soc_platform *platform)
 {
 	mutex_lock(&client_mutex);
 	list_del(&platform->list);
 	mutex_unlock(&client_mutex);
 	kfree(platform);
 }
-EXPORT_SYMBOL_GPL(snd_soc_unregister_platform);
+EXPORT_SYMBOL_GPL(snd_soc_free_platform);
 
 struct snd_soc_card *snd_soc_card_create(const char *name,
 	struct device *parent, int idx, const char *xid)
@@ -1859,13 +1886,13 @@ struct snd_soc_card *snd_soc_card_create(const char *name,
 	soc_card = kzalloc(sizeof(*soc_card), GFP_KERNEL);
 	if (soc_card == NULL)
 		return NULL;
-	
+
 	soc_card->name = kstrdup(name, GFP_KERNEL);
 	if (soc_card->name == NULL) {
 		kfree(soc_card);
 		return NULL;
 	}
-	
+
 	soc_card->dev = parent;
 	mutex_init(&soc_card->mutex);
 	INIT_LIST_HEAD(&soc_card->dapm_widgets);
@@ -1966,7 +1993,7 @@ void snd_soc_card_free(struct snd_soc_card *soc_card)
 	struct soc_pcm_config *config;
 
 	snd_card_free(soc_card->card);
-	
+
 	list_for_each_entry_safe(pcm_runtime, _pcm_runtime, &soc_card->pcm_list, list)
 		run_delayed_work(&pcm_runtime->delayed_work);
 

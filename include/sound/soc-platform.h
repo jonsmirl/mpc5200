@@ -29,38 +29,29 @@ struct snd_soc_dai_new;
 struct snd_soc_platform_new;
 
 /**
- * snd_soc_register_platform - register ASoC platform driver.
+ * snd_soc_register_platform - register platform driver.
  * @platform: platform driver
  *
  * Registers a platform driver with ASoC core.
  */
-struct snd_soc_platform *snd_soc_register_platform(
-	struct snd_soc_platform_new *template, struct device *dev);
+int snd_soc_register_platform(struct snd_soc_platform *platform, struct device *dev);
 
 /**
- * snd_soc_unregister_platform - unregister ASoC platform driver.
+ * snd_soc_new_platform - register platform driver.
+ * @template: new platform driver template
+ *
+ * Creates a new platform and allocates resources including register cache.
+ */
+struct snd_soc_platform *snd_soc_new_platform(
+	struct snd_soc_platform_new *template);
+
+/**
+ * snd_soc_free_platform - unregister and free platform.
  * @platform: platform driver
  *
- * Unregisters a platform driver with ASoC core.
+ * Unregisters platform with core and frees all resources.
  */
-void snd_soc_unregister_platform(struct snd_soc_platform *platform);
-
-/**
- * snd_soc_platform_allocate - allocate and initialize a platform.
- * @platform: platform driver
- *
- * Allocates and initializes struct platform.
- */
-struct snd_soc_platform *snd_soc_platform_allocate(void);
-
-/**
- * snd_soc_platform_free - free platform.
- * @platform: platform
- */
-static inline void snd_soc_platform_free(struct snd_soc_platform *platform)
-{
-	kfree(platform);
-}
+void snd_soc_free_platform(struct snd_soc_platform *platform);
 
 /**
  * snd_soc_register_platform_dai - registers a  platform DAI.
