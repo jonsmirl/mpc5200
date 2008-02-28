@@ -193,7 +193,8 @@ static int h5000_set_spk(struct snd_kcontrol *kcontrol,
 	return 1;
 };
 
-static int h5000_audio_power(struct snd_soc_dapm_widget *widget, int event) 
+static int h5000_audio_power(struct snd_soc_dapm_widget *widget,
+	struct snd_kcontrol *k, int event) 
 {
 	// mp - why do we need the ref count, dapm core should ref count all widget use.
 	static int power_use_count = 0;

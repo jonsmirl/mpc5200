@@ -219,7 +219,8 @@ static int soc_card_set_mic(struct snd_kcontrol *kcontrol,
 }
 
 /* turns on board speaker amp on/off */
-static int soc_card_amp_event(struct snd_soc_dapm_widget *w, int event)
+static int soc_card_amp_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *k, int event)
 {
 #if 0
 	if (SND_SOC_DAPM_EVENT_ON(event))

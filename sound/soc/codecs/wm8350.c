@@ -274,7 +274,8 @@ static void wm8350_pga_work(struct work_struct *work)
  * WM8350 Controls
  */
 
-static int pga_event(struct snd_soc_dapm_widget *w, int event)
+static int pga_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *k, int event)
 {
 	struct snd_soc_codec *codec = w->codec;
 	struct wm8350_data *wm8350_data = codec->private_data;
