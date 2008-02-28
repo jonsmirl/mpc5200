@@ -404,21 +404,21 @@ static struct snd_soc_dai_ops pxa_ac97_hifi_ops = {
 	/* alsa ops */
 	.hw_params	= pxa2xx_ac97_hw_params,
 	/* ac97_ops */
-	.ac97_ops 	= &pxa2xx_ac97_ops,
+	.ac97_ops	= &pxa2xx_ac97_ops,
 };
 
 static struct snd_soc_dai_ops pxa_ac97_aux_ops = {
 	/* alsa ops */
-	.hw_params 	= pxa2xx_ac97_hw_aux_params,
+	.hw_params	= pxa2xx_ac97_hw_aux_params,
 	/* ac97_ops */
-	.ac97_ops 	= &pxa2xx_ac97_ops,
+	.ac97_ops	= &pxa2xx_ac97_ops,
 };
 
 static struct snd_soc_dai_ops pxa_ac97_mic_ops = {
 	/* alsa ops */
 	.hw_params	= pxa2xx_ac97_hw_mic_params,
 	/* ac97_ops */
-	.ac97_ops 	= &pxa2xx_ac97_ops,
+	.ac97_ops	= &pxa2xx_ac97_ops,
 };
 
 struct snd_soc_dai_new dais[] = {
@@ -457,7 +457,7 @@ static int pxa2xx_ac97_probe(struct platform_device *pdev)
 #ifdef CONFIG_PXA27x
 	/* Use GPIO 113 as AC97 Reset on Bulverde */
 	pxa_gpio_mode(113 | GPIO_ALT_FN_2_OUT);
-	
+
 	ac97conf_clk = clk_get(&pdev->dev, "AC97CONFCLK");
 	if (IS_ERR(ac97conf_clk)) {
 		ret = -ENODEV;
@@ -481,7 +481,7 @@ static int pxa2xx_ac97_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = request_irq(IRQ_AC97, pxa2xx_ac97_irq, IRQF_DISABLED, "AC97", 
+	ret = request_irq(IRQ_AC97, pxa2xx_ac97_irq, IRQF_DISABLED, "AC97",
 		ac97->dai[0]);
 	if (ret < 0)
 		goto unwind_create;

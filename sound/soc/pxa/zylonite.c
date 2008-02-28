@@ -42,7 +42,7 @@ SND_SOC_DAPM_MIC("Handset Microphone", NULL),
 SND_SOC_DAPM_SPK("Speaker", NULL),
 };
 
-static const char *audio_map[][3] = {
+static const struct snd_soc_dapm_route audio_map[] = {
 
         /* Audio jack has both microphone and headphones */
 	{"Audio Jack Headphones", NULL, "HPL"},
@@ -56,8 +56,6 @@ static const char *audio_map[][3] = {
 
 	{"Speaker", NULL, "SPKL"},
 	{"Speaker", NULL, "SPKR"},
-
-	{NULL, NULL, NULL},
 };
 
 static struct snd_soc_ops zylonite_hifi_ops = {
@@ -92,14 +90,14 @@ static int zylonite_init(struct snd_soc_card *card)
 {
 	struct snd_soc_codec *codec;
 	struct snd_ac97_bus_ops *ac97_ops;
-	int i, ret;
+	int ret;
 
 	codec = snd_soc_get_codec(card, wm9713_codec_id);
 	if (codec == NULL) {
 		printk(KERN_ERR "Unable to obtain WM9713 codec\n");
 		return -ENODEV;
 	}
-	
+
 	ac97_ops = snd_soc_get_ac97_ops(card, pxa_ac97_hifi_dai_id);
 	if (!ac97_ops) {
 		printk(KERN_ERR "Unable to obtain AC97 operations\n");
@@ -132,15 +130,16 @@ static int zylonite_init(struct snd_soc_card *card)
 		return ret;
 	}
 
-	for(i = 0; i < ARRAY_SIZE(zylonite_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(card, codec,
-					 &zylonite_dapm_widgets[i]);
-	}
+	ret = snd_soc_dapm_new_controls(card, codec,
+			zylonite_dapm_widgets,
+			ARRAY_SIZE(zylonite_dapm_widgets));
+	if (ret < 0)
+		return ret;
 
-	for (i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(card, audio_map[i][0], 
-			audio_map[i][1], audio_map[i][2]);
-	}
+	ret = snd_soc_dapm_add_routes(card, audio_map,
+				     ARRAY_SIZE(audio_map));
+	if (ret < 0)
+		return ret;
 
 	/* The on-board speaker can't be disconnected */
 	snd_soc_dapm_enable_pin(card, "Speaker");
@@ -149,7 +148,7 @@ static int zylonite_init(struct snd_soc_card *card)
 	snd_soc_dapm_enable_pin(card, "Audio Jack Headphones");
 
 	snd_soc_dapm_sync(card);
-	
+
 	return 0;
 }
 
@@ -173,7 +172,7 @@ static int zylonite_probe(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "MCLK rate: %luHz\n",
 		clk_get_rate(mclk));
 
-	card = snd_soc_card_create("zylonite", &pdev->dev, 
+	card = snd_soc_card_create("zylonite", &pdev->dev,
 		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
 	if (card == NULL)
 		return -ENOMEM;
@@ -187,7 +186,7 @@ static int zylonite_probe(struct platform_device *pdev)
 				  ARRAY_SIZE(pcm_configs));
 	if (ret < 0)
 		goto err;
-	
+
 	ret = snd_soc_card_register(card);
 	if (ret < 0)
 		goto err;
@@ -210,7 +209,7 @@ static int __exit zylonite_remove(struct platform_device *pdev)
 
 #ifdef CONFIG_PM
 
-static int zylonite_suspend(struct platform_device *pdev, 
+static int zylonite_suspend(struct platform_device *pdev,
 	pm_message_t state)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
@@ -234,7 +233,7 @@ static struct platform_driver zylonite_driver = {
 	.suspend	= zylonite_suspend,
 	.resume		= zylonite_resume,
 	.driver		= {
-		.name 		= "zylonite-audio",
+		.name		= "zylonite-audio",
 		.owner		= THIS_MODULE,
 	},
 };

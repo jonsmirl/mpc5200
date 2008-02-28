@@ -30,6 +30,7 @@
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 #include <sound/initval.h>
+#include <sound/ac97_codec.h>
 
 #include <asm/mach-types.h>
 #include <asm/hardware/tmio.h>
@@ -135,7 +136,8 @@ static int tosa_set_spk(struct snd_kcontrol *kcontrol,
 }
 
 /* tosa dapm event handlers */
-static int tosa_hp_event(struct snd_soc_dapm_widget *w, int event)
+static int tosa_hp_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *control, int event)
 {
 	if (SND_SOC_DAPM_EVENT_ON(event))
 		set_tc6393_gpio(&tc6393_device.dev,TOSA_TC6393_L_MUTE);
@@ -153,7 +155,7 @@ SND_SOC_DAPM_SPK("Speaker", NULL),
 };
 
 /* tosa audio map */
-static const char *audio_map[][3] = {
+static const struct snd_soc_dapm_route audio_map[] = {
 
 	/* headphone connected to HPOUTL, HPOUTR */
 	{"Headphone Jack", NULL, "HPOUTL"},
@@ -172,8 +174,6 @@ static const char *audio_map[][3] = {
 	{"Headset Jack", NULL, "HPOUTR"},
 	{"LINEINR", NULL, "Mic Bias"},
 	{"Mic Bias", NULL, "Headset Jack"},
-
-	{NULL, NULL, NULL},
 };
 
 static const char *jack_function[] = {"Headphone", "Mic", "Line", "Headset",
@@ -209,22 +209,22 @@ static int tosa_init(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_codec *codec;
 	struct snd_ac97_bus_ops *ac97_ops;
-	int i, ret;
+	int ret;
 
 	codec = snd_soc_get_codec(soc_card, wm9712_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
-	
-	snd_soc_codec_set_io(codec, tosa_wm9712_read, 
+
+	snd_soc_codec_set_io(codec, tosa_wm9712_read,
 		tosa_wm9712_write, codec->ac97);
-		
-	ac97_ops = snd_soc_get_ac97_ops(soc_card, PXA2XX_DAI_AC97_HIFI);
-	
+
+	ac97_ops = snd_soc_get_ac97_ops(soc_card, pxa_ac97_hifi_dai_id);
+
 	/* register with AC97 bus for ad-hoc driver access */
 	ret = snd_soc_new_ac97_codec(codec, ac97_ops, soc_card->card, 0, 0);
 	if (ret < 0)
 		return ret;
-		
+
 	/* do a cold reset for the controller and then try
 	 * a warm reset followed by an optional cold reset for codec */
 	ac97_ops->reset(codec->ac97);
@@ -241,27 +241,24 @@ static int tosa_init(struct snd_soc_card *soc_card)
 	snd_soc_dapm_disable_pin(soc_card, "MONOOUT");
 
 	/* Add test specific controls */
-	for (i = 0; i < ARRAY_SIZE(tosa_controls); i++) {
-		if ((ret = snd_ctl_add(soc_card->card,
-				snd_soc_cnew(&tosa_controls[i], 
-					codec, NULL))) < 0)
-			return ret;
-	}
+	ret = snd_soc_add_new_controls(soc_card, tosa_controls,
+		soc_card, ARRAY_SIZE(tosa_controls));
+	if (ret < 0)
+		return ret;
 
 	/* Add tosa specific widgets */
-	for(i = 0; i < ARRAY_SIZE(tosa_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(soc_card, codec, 
-			&tosa_dapm_widgets[i]);
-	}
+	ret = snd_soc_dapm_new_controls(soc_card, codec,
+			tosa_dapm_widgets, ARRAY_SIZE(tosa_dapm_widgets));
+	if (ret < 0)
+		return ret;
 
 	/* set up tosa specific audio path audio_map */
-	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(soc_card, audio_map[i][0], 
-			audio_map[i][1], audio_map[i][2]);
-	}
+	ret = snd_soc_dapm_add_routes(soc_card, audio_map,
+				     ARRAY_SIZE(audio_map));
+	if (ret < 0)
+		return ret;
 
 	snd_soc_dapm_sync(soc_card);
-	
 	return 0;
 }
 
@@ -294,10 +291,10 @@ static int tosa_wm9712_probe(struct platform_device *pdev)
 	struct snd_soc_card *soc_card;
 	int ret;
 
-	if (!soc_card_is_tosa())
+	if (!machine_is_tosa())
 		return -ENODEV;
-	
-	soc_card = snd_soc_card_create("tosa", &pdev->dev, 
+
+	soc_card = snd_soc_card_create("tosa", &pdev->dev,
 		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
 	if (soc_card == NULL)
 		return -ENOMEM;
@@ -306,18 +303,18 @@ static int tosa_wm9712_probe(struct platform_device *pdev)
 	soc_card->init = tosa_init,
 	soc_card->private_data = pdev;
 	platform_set_drvdata(pdev, soc_card);
-	
+
 	ret = snd_soc_pcm_create(soc_card, &hifi_pcm_config);
 	if (ret < 0)
 		goto err;
-		
+
 	ret = snd_soc_pcm_create(soc_card, &aux_pcm_config);
 	if (ret < 0)
 		goto err;
-	
+
 	ret = snd_soc_card_register(soc_card);
 	return ret;
-	
+
 err:
 	snd_soc_card_free(soc_card);
 	return ret;
@@ -333,7 +330,7 @@ static int __exit tosa_wm9712_remove(struct platform_device *pdev)
 
 #ifdef CONFIG_PM
 
-static int tosa_wm9712_suspend(struct platform_device *pdev, 
+static int tosa_wm9712_suspend(struct platform_device *pdev,
 	pm_message_t state)
 {
 	struct snd_soc_card *soc_card = platform_get_drvdata(pdev);
@@ -357,7 +354,7 @@ static struct platform_driver tosa_wm9712_driver = {
 	.suspend	= tosa_wm9712_suspend,
 	.resume		= tosa_wm9712_resume,
 	.driver		= {
-		.name 		= "Mainstone-WM9712",
+		.name		= "Mainstone-WM9712",
 		.owner		= THIS_MODULE,
 	},
 };

@@ -64,7 +64,7 @@ static void magician_ext_control(struct snd_soc_card *soc_card)
 		snd_soc_dapm_enable_pin(soc_card "Speaker");
 	else
 		snd_soc_dapm_disable_pin(soc_card "Speaker");
-	
+
 	if (magician_hp_func == MAGICIAN_HP_ON)
 		snd_soc_dapm_enable_pin(soc_card "Headphone Jack");
 	else
@@ -424,7 +424,7 @@ static struct i2c_client client_template;
 
 static int magician_uda1380_write(void *control_data, long data, int size)
 {
-	return i2c_master_send((struct i2c_client*)control_data, 
+	return i2c_master_send((struct i2c_client*)control_data,
 		(char*) data, size);
 }
 
@@ -435,7 +435,7 @@ static int magician_uda1380_init(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_codec *codec;
 	int i, err;
-	
+
 	codec = snd_soc_get_codec(soc_card, uda1380_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
@@ -468,10 +468,10 @@ static int magician_uda1380_init(struct snd_soc_card *soc_card)
 	}
 
 	snd_soc_dapm_sync(soc_card);
-	
-	snd_soc_codec_set_io(codec, NULL, magician_uda1380_write, 
+
+	snd_soc_codec_set_io(codec, NULL, magician_uda1380_write,
 		soc_card->private_data);
-	
+
 	snd_soc_codec_init(codec, soc_card);
 	return 0;
 }
@@ -511,14 +511,14 @@ static int magician_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	i2c = kmemdup(&client_template, sizeof(client_template), GFP_KERNEL);
 	if (i2c == NULL)
 		return -ENOMEM;
-	
+
 	ret = i2c_attach_client(i2c);
 	if (ret < 0) {
 		printk("failed to attach codec at addr %x\n", addr);
 		goto attach_err;
 	}
-	
-	soc_card = snd_soc_card_create("magician", &i2c->dev, 
+
+	soc_card = snd_soc_card_create("magician", &i2c->dev,
 		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
 	if (soc_card == NULL)
 		return -ENOMEM;
@@ -527,15 +527,15 @@ static int magician_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	soc_card->init = magician_uda1380_init;
 	soc_card->private_data = i2c;
 	i2c_set_clientdata(i2c, soc_card);
-	
+
 	ret = snd_soc_pcm_create(soc_card, &playback_pcm_config);
 	if (ret < 0)
 		goto err;
-		
+
 	ret = snd_soc_pcm_create(soc_card, &capture_pcm_config);
 	if (ret < 0)
 		goto err;
-	
+
 	ret = snd_soc_card_register(soc_card);
 	return ret;
 
@@ -550,7 +550,7 @@ attach_err:
 static int magician_i2c_detach(struct i2c_client *client)
 {
 	struct snd_soc_card *soc_card = i2c_get_clientdata(client);
-	 
+
 	snd_soc_card_free(soc_card);
 	i2c_detach_client(client);
 	kfree(client);
@@ -610,7 +610,7 @@ static int __init magician_init(void)
 static void __exit magician_exit(void)
 {
 	i2c_del_driver(&magician_i2c_driver);
-	
+
 	magician_egpio_disable(&magician_cpld, EGPIO_NR_MAGICIAN_SPK_POWER);
 	magician_egpio_disable(&magician_cpld, EGPIO_NR_MAGICIAN_EP_POWER);
 	magician_egpio_disable(&magician_cpld, EGPIO_NR_MAGICIAN_MIC_POWER);

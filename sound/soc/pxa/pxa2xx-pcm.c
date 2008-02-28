@@ -85,7 +85,7 @@ static int pxa2xx_pcm_hw_params(struct snd_pcm_substream *substream,
 	/* return if this is a bufferless transfer e.g.
 	 * codec <--> BT codec or GSM modem -- lg FIXME */
 	 if (!dma)
-	 	return 0;
+		return 0;
 
 	/* this may get called several times by oss emulation
 	 * with different params */
@@ -332,7 +332,7 @@ static void pxa2xx_pcm_free_dma_buffers(struct snd_pcm *pcm)
 
 static u64 pxa2xx_pcm_dmamask = DMA_32BIT_MASK;
 
-static int pxa2xx_pcm_new(struct snd_soc_platform *platform, 
+static int pxa2xx_pcm_new(struct snd_soc_platform *platform,
 	struct snd_card *card, int playback, int capture,
 	struct snd_pcm *pcm)
 {
@@ -360,46 +360,46 @@ static int pxa2xx_pcm_new(struct snd_soc_platform *platform,
 	return ret;
 }
 
+const char pxa_platform_id[] = "pxa2xx-pcm";
+EXPORT_SYMBOL_GPL(pxa_platform_id);
+
+static struct snd_soc_platform_new pxa2xx_platform = {
+	.name		= pxa_platform_id,
+	.pcm_ops	= &pxa2xx_pcm_ops,
+	.pcm_new	= pxa2xx_pcm_new,
+	.pcm_free	= pxa2xx_pcm_free_dma_buffers,
+};
+
 static int pxa2xx_pcm_probe(struct platform_device *pdev)
 {
 	struct snd_soc_platform *platform;
 	int ret;
-	
 
-	platform = snd_soc_platform_allocate();
+	platform = snd_soc_new_platform(&pxa2xx_platform);
 	if (platform == NULL) {
 		dev_err(&pdev->dev, "Unable to allocate ASoC platform\n");
 		return -ENOMEM;
 	}
 
-	platform->dev = &pdev->dev;
-	platform->name = pxa_platform_id;
-	platform->pcm_ops = &pxa2xx_pcm_ops;
-	platform->pcm_new = pxa2xx_pcm_new,
-	platform->pcm_free = pxa2xx_pcm_free_dma_buffers,
-
-	ret = snd_soc_register_platform(platform);
-	if (ret < 0)
-		snd_soc_platform_free(platform);
 	platform_set_drvdata(pdev, platform);
+	ret = snd_soc_register_platform(platform, &pdev->dev);
+	if (ret < 0)
+		snd_soc_free_platform(platform);
+
 	return ret;
 }
 
 static int pxa2xx_pcm_remove(struct platform_device *pdev)
 {
 	struct snd_soc_platform *platform = platform_get_drvdata(pdev);
-	
-	snd_soc_unregister_platform(platform);
-	snd_soc_platform_free(platform);
+
+	snd_soc_free_platform(platform);
 	return 0;
 }
 
-const char pxa_platform_id[] = "pxa2xx-pcm";
-EXPORT_SYMBOL_GPL(pxa_platform_id);
-
 static struct platform_driver pxa2xx_pcm_driver = {
 	.driver = {
-		.name 		= pxa_platform_id,
+		.name		= pxa_platform_id,
 		.owner		= THIS_MODULE,
 	},
 	.probe		= pxa2xx_pcm_probe,

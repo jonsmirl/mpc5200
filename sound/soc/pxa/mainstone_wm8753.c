@@ -16,7 +16,7 @@
  *  Revision history
  *    30th Oct 2005   Initial version.
  *
- * 
+ *
  * This is an example soc_card driver for a wm8753 connected to a
  * Mainstone II. It is missing logic to detect hp/mic insertions and logic
  * to re-route the audio in such an event.
@@ -281,7 +281,7 @@ static struct snd_soc_ops mainstone_voice_ops = {
 };
 
 /* example soc_card audio_mapnections */
-static const char* audio_map[][3] = {
+static const struct snd_soc_dapm_route audio_map[] = {
 
 	/* mic is connected to mic1 - with bias */
 	{"MIC1", NULL, "Mic Bias"},
@@ -290,7 +290,6 @@ static const char* audio_map[][3] = {
 	{"Mic Bias", NULL, "Mic1 Jack"},
 
 	{"ACIN", NULL, "ACOP"},
-	{NULL, NULL, NULL},
 };
 
 /* headphone detect support on my board */
@@ -320,45 +319,43 @@ static struct i2c_client client_template;
 
 static int mainstone_wm8753_write(void *control_data, long data, int size)
 {
-	return i2c_master_send((struct i2c_client*)control_data, 
+	return i2c_master_send((struct i2c_client*)control_data,
 		(char*) data, size);
 }
 
 static int mainstone_wm8753_init(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_codec *codec;
-	int i, ret;
-	
+	int ret;
+
 	codec = snd_soc_get_codec(soc_card, wm8753_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
-		
+
 	/* set up mainstone codec pins */
 	snd_soc_dapm_disable_pin(soc_card, "RXP");
 	snd_soc_dapm_disable_pin(soc_card, "RXN");
 	snd_soc_dapm_disable_pin(soc_card, "MIC2");
 
 	/* add mainstone specific controls */
-	for (i = 0; i < ARRAY_SIZE(wm8753_mainstone_controls); i++) {
-		if ((ret = snd_ctl_add(soc_card->card,
-				snd_soc_cnew(&wm8753_mainstone_controls[i],
-					soc_card, NULL))) < 0)
-			return ret;
-	}
+	ret = snd_soc_add_new_controls(soc_card, wm8753_mainstone_controls,
+		soc_card, ARRAY_SIZE(wm8753_mainstone_controls));
+	if (ret < 0)
+		return ret;
 
-	/* set up mainstone specific audio path audio_mapnects */
-	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(soc_card, audio_map[i][0], 
-			audio_map[i][1], audio_map[i][2]);
-	}
-	
+	/* set up mainstone specific audio path audio_map */
+	ret = snd_soc_dapm_add_routes(soc_card, audio_map,
+				     ARRAY_SIZE(audio_map));
+	if (ret < 0)
+		return ret;
+
 	snd_soc_dapm_sync(soc_card);
-	
-	snd_soc_codec_set_io(codec, NULL, mainstone_wm8753_write, 
+
+	snd_soc_codec_set_io(codec, NULL, mainstone_wm8753_write,
 		soc_card->private_data);
-	
+
 	snd_soc_codec_init(codec, soc_card);
-	
+
 	/* enable speaker */
 	MST_MSCWR2 &= ~MST_MSCWR2_AC97_SPKROFF;
 	return 0;
@@ -368,8 +365,8 @@ static struct snd_soc_pcm_config hifi_pcm_config = {
 	.name		= "HiFi",
 	.codec		= wm8753_codec_id,
 	.codec_dai	= wm8753_codec_hifi_dai_id,
-//	.platform	= pxa_platform_id,
-//	.cpu_dai	= pxa2xx_i2s_id,
+	.platform	= pxa_platform_id,
+	.cpu_dai	= pxa2xx_i2s_id,
 	.ops		= &mainstone_hifi_ops,
 	.playback	= 1,
 	.capture	= 1,
@@ -379,7 +376,7 @@ static struct snd_soc_pcm_config voice_pcm_config = {
 	.name		= "Voice",
 	.codec		= wm8753_codec_id,
 	.codec_dai	= wm8753_codec_voice_dai_id,
-//	.platform	= imx31_platform_id,
+	.platform	= pxa_platform_id,
 //	.cpu_dai	= imx_ssi_id1_0,
 	.ops		= &mainstone_voice_ops,
 	.playback	= 1,
@@ -401,20 +398,20 @@ static int wm8753_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	i2c = kmemdup(&client_template, sizeof(client_template), GFP_KERNEL);
 	if (i2c == NULL)
 		return -ENOMEM;
-	
+
 	ret = i2c_attach_client(i2c);
 	if (ret < 0) {
 		printk("failed to attach codec at addr %x\n", addr);
 		goto attach_err;
 	}
-	
+
 	/* mainstone wm8753 voice interface */
 	pxa_gpio_mode(GPIO11_SSP2RX_MD);
 	pxa_gpio_mode(GPIO13_SSP2TX_MD);
 	pxa_gpio_mode(GPIO22_SSP2CLKS_MD);
 	pxa_gpio_mode(GPIO88_SSP2FRMS_MD);
-	
-	soc_card = snd_soc_card_create("mainstone_wm8753", &i2c->dev, 
+
+	soc_card = snd_soc_card_create("mainstone_wm8753", &i2c->dev,
 		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
 	if (soc_card == NULL)
 		return -ENOMEM;
@@ -428,17 +425,17 @@ static int wm8753_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	ret = snd_soc_pcm_create(soc_card, &hifi_pcm_config);
 	if (ret < 0)
 		goto err;
-	
+
 	ret = snd_soc_pcm_create(soc_card, &voice_pcm_config);
 	if (ret < 0)
 		goto err;
-	
+
 	ret = snd_soc_card_register(soc_card);
 	return ret;
-	
+
 err:
 	snd_soc_card_free(soc_card);
-	
+
 attach_err:
 	i2c_detach_client(i2c);
 	kfree(i2c);
@@ -448,11 +445,11 @@ attach_err:
 static int wm8753_i2c_detach(struct i2c_client *client)
 {
 	struct snd_soc_card *soc_card = i2c_get_clientdata(client);
-	
+
 	snd_soc_card_free(soc_card);
 	i2c_detach_client(client);
 	kfree(client);
-	
+
 	/* disable speaker */
 	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
 	return 0;
@@ -481,16 +478,16 @@ static struct i2c_client client_template = {
 
 /*
  * This function will register the snd_soc_pcm_runtime drivers.
- * It also registers devices for platform DMA, I2S, SSP and registers an 
+ * It also registers devices for platform DMA, I2S, SSP and registers an
  * I2C driver to probe the codec.
  */
 static int __init mainstone_wm8753_probe(struct platform_device *pdev)
 {
 	int ret;
-	
+
 	/* register I2C driver for WM8753 codec control */
 	ret = i2c_add_driver(&wm8753_i2c_driver);
-	if (ret < 0) { 
+	if (ret < 0) {
 		printk (KERN_ERR "%s: failed to add i2c driver\n",
 			__FUNCTION__);
 	}
@@ -506,11 +503,11 @@ static int __exit mainstone_wm8753_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM
 static long mst_audio_suspend_mask;
 
-static int mainstone_wm8753_suspend(struct platform_device *pdev, 
+static int mainstone_wm8753_suspend(struct platform_device *pdev,
 	pm_message_t state)
 {
 	struct snd_soc_card *soc_card = pdev->dev.driver_data;
-	
+
 	mst_audio_suspend_mask = MST_MSCWR2;
 	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
 	return snd_soc_suspend(soc_card, state);
@@ -519,7 +516,7 @@ static int mainstone_wm8753_suspend(struct platform_device *pdev,
 static int mainstone_wm8753_resume(struct platform_device *pdev)
 {
 	struct snd_soc_card *soc_card = pdev->dev.driver_data;
-	
+
 	MST_MSCWR2 &= mst_audio_suspend_mask | ~MST_MSCWR2_AC97_SPKROFF;
 	return snd_soc_resume(soc_card);
 }
@@ -535,7 +532,7 @@ static struct platform_driver mainstone_wm8753_driver = {
 	.suspend	= mainstone_wm8753_suspend,
 	.resume		= mainstone_wm8753_resume,
 	.driver		= {
-		.name 		= "Mainstone-WM8753",
+		.name		= "Mainstone-WM8753",
 		.owner		= THIS_MODULE,
 	},
 };
