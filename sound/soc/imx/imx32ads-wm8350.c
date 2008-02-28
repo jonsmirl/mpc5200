@@ -266,7 +266,7 @@ static void imx32ads_shutdown(struct snd_pcm_substream *substream)
 	state->lr_clk_active--;
 
 	/*
-	 * We need to keep track of active streams in master mode and 
+	 * We need to keep track of active streams in master mode and
 	 * switch LRC source if necessary.
 	 */ 
 
@@ -324,7 +324,7 @@ static const struct snd_soc_dapm_widget imx32ads_dapm_widgets[] = {
 };
 
 /* imx32ads soc_card audio map */
-static const char* audio_map[][3] = {
+static const struct snd_soc_dapm_route audio_map[] = {
 
 	/* SiMIC --> IN1LN (with automatic bias) via SP1 */
 	{"IN1LN", NULL, "Mic Bias"},
@@ -351,8 +351,6 @@ static const char* audio_map[][3] = {
 	/* Out1 --> Line Out Jack */
 	{"Line Out Jack", NULL, "OUT2R"},
 	{"Line Out Jack", NULL, "OUT2L"},
-
-	{NULL, NULL, NULL},
 };
 
 #ifdef CONFIG_PM
@@ -404,7 +402,7 @@ int imx32_audio_init(struct snd_soc_card *soc_card)
 	struct imx31ads_data* audio_data = soc_card->private_data;
 	struct wm8350 *wm8350 = audio_data->wm8350;
 	struct imx31ads_pcm_state *state;
-	int i;
+	int ret;
 	u16 reg;
 
 	pcm_runtime = snd_soc_get_pcm(soc_card, "HiFi");
@@ -435,16 +433,17 @@ int imx32_audio_init(struct snd_soc_card *soc_card)
 #endif
 
 	/* Add imx32ads specific widgets */
-	for(i = 0; i < ARRAY_SIZE(imx32ads_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(soc_card, codec,
-			&imx32ads_dapm_widgets[i]);
-	}
+	ret = snd_soc_dapm_new_controls(soc_card, codec,
+					imx32ads_dapm_widgets,
+					ARRAY_SIZE(imx32ads_dapm_widgets));
+	if (ret < 0)
+		return ret;
 
 	/* set up imx32ads specific audio path audio map */
-	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(soc_card, audio_map[i][0],
-			audio_map[i][1], audio_map[i][2]);
-	}
+	ret = snd_soc_dapm_add_routes(soc_card, audio_map,
+		ARRAY_SIZE(audio_map));
+	if (ret < 0)
+		return ret;
 
 	/* disable unused imx32ads WM8350 codec pins */
 	snd_soc_dapm_disable_pin(soc_card, "OUT3");

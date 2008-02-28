@@ -482,22 +482,6 @@ SOC_DOUBLE_R("Out2 Playback Switch", WM8350_LOUT2_VOLUME, WM8350_ROUT2_VOLUME,
 	14, 1, 1),
 };
 
-/* add non dapm controls */
-static int wm8350_add_controls(struct snd_soc_codec *codec,
-	struct snd_card *card)
-{
-	int err, i;
-
-	for (i = 0; i < ARRAY_SIZE(wm8350_snd_controls); i++) {
-		err = snd_ctl_add(card,
-				snd_soc_cnew(&wm8350_snd_controls[i],
-					codec, NULL));
-		if (err < 0)
-			return err;
-	}
-	return 0;
-}
-
 /*
  * DAPM Controls
  */
@@ -665,7 +649,7 @@ static const struct snd_soc_dapm_widget wm8350_dapm_widgets[] = {
 	SND_SOC_DAPM_INPUT("IN3L"),
 };
 
-static const char *audio_map[][3] = {
+static const struct snd_soc_dapm_route audio_map[] = {
 
 	/* left playback mixer */
 	{"Left Playback Mixer", "Playback Switch", "Left DAC"},
@@ -744,29 +728,26 @@ static const char *audio_map[][3] = {
 
 	/* Beep */
 	{"Beep", NULL, "Right Aux PGA"},
-
-	/* terminator */
-	{NULL, NULL, NULL},
 };
 
 static int wm8350_add_widgets(struct snd_soc_codec *codec,
 	struct snd_soc_card *soc_card)
 {
-	int i;
+	int ret;
 
-	for(i = 0; i < ARRAY_SIZE(wm8350_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(soc_card, codec,
-			&wm8350_dapm_widgets[i]);
-	}
+	ret = snd_soc_dapm_new_controls(soc_card, codec,
+					wm8350_dapm_widgets,
+					ARRAY_SIZE(wm8350_dapm_widgets));
+	if (ret < 0)
+		return ret;
 
 	/* set up audio path audio_map */
-	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(soc_card, audio_map[i][0],
-			audio_map[i][1], audio_map[i][2]);
-	}
+	ret = snd_soc_dapm_add_routes(soc_card, audio_map,
+				     ARRAY_SIZE(audio_map));
+	if (ret < 0)
+		return ret;
 
-	snd_soc_dapm_init(soc_card);
-	return 0;
+	return snd_soc_dapm_init(soc_card);
 }
 
 static int wm8350_set_dai_sysclk(struct snd_soc_dai *codec_dai,
@@ -1342,14 +1323,15 @@ static int wm8350_codec_init(struct snd_soc_codec *codec,
 	wm8350_clear_bits(wm8350, WM8350_POWER_MGMT_5, WM8350_CODEC_ENA);
 	wm8350_set_bits(wm8350, WM8350_POWER_MGMT_5, WM8350_CODEC_ENA);
 
-	/* enable clock gen - lg need to move in new silicon */
+	/* enable clock gen - could probably be done later */
 	wm8350_set_bits(wm8350, WM8350_POWER_MGMT_4, WM8350_SYSCLK_ENA);
 
 	/* charge output caps */
 	codec->bias_level = SND_SOC_BIAS_OFF;
 	wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
-	wm8350_add_controls(codec, soc_card->card);
+	snd_soc_add_new_controls(soc_card, wm8350_snd_controls, codec,
+		ARRAY_SIZE(wm8350_snd_controls));
 	wm8350_add_widgets(codec, soc_card);
 
 	/* read OUT1 & OUT2 volumes */
