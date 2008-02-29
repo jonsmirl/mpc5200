@@ -130,6 +130,16 @@ struct snd_soc_platform * snd_soc_get_platform(struct snd_soc_card *soc_card,
 	const char *platform_id);
 
 /**
+ * snd_soc_get_dai - get dai.
+ * @soc_card: soc_card
+ * @codec_id: dai ID
+ *
+ * Gets dai from ID.
+ */
+struct snd_soc_dai * snd_soc_get_dai(struct snd_soc_card *soc_card,
+	const char *dai_id);
+
+/**
  * snd_soc_codec_set_io - initialise codec IO.
  * @codec: codec
  * @soc_card_read: read function called by codec.
