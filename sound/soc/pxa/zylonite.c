@@ -189,7 +189,7 @@ static int zylonite_probe(struct platform_device *pdev)
 	card->private_data = pdev;
 	platform_set_drvdata(pdev, card);
 
-	ret = snd_soc_create_pcms(card, &pcm_configs[0],
+	ret = snd_soc_card_create_pcms(card, &pcm_configs[0],
 				  ARRAY_SIZE(pcm_configs));
 	if (ret < 0)
 		goto err;
