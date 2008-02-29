@@ -270,8 +270,8 @@ static int mainstone_wm9713_probe(struct platform_device *pdev)
 	soc_card->private_data = pdev;
 	platform_set_drvdata(pdev, soc_card);
 
-	ret = snd_soc_create_pcms(soc_card, &pcm_configs[0],
-				  ARRAY_SIZE(pcm_configs));
+	ret = snd_soc_card_create_pcms(soc_card, pcm_configs,
+					ARRAY_SIZE(pcm_configs));
 	if (ret < 0)
 		goto err;
 
@@ -304,7 +304,7 @@ static int mainstone_wm9713_suspend(struct platform_device *pdev,
 
 	mst_audio_suspend_mask = MST_MSCWR2;
 	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
-	return snd_soc_suspend_pcms(soc_card, state);
+	return snd_soc_card_suspend_pcms(soc_card, state);
 }
 
 static int mainstone_wm9713_resume(struct platform_device *pdev)
@@ -312,7 +312,7 @@ static int mainstone_wm9713_resume(struct platform_device *pdev)
 	struct snd_soc_card *soc_card = platform_get_drvdata(pdev);
 
 	MST_MSCWR2 &= mst_audio_suspend_mask | ~MST_MSCWR2_AC97_SPKROFF;
-	return snd_soc_resume_pcms(soc_card);
+	return snd_soc_card_resume_pcms(soc_card);
 }
 
 #else

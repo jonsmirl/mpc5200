@@ -125,24 +125,24 @@ static int mainstone_wm9712_init(struct snd_soc_card *soc_card)
 	return 0;
 }
 
-static struct snd_soc_pcm_config hifi_pcm_config = {
+static struct snd_soc_pcm_config pcm_config[] = {
+{
 	.name		= "HiFi",
 	.codec		= wm9712_codec_id,
 	.codec_dai	= wm9712_codec_hifi_dai_id,
-//	.platform	= pxa_platform_id,
-//	.cpu_dai	= pxa2xx_i2s_dai_id,
+	.platform	= pxa_platform_id,
+	.cpu_dai	= pxa_ac97_hifi_dai_id,
 	.playback	= 1,
 	.capture	= 1,
-};
-
-static struct snd_soc_pcm_config aux_pcm_config = {
+},
+{
 	.name		= "Aux",
 	.codec		= wm9712_codec_id,
 	.codec_dai	= wm9712_codec_aux_dai_id,
-//	.platform	= pxa_platform_id,
-//	.cpu_dai	= pxa_ac97_aux_dai_id,
+	.platform	= pxa_platform_id,
+	.cpu_dai	= pxa_ac97_aux_dai_id,
 	.playback	= 1,
-};
+}};
 
 /*
  * This is an example soc_card initialisation for a wm9712 connected to a
@@ -164,11 +164,7 @@ static int mainstone_wm9712_probe(struct platform_device *pdev)
 	soc_card->private_data = pdev;
 	platform_set_drvdata(pdev, soc_card);
 
-	ret = snd_soc_pcm_create(soc_card, &hifi_pcm_config);
-	if (ret < 0)
-		goto err;
-
-	ret = snd_soc_pcm_create(soc_card, &aux_pcm_config);
+	ret = snd_soc_card_create_pcms(soc_card, pcm_config, ARRAY_SIZE(pcm_config));
 	if (ret < 0)
 		goto err;
 
@@ -201,7 +197,7 @@ static int mainstone_wm9712_suspend(struct platform_device *pdev,
 
 	mst_audio_suspend_mask = MST_MSCWR2;
 	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
-	return snd_soc_suspend_pcms(soc_card, state);
+	return snd_soc_card_suspend_pcms(soc_card, state);
 }
 
 static int mainstone_wm9712_resume(struct platform_device *pdev)
@@ -209,7 +205,7 @@ static int mainstone_wm9712_resume(struct platform_device *pdev)
 	struct snd_soc_card *soc_card = platform_get_drvdata(pdev);
 
 	MST_MSCWR2 &= mst_audio_suspend_mask | ~MST_MSCWR2_AC97_SPKROFF;
-	return snd_soc_resume_pcms(soc_card);
+	return snd_soc_card_resume_pcms(soc_card);
 }
 
 #else
