@@ -1,5 +1,5 @@
 /*
- * linux/sound/soc-card.h -- ALSA SoC Layer
+ * linux/sound/soc-card.h -- ALSA SoC Card interface
  *
  * Author:		Liam Girdwood
  * Created:		Aug 11th 2005
@@ -21,91 +21,28 @@ struct snd_soc_card;
 struct snd_soc_ops;
 struct snd_soc_pcm_config;
 
-/**
- * snd_soc_card_create - create new ASoC soc_card.
- * @name: soc_card name
- * @parent: parent device
- * @idx: sound card index
- * @xid: sound card ID
- *
- * Creates a new ASoC audio soc_card device and sound card.
- */
+
 struct snd_soc_card *snd_soc_card_create(const char *name,
 	struct device *parent, int idx, const char *xid);
 
-
-/**
- * snd_soc_pcm_create - create new ASoC PCM.
- * @soc_card: Machine
- *
- * Joins a codec and platform DAI together and creates a ALSA PCM(s).
- */
-int snd_soc_pcm_create(struct snd_soc_card *soc_card,
-	struct snd_soc_pcm_config *config);
-
-/**
- * snd_soc_create_pcms - create several ASoC PCM.
- * @soc_card: Machine
- * @configs: Array of PCM configurations
- * @num:     Size of array
- *
- * Joins a liscodec and platform DAI together and creates a ALSA PCM(s).
- */
-int snd_soc_create_pcms(struct snd_soc_card *soc_card,
+int snd_soc_card_create_pcms(struct snd_soc_card *soc_card,
 			struct snd_soc_pcm_config *config, int num);
 
-/**
- * snd_soc_card_register - registers ASoC soc_card .
- * @soc_card: soc_card
- *
- * Registers a soc_card and it's PCMs. This should be called after all
- * codecs, platforms and PCM's have been created.
- */
 int snd_soc_card_register(struct snd_soc_card *soc_card);
 
-/**
- * snd_soc_card_free - free soc_card.
- * @soc_card: soc_card
- *
- * Frees all soc_card resources. Can be called at any time during soc_card
- * initialisation process.
- */
 void snd_soc_card_free(struct snd_soc_card *soc_card);
 
-/**
- * snd_soc_suspend_pcms - suspends soc_card pcms.
- * @soc_card: soc_card
- * @state: suspend state
- *
- * Suspends all soc_card pcms.
- */
-int snd_soc_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state);
 
-/**
- * snd_soc_resume_pcms - resume soc_card pcms.
- * @soc_card: soc_card
- *
- * Resumes soc_card pcms.
- */
-int snd_soc_resume_pcms(struct snd_soc_card *soc_card);
+int snd_soc_card_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state);
 
-/**
- * snd_soc_get_pcm - get pcm.
- * @soc_card: soc_card
- * @pcm_id: pcm ID
- *
- * Gets pcm from ID.
- */
+
+int snd_soc_card_resume_pcms(struct snd_soc_card *soc_card);
+
+
 struct snd_soc_pcm_runtime *snd_soc_get_pcm(struct snd_soc_card *soc_card,
 	const char *pcm_id);
 
-/**
- * snd_soc_get_ac97_ops - get AC97 operations.
- * @soc_card: soc_card
- * @dai_id:  ID
- *
- * Gets AC97 operations from Digital Audio Interface.
- */
+
 struct snd_ac97_bus_ops *snd_soc_get_ac97_ops(struct snd_soc_card *soc_card,
 					      const char *dai_id);
 
@@ -146,7 +83,7 @@ struct snd_soc_dai * snd_soc_get_dai(struct snd_soc_card *soc_card,
  * @soc_card_write: write function called by codec.
  * @control_data: IO control data - usually I2C, SPI, etc pointer
  *
- * Initialises the codec IO system with the soc_cards codec IO mechanism. 
+ * Initialises the codec IO system with the soc_cards codec IO mechanism.
  */
 void snd_soc_codec_set_io(struct snd_soc_codec *codec,
 	int (*soc_card_read)(void *, long, int),
@@ -158,7 +95,7 @@ void snd_soc_codec_set_io(struct snd_soc_codec *codec,
  * @soc_card: soc_card
  *
  * Initialises codec hardware. Can perform IO and must only be called after a
- * successful call to snd_soc_codec_set_io(). 
+ * successful call to snd_soc_codec_set_io().
  */
 int snd_soc_codec_init(struct snd_soc_codec *codec,
 	struct snd_soc_card *soc_card);
@@ -225,13 +162,13 @@ struct snd_soc_pcm_runtime {
 
 	/* ALSA audio operations - optional */
 	struct snd_soc_ops *ops;
-	
+
 	/* DAI pcm */
 	struct snd_pcm *pcm;
-	
+
 	struct delayed_work delayed_work;
 	struct list_head list;
-	
+
 	void *private_data;
 };
 
@@ -258,7 +195,7 @@ struct snd_soc_card {
 	 * whilst exit by snd_soc_card_free() */
 	int (*init)(struct snd_soc_card *soc_card);
 	void (*exit)(struct snd_soc_card *soc_card);
-	
+
 	/* bias power level */
 	int (*set_bias_level)(struct snd_soc_card *soc_card,
 		enum snd_soc_dapm_bias_level level);
@@ -273,7 +210,7 @@ struct snd_soc_card {
 	struct list_head dapm_widgets;
 	struct list_head dapm_paths;
 	enum snd_soc_dapm_policy policy;
-	
+
 	void *private_data;
 };
 

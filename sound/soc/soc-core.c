@@ -155,7 +155,8 @@ static int soc_ac97_pcm_create(struct snd_soc_card *soc_card)
 		if (pcm_runtime->cpu_dai->ac97_control) {
 			ret = soc_ac97_dev_register(pcm_runtime->codec);
 			if (ret < 0) {
-				printk(KERN_ERR "asoc: AC97 device register failed\n");
+				printk(KERN_ERR "asoc: AC97 device register"
+					" failed\n");
 
 				return ret;
 			}
@@ -467,7 +468,8 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 		/* no delayed work - do we need to power up codec */
 		if (codec->bias_level != SND_SOC_BIAS_ON) {
 
-			snd_soc_dapm_set_bias(pcm_runtime, SND_SOC_BIAS_PREPARE);
+			snd_soc_dapm_set_bias(pcm_runtime,
+				SND_SOC_BIAS_PREPARE);
 
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 				snd_soc_dapm_stream_event(soc_card,
@@ -538,8 +540,8 @@ static int soc_pcm_hw_params(struct snd_pcm_substream *substream,
 	if (cpu_dai->ops->hw_params) {
 		ret = cpu_dai->ops->hw_params(substream, params, cpu_dai);
 		if (ret < 0) {
-			printk(KERN_ERR "asoc: can't set interface %s hw params\n",
-				cpu_dai->name);
+			printk(KERN_ERR "asoc: can't set interface %s "
+				"hw params\n", cpu_dai->name);
 			goto interface_err;
 		}
 	}
@@ -547,8 +549,8 @@ static int soc_pcm_hw_params(struct snd_pcm_substream *substream,
 	if (platform->pcm_ops->hw_params) {
 		ret = platform->pcm_ops->hw_params(substream, params);
 		if (ret < 0) {
-			printk(KERN_ERR "asoc: can't set platform %s hw params\n",
-				platform->name);
+			printk(KERN_ERR "asoc: can't set platform %s "
+				"hw params\n", platform->name);
 			goto platform_err;
 		}
 	}
@@ -655,7 +657,7 @@ static struct snd_pcm_ops soc_pcm_ops = {
  * Mutes, then suspends all soc_card PCM's. NOTE: soc_card driver will still
  * have to suspend codecs/platform.
  */
-int snd_soc_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state)
+int snd_soc_card_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state)
 {
 	struct snd_soc_dai *codec_dai;
 	struct snd_soc_codec *codec;
@@ -706,7 +708,7 @@ int snd_soc_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state)
  * Resumes and unmutes all soc_card PCM's. NOTE: soc_card driver will still
  * have to resume codecs/platform.
  */
-int snd_soc_resume_pcms(struct snd_soc_card *soc_card)
+int snd_soc_card_resume_pcms(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_dai *codec_dai;
 	struct snd_soc_pcm_runtime *pcm_runtime;
@@ -737,18 +739,18 @@ int snd_soc_resume_pcms(struct snd_soc_card *soc_card)
 }
 
 #else
-int snd_soc_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state)
+int snd_soc_card_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state)
 {
 	return 0;
 }
 
-int snd_soc_resume_pcms(struct snd_soc_card *soc_card)
+int snd_soc_card_resume_pcms(struct snd_soc_card *soc_card)
 {
 	return 0;
 }
 #endif
-EXPORT_SYMBOL_GPL(snd_soc_suspend_pcms);
-EXPORT_SYMBOL_GPL(snd_soc_resume_pcms);
+EXPORT_SYMBOL_GPL(snd_soc_card_suspend_pcms);
+EXPORT_SYMBOL_GPL(snd_soc_card_resume_pcms);
 
 /* Creates a new PCM based upon a pcm_config in the soc_card driver */
 static int soc_create_pcm(struct snd_soc_card *soc_card,
@@ -882,7 +884,8 @@ check:
 	ret = snd_pcm_new(soc_card->card, (char*)pcm_runtime->name,
 		soc_card->pcms++, config->playback, config->capture, &pcm);
 	if (ret < 0) {
-		printk(KERN_ERR "asoc: can't create pcm for codec %s\n", codec->name);
+		printk(KERN_ERR "asoc: can't create pcm for codec %s\n",
+			codec->name);
 		goto err;
 	}
 
@@ -966,8 +969,8 @@ static int soc_match_pcm(struct snd_soc_card *soc_card)
 
 	ret = snd_card_register(soc_card->card);
 	if (ret < 0) {
-		printk(KERN_ERR "asoc: failed to register soundcard for codec %s\n",
-				soc_card->name);
+		printk(KERN_ERR "asoc: failed to register soundcard for "
+			"codec %s\n", soc_card->name);
 		goto out_mutex;
 	}
 
@@ -1733,9 +1736,6 @@ struct snd_soc_codec *snd_soc_new_codec(
 	codec->set_bias_level = template->set_bias_level;
 	codec->init = template->init;
 	codec->exit = template->exit;
-//	codec->set_sysclk = template->set_sysclk;
-//	codec->set_clkdiv = template->set_clkdiv;
-//	codec->set_pll = template->set_pll;
 	codec->codec_read = template->codec_read;
 	codec->codec_write = template->codec_write;
 
@@ -1848,6 +1848,15 @@ void snd_soc_free_platform(struct snd_soc_platform *platform)
 }
 EXPORT_SYMBOL_GPL(snd_soc_free_platform);
 
+/**
+ * snd_soc_card_create - create new ASoC sound card.
+ * @name: soc_card name
+ * @parent: parent device
+ * @idx: sound card index
+ * @xid: sound card ID
+ *
+ * Creates a new ASoC sound card.
+ */
 struct snd_soc_card *snd_soc_card_create(const char *name,
 	struct device *parent, int idx, const char *xid)
 {
@@ -1873,8 +1882,8 @@ struct snd_soc_card *snd_soc_card_create(const char *name,
 	/* register a sound card */
 	soc_card->card = snd_card_new(idx, xid, THIS_MODULE, 0);
 	if (!soc_card->card) {
-		printk(KERN_ERR "asoc: can't create sound card for soc_card %s\n",
-			soc_card->name);
+		printk(KERN_ERR "asoc: can't create sound card for "
+			"soc_card %s\n", soc_card->name);
 		kfree(soc_card);
 		return ERR_PTR(-ENODEV);
 	}
@@ -1883,7 +1892,7 @@ struct snd_soc_card *snd_soc_card_create(const char *name,
 }
 EXPORT_SYMBOL_GPL(snd_soc_card_create);
 
-int snd_soc_pcm_create(struct snd_soc_card *soc_card,
+static int soc_pcm_new(struct snd_soc_card *soc_card,
 	struct snd_soc_pcm_config *config)
 {
 	struct soc_pcm_config *_config;
@@ -1922,30 +1931,45 @@ int snd_soc_pcm_create(struct snd_soc_card *soc_card,
 	soc_match_soc_card_pcms();
 	return 0;
 }
-EXPORT_SYMBOL_GPL(snd_soc_pcm_create);
 
-int snd_soc_create_pcms(struct snd_soc_card *soc_card,
+/**
+ * snd_soc_card_create_pcms - create several ASoC PCM.
+ * @soc_card: Machine
+ * @configs: Array of PCM configurations
+ * @num: Size of array
+ *
+ * Creates a new ALSA pcm for each config entry passed in. The config entry
+ * will contain the codec, codec_dai, platform and platform_dai ID's.
+ */
+int snd_soc_card_create_pcms(struct snd_soc_card *soc_card,
 			struct snd_soc_pcm_config *config, int num)
 {
 	int i, ret;
 
 	for (i = 0; i < num; i++) {
-		ret = snd_soc_pcm_create(soc_card, &config[i]);
+		ret = soc_pcm_new(soc_card, &config[i]);
 		if (ret != 0) {
 			if (config[i].name)
-				printk(KERN_ERR "asoc %s: Failed to register %s\n",
-				       soc_card->name, config[i].name);
+				printk(KERN_ERR "asoc %s: Failed to register "
+					"%s\n", soc_card->name, config[i].name);
 			else
-				printk(KERN_ERR "asoc %s: Failed to register unnamed PCM\n",
-				       soc_card->name);
+				printk(KERN_ERR "asoc %s: Failed to register "
+					"unnamed PCM\n", soc_card->name);
 			return ret;
 		}
 	}
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(snd_soc_create_pcms);
+EXPORT_SYMBOL_GPL(snd_soc_card_create_pcms);
 
+/**
+ * snd_soc_card_register - registers ASoC soc_card .
+ * @soc_card: soc_card
+ *
+ * Registers a soc_card and it's PCMs. This should be called after all
+ * codecs, platforms and PCM's have been created.
+ */
 int snd_soc_card_register(struct snd_soc_card *soc_card)
 {
 	mutex_lock(&client_mutex);
@@ -1957,6 +1981,13 @@ int snd_soc_card_register(struct snd_soc_card *soc_card)
 }
 EXPORT_SYMBOL_GPL(snd_soc_card_register);
 
+/**
+ * snd_soc_card_free - free soc_card.
+ * @soc_card: soc_card
+ *
+ * Frees all soc_card resources. Can be called at any time during soc_card
+ * initialisation process. This frees all soc card resources.
+ */
 void snd_soc_card_free(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime, *_pcm_runtime;
@@ -1964,13 +1995,15 @@ void snd_soc_card_free(struct snd_soc_card *soc_card)
 
 	snd_card_free(soc_card->card);
 
-	list_for_each_entry_safe(pcm_runtime, _pcm_runtime, &soc_card->pcm_list, list)
+	list_for_each_entry_safe(pcm_runtime, _pcm_runtime,
+		&soc_card->pcm_list, list)
 		run_delayed_work(&pcm_runtime->delayed_work);
 
 	if (soc_card->exit && soc_card->is_probed)
 		soc_card->exit(soc_card);
 
-	list_for_each_entry_safe(pcm_runtime, _pcm_runtime, &soc_card->pcm_list, list) {
+	list_for_each_entry_safe(pcm_runtime, _pcm_runtime,
+		&soc_card->pcm_list, list) {
 		kfree(pcm_runtime);
 	}
 	list_for_each_entry(config, &soc_card->config_list, list) {
@@ -2016,7 +2049,8 @@ struct snd_soc_platform * snd_soc_get_platform(struct snd_soc_card *soc_card,
 	struct soc_pcm_config *config;
 
 	list_for_each_entry(config, &soc_card->config_list, list) {
-		if (config->platform && !strcmp(config->platform->name, platform_id))
+		if (config->platform &&
+			!strcmp(config->platform->name, platform_id))
 			return config->platform;
 	}
 	return NULL;
@@ -2040,6 +2074,13 @@ struct snd_soc_dai *snd_soc_get_dai(struct snd_soc_card *soc_card,
 }
 EXPORT_SYMBOL_GPL(snd_soc_get_dai);
 
+/**
+ * snd_soc_get_pcm - get pcm.
+ * @soc_card: soc_card
+ * @pcm_id: pcm ID
+ *
+ * Get a pcm runtime pointer from pcm ID.
+ */
 struct snd_soc_pcm_runtime *snd_soc_get_pcm(struct snd_soc_card *soc_card,
 	const char *pcm_id)
 {
@@ -2053,6 +2094,13 @@ struct snd_soc_pcm_runtime *snd_soc_get_pcm(struct snd_soc_card *soc_card,
 }
 EXPORT_SYMBOL_GPL(snd_soc_get_pcm);
 
+/**
+ * snd_soc_get_ac97_ops - get AC97 operations.
+ * @soc_card: soc_card
+ * @dai_id:  ID
+ *
+ * Get AC97 bus operations from Digital Audio Interface ID.
+ */
 struct snd_ac97_bus_ops *snd_soc_get_ac97_ops(struct snd_soc_card *soc_card,
 					      const char *dai_id)
 {
@@ -2084,7 +2132,8 @@ int snd_soc_codec_init(struct snd_soc_codec *codec,
 	/* we can add our sysfs register access now codec IO is set */
 	ret = device_create_file(codec->dev, &dev_attr_codec_reg);
 	if (ret < 0) {
-		printk(KERN_WARNING "asoc: failed to add codec sysfs entries\n");
+		printk(KERN_WARNING "asoc: failed to add codec sysfs "
+			"entries\n");
 		return ret;
 	}
 	if (codec->init)
