@@ -89,12 +89,19 @@ static struct snd_soc_pcm_config pcm_configs[] = {
 static int zylonite_init(struct snd_soc_card *card)
 {
 	struct snd_soc_codec *codec;
+	struct snd_soc_dai *dai;
 	struct snd_ac97_bus_ops *ac97_ops;
 	int ret;
 
 	codec = snd_soc_get_codec(card, wm9713_codec_id);
 	if (codec == NULL) {
 		printk(KERN_ERR "Unable to obtain WM9713 codec\n");
+		return -ENODEV;
+	}
+
+	dai = snd_soc_get_dai(card, pxa_ac97_hifi_dai_id);
+	if (dai == NULL) {
+		printk(KERN_ERR "Unable to obtain WM9713 HiFi DAI\n");
 		return -ENODEV;
 	}
 
@@ -124,7 +131,7 @@ static int zylonite_init(struct snd_soc_card *card)
 
 	snd_soc_codec_init(codec, card);
 
-	ret = snd_soc_codec_set_pll(codec, 0, clk_get_rate(mclk), 1);
+	ret = snd_soc_dai_set_pll(dai, 0, clk_get_rate(mclk), 1);
 	if (ret != 0) {
 		dev_err(codec->dev, "Unable to configure PLL: %d\n", ret);
 		return ret;
