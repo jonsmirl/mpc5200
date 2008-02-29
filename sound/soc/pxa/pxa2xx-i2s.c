@@ -290,8 +290,8 @@ static int pxa2xx_i2s_resume(struct snd_soc_dai *dai)
 		SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000)
 
 /* for modprobe */
-const char pxa2xx_i2s_id[] = "pxa2xx-i2s";
-EXPORT_SYMBOL_GPL(pxa2xx_i2s_id);
+const char pxa2xx_i2s_dai_id[] = "pxa2xx-i2s";
+EXPORT_SYMBOL_GPL(pxa2xx_i2s_dai_id);
 
 static struct snd_soc_dai_caps pxa2xx_i2s_playback = {
 	.stream_name	= "Playback",
