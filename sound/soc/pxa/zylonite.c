@@ -113,6 +113,8 @@ static int zylonite_init(struct snd_soc_card *card)
 		return ret;
 	}
 
+	clk_enable(mclk);
+
 	/* do a cold reset for the controller and then try
 	 * a warm reset followed by an optional cold reset for codec */
 	ac97_ops->reset(codec->ac97);
@@ -168,7 +170,6 @@ static int zylonite_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Unable to obtain MCLK source\n");
 		return -ENODEV;
 	}
-	clk_enable(mclk);
 
 	dev_dbg(&pdev->dev, "MCLK rate: %luHz\n",
 		clk_get_rate(mclk));
