@@ -405,11 +405,11 @@ int imx32_audio_init(struct snd_soc_card *soc_card)
 	int ret;
 	u16 reg;
 
-	pcm_runtime = snd_soc_get_pcm(soc_card, "HiFi");
+	pcm_runtime = snd_soc_card_get_pcm(soc_card, "HiFi");
 	if (pcm_runtime == NULL)
 		return -ENODEV;
 
-	codec = snd_soc_get_codec(soc_card, wm8350_codec_id);
+	codec = snd_soc_card_get_codec(soc_card, wm8350_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
 
@@ -419,8 +419,8 @@ int imx32_audio_init(struct snd_soc_card *soc_card)
 	pcm_runtime->private_data = state;
 
 	codec->platform_data = &imx32ads_wm8350_setup;
-	snd_soc_codec_set_io(codec, NULL, NULL,	wm8350);
-	snd_soc_codec_init(codec, soc_card);
+	snd_soc_card_config_codec(codec, NULL, NULL,	wm8350);
+	snd_soc_card_init_codec(codec, soc_card);
 
 #if 0
 	/* add imx32ads specific controls */
@@ -482,11 +482,11 @@ static void imx32_audio_exit(struct snd_soc_card *soc_card)
 	struct snd_soc_pcm_runtime *pcm_runtime;
 	struct snd_soc_codec *codec;
 
-	codec = snd_soc_get_codec(soc_card, wm8350_codec_id);
+	codec = snd_soc_card_get_codec(soc_card, wm8350_codec_id);
 	if (codec)
 		snd_soc_codec_exit(codec, soc_card);
 
-	pcm_runtime = snd_soc_get_pcm(soc_card, "HiFi");
+	pcm_runtime = snd_soc_card_get_pcm(soc_card, "HiFi");
 	if (pcm_runtime)
 		kfree(pcm_runtime->private_data);
 }
