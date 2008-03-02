@@ -508,20 +508,27 @@ static struct snd_soc_platform_new imx3x_platform = {
 static int imx31_pcm_probe(struct platform_device *pdev)
 {
 	struct snd_soc_platform *platform;
+	int ret;
 
-	platform = snd_soc_register_platform(&imx3x_platform, &pdev->dev);
-	if (platform == NULL)
+	platform = snd_soc_new_platform(&imx3x_platform);
+	if (platform == NULL) {
+		dev_err(&pdev->dev, "Unable to allocate ASoC platform\n");
 		return -ENOMEM;
+	}
 
 	platform_set_drvdata(pdev, platform);
-	return 0;
+	ret = snd_soc_register_platform(platform, &pdev->dev);
+	if (ret < 0)
+		snd_soc_free_platform(platform);
+
+	return ret;
 }
 
 static int imx31_pcm_remove(struct platform_device *pdev)
 {
 	struct snd_soc_platform *platform = platform_get_drvdata(pdev);
 
-	snd_soc_unregister_platform(platform);
+	snd_soc_free_platform(platform);
 	return 0;
 }
 

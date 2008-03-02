@@ -360,7 +360,7 @@ static int imx32ads_wm8350_audio_suspend(struct platform_device *pdev,
 	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
 	struct snd_soc_card *soc_card = wm8350->audio;
 
-	return snd_soc_suspend_pcms(soc_card, state);
+	return snd_soc_card_suspend_pcms(soc_card, state);
 }
 
 static int imx32ads_wm8350_audio_resume(struct platform_device *pdev)
@@ -368,7 +368,7 @@ static int imx32ads_wm8350_audio_resume(struct platform_device *pdev)
 	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
 	struct snd_soc_card *soc_card = wm8350->audio;
 
-	return snd_soc_resume_pcms(soc_card);
+	return snd_soc_card_resume_pcms(soc_card);
 }
 
 #else
@@ -480,11 +480,6 @@ int imx32_audio_init(struct snd_soc_card *soc_card)
 static void imx32_audio_exit(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime;
-	struct snd_soc_codec *codec;
-
-	codec = snd_soc_card_get_codec(soc_card, wm8350_codec_id);
-	if (codec)
-		snd_soc_codec_exit(codec, soc_card);
 
 	pcm_runtime = snd_soc_card_get_pcm(soc_card, "HiFi");
 	if (pcm_runtime)
@@ -550,7 +545,7 @@ static int __devinit imx32ads_wm8350_audio_probe(struct platform_device *pdev)
 	soc_card->dev = &pdev->dev;
 	wm8350->audio = soc_card;
 
-	ret = snd_soc_pcm_create(soc_card, &hifi_pcm_config);
+	ret = snd_soc_card_create_pcms(soc_card, &hifi_pcm_config, 1);
 	if (ret < 0)
 		goto err;
 
