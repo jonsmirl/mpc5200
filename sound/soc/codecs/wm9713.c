@@ -1163,7 +1163,7 @@ static int wm9713_codec_remove(struct platform_device *pdev)
 	
 	snd_soc_unregister_codec_dai(wm9713->hifi_dai);
 	snd_soc_unregister_codec_dai(wm9713->aux_dai);
-	snd_soc_unregister_codec_dai(wm9713->aux_dai);
+	snd_soc_unregister_codec_dai(wm9713->voice_dai);
 	
 	kfree(codec->private_data);
 	snd_soc_free_codec(codec);
