@@ -1377,7 +1377,6 @@ static void wm8350_codec_exit(struct snd_soc_codec *codec,
 {
 	run_delayed_work(&codec->delayed_work);
 	wm8350_set_bias_level(codec, SND_SOC_BIAS_OFF);
-	snd_soc_dapm_free(soc_card);
 }
 
 /* for modprobe */
@@ -1409,6 +1408,7 @@ static int wm8350_codec_probe(struct platform_device *pdev)
 {
 	struct snd_soc_codec *codec;
 	struct wm8350_data *wm8350;
+	int ret = -ENOMEM;
 
 	info("WM8350 Audio Codec %s", WM8350_VERSION);
 
@@ -1417,15 +1417,13 @@ static int wm8350_codec_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	wm8350 = kzalloc(sizeof(struct wm8350_data), GFP_KERNEL);
-	if (wm8350 == NULL) {
-		ret = -ENOMEM;
+	if (wm8350 == NULL)
 		goto prv_err;
-	}
 
 	codec->private_data = wm8350;
 	INIT_DELAYED_WORK(&codec->delayed_work, wm8350_pga_work);
-	codec = snd_soc_register_codec(codec, &pdev->dev);
-	if (codec == NULL)
+	ret = snd_soc_register_codec(codec, &pdev->dev);
+	if (ret < 0)
 		goto codec_err;
 
 	platform_set_drvdata(pdev, codec);
@@ -1439,7 +1437,7 @@ codec_err:
 	kfree(wm8350);
 prv_err:
 	snd_soc_free_codec(codec);
-	return -ENOMEM;
+	return ret;
 }
 
 static int wm8350_codec_remove(struct platform_device *pdev)
