@@ -5,7 +5,7 @@
  *		Endrelia Technologies Inc.
  * Created:	Mar 3, 2006
  *
- * Based on pxa2xx-pcm.c by:
+ * Based on at91-pcm.c by:
  *
  * Author:	Nicolas Pitre
  * Created:	Nov 30, 2004
@@ -124,7 +124,7 @@ static int at91_pcm_hw_params(struct snd_pcm_substream *substream,
 	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 	runtime->dma_bytes = params_buffer_bytes(params);
 
-	prtd->params = rtd->dai->cpu_dai->dma_data;
+	prtd->params = rtd->cpu_dai->dma_data;
 	prtd->params->dma_intr_handler = at91_pcm_dma_irq;
 
 	prtd->dma_buffer = runtime->dma_addr;
@@ -314,8 +314,9 @@ static int at91_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 
 static u64 at91_pcm_dmamask = 0xffffffff;
 
-static int at91_pcm_new(struct snd_card *card,
-	struct snd_soc_codec_dai *dai, struct snd_pcm *pcm)
+static int at91_pcm_new(struct snd_soc_platform *platform,
+	struct snd_card *card, int playback, int capture,
+	struct snd_pcm *pcm)
 {
 	int ret = 0;
 
@@ -324,14 +325,14 @@ static int at91_pcm_new(struct snd_card *card,
 	if (!card->dev->coherent_dma_mask)
 		card->dev->coherent_dma_mask = 0xffffffff;
 
-	if (dai->playback.channels_min) {
+	if (playback) {
 		ret = at91_pcm_preallocate_dma_buffer(pcm,
 			SNDRV_PCM_STREAM_PLAYBACK);
 		if (ret)
 			goto out;
 	}
 
-	if (dai->capture.channels_min) {
+	if (capture) {
 		ret = at91_pcm_preallocate_dma_buffer(pcm,
 			SNDRV_PCM_STREAM_CAPTURE);
 		if (ret)
@@ -362,10 +363,12 @@ static void at91_pcm_free_dma_buffers(struct snd_pcm *pcm)
 	}
 }
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_V1
+#warning this should be moved to trigger
 static int at91_pcm_suspend(struct platform_device *pdev,
-	struct snd_soc_cpu_dai *dai)
+	pm_message_t state)
 {
+	struct snd_soc_platform *platform = platform_get_drvdata(pdev);
 	struct snd_pcm_runtime *runtime = dai->runtime;
 	struct at91_runtime_data *prtd;
 	struct at91_pcm_dma_params *params;
@@ -388,9 +391,9 @@ static int at91_pcm_suspend(struct platform_device *pdev,
 	return 0;
 }
 
-static int at91_pcm_resume(struct platform_device *pdev,
-	struct snd_soc_cpu_dai *dai)
+static int at91_pcm_resume(struct platform_device *pdev)
 {
+	struct snd_soc_platform *platform = platform_get_drvdata(pdev);
 	struct snd_pcm_runtime *runtime = dai->runtime;
 	struct at91_runtime_data *prtd;
 	struct at91_pcm_dma_params *params;
@@ -415,16 +418,66 @@ static int at91_pcm_resume(struct platform_device *pdev,
 #define at91_pcm_resume		NULL
 #endif
 
-struct snd_soc_platform at91_soc_platform = {
-	.name		= "at91-audio",
-	.pcm_ops 	= &at91_pcm_ops,
+const char at91_platform_id[] = "at91-pcm";
+EXPORT_SYMBOL_GPL(at91_platform_id);
+
+static struct snd_soc_platform_new at91_platform = {
+	.name		= at91_platform_id,
+	.pcm_ops	= &at91_pcm_ops,
 	.pcm_new	= at91_pcm_new,
 	.pcm_free	= at91_pcm_free_dma_buffers,
+};
+
+static int at91_pcm_probe(struct platform_device *pdev)
+{
+	struct snd_soc_platform *platform;
+	int ret;
+
+	platform = snd_soc_new_platform(&at91_platform);
+	if (platform == NULL) {
+		dev_err(&pdev->dev, "Unable to allocate ASoC platform\n");
+		return -ENOMEM;
+	}
+
+	platform_set_drvdata(pdev, platform);
+	ret = snd_soc_register_platform(platform, &pdev->dev);
+	if (ret < 0)
+		snd_soc_free_platform(platform);
+
+	return ret;
+}
+
+static int at91_pcm_remove(struct platform_device *pdev)
+{
+	struct snd_soc_platform *platform = platform_get_drvdata(pdev);
+
+	snd_soc_free_platform(platform);
+	return 0;
+}
+
+static struct platform_driver at91_pcm_driver = {
+	.driver = {
+		.name		= pxa_platform_id,
+		.owner		= THIS_MODULE,
+	},
+	.probe		= at91_pcm_probe,
+	.remove		= __devexit_p(at91_pcm_remove),
 	.suspend	= at91_pcm_suspend,
 	.resume		= at91_pcm_resume,
 };
 
-EXPORT_SYMBOL_GPL(at91_soc_platform);
+static __init int at91_pcm_init(void)
+{
+	return platform_driver_register(&at91_pcm_driver);
+}
+
+static __exit void at91_pcm_exit(void)
+{
+	platform_driver_unregister(&at91_pcm_driver);
+}
+
+module_init(at91_pcm_init);
+module_exit(at91_pcm_exit);
 
 MODULE_AUTHOR("Frank Mandarino <fmandarino@endrelia.com>");
 MODULE_DESCRIPTION("Atmel AT91 PCM module");

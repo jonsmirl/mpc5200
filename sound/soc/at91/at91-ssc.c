@@ -20,6 +20,7 @@
 #include <linux/device.h>
 #include <linux/delay.h>
 #include <linux/clk.h>
+#include <linux/platform_device.h>
 #include <linux/atmel_pdc.h>
 
 #include <sound/core.h>
@@ -138,7 +139,7 @@ struct at91_ssc_state {
 static struct at91_ssc_info {
 	char		*name;
 	struct at91_ssc_periph ssc;
-	spinlock_t 	lock;		/* lock for dir_mask */
+	spinlock_t	lock;		/* lock for dir_mask */
 	unsigned short	dir_mask;	/* 0=unused, 1=playback, 2=capture */
 	unsigned short	initialized;	/* 1=SSC has been initialized */
 	unsigned short	daifmt;
@@ -209,10 +210,10 @@ static irqreturn_t at91_ssc_interrupt(int irq, void *dev_id)
 /*
  * Startup.  Only that one substream allowed in each direction.
  */
-static int at91_ssc_startup(struct snd_pcm_substream *substream)
+static int at91_ssc_startup(struct snd_pcm_substream *substream,
+	struct snd_soc_dai *cpu_dai)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct at91_ssc_info *ssc_p = &ssc_info[rtd->dai->cpu_dai->id];
+	struct at91_ssc_info *ssc_p = cpu_dai->private_data;
 	int dir_mask;
 
 	DBG("ssc_startup: SSC_SR=0x%08lx\n",
@@ -234,10 +235,10 @@ static int at91_ssc_startup(struct snd_pcm_substream *substream)
  * Shutdown.  Clear DMA parameters and shutdown the SSC if there
  * are no other substreams open.
  */
-static void at91_ssc_shutdown(struct snd_pcm_substream *substream)
+static void at91_ssc_shutdown(struct snd_pcm_substream *substream,
+	struct snd_soc_dai *cpu_dai)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct at91_ssc_info *ssc_p = &ssc_info[rtd->dai->cpu_dai->id];
+	struct at91_ssc_info *ssc_p = cpu_dai->private_data;
 	struct at91_pcm_dma_params *dma_params;
 	int dir, dir_mask;
 
@@ -281,7 +282,7 @@ static void at91_ssc_shutdown(struct snd_pcm_substream *substream)
 /*
  * Record the SSC system clock rate.
  */
-static int at91_ssc_set_dai_sysclk(struct snd_soc_cpu_dai *cpu_dai,
+static int at91_ssc_set_dai_sysclk(struct snd_soc_dai *cpu_dai,
 		int clk_id, unsigned int freq, int dir)
 {
 	/*
@@ -303,7 +304,7 @@ static int at91_ssc_set_dai_sysclk(struct snd_soc_cpu_dai *cpu_dai,
 /*
  * Record the DAI format for use in hw_params().
  */
-static int at91_ssc_set_dai_fmt(struct snd_soc_cpu_dai *cpu_dai,
+static int at91_ssc_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 		unsigned int fmt)
 {
 	struct at91_ssc_info *ssc_p = &ssc_info[cpu_dai->id];
@@ -315,7 +316,7 @@ static int at91_ssc_set_dai_fmt(struct snd_soc_cpu_dai *cpu_dai,
 /*
  * Record SSC clock dividers for use in hw_params().
  */
-static int at91_ssc_set_dai_clkdiv(struct snd_soc_cpu_dai *cpu_dai,
+static int at91_ssc_set_dai_clkdiv(struct snd_soc_dai *cpu_dai,
 	int div_id, int div)
 {
 	struct at91_ssc_info *ssc_p = &ssc_info[cpu_dai->id];
@@ -353,10 +354,10 @@ static int at91_ssc_set_dai_clkdiv(struct snd_soc_cpu_dai *cpu_dai,
  * Configure the SSC.
  */
 static int at91_ssc_hw_params(struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params)
+	struct snd_pcm_hw_params *params, struct snd_soc_dai *cpu_dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	int id = rtd->dai->cpu_dai->id;
+	int id = rtd->cpu_dai->id;
 	struct at91_ssc_info *ssc_p = &ssc_info[id];
 	struct at91_pcm_dma_params *dma_params;
 	int dir, channels, bits;
@@ -383,7 +384,7 @@ static int at91_ssc_hw_params(struct snd_pcm_substream *substream,
 	 * function.  It should not be used for other purposes
 	 * as it is common to all substreams.
 	 */
-	rtd->dai->cpu_dai->dma_data = dma_params;
+	rtd->cpu_dai->dma_data = dma_params;
 
 	channels = params_channels(params);
 
@@ -613,10 +614,10 @@ static int at91_ssc_hw_params(struct snd_pcm_substream *substream,
 }
 
 
-static int at91_ssc_prepare(struct snd_pcm_substream *substream)
+static int at91_ssc_prepare(struct snd_pcm_substream *substream,
+	struct snd_soc_dai *cpu_dai)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct at91_ssc_info *ssc_p = &ssc_info[rtd->dai->cpu_dai->id];
+	struct at91_ssc_info *ssc_p = cpu_dai->private_data;
 	struct at91_pcm_dma_params *dma_params;
 	int dir;
 
@@ -632,9 +633,10 @@ static int at91_ssc_prepare(struct snd_pcm_substream *substream)
 }
 
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_V1
+#warning this need to be in trigger
 static int at91_ssc_suspend(struct platform_device *pdev,
-	struct snd_soc_cpu_dai *cpu_dai)
+	struct snd_soc_dai *cpu_dai)
 {
 	struct at91_ssc_info *ssc_p;
 
@@ -662,7 +664,7 @@ static int at91_ssc_suspend(struct platform_device *pdev,
 }
 
 static int at91_ssc_resume(struct platform_device *pdev,
-	struct snd_soc_cpu_dai *cpu_dai)
+	struct snd_soc_dai *cpu_dai)
 {
 	struct at91_ssc_info *ssc_p;
 
@@ -700,90 +702,135 @@ static int at91_ssc_resume(struct platform_device *pdev,
 #define AT91_SSC_FORMATS (SNDRV_PCM_FMTBIT_S8     | SNDRV_PCM_FMTBIT_S16_LE |\
 			  SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
-struct snd_soc_cpu_dai at91_ssc_dai[NUM_SSC_DEVICES] = {
-	{	.name = "at91-ssc0",
-		.id = 0,
-		.type = SND_SOC_DAI_PCM,
-		.suspend = at91_ssc_suspend,
-		.resume = at91_ssc_resume,
-		.playback = {
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = AT91_SSC_RATES,
-			.formats = AT91_SSC_FORMATS,},
-		.capture = {
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = AT91_SSC_RATES,
-			.formats = AT91_SSC_FORMATS,},
-		.ops = {
-			.startup = at91_ssc_startup,
-			.shutdown = at91_ssc_shutdown,
-			.prepare = at91_ssc_prepare,
-			.hw_params = at91_ssc_hw_params,},
-		.dai_ops = {
-			.set_sysclk = at91_ssc_set_dai_sysclk,
-			.set_fmt = at91_ssc_set_dai_fmt,
-			.set_clkdiv = at91_ssc_set_dai_clkdiv,},
-		.private_data = &ssc_info[0].ssc,
+static struct snd_soc_dai_caps ssc_playback = {
+	.channels_min	= 1,
+	.channels_max	= 2,
+	.rates		= AT91_SSC_RATES,
+	.formats	= AT91_SSC_FORMATS,
+};
+
+static struct snd_soc_dai_caps ssc_capture = {
+	.channels_min	= 1,
+	.channels_max	= 2,
+	.rates		= AT91_SSC_RATES,
+	.formats	= AT91_SSC_FORMATS,
+};
+
+static struct snd_soc_dai_ops at91_ssc_ops = {
+	/* alsa ops */
+	.startup = at91_ssc_startup,
+	.shutdown = at91_ssc_shutdown,
+	.prepare = at91_ssc_prepare,
+	.hw_params = at91_ssc_hw_params,
+
+	/* dai ops */
+	.set_sysclk = at91_ssc_set_dai_sysclk,
+	.set_fmt = at91_ssc_set_dai_fmt,
+	.set_clkdiv = at91_ssc_set_dai_clkdiv,
+};
+
+/* for modprobe */
+const char at91_ssc_id0[] = "at91-ssc0";
+EXPORT_SYMBOL_GPL(at91_ssc_id0);
+const char at91_ssc_id1[] = "at91-ssc1";
+EXPORT_SYMBOL_GPL(at91_ssc_id1);
+const char at91_ssc_id2[] = "at91-ssc2";
+EXPORT_SYMBOL_GPL(at91_ssc_id2);
+
+struct snd_soc_dai_new at91_dai[] = {
+	{
+		.name         = at91_ssc_id0,
+		.playback     = &ssc_playback,
+		.capture      = &ssc_capture,
+		.ops          = &at91_ssc_ops,
 	},
 #if NUM_SSC_DEVICES == 3
-	{	.name = "at91-ssc1",
-		.id = 1,
-		.type = SND_SOC_DAI_PCM,
-		.suspend = at91_ssc_suspend,
-		.resume = at91_ssc_resume,
-		.playback = {
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = AT91_SSC_RATES,
-			.formats = AT91_SSC_FORMATS,},
-		.capture = {
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = AT91_SSC_RATES,
-			.formats = AT91_SSC_FORMATS,},
-		.ops = {
-			.startup = at91_ssc_startup,
-			.shutdown = at91_ssc_shutdown,
-			.prepare = at91_ssc_prepare,
-			.hw_params = at91_ssc_hw_params,},
-		.dai_ops = {
-			.set_sysclk = at91_ssc_set_dai_sysclk,
-			.set_fmt = at91_ssc_set_dai_fmt,
-			.set_clkdiv = at91_ssc_set_dai_clkdiv,},
-		.private_data = &ssc_info[1].ssc,
+	{
+		.name         = at91_ssc_id1,
+		.playback     = &ssc_playback,
+		.capture      = &ssc_capture,
+		.ops          = &at91_ssc_ops,
 	},
-	{	.name = "at91-ssc2",
-		.id = 2,
-		.type = SND_SOC_DAI_PCM,
-		.suspend = at91_ssc_suspend,
-		.resume = at91_ssc_resume,
-		.playback = {
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = AT91_SSC_RATES,
-			.formats = AT91_SSC_FORMATS,},
-		.capture = {
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = AT91_SSC_RATES,
-			.formats = AT91_SSC_FORMATS,},
-		.ops = {
-			.startup = at91_ssc_startup,
-			.shutdown = at91_ssc_shutdown,
-			.prepare = at91_ssc_prepare,
-			.hw_params = at91_ssc_hw_params,},
-		.dai_ops = {
-			.set_sysclk = at91_ssc_set_dai_sysclk,
-			.set_fmt = at91_ssc_set_dai_fmt,
-			.set_clkdiv = at91_ssc_set_dai_clkdiv,},
-		.private_data = &ssc_info[2].ssc,
+	{
+		.name         = at91_ssc_id2,
+		.playback     = &ssc_playback,
+		.capture      = &ssc_capture,
+		.ops          = &at91_ssc_ops,
 	},
 #endif
 };
 
-EXPORT_SYMBOL_GPL(at91_ssc_dai);
+struct ssc_data {
+#if NUM_SSC_DEVICES == 3
+	struct snd_soc_dai *dai[3];
+#else
+	struct snd_soc_dai *dai[1];
+#endif
+};
+
+/* we could pass in some platform data here to set up our AUDMUX etc.
+ * consider splitting into 2 platform devices */
+static int at91_ssc_probe(struct platform_device *pdev)
+{
+	struct ssc_data *ssc;
+	int i;
+
+	ssc = kzalloc(sizeof(*ssc), GFP_KERNEL);
+	if (ssc == NULL)
+		return -ENOMEM;
+
+	for (i = 0; i < ARRAY_SIZE(at91_dai); i++) {
+		ssc->dai[i] = snd_soc_register_platform_dai(&at91_dai[i],
+							     &pdev->dev);
+		if (ssc->dai[i] == NULL)
+			goto unwind_create;
+		ssc->dai[i]->private_data = &ssc_info[i];
+	}
+	platform_set_drvdata(pdev, ssc);
+	return 0;
+
+unwind_create:
+	i--;
+	for (; i >= 0; i--)
+		snd_soc_unregister_platform_dai(ssc->dai[i]);
+
+	kfree(ssc);
+	return -ENOMEM;
+}
+
+static int at91_ssc_remove(struct platform_device *pdev)
+{
+	struct ssc_data *ssc = platform_get_drvdata(pdev);
+	int i;
+
+	for (i = ARRAY_SIZE(at91_dai); i >= 0; i--)
+		snd_soc_unregister_platform_dai(ssc->dai[i]);
+
+	kfree(ssc);
+	return 0;
+}
+
+static struct platform_driver at91_ssc_driver = {
+	.driver = {
+		.name		= "at91-ssc",
+		.owner		= THIS_MODULE,
+	},
+	.probe		= at91_ssc_probe,
+	.remove		= __devexit_p(at91_ssc_remove),
+};
+
+static __init int at91_ssc_init(void)
+{
+	return platform_driver_register(&at91_ssc_driver);
+}
+
+static __exit void at91_ssc_exit(void)
+{
+	platform_driver_unregister(&at91_ssc_driver);
+}
+
+module_init(at91_ssc_init);
+module_exit(at91_ssc_exit);
 
 /* Module information */
 MODULE_AUTHOR("Frank Mandarino, fmandarino@endrelia.com, www.endrelia.com");
