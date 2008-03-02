@@ -81,14 +81,14 @@ static int mainstone_wm9712_init(struct snd_soc_card *soc_card)
 	struct snd_ac97_bus_ops *ac97_ops;
 	int ret;
 
-	codec = snd_soc_get_codec(soc_card, wm9712_codec_id);
+	codec = snd_soc_card_get_codec(soc_card, wm9712_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
 
-	snd_soc_codec_set_io(codec, mainstone_wm9712_read,
+	snd_soc_card_config_codec(codec, mainstone_wm9712_read,
 		mainstone_wm9712_write, codec->ac97);
 
-	ac97_ops = snd_soc_get_ac97_ops(soc_card, pxa_ac97_hifi_dai_id);
+	ac97_ops = snd_soc_card_get_ac97_ops(soc_card, pxa_ac97_hifi_dai_id);
 
 	/* register with AC97 bus for ad-hoc driver access */
 	ret = snd_soc_new_ac97_codec(codec, ac97_ops, soc_card->card, 0, 0);
@@ -104,7 +104,7 @@ static int mainstone_wm9712_init(struct snd_soc_card *soc_card)
 		return ret;
 	}
 
-	snd_soc_codec_init(codec, soc_card);
+	snd_soc_card_init_codec(codec, soc_card);
 
 	/* Add mainstone specific widgets */
 	ret = snd_soc_dapm_new_controls(soc_card, codec,
@@ -131,7 +131,7 @@ static struct snd_soc_pcm_config pcm_config[] = {
 	.codec		= wm9712_codec_id,
 	.codec_dai	= wm9712_codec_hifi_dai_id,
 	.platform	= pxa_platform_id,
-	.cpu_dai	= pxa_ac97_hifi_dai_id,
+	.cpu_dai	= pxa2xx_i2s_dai_id,
 	.playback	= 1,
 	.capture	= 1,
 },
@@ -142,7 +142,7 @@ static struct snd_soc_pcm_config pcm_config[] = {
 	.platform	= pxa_platform_id,
 	.cpu_dai	= pxa_ac97_aux_dai_id,
 	.playback	= 1,
-}};
+},};
 
 /*
  * This is an example soc_card initialisation for a wm9712 connected to a
@@ -164,7 +164,8 @@ static int mainstone_wm9712_probe(struct platform_device *pdev)
 	soc_card->private_data = pdev;
 	platform_set_drvdata(pdev, soc_card);
 
-	ret = snd_soc_card_create_pcms(soc_card, pcm_config, ARRAY_SIZE(pcm_config));
+	ret = snd_soc_card_create_pcms(soc_card, pcm_config,
+		ARRAY_SIZE(pcm_config));
 	if (ret < 0)
 		goto err;
 
@@ -197,7 +198,7 @@ static int mainstone_wm9712_suspend(struct platform_device *pdev,
 
 	mst_audio_suspend_mask = MST_MSCWR2;
 	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
-	return snd_soc_card_suspend_pcms(soc_card, state);
+	return snd_soc_suspend_pcms(soc_card, state);
 }
 
 static int mainstone_wm9712_resume(struct platform_device *pdev)
@@ -205,7 +206,7 @@ static int mainstone_wm9712_resume(struct platform_device *pdev)
 	struct snd_soc_card *soc_card = platform_get_drvdata(pdev);
 
 	MST_MSCWR2 &= mst_audio_suspend_mask | ~MST_MSCWR2_AC97_SPKROFF;
-	return snd_soc_card_resume_pcms(soc_card);
+	return snd_soc_resume_pcms(soc_card);
 }
 
 #else
@@ -224,8 +225,24 @@ static struct platform_driver mainstone_wm9712_driver = {
 	},
 };
 
+static struct platform_device codec = {
+	.name		= "wm9712-codec",
+	.id		= -1,
+};
+
+static struct platform_device platform = {
+	.name		= "Mainstone-WM9712",
+	.id		= -1,
+};
+
+static struct platform_device *devices[] = {
+	&codec,
+	&platform,
+};
+
 static int __init mainstone_asoc_init(void)
 {
+	platform_add_devices(&devices[0], ARRAY_SIZE(devices));
 	return platform_driver_register(&mainstone_wm9712_driver);
 }
 

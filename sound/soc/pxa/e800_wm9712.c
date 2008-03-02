@@ -50,14 +50,14 @@ static int e800_init(struct snd_soc_card *soc_card)
 	struct snd_ac97_bus_ops *ac97_ops;
 	int ret;
 
-	codec = snd_soc_get_codec(soc_card, wm9712_codec_id);
+	codec = snd_soc_card_get_codec(soc_card, wm9712_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
 
-	snd_soc_codec_set_io(codec, e800_wm9712_read,
+	snd_soc_card_config_codec(codec, e800_wm9712_read,
 		e800_wm9712_write, codec->ac97);
 
-	ac97_ops = snd_soc_get_ac97_ops(soc_card, pxa_ac97_hifi_dai_id);
+	ac97_ops = snd_soc_card_get_ac97_ops(soc_card, pxa_ac97_hifi_dai_id);
 
 	/* register with AC97 bus for ad-hoc driver access */
 	ret = snd_soc_new_ac97_codec(codec, ac97_ops, soc_card->card, 0, 0);
@@ -73,13 +73,14 @@ static int e800_init(struct snd_soc_card *soc_card)
 		return ret;
 	}
 
-	snd_soc_codec_init(codec, soc_card);
+	snd_soc_card_init_codec(codec, soc_card);
 
 	snd_soc_dapm_sync(soc_card);
 	return 0;
 }
 
-static struct snd_soc_pcm_config hifi_pcm_config = {
+static struct snd_soc_pcm_config pcm_config[] = {
+{
 	.name		= "HiFi",
 	.codec		= wm9712_codec_id,
 	.codec_dai	= wm9712_codec_hifi_dai_id,
@@ -87,16 +88,15 @@ static struct snd_soc_pcm_config hifi_pcm_config = {
 	.cpu_dai	= pxa_ac97_hifi_dai_id,
 	.playback	= 1,
 	.capture	= 1,
-};
-
-static struct snd_soc_pcm_config aux_pcm_config = {
+},
+{
 	.name		= "Aux",
 	.codec		= wm9712_codec_id,
 	.codec_dai	= wm9712_codec_aux_dai_id,
 	.platform	= pxa_platform_id,
 	.cpu_dai	= pxa_ac97_aux_dai_id,
 	.playback	= 1,
-};
+},};
 
 /*
  * This is an example soc_card initialisation for a wm9712 connected to a
@@ -121,11 +121,8 @@ static int e800_wm9712_probe(struct platform_device *pdev)
 	soc_card->private_data = pdev;
 	platform_set_drvdata(pdev, soc_card);
 
-	ret = snd_soc_pcm_create(soc_card, &hifi_pcm_config);
-	if (ret < 0)
-		goto err;
-
-	ret = snd_soc_pcm_create(soc_card, &aux_pcm_config);
+	ret = snd_soc_card_create_pcms(soc_card, pcm_config,
+		ARRAY_SIZE(pcm_config));
 	if (ret < 0)
 		goto err;
 

@@ -93,19 +93,19 @@ static int zylonite_init(struct snd_soc_card *card)
 	struct snd_ac97_bus_ops *ac97_ops;
 	int ret;
 
-	codec = snd_soc_get_codec(card, wm9713_codec_id);
+	codec = snd_soc_card_get_codec(card, wm9713_codec_id);
 	if (codec == NULL) {
 		printk(KERN_ERR "Unable to obtain WM9713 codec\n");
 		return -ENODEV;
 	}
 
-	dai = snd_soc_get_dai(card, pxa_ac97_hifi_dai_id);
+	dai = snd_soc_card_get_dai(card, pxa_ac97_hifi_dai_id);
 	if (dai == NULL) {
 		printk(KERN_ERR "Unable to obtain WM9713 HiFi DAI\n");
 		return -ENODEV;
 	}
 
-	ac97_ops = snd_soc_get_ac97_ops(card, pxa_ac97_hifi_dai_id);
+	ac97_ops = snd_soc_card_get_ac97_ops(card, pxa_ac97_hifi_dai_id);
 	if (!ac97_ops) {
 		printk(KERN_ERR "Unable to obtain AC97 operations\n");
 		return -ENODEV;
@@ -129,7 +129,7 @@ static int zylonite_init(struct snd_soc_card *card)
 		return -ENODEV;
 	}
 
-	snd_soc_codec_init(codec, card);
+	snd_soc_card_init_codec(codec, card);
 
 	ret = snd_soc_dai_set_pll(dai, 0, clk_get_rate(mclk), 1);
 	if (ret != 0) {
@@ -189,7 +189,7 @@ static int zylonite_probe(struct platform_device *pdev)
 	card->private_data = pdev;
 	platform_set_drvdata(pdev, card);
 
-	ret = snd_soc_card_create_pcms(card, &pcm_configs[0],
+	ret = snd_soc_card_create_pcms(card, pcm_configs,
 				  ARRAY_SIZE(pcm_configs));
 	if (ret < 0)
 		goto err;

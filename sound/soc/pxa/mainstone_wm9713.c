@@ -163,14 +163,14 @@ static int mainstone_wm9713_init(struct snd_soc_card *soc_card)
 	struct snd_ac97_bus_ops *ac97_ops;
 	int ret;
 
-	codec = snd_soc_get_codec(soc_card, wm9713_codec_id);
+	codec = snd_soc_card_get_codec(soc_card, wm9713_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
 
-	snd_soc_codec_set_io(codec, mainstone_wm9713_read,
+	snd_soc_card_config_codec(codec, mainstone_wm9713_read,
 		mainstone_wm9713_write, codec->ac97);
 
-	ac97_ops = snd_soc_get_ac97_ops(soc_card, pxa_ac97_hifi_dai_id);
+	ac97_ops = snd_soc_card_get_ac97_ops(soc_card, pxa_ac97_hifi_dai_id);
 
 	/* register with AC97 bus for ad-hoc driver access */
 	ret = snd_soc_new_ac97_codec(codec, ac97_ops, soc_card->card, 0, 0);
@@ -186,7 +186,7 @@ static int mainstone_wm9713_init(struct snd_soc_card *soc_card)
 		return ret;
 	}
 
-	snd_soc_codec_init(codec, soc_card);
+	snd_soc_card_init_codec(codec, soc_card);
 
 	/* set up mainstone codec pins */
 	snd_soc_dapm_disable_pin(soc_card, "RXP");
@@ -271,7 +271,7 @@ static int mainstone_wm9713_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, soc_card);
 
 	ret = snd_soc_card_create_pcms(soc_card, pcm_configs,
-					ARRAY_SIZE(pcm_configs));
+				  ARRAY_SIZE(pcm_configs));
 	if (ret < 0)
 		goto err;
 
@@ -304,7 +304,7 @@ static int mainstone_wm9713_suspend(struct platform_device *pdev,
 
 	mst_audio_suspend_mask = MST_MSCWR2;
 	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
-	return snd_soc_card_suspend_pcms(soc_card, state);
+	return snd_soc_suspend_pcms(soc_card, state);
 }
 
 static int mainstone_wm9713_resume(struct platform_device *pdev)
@@ -312,7 +312,7 @@ static int mainstone_wm9713_resume(struct platform_device *pdev)
 	struct snd_soc_card *soc_card = platform_get_drvdata(pdev);
 
 	MST_MSCWR2 &= mst_audio_suspend_mask | ~MST_MSCWR2_AC97_SPKROFF;
-	return snd_soc_card_resume_pcms(soc_card);
+	return snd_soc_resume_pcms(soc_card);
 }
 
 #else
@@ -345,8 +345,6 @@ static struct platform_device *devices[] = {
 	&codec,
 	&platform,
 };
-
-
 
 static int __init mainstone_asoc_init(void)
 {

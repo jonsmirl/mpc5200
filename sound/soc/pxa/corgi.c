@@ -313,7 +313,7 @@ static int corgi_init(struct snd_soc_card *soc_card)
 	struct snd_soc_codec *codec;
 	int ret;
 
-	codec = snd_soc_get_codec(soc_card, wm8731_codec_id);
+	codec = snd_soc_card_get_codec(soc_card, wm8731_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
 
@@ -341,10 +341,10 @@ static int corgi_init(struct snd_soc_card *soc_card)
 
 	snd_soc_dapm_sync(soc_card);
 
-	snd_soc_codec_set_io(codec, NULL, corgi_wm8731_write,
+	snd_soc_card_config_codec(codec, NULL, corgi_wm8731_write,
 		soc_card->private_data);
 
-	snd_soc_codec_init(codec, soc_card);
+	snd_soc_card_init_codec(codec, soc_card);
 
 	return 0;
 }
@@ -354,7 +354,7 @@ static struct snd_soc_pcm_config hifi_pcm_config = {
 	.codec		= wm8731_codec_id,
 	.codec_dai	= wm8731_codec_dai_id,
 	.platform	= pxa_platform_id,
-	.cpu_dai	= pxa2xx_i2s_id,
+	.cpu_dai	= pxa2xx_i2s_dai_id,
 	.ops		= &corgi_ops,
 	.playback	= 1,
 	.capture	= 1,
@@ -392,7 +392,7 @@ static int wm8731_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	soc_card->private_data = i2c;
 	i2c_set_clientdata(i2c, soc_card);
 
-	ret = snd_soc_pcm_create(soc_card, &hifi_pcm_config);
+	ret = snd_soc_card_create_pcms(soc_card, &hifi_pcm_config, 1);
 	if (ret < 0)
 		goto err;
 
