@@ -21,93 +21,43 @@ struct snd_soc_card;
 struct snd_soc_ops;
 struct snd_soc_pcm_config;
 
-
+/* soc card registration */
+int snd_soc_card_register(struct snd_soc_card *soc_card);
+void snd_soc_card_free(struct snd_soc_card *soc_card);
 struct snd_soc_card *snd_soc_card_create(const char *name,
 	struct device *parent, int idx, const char *xid);
 
+/* pcm creation */
 int snd_soc_card_create_pcms(struct snd_soc_card *soc_card,
 			struct snd_soc_pcm_config *config, int num);
 
-int snd_soc_card_register(struct snd_soc_card *soc_card);
-
-void snd_soc_card_free(struct snd_soc_card *soc_card);
-
-
-int snd_soc_card_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state);
-
-
+/* suspend and resume */
+int snd_soc_card_suspend_pcms(struct snd_soc_card *soc_card,
+	pm_message_t state);
 int snd_soc_card_resume_pcms(struct snd_soc_card *soc_card);
 
-
-struct snd_soc_pcm_runtime *snd_soc_get_pcm(struct snd_soc_card *soc_card,
+/* get codec, dai, platform from ID */
+struct snd_soc_pcm_runtime *snd_soc_card_get_pcm(struct snd_soc_card *soc_card,
 	const char *pcm_id);
 
+struct snd_ac97_bus_ops *snd_soc_card_get_ac97_ops(
+	struct snd_soc_card *soc_card, const char *dai_id);
 
-struct snd_ac97_bus_ops *snd_soc_get_ac97_ops(struct snd_soc_card *soc_card,
-					      const char *dai_id);
-
-/**
- * snd_soc_get_codec - get codec.
- * @soc_card: soc_card
- * @codec_id: codec ID
- *
- * Gets codec from ID.
- */
-struct snd_soc_codec *snd_soc_get_codec(struct snd_soc_card *soc_card,
+struct snd_soc_codec *snd_soc_card_get_codec(struct snd_soc_card *soc_card,
 	const char *codec_id);
 
-/**
- * snd_soc_get_platform - get platform.
- * @soc_card: soc_card
- * @codec_id: platform ID
- *
- * Gets platform from ID.
- */
-struct snd_soc_platform * snd_soc_get_platform(struct snd_soc_card *soc_card,
-	const char *platform_id);
+struct snd_soc_platform * snd_soc_card_get_platform(
+	struct snd_soc_card *soc_card, const char *platform_id);
 
-/**
- * snd_soc_get_dai - get dai.
- * @soc_card: soc_card
- * @codec_id: dai ID
- *
- * Gets dai from ID.
- */
-struct snd_soc_dai * snd_soc_get_dai(struct snd_soc_card *soc_card,
+struct snd_soc_dai * snd_soc_card_get_dai(struct snd_soc_card *soc_card,
 	const char *dai_id);
 
-/**
- * snd_soc_codec_set_io - initialise codec IO.
- * @codec: codec
- * @soc_card_read: read function called by codec.
- * @soc_card_write: write function called by codec.
- * @control_data: IO control data - usually I2C, SPI, etc pointer
- *
- * Initialises the codec IO system with the soc_cards codec IO mechanism.
- */
-void snd_soc_codec_set_io(struct snd_soc_codec *codec,
+/* codec initialisation */
+void snd_soc_card_config_codec(struct snd_soc_codec *codec,
 	int (*soc_card_read)(void *, long, int),
 	int (*soc_card_write)(void *, long, int), void *control_data);
 
-/**
- * snd_soc_codec_init - initialises codec
- * @codec: codec
- * @soc_card: soc_card
- *
- * Initialises codec hardware. Can perform IO and must only be called after a
- * successful call to snd_soc_codec_set_io().
- */
-int snd_soc_codec_init(struct snd_soc_codec *codec,
-	struct snd_soc_card *soc_card);
-
-/**
- * snd_soc_codec_exit - shutsdown codec hw
- * @codec: codec
- * @soc_card: soc_card
- *
- * Shutsdown codec hardware.
- */
-void snd_soc_codec_exit(struct snd_soc_codec *codec,
+int snd_soc_card_init_codec(struct snd_soc_codec *codec,
 	struct snd_soc_card *soc_card);
 
 /*

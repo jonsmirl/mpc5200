@@ -147,90 +147,30 @@ int snd_soc_get_volsw_2r(struct snd_kcontrol *kcontrol,
 int snd_soc_put_volsw_2r(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
 
-/**
- * snd_soc_cnew - create new kcontrol.
- * @_template: template kcontrol
- * @data: private kcontrol data
- * @long_name: kcontrol long name
- *
- * Creates a new ASoC ALSA kcontrol.
- */
+/* control creation */
 struct snd_kcontrol *snd_soc_cnew(const struct snd_kcontrol_new *_template,
 	void *data, char *long_name);
 
-/**
- * snd_soc_add_new_controls - create and add new controls
- * @soc_card: soc sound card
- * @_template: control template
- * @data: control private data
- * @num: number of controls
- *
- * Create new mixer controls from template controls and add to
- * the soc sound card. This calls snd_soc_new() internally.
- *
- * Returns 0 for success, else error.
- */
 int snd_soc_add_new_controls(struct snd_soc_card *soc_card,
 	const struct snd_kcontrol_new *_template, void *data, int num);
-/**
- * snd_soc_new_codec - create new codec driver.
- * @template: new codec driver template
- * @cache: default register cache or NULL
- *
- * Creates a new codec and allocates resources including register cache.
- */
+
+/* codec creation and registration */
 struct snd_soc_codec *snd_soc_new_codec(
 	struct snd_soc_codec_new *template, const char *cache);
 
-/**
- * snd_soc_register_codec - register codec driver.
- * @codec: codec driver
- * @dev: device
- *
- * Registers a new codec driver with ASoC core.
- */
 int snd_soc_register_codec(struct snd_soc_codec *codec, struct device *dev);
 
-/**
- * snd_soc_free_codec - unregister and free codec.
- * @codec: codec driver
- *
- * Unregisters a codec driver with the core and frees all its resources.
- */
 void snd_soc_free_codec(struct snd_soc_codec *codec);
 
-/**
- * snd_soc_register_codec_dai - register a codec DAI.
- * @template: pointer to DAI template
- * @dev: device
- *
- * Creates and registers a codec Digital Audio Interface with ASoC core.
- */
-struct snd_soc_dai *snd_soc_register_codec_dai(
-	struct snd_soc_dai_new *template, struct device *dev);
-
-/**
- * snd_soc_unregister_codec_dai - add DAI to codec.
- * @dai: pointer to DAI
- *
- * Unregisters a codec Digital Audio Interface with ASoC core.
- */
-void snd_soc_unregister_codec_dai(struct snd_soc_dai *dai);
-
-/**
- * snd_soc_new_ac97_codec - create new AC97 codec.
- * @codec: codec
- * @ops: AC97 bus operations
- * @card: ALSA sound card.
- * @num: codec number.
- * @bus_no: AC97 bus number.
- *
- * Creates a new AC97 codec and initialises AC97 codec resources for use by
- * ad-hoc devices only
- */
 int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
 	struct snd_ac97_bus_ops *ops, struct snd_card *card,
 	int num, int bus_no);
+
+/* codec dia registration */
+struct snd_soc_dai *snd_soc_register_codec_dai(
+	struct snd_soc_dai_new *template, struct device *dev);
+
+void snd_soc_unregister_codec_dai(struct snd_soc_dai *dai);
 
 /*
  * Enumerated kcontrol
@@ -298,7 +238,7 @@ struct snd_soc_codec {
 	/*
 	 * Initialisation and cleanup - Optional, both can perform IO.
 	 * Normally used to power up/down codec power domain (bias) and do any
-	 * codec init/exit IO. Called by snd_soc_codec_init() and
+	 * codec init/exit IO. Called by snd_soc_card_config_codec() and
 	 * snd_soc_codec_exit() in soc card driver.
 	 */
 	int (*init)(struct snd_soc_codec *codec,
@@ -351,32 +291,9 @@ static inline int snd_soc_write(struct snd_soc_codec *codec,
 	return codec->codec_write(codec, reg, value);
 }
 
-/**
- * snd_soc_update_bits - update codec register bits
- * @codec: audio codec
- * @reg: codec register
- * @mask: register mask
- * @value: new value
- *
- * Writes new register value.
- *
- * Returns 1 for change else 0.
- */
 int snd_soc_update_bits(struct snd_soc_codec *codec, unsigned short reg,
 				unsigned short mask, unsigned short value);
 
-/**
- * snd_soc_test_bits - test register for change
- * @codec: audio codec
- * @reg: codec register
- * @mask: register mask
- * @value: new value
- *
- * Tests a register with a new value and checks if the new value is
- * different from the old value.
- *
- * Returns 1 for change else 0.
- */
 int snd_soc_test_bits(struct snd_soc_codec *codec, unsigned short reg,
 				unsigned short mask, unsigned short value);
 

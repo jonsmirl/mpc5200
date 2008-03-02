@@ -50,6 +50,7 @@
 
 /* dapm sys fs - used by the core */
 int snd_soc_dapm_sys_add(struct snd_soc_card *soc_card);
+void snd_soc_dapm_free(struct snd_soc_card *soc_card);
 
 static DEFINE_MUTEX(pcm_mutex);
 static DEFINE_MUTEX(io_mutex);
@@ -1019,6 +1020,13 @@ static ssize_t codec_reg_show(struct device *dev,
 }
 static DEVICE_ATTR(codec_reg, 0444, codec_reg_show, NULL);
 
+static void soc_codec_exit(struct snd_soc_codec *codec,
+	struct snd_soc_card *soc_card)
+{
+	device_remove_file(codec->dev, &dev_attr_codec_reg);
+	if (codec->exit)
+		codec->exit(codec, soc_card);
+}
 
 static int soc_ac97_write(void *control_data, long val, int reg)
 {
@@ -1034,14 +1042,16 @@ static int soc_ac97_read(void *control_data, long val, int reg)
 	return 0;
 }
 
-
 /**
- * snd_soc_new_ac97_codec - initailise AC97 device
- * @codec: audio codec
+ * snd_soc_new_ac97_codec - create new AC97 codec.
+ * @codec: codec
  * @ops: AC97 bus operations
- * @num: AC97 codec number
+ * @card: ALSA sound card.
+ * @num: codec number.
+ * @bus_no: AC97 bus number.
  *
- * Initialises AC97 codec resources for use by ad-hoc devices only.
+ * Creates a new AC97 codec and initialises AC97 codec resources for use by
+ * ad-hoc AC97 devices.
  */
 int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
 	struct snd_ac97_bus_ops *ops, struct snd_card *card,
@@ -1075,7 +1085,7 @@ int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
 	spin_lock_init(&ac97->bus->bus_lock);
 	codec->ac97 = ac97;
 
-	snd_soc_codec_set_io(codec, soc_ac97_read, soc_ac97_write,
+	snd_soc_card_config_codec(codec, soc_ac97_read, soc_ac97_write,
 			     codec->ac97);
 
 	mutex_unlock(&codec->mutex);
@@ -1603,6 +1613,15 @@ int snd_soc_put_volsw_2r(struct snd_kcontrol *kcontrol,
 }
 EXPORT_SYMBOL_GPL(snd_soc_put_volsw_2r);
 
+/**
+ * snd_soc_dai_set_sysclk - configure DAI system or master clock.
+ * @dai: DAI
+ * @clk_id: DAI specific clock ID
+ * @freq: new clock frequency in Hz
+ * @dir: new clock direction - input/output.
+ *
+ * Configures the DAI master (MCLK) or system (SYSCLK) clocking.
+ */
 int snd_soc_dai_set_sysclk(struct snd_soc_dai *dai, int clk_id,
 	unsigned int freq, int dir)
 {
@@ -1613,6 +1632,16 @@ int snd_soc_dai_set_sysclk(struct snd_soc_dai *dai, int clk_id,
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_set_sysclk);
 
+/**
+ * snd_soc_dai_set_clkdiv - configure DAI clock dividers.
+ * @dai: DAI
+ * @clk_id: DAI specific clock divider ID
+ * @div: new clock divisor.
+ *
+ * Configures the clock dividers. This is used to derive the best DAI bit and
+ * frame clocks from the system or master clock. It's best to set the DAI bit
+ * and frame clocks as low as possible to save system power.
+ */
 int snd_soc_dai_set_clkdiv(struct snd_soc_dai *dai,
 	int div_id, int div)
 {
@@ -1623,6 +1652,15 @@ int snd_soc_dai_set_clkdiv(struct snd_soc_dai *dai,
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_set_clkdiv);
 
+/**
+ * snd_soc_dai_set_pll - configure DAI PLL.
+ * @dai: DAI
+ * @pll_id: DAI specific PLL ID
+ * @freq_in: PLL input clock frequency in Hz
+ * @freq_out: requested PLL output clock frequency in Hz
+ *
+ * Configures and enables PLL to generate output clock based on input clock.
+ */
 int snd_soc_dai_set_pll(struct snd_soc_dai *dai,
 	int pll_id, unsigned int freq_in, unsigned int freq_out)
 {
@@ -1633,6 +1671,14 @@ int snd_soc_dai_set_pll(struct snd_soc_dai *dai,
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_set_pll);
 
+/**
+ * snd_soc_dai_set_fmt - configure DAI hardware audio format.
+ * @dai: DAI
+ * @clk_id: DAI specific clock ID
+ * @fmt: SND_SOC_DAIFMT_ format value.
+ *
+ * Configures the DAI hardware format and clocking.
+ */
 int snd_soc_dai_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
 	if (dai->ops->set_fmt)
@@ -1642,6 +1688,15 @@ int snd_soc_dai_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_set_fmt);
 
+/**
+ * snd_soc_dai_set_tdm_slot - configure DAI TDM.
+ * @dai: DAI
+ * @mask: DAI specific mask representing used slots.
+ * @slots: Number of slots in use.
+ *
+ * Configures a DAI for TDM operation. Both mask and slots are codec and DAI
+ * specific.
+ */
 int snd_soc_dai_set_tdm_slot(struct snd_soc_dai *dai,
 	unsigned int mask, int slots)
 {
@@ -1652,6 +1707,13 @@ int snd_soc_dai_set_tdm_slot(struct snd_soc_dai *dai,
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_set_tdm_slot);
 
+/**
+ * snd_soc_dai_set_tristate - configure DAI system or master clock.
+ * @dai: DAI
+ * @tristate: tristate enable
+ *
+ * Tristates the DAI so that others can use it.
+ */
 int snd_soc_dai_set_tristate(struct snd_soc_dai *dai, int tristate)
 {
 	if (dai->ops->set_sysclk)
@@ -1661,6 +1723,13 @@ int snd_soc_dai_set_tristate(struct snd_soc_dai *dai, int tristate)
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_set_tristate);
 
+/**
+ * snd_soc_dai_digital_mute - configure DAI system or master clock.
+ * @dai: DAI
+ * @mute: mute enable
+ *
+ * Mutes the DAI DAC.
+ */
 int snd_soc_dai_digital_mute(struct snd_soc_dai *dai, int mute)
 {
 	if (dai->ops->digital_mute)
@@ -1670,6 +1739,13 @@ int snd_soc_dai_digital_mute(struct snd_soc_dai *dai, int mute)
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_digital_mute);
 
+/**
+ * snd_soc_register_codec_dai - register a codec DAI.
+ * @template: pointer to DAI template
+ * @dev: device
+ *
+ * Creates and registers a codec Digital Audio Interface with ASoC core.
+ */
 struct snd_soc_dai *snd_soc_register_codec_dai(
 	struct snd_soc_dai_new *template, struct device *dev)
 {
@@ -1697,6 +1773,12 @@ struct snd_soc_dai *snd_soc_register_codec_dai(
 }
 EXPORT_SYMBOL_GPL(snd_soc_register_codec_dai);
 
+/**
+ * snd_soc_unregister_codec_dai - add DAI to codec.
+ * @dai: pointer to DAI
+ *
+ * Unregisters a codec Digital Audio Interface with ASoC core.
+ */
 void snd_soc_unregister_codec_dai(struct snd_soc_dai *dai_runtime)
 {
 	mutex_lock(&client_mutex);
@@ -1706,6 +1788,13 @@ void snd_soc_unregister_codec_dai(struct snd_soc_dai *dai_runtime)
 }
 EXPORT_SYMBOL_GPL(snd_soc_unregister_codec_dai);
 
+/**
+ * snd_soc_new_codec - create new codec driver.
+ * @template: new codec driver template
+ * @cache: default register cache or NULL
+ *
+ * Creates a new codec and allocates resources including register cache.
+ */
 struct snd_soc_codec *snd_soc_new_codec(
 	struct snd_soc_codec_new *template, const char *cache)
 {
@@ -1743,6 +1832,13 @@ struct snd_soc_codec *snd_soc_new_codec(
 }
 EXPORT_SYMBOL_GPL(snd_soc_new_codec);
 
+/**
+ * snd_soc_register_codec - register codec driver.
+ * @codec: codec driver
+ * @dev: device
+ *
+ * Registers a new codec driver with ASoC core.
+ */
 int snd_soc_register_codec(struct snd_soc_codec *codec, struct device *dev)
 {
 	BUG_ON(!dev);
@@ -1756,6 +1852,12 @@ int snd_soc_register_codec(struct snd_soc_codec *codec, struct device *dev)
 }
 EXPORT_SYMBOL_GPL(snd_soc_register_codec);
 
+/**
+ * snd_soc_free_codec - unregister and free codec.
+ * @codec: codec driver
+ *
+ * Unregisters a codec driver with the core and frees all its resources.
+ */
 void snd_soc_free_codec(struct snd_soc_codec *codec)
 {
 	mutex_lock(&client_mutex);
@@ -1767,6 +1869,12 @@ void snd_soc_free_codec(struct snd_soc_codec *codec)
 }
 EXPORT_SYMBOL_GPL(snd_soc_free_codec);
 
+/**
+ * snd_soc_register_platform_dai - registers a  platform DAI.
+ * @dai: pointer to DAI
+ *
+ * Registers a platform Digital Audio Interfaces with ASoC core.
+ */
 struct snd_soc_dai *snd_soc_register_platform_dai(
 	struct snd_soc_dai_new *template, struct device *dev)
 {
@@ -1794,6 +1902,12 @@ struct snd_soc_dai *snd_soc_register_platform_dai(
 }
 EXPORT_SYMBOL_GPL(snd_soc_register_platform_dai);
 
+/**
+ * snd_soc_unregister_platform_dai - unregisters a  platform DAI.
+ * @dai: pointer to DAI
+ *
+ * Unregisters platform Digital Audio Interfaces with ASoC core.
+ */
 void snd_soc_unregister_platform_dai(struct snd_soc_dai *dai_runtime)
 {
 	mutex_lock(&client_mutex);
@@ -1803,6 +1917,12 @@ void snd_soc_unregister_platform_dai(struct snd_soc_dai *dai_runtime)
 }
 EXPORT_SYMBOL_GPL(snd_soc_unregister_platform_dai);
 
+/**
+ * snd_soc_new_platform - register platform driver.
+ * @template: new platform driver template
+ *
+ * Creates a new platform and allocates resources including register cache.
+ */
 struct snd_soc_platform *snd_soc_new_platform(
 	struct snd_soc_platform_new *template)
 {
@@ -1825,6 +1945,12 @@ struct snd_soc_platform *snd_soc_new_platform(
 }
 EXPORT_SYMBOL_GPL(snd_soc_new_platform);
 
+/**
+ * snd_soc_register_platform - register platform driver.
+ * @platform: platform driver
+ *
+ * Registers a platform driver with ASoC core.
+ */
 int snd_soc_register_platform(struct snd_soc_platform *platform,
 	struct device *dev)
 {
@@ -1839,6 +1965,12 @@ int snd_soc_register_platform(struct snd_soc_platform *platform,
 }
 EXPORT_SYMBOL_GPL(snd_soc_register_platform);
 
+/**
+ * snd_soc_free_platform - unregister and free platform.
+ * @platform: platform driver
+ *
+ * Unregisters platform with core and frees all resources.
+ */
 void snd_soc_free_platform(struct snd_soc_platform *platform)
 {
 	mutex_lock(&client_mutex);
@@ -2010,10 +2142,12 @@ void snd_soc_card_free(struct snd_soc_card *soc_card)
 		if (config->codec) {
 #ifdef CONFIG_SND_SOC_AC97_BUS
 			if (config->codec->ac97) {
-				snd_soc_codec_exit(config->codec, soc_card);
+				soc_codec_exit(config->codec, soc_card);
 				soc_ac97_dev_unregister(config->codec);
 				snd_soc_free_ac97_codec(config->codec);
 			}
+#else
+			soc_codec_exit(config->codec, soc_card);
 #endif
 			module_put(config->codec->dev->driver->owner);
 		}
@@ -2030,7 +2164,14 @@ void snd_soc_card_free(struct snd_soc_card *soc_card)
 }
 EXPORT_SYMBOL_GPL(snd_soc_card_free);
 
-struct snd_soc_codec *snd_soc_get_codec(struct snd_soc_card *soc_card,
+/**
+ * snd_soc_card_get_codec - get codec.
+ * @soc_card: soc sound card
+ * @codec_id: codec ID
+ *
+ * Get a codec from a codec ID.
+ */
+struct snd_soc_codec *snd_soc_card_get_codec(struct snd_soc_card *soc_card,
 	const char *codec_id)
 {
 	struct soc_pcm_config *config;
@@ -2041,9 +2182,16 @@ struct snd_soc_codec *snd_soc_get_codec(struct snd_soc_card *soc_card,
 	}
 	return NULL;
 }
-EXPORT_SYMBOL_GPL(snd_soc_get_codec);
+EXPORT_SYMBOL_GPL(snd_soc_card_get_codec);
 
-struct snd_soc_platform * snd_soc_get_platform(struct snd_soc_card *soc_card,
+/**
+ * snd_soc_card_get_platform - get platform.
+ * @soc_card: soc sound card
+ * @codec_id: platform ID
+ *
+ * Get a platform from a platform ID.
+ */
+struct snd_soc_platform * snd_soc_card_get_platform(struct snd_soc_card *soc_card,
 	const char *platform_id)
 {
 	struct soc_pcm_config *config;
@@ -2055,9 +2203,16 @@ struct snd_soc_platform * snd_soc_get_platform(struct snd_soc_card *soc_card,
 	}
 	return NULL;
 }
-EXPORT_SYMBOL_GPL(snd_soc_get_platform);
+EXPORT_SYMBOL_GPL(snd_soc_card_get_platform);
 
-struct snd_soc_dai *snd_soc_get_dai(struct snd_soc_card *soc_card,
+/**
+ * snd_soc_card_get_dai - get dai.
+ * @soc_card: soc_card
+ * @codec_id: dai ID
+ *
+ * Get a codec or platform dai from a dai ID.
+ */
+struct snd_soc_dai *snd_soc_card_get_dai(struct snd_soc_card *soc_card,
 	const char *dai_id)
 {
 	struct soc_pcm_config *config;
@@ -2072,16 +2227,16 @@ struct snd_soc_dai *snd_soc_get_dai(struct snd_soc_card *soc_card,
 	}
 	return NULL;
 }
-EXPORT_SYMBOL_GPL(snd_soc_get_dai);
+EXPORT_SYMBOL_GPL(snd_soc_card_get_dai);
 
 /**
- * snd_soc_get_pcm - get pcm.
+ * snd_soc_card_get_pcm - get pcm.
  * @soc_card: soc_card
  * @pcm_id: pcm ID
  *
  * Get a pcm runtime pointer from pcm ID.
  */
-struct snd_soc_pcm_runtime *snd_soc_get_pcm(struct snd_soc_card *soc_card,
+struct snd_soc_pcm_runtime *snd_soc_card_get_pcm(struct snd_soc_card *soc_card,
 	const char *pcm_id)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime;
@@ -2092,16 +2247,16 @@ struct snd_soc_pcm_runtime *snd_soc_get_pcm(struct snd_soc_card *soc_card,
 	}
 	return NULL;
 }
-EXPORT_SYMBOL_GPL(snd_soc_get_pcm);
+EXPORT_SYMBOL_GPL(snd_soc_card_get_pcm);
 
 /**
- * snd_soc_get_ac97_ops - get AC97 operations.
+ * snd_soc_card_get_ac97_ops - get AC97 operations.
  * @soc_card: soc_card
  * @dai_id:  ID
  *
  * Get AC97 bus operations from Digital Audio Interface ID.
  */
-struct snd_ac97_bus_ops *snd_soc_get_ac97_ops(struct snd_soc_card *soc_card,
+struct snd_ac97_bus_ops *snd_soc_card_get_ac97_ops(struct snd_soc_card *soc_card,
 					      const char *dai_id)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime;
@@ -2112,9 +2267,19 @@ struct snd_ac97_bus_ops *snd_soc_get_ac97_ops(struct snd_soc_card *soc_card,
 	}
 	return NULL;
 }
-EXPORT_SYMBOL_GPL(snd_soc_get_ac97_ops);
+EXPORT_SYMBOL_GPL(snd_soc_card_get_ac97_ops);
 
-void snd_soc_codec_set_io(struct snd_soc_codec *codec,
+/**
+ * snd_soc_card_config_codec - initialise codec IO.
+ * @codec: codec
+ * @soc_card_read: read function called by codec.
+ * @soc_card_write: write function called by codec.
+ * @control_data: IO control data - usually I2C, SPI, etc pointer
+ *
+ * Initialises the codec IO system with the codec IO mechanism. Codec will
+ * be able to perform IO after this point.
+ */
+void snd_soc_card_config_codec(struct snd_soc_codec *codec,
 	int (*soc_card_read)(void *, long, int),
 	int (*soc_card_write)(void *, long, int), void *control_data)
 {
@@ -2122,9 +2287,17 @@ void snd_soc_codec_set_io(struct snd_soc_codec *codec,
 	codec->soc_card_read = soc_card_read;
 	codec->soc_card_write = soc_card_write;
 }
-EXPORT_SYMBOL_GPL(snd_soc_codec_set_io);
+EXPORT_SYMBOL_GPL(snd_soc_card_config_codec);
 
-int snd_soc_codec_init(struct snd_soc_codec *codec,
+/**
+ * snd_soc_card_init_codec - initialises codec
+ * @codec: codec
+ * @soc_card: soc sound card
+ *
+ * Initialises codec hardware. Can perform IO and must only be called after a
+ * successful call to snd_soc_card_config_codec().
+ */
+int snd_soc_card_init_codec(struct snd_soc_codec *codec,
 	struct snd_soc_card *soc_card)
 {
 	int ret;
@@ -2140,16 +2313,7 @@ int snd_soc_codec_init(struct snd_soc_codec *codec,
 		ret = codec->init(codec, soc_card);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(snd_soc_codec_init);
-
-void snd_soc_codec_exit(struct snd_soc_codec *codec,
-	struct snd_soc_card *soc_card)
-{
-	device_remove_file(codec->dev, &dev_attr_codec_reg);
-	if (codec->exit)
-		codec->exit(codec, soc_card);
-}
-EXPORT_SYMBOL_GPL(snd_soc_codec_exit);
+EXPORT_SYMBOL_GPL(snd_soc_card_init_codec);
 
 static int __init asoc_init(void)
 {

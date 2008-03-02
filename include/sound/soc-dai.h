@@ -100,85 +100,25 @@ struct snd_soc_dai_ops;
 struct snd_soc_dai;
 struct snd_ac97_bus_ops;
 
-/*
- * Digital Audio Interface control and clocking API.
- */
-
-/**
- * snd_soc_dai_set_sysclk - configure DAI system or master clock.
- * @dai: DAI
- * @clk_id: DAI specific clock ID
- * @freq: new clock frequency in Hz
- * @dir: new clock direction - input/output.
- *
- * Configures the DAI master (MCLK) or system (SYSCLK) clocking.
- */
+/* Digital Audio Interface clocking API.*/
 int snd_soc_dai_set_sysclk(struct snd_soc_dai *dai, int clk_id,
 	unsigned int freq, int dir);
 
-/**
- * snd_soc_dai_set_clkdiv - configure DAI clock dividers.
- * @dai: DAI
- * @clk_id: DAI specific clock divider ID
- * @div: new clock divisor.
- *
- * Configures the clock dividers. This is used to derive the best DAI bit and
- * frame clocks from the system or master clock. It's best to set the DAI bit
- * and frame clocks as low as possible to save system power.
- */
 int snd_soc_dai_set_clkdiv(struct snd_soc_dai *dai,
 	int div_id, int div);
 
-/**
- * snd_soc_dai_set_pll - configure DAI PLL.
- * @dai: DAI
- * @pll_id: DAI specific PLL ID
- * @freq_in: PLL input clock frequency in Hz
- * @freq_out: requested PLL output clock frequency in Hz
- *
- * Configures and enables PLL to generate output clock based on input clock.
- */
 int snd_soc_dai_set_pll(struct snd_soc_dai *dai,
 	int pll_id, unsigned int freq_in, unsigned int freq_out);
 
-/**
- * snd_soc_dai_set_fmt - configure DAI hardware audio format.
- * @dai: DAI
- * @clk_id: DAI specific clock ID
- * @fmt: SND_SOC_DAIFMT_ format value.
- *
- * Configures the DAI hardware format and clocking.
- */
+/* Digital Audio interface formatting */
 int snd_soc_dai_set_fmt(struct snd_soc_dai *dai, unsigned int fmt);
 
-/**
- * snd_soc_dai_set_tdm_slot - configure DAI TDM.
- * @dai: DAI
- * @mask: DAI specific mask representing used slots.
- * @slots: Number of slots in use.
- *
- * Configures a DAI for TDM operation. Both mask and slots are codec and DAI
- * specific.
- */
 int snd_soc_dai_set_tdm_slot(struct snd_soc_dai *dai,
 	unsigned int mask, int slots);
 
-/**
- * snd_soc_dai_set_tristate - configure DAI system or master clock.
- * @dai: DAI
- * @tristate: tristate enable
- *
- * Tristates the DAI so that others can use it.
- */
 int snd_soc_dai_set_tristate(struct snd_soc_dai *dai, int tristate);
 
-/**
- * snd_soc_dai_digital_mute - configure DAI system or master clock.
- * @dai: DAI
- * @mute: mute enable
- *
- * Mutes the DAI DAC.
- */
+/* Digital Audio Interface mute */
 int snd_soc_dai_digital_mute(struct snd_soc_dai *dai, int mute);
 
 /*
@@ -187,7 +127,7 @@ int snd_soc_dai_digital_mute(struct snd_soc_dai *dai, int mute);
  * Describes the PCM audio capabilities for a Digital Audio interface.
  */
 struct snd_soc_dai_caps {
-	char * stream_name;
+	char *stream_name;
 	u64 formats;			/* SNDRV_PCM_FMTBIT_* */
 	unsigned int rates;		/* SNDRV_PCM_RATE_* */
 	unsigned int rate_min;		/* min rate */

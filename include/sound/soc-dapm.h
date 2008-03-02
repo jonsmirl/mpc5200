@@ -288,111 +288,31 @@ int snd_soc_dapm_get_enum_double(struct snd_kcontrol *kcontrol,
 int snd_soc_dapm_put_enum_double(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
 
-/**
- * snd_soc_dapm_new_controls - create new dapm controls
- * @soc_card: soc sound card.
- * @codec: audio codec
- * @widget: widget
- * @num: number of widgets
- *
- * Creates new dapm controls based upon the templates.
- *
- * Returns 0 for success else error. On error all resources can be freed
- * with a call to snd_soc_card_free().
- */
+/* dapm - configuration */
 int snd_soc_dapm_new_controls(struct snd_soc_card *soc_card,
 	struct snd_soc_codec *codec, const struct snd_soc_dapm_widget *widget,
 	int num);
 
-/**
- * snd_soc_dapm_add_routes - adds DAPM audio routes.
- * @soc_card: sos sound card
- * @route: audio route
- * @num: number or routes to add
- *
- * Adds a DAPM audio route between source and sink. The route connection
- * status is controlled by the ALSA kcontrol. i.e. a MUX or Mixer.
- */
 int snd_soc_dapm_add_routes(struct snd_soc_card *soc_card,
 	const struct snd_soc_dapm_route *route, int num);
 
-/**
- * snd_soc_dapm_init - Initialise DAPM.
- * @soc_card: SoC soc_card
- *
- * Initialises DAPM resources after any new widgets or routes have been added.
- */
 int snd_soc_dapm_init(struct snd_soc_card *soc_card);
 
-/**
- * snd_soc_dapm_exit - Frees DAPM resources.
- * @soc_card: SoC soc_card
- *
- * Frees all DAPM resources.
- */
-void snd_soc_dapm_exit(struct snd_soc_card *soc_card);
-
-/**
- * snd_soc_dapm_set_policy - Set DAPM policy.
- * @soc_card: SoC soc_card
- *
- * Sets the DAPM power switching policy.
- */
+/* dapm - policy and event */
 int snd_soc_dapm_set_policy(struct snd_soc_card *soc_card,
 	enum snd_soc_dapm_policy policy);
 
-/**
- * snd_soc_dapm_stream_event - Send DAPM stream event.
- * @soc_card: SoC soc_card
- * @stream: stream name
- * @event: event to send
- *
- * Sends a device event to the dapm core. The core then makes any
- * necessary soc_card or codec power changes.
- */
 int snd_soc_dapm_stream_event(struct snd_soc_card *soc_card, char *stream,
 	enum snd_soc_dapm_stream_event event);
 
-/**
- * snd_soc_dapm_set_bias - Sets the DAPM bias level.
- * @codec: SoC codec
- * @level: bias (power) level.
- *
- * Sets soc_card and codec to new bias (power) level.
- */
 int snd_soc_dapm_set_bias(struct snd_soc_pcm_runtime *pcm_runtime,
 	enum snd_soc_dapm_bias_level level);
 
-/**
- * snd_soc_dapm_enable_pin - enable pin.
- * @soc_card: SoC soc_card
- * @pin: pin name
- *
- * Enables input/output pin and it's parents or children widgets iff there is
- * a valid audio route and active audio stream.
- * NOTE: snd_soc_dapm_resync() needs to be called after this for DAPM to
- * do any widget power switching.
- */
+/* dapm - pin status */
 int snd_soc_dapm_enable_pin(struct snd_soc_card *soc_card, char *pin);
 
-/**
- * snd_soc_dapm_disable_pin - disable pin.
- * @soc_card: SoC soc_card
- * @pin: pin name
- *
- * Disables input/output pin and it's parents or children widgets.
- * NOTE: snd_soc_dapm_resync() needs to be called after this for DAPM to
- * do any widget power switching.
- */
 int snd_soc_dapm_disable_pin(struct snd_soc_card *soc_card, char *pin);
 
-/**
- * snd_soc_dapm_sync - synchronises DAPM.
- * @soc_card: SoC soc_card
- *
- * Synchronises HW DAPM widget power state with pin, stream and audio path
- * state changes. This may cause DAPM power switching.
- */
 int snd_soc_dapm_sync(struct snd_soc_card *soc_card);
 
 /*
@@ -406,8 +326,6 @@ struct snd_soc_dapm_route {
 	const char *control;
 	const char *source;
 };
-
-void snd_soc_dapm_free(struct snd_soc_card *soc_card);
 
 /*
  * DAPM audio route runtime.

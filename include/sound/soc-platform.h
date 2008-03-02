@@ -28,57 +28,29 @@ struct snd_card;
 struct snd_soc_dai_new;
 struct snd_soc_platform_new;
 
-/**
- * snd_soc_register_platform - register platform driver.
- * @platform: platform driver
- *
- * Registers a platform driver with ASoC core.
- */
-int snd_soc_register_platform(struct snd_soc_platform *platform, struct device *dev);
+/* platform creation and registration */
+int snd_soc_register_platform(struct snd_soc_platform *platform,
+	struct device *dev);
 
-/**
- * snd_soc_new_platform - register platform driver.
- * @template: new platform driver template
- *
- * Creates a new platform and allocates resources including register cache.
- */
 struct snd_soc_platform *snd_soc_new_platform(
 	struct snd_soc_platform_new *template);
 
-/**
- * snd_soc_free_platform - unregister and free platform.
- * @platform: platform driver
- *
- * Unregisters platform with core and frees all resources.
- */
 void snd_soc_free_platform(struct snd_soc_platform *platform);
 
-/**
- * snd_soc_register_platform_dai - registers a  platform DAI.
- * @dai: pointer to DAI
- *
- * Registers a platform Digital Audio Interfaces with ASoC core.
- */
+/* platform DAI registration */
 struct snd_soc_dai *snd_soc_register_platform_dai(
 	struct snd_soc_dai_new *template, struct device *dev);
-/**
- * snd_soc_unregister_platform_dai - unregisters a  platform DAI.
- * @dai: pointer to DAI
- *
- * Unregisters platform Digital Audio Interfaces with ASoC core.
- */
+
 void snd_soc_unregister_platform_dai(struct snd_soc_dai *dai);
 
-/**
- * snd_soc_set_runtime_hwparams - register hw params
- * @substream: parent soc_card
- * @hw: platform ID name
- *
- * Registers a PCM's hardware runtime parameters with core.
- */
+/* runtime hardware parameters */
 int snd_soc_set_runtime_hwparams(struct snd_pcm_substream *substream,
 	const struct snd_pcm_hardware *hw);
 
+/*
+ * New platform template - used for conveniently creating new platform drivers.
+ * The fields have the same meaning as snd_soc_platform below.
+ */
 struct snd_soc_platform_new {
 	const char *name;
 	const struct snd_pcm_ops *pcm_ops;
@@ -106,16 +78,16 @@ struct snd_soc_platform {
 	struct list_head list;
 	struct list_head dai_list;
 	struct snd_soc_card *soc_card;
-	
+
 	/* platform ALSA ops - optional */
 	const struct snd_pcm_ops *pcm_ops;
-	
+
 	/* pcm creation and destruction */
 	int (*pcm_new)(struct snd_soc_platform *platform,
 		struct snd_card *card, int playback, int capture,
 		struct snd_pcm *pcm);
 	void (*pcm_free)(struct snd_pcm *pcm);
-	
+
 	void *private_data;
 };
 

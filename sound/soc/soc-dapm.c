@@ -841,6 +841,12 @@ static void dapm_free_widgets(struct snd_soc_card *soc_card)
 	}
 }
 
+void snd_soc_dapm_free(struct snd_soc_card *soc_card)
+{
+	snd_soc_dapm_sys_remove(soc_card);
+	dapm_free_widgets(soc_card);
+}
+
 static int snd_soc_dapm_set_pin(struct snd_soc_card *soc_card,
 	char *pin, int status)
 {
@@ -860,13 +866,11 @@ static int snd_soc_dapm_set_pin(struct snd_soc_card *soc_card,
 }
 
 /**
- * snd_soc_dapm_sync - scan and power dapm paths
- * @codec: audio codec
+ * snd_soc_dapm_sync - synchronises DAPM.
+ * @soc_card: SoC soc_card
  *
- * Walks all dapm audio paths and powers widgets according to their
- * stream or path usage.
- *
- * Returns 0 for success.
+ * Synchronises HW DAPM widget power state with pin, stream and audio path
+ * state changes. This may cause DAPM power switching.
  */
 int snd_soc_dapm_sync(struct snd_soc_card *soc_card)
 {
@@ -1008,12 +1012,10 @@ int snd_soc_dapm_add_routes(struct snd_soc_card *soc_card,
 EXPORT_SYMBOL_GPL(snd_soc_dapm_add_routes);
 
 /**
- * snd_soc_dapm_init - initialise and add any new dapm widgets
- * @codec: audio codec
+ * snd_soc_dapm_init - Initialise DAPM.
+ * @soc_card: SoC soc_card
  *
- * Checks the codec for any new dapm widgets and creates them if found.
- *
- * Returns 0 for success.
+ * Initialises DAPM resources after any new widgets or routes have been added.
  */
 int snd_soc_dapm_init(struct snd_soc_card *soc_card)
 {
@@ -1303,15 +1305,13 @@ int snd_soc_dapm_new_controls(struct snd_soc_card *soc_card,
 EXPORT_SYMBOL_GPL(snd_soc_dapm_new_controls);
 
 /**
- * snd_soc_dapm_stream_event - send a stream event to the dapm core
- * @codec: audio codec
+ * snd_soc_dapm_stream_event - Send DAPM stream event.
+ * @soc_card: SoC soc_card
  * @stream: stream name
- * @event: stream event
+ * @event: event to send
  *
- * Sends a stream event to the dapm core. The core then makes any
- * necessary widget power changes.
- *
- * Returns 0 for success else error.
+ * Sends a device event to the dapm core. The core then makes any
+ * necessary soc_card or codec power changes.
  */
 int snd_soc_dapm_stream_event(struct snd_soc_card *soc_card,
 	char *stream, enum snd_soc_dapm_stream_event event)
@@ -1363,14 +1363,11 @@ int snd_soc_dapm_stream_event(struct snd_soc_card *soc_card,
 EXPORT_SYMBOL_GPL(snd_soc_dapm_stream_event);
 
 /**
- * snd_soc_dapm_set_bias - send a device event to the dapm core
- * @socdev: audio device
- * @event: device event
+ * snd_soc_dapm_set_bias - Sets the DAPM bias level.
+ * @codec: SoC codec
+ * @level: bias (power) level.
  *
- * Sends a device event to the dapm core. The core then makes any
- * necessary soc_card or codec power changes..
- *
- * Returns 0 for success else error.
+ * Sets soc_card and codec to new bias (power) level.
  */
 int snd_soc_dapm_set_bias(struct snd_soc_pcm_runtime *pcm_runtime,
 	enum snd_soc_dapm_bias_level level)
@@ -1387,13 +1384,14 @@ int snd_soc_dapm_set_bias(struct snd_soc_pcm_runtime *pcm_runtime,
 EXPORT_SYMBOL_GPL(snd_soc_dapm_set_bias);
 
 /**
- * snd_soc_dapm_enable_pin - enable audio pin and it's parents/children
- * @soc_card: audio soc_card
- * @pin: audio signal endpoint (or start point)
+ * snd_soc_dapm_enable_pin - enable pin.
+ * @soc_card: SoC soc_card
+ * @pin: pin name
  *
- * Set audio endpoint status - connected or disconnected.
- *
- * Returns 0 for success else error.
+ * Enables input/output pin and it's parents or children widgets iff there is
+ * a valid audio route and active audio stream.
+ * NOTE: snd_soc_dapm_resync() needs to be called after this for DAPM to
+ * do any widget power switching.
  */
 int snd_soc_dapm_enable_pin(struct snd_soc_card *soc_card, char *pin)
 {
@@ -1402,13 +1400,13 @@ int snd_soc_dapm_enable_pin(struct snd_soc_card *soc_card, char *pin)
 EXPORT_SYMBOL_GPL(snd_soc_dapm_enable_pin);
 
 /**
- * snd_soc_dapm_disable_pin - disable audio pin and it's parents/children
- * @soc_card: audio soc_card
- * @endpoint: audio signal endpoint (or start point)
+ * snd_soc_dapm_disable_pin - disable pin.
+ * @soc_card: SoC soc_card
+ * @pin: pin name
  *
- * Set audio endpoint status - connected or disconnected.
- *
- * Returns 0 for success else error.
+ * Disables input/output pin and it's parents or children widgets.
+ * NOTE: snd_soc_dapm_resync() needs to be called after this for DAPM to
+ * do any widget power switching.
  */
 int snd_soc_dapm_disable_pin(struct snd_soc_card *soc_card, char *pin)
 {
@@ -1416,6 +1414,12 @@ int snd_soc_dapm_disable_pin(struct snd_soc_card *soc_card, char *pin)
 }
 EXPORT_SYMBOL_GPL(snd_soc_dapm_disable_pin);
 
+/**
+ * snd_soc_dapm_set_policy - Set DAPM policy.
+ * @soc_card: SoC soc_card
+ *
+ * Sets the DAPM power switching policy.
+ */
 int snd_soc_dapm_set_policy(struct snd_soc_card *soc_card,
 	enum snd_soc_dapm_policy policy)
 {
@@ -1423,18 +1427,6 @@ int snd_soc_dapm_set_policy(struct snd_soc_card *soc_card,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_dapm_set_policy);
-
-/**
- * snd_soc_dapm_free - free dapm resources
- * @socdev: SoC device
- *
- * Free all dapm widgets and resources.
- */
-void snd_soc_dapm_free(struct snd_soc_card *soc_card)
-{
-	snd_soc_dapm_sys_remove(soc_card);
-	dapm_free_widgets(soc_card);
-}
 
 /* Module information */
 MODULE_AUTHOR("Liam Girdwood, liam.girdwood@wolfsonmicro.com, www.wolfsonmicro.com");
