@@ -23,7 +23,9 @@
 struct snd_soc_platform;
 struct snd_soc_card;
 struct snd_soc_dai;
+struct snd_pcm;
 struct snd_pcm_ops;
+struct snd_pcm_hardware;
 struct snd_card;
 struct snd_soc_dai_new;
 struct snd_soc_platform_new;
