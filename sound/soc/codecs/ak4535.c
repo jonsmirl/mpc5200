@@ -66,21 +66,6 @@ static inline unsigned int ak4535_read_reg_cache(struct snd_soc_codec *codec,
 	return cache[reg];
 }
 
-static inline unsigned int ak4535_read(struct snd_soc_codec *codec,
-	unsigned int reg)
-{
-	u8 data;
-	data = reg;
-
-	if (codec->soc_phys_write(codec->control_data, (long)&data, 1) != 1)
-		return -EIO;
-
-	if (codec->soc_phys_read(codec->control_data, (long)&data, 1) != 1)
-		return -EIO;
-
-	return data;
-};
-
 /*
  * write ak4535 register cache
  */
