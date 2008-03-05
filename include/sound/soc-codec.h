@@ -251,19 +251,19 @@ struct snd_soc_codec {
 	 *
 	 * All codec IO is performed by calling codec_read() and codec_write().
 	 * codec_read/write() formats the IO data for the codec and then calls
-	 * the soc_card_read and soc_card_write respectively to physically
+	 * the soc_phys_read and soc_phys_write respectively to physically
 	 * perform the IO operation. IOW, codec read/write only does formatting
 	 * whilst soc card read/write does the physical IO.
 	 *
-	 * The soc_card_read and soc_card_write functions can either wrap the
+	 * The soc_phys_read and soc_phys_write functions can either wrap the
 	 * kernel I2C, SPI read and write functions or do custom IO.
 	 */
 	unsigned int (*codec_read)(struct snd_soc_codec *codec,
 		unsigned int reg);
 	int (*codec_write)(struct snd_soc_codec *codec, unsigned int reg,
 		unsigned int value);
-	int (*soc_card_write)(void *control_data, long data, int bytes);
-	int (*soc_card_read)(void *control_data, long data, int bytes);
+	int (*soc_phys_write)(void *control_data, long data, int bytes);
+	int (*soc_phys_read)(void *control_data, long data, int bytes);
 	void *control_data;			/* codec control data */
 
 

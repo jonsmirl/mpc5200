@@ -468,7 +468,7 @@ static unsigned int wm9712_ac97_read(struct snd_soc_codec *codec,
 	if (reg == AC97_RESET || reg == AC97_GPIO_STATUS ||
 		reg == AC97_VENDOR_ID1 || reg == AC97_VENDOR_ID2 ||
 		reg == AC97_REC_GAIN) {
-			codec->soc_card_read(codec->ac97, (long)&val, reg);
+			codec->soc_phys_read(codec->ac97, (long)&val, reg);
 			return val;
 		} else {
 			reg = reg >> 1;
@@ -483,7 +483,7 @@ static int wm9712_ac97_write(struct snd_soc_codec *codec, unsigned int reg,
 {
 	u16 *cache = codec->reg_cache;
 
-	codec->soc_card_write(codec->ac97, val, reg);
+	codec->soc_phys_write(codec->ac97, val, reg);
 	reg = reg >> 1;
 	if (reg <= (ARRAY_SIZE(wm9712_reg)))
 		cache[reg] = val;
@@ -581,7 +581,7 @@ static int wm9712_resume(struct platform_device *pdev)
 		if (i == AC97_INT_PAGING || i == AC97_POWERDOWN ||
 			(i > 0x58 && i != 0x5c))
 			continue;
-		codec->soc_card_write(codec->ac97, i, cache[i>>1]);
+		codec->soc_phys_write(codec->ac97, i, cache[i>>1]);
 	}
 
 	if (codec->suspend_bias_level == SND_SOC_BIAS_ON)

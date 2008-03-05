@@ -622,7 +622,7 @@ static unsigned int wm9713_ac97_read(struct snd_soc_codec *codec,
 	if (reg == AC97_RESET || reg == AC97_GPIO_STATUS ||
 		reg == AC97_VENDOR_ID1 || reg == AC97_VENDOR_ID2 ||
 		reg == AC97_CD) {
-		codec->soc_card_read(codec->ac97, (long)&val, reg);
+		codec->soc_phys_read(codec->ac97, (long)&val, reg);
 		return val;
 	} else {
 		reg = reg >> 1;
@@ -639,7 +639,7 @@ static int wm9713_ac97_write(struct snd_soc_codec *codec, unsigned int reg,
 {
 	u16 *cache = codec->reg_cache;
 	if (reg < 0x7c)
-		codec->soc_card_write(codec->ac97, val, reg);
+		codec->soc_phys_write(codec->ac97, val, reg);
 	reg = reg >> 1;
 	if (reg <= (ARRAY_SIZE(wm9713_reg)))
 		cache[reg] = val;
@@ -973,7 +973,7 @@ static int wm9713_resume(struct platform_device *pdev)
 
 	/* give the codec an AC97 warm reset to start the link */
 	codec->ac97->bus->ops->warm_reset(codec->ac97);
-	codec->soc_card_read(codec->ac97, (long)&id, AC97_VENDOR_ID2); 
+	codec->soc_phys_read(codec->ac97, (long)&id, AC97_VENDOR_ID2); 
 	if (id != 0x4c13) {
 		printk(KERN_ERR "wm9713 failed to resume");
 		return -EIO;

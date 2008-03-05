@@ -72,10 +72,10 @@ static inline unsigned int ak4535_read(struct snd_soc_codec *codec,
 	u8 data;
 	data = reg;
 
-	if (codec->soc_card_write(codec->control_data, (long)&data, 1) != 1)
+	if (codec->soc_phys_write(codec->control_data, (long)&data, 1) != 1)
 		return -EIO;
 
-	if (codec->soc_card_read(codec->control_data, (long)&data, 1) != 1)
+	if (codec->soc_phys_read(codec->control_data, (long)&data, 1) != 1)
 		return -EIO;
 
 	return data;
@@ -109,7 +109,7 @@ static int ak4535_write(struct snd_soc_codec *codec, unsigned int reg,
 	data[1] = value & 0xff;
 
 	ak4535_write_reg_cache (codec, reg, value);
-	if (codec->soc_card_write(codec->control_data, (long)data, 2) == 2)
+	if (codec->soc_phys_write(codec->control_data, (long)data, 2) == 2)
 		return 0;
 	else
 		return -EIO;

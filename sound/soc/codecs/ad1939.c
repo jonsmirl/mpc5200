@@ -88,7 +88,7 @@ static inline unsigned int ad1939_read(struct snd_soc_codec *codec,
 		return ad1939_read_reg_cache(codec, reg);
 
 	data = reg & 0xff;
-	if (codec->soc_card_read(codec->control_data, (long)&data, 1) != 1)
+	if (codec->soc_phys_read(codec->control_data, (long)&data, 1) != 1)
 		return -EIO;
 
 	return data;
@@ -118,7 +118,7 @@ static int ad1939_write(struct snd_soc_codec *codec, unsigned int reg,
 	data[1] = value & 0xff;
 
 	ad1939_write_reg_cache (codec, reg, value);
-	if (codec->soc_card_write(codec->control_data, (long)data, 2) == 2)
+	if (codec->soc_phys_write(codec->control_data, (long)data, 2) == 2)
 		return 0;
 	else
 		return -EIO;
