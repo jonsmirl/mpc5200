@@ -463,13 +463,12 @@ static int wm9712_add_widgets(struct snd_soc_codec *codec,
 static unsigned int wm9712_ac97_read(struct snd_soc_codec *codec,
 	unsigned int reg)
 {
-	u16 val = 0, *cache = codec->reg_cache;
+	u16 *cache = codec->reg_cache;
 
 	if (reg == AC97_RESET || reg == AC97_GPIO_STATUS ||
 		reg == AC97_VENDOR_ID1 || reg == AC97_VENDOR_ID2 ||
 		reg == AC97_REC_GAIN) {
-			codec->soc_phys_read(codec->ac97, (long)&val, reg);
-			return val;
+			return codec->soc_phys_read(codec->ac97, reg);
 		} else {
 			reg = reg >> 1;
 			if (reg > (ARRAY_SIZE(wm9712_reg)))

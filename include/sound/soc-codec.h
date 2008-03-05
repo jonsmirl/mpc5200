@@ -263,7 +263,7 @@ struct snd_soc_codec {
 	int (*codec_write)(struct snd_soc_codec *codec, unsigned int reg,
 		unsigned int value);
 	int (*soc_phys_write)(void *control_data, long data, int bytes);
-	int (*soc_phys_read)(void *control_data, long data, int bytes);
+	unsigned int (*soc_phys_read)(void *control_data, int length);
 	void *control_data;			/* codec control data */
 
 

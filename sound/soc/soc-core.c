@@ -1035,11 +1035,10 @@ static int soc_ac97_write(void *control_data, long val, int reg)
 	return 0;
 }
 
-static int soc_ac97_read(void *control_data, long val, int reg)
+static unsigned int soc_ac97_read(void *control_data, int reg)
 {
 	struct snd_ac97 *ac97 = (struct snd_ac97 *)control_data;
-	val = ac97->bus->ops->read(ac97, reg);
-	return 0;
+	return ac97->bus->ops->read(ac97, reg);
 }
 
 /**
@@ -2280,7 +2279,7 @@ EXPORT_SYMBOL_GPL(snd_soc_card_get_ac97_ops);
  * be able to perform IO after this point.
  */
 void snd_soc_card_config_codec(struct snd_soc_codec *codec,
-	int (*soc_phys_read)(void *, long, int),
+	unsigned int (*soc_phys_read)(void *, int),
 	int (*soc_phys_write)(void *, long, int), void *control_data)
 {
 	codec->control_data = control_data;
