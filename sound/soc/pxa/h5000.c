@@ -15,11 +15,13 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/platform_device.h>
+#include <linux/i2c.h>
 
 #include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/soc.h>
+#include <sound/initval.h>
 #include <sound/soc-dapm.h>
 
 #include <asm/mach-types.h>
@@ -28,7 +30,6 @@
 #include <asm/arch-pxa/h5400-gpio.h>
 #include <asm/hardware/samcop_base.h>
 
-#include "pxa2xx-i2s.h"
 #include "pxa2xx-pcm.h"
 #include "../codecs/ak4535.h"
 
@@ -54,7 +55,7 @@ static void h5000_ext_control(struct snd_soc_card *soc_card)
 		snd_soc_dapm_enable_pin(soc_card, "Ext Spk");
 		break;
 	default:
-		printk (KERN_ERR "%s: invalid value %d for h5000_spk_func\n", 
+		printk (KERN_ERR "%s: invalid value %d for h5000_spk_func\n",
 			__FUNCTION__, h5000_spk_func);
 		break;
 	};
@@ -71,12 +72,12 @@ static void h5000_ext_control(struct snd_soc_card *soc_card)
 		snd_soc_dapm_disable_pin(soc_card, "Mic Jack");
 		break;
 	case H5000_MIC:
-		snd_soc_dapm_enable_pin(soc_card, "Headphone Jack");
-		snd_soc_dapm_enable_pin(soc_card, "Internal Mic");
-		snd_soc_dapm_set_endpoint(soc_card, "Mic Jack");
+		snd_soc_dapm_disable_pin(soc_card, "Headphone Jack");
+		snd_soc_dapm_disable_pin(soc_card, "Internal Mic");
+		snd_soc_dapm_enable_pin(soc_card, "Mic Jack");
 		break;
 	default:
-		printk(KERN_ERR "%s: invalid value %d for h5000_jack_func\n", 
+		printk(KERN_ERR "%s: invalid value %d for h5000_jack_func\n",
 			__FUNCTION__, h5000_jack_func);
 		break;
 	};
@@ -97,7 +98,7 @@ static void h5000_shutdown(struct snd_pcm_substream *substream)
 {
 };
 
-static int h5000_hw_params(struct snd_pcm_substream *substream, 
+static int h5000_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
@@ -153,8 +154,8 @@ static struct snd_soc_ops h5000_ops = {
 	.hw_params = h5000_hw_params,
 };
 
-static int h5000_get_jack(struct snd_kcontrol *kcontrol, 
-	struct snd_ctl_elem_value *ucontrol) 
+static int h5000_get_jack(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
 {
 	ucontrol->value.integer.value [0] = h5000_jack_func;
 	return 0;
@@ -164,18 +165,18 @@ static int h5000_set_jack(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_card *soc_card = snd_kcontrol_chip(kcontrol);
-	
+
 	if (h5000_jack_func == ucontrol->value.integer.value [0])
 		return 0;
-	
+
 	h5000_jack_func = ucontrol->value.integer.value [0];
 	h5000_ext_control(soc_card);
 	return 1;
 };
 
-static int h5000_get_spk(struct snd_kcontrol *kcontrol, 
-	struct snd_ctl_elem_value *ucontrol) 
-{	
+static int h5000_get_spk(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
 	ucontrol->value.integer.value [0] = h5000_spk_func;
 	return 0;
 };
@@ -184,27 +185,27 @@ static int h5000_set_spk(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_card *soc_card = snd_kcontrol_chip(kcontrol);
-	
+
 	if (h5000_spk_func == ucontrol->value.integer.value [0])
 		return 0;
-	
+
 	h5000_spk_func = ucontrol->value.integer.value [0];
 	h5000_ext_control(soc_card);
 	return 1;
 };
 
 static int h5000_audio_power(struct snd_soc_dapm_widget *widget,
-	struct snd_kcontrol *k, int event) 
+	struct snd_kcontrol *k, int event)
 {
 	// mp - why do we need the ref count, dapm core should ref count all widget use.
 	static int power_use_count = 0;
-	
+
 	if (SND_SOC_DAPM_EVENT_ON (event))
 		power_use_count ++;
 	else
 		power_use_count --;
-	
-	samcop_set_gpio_b (&h5400_samcop.dev, SAMCOP_GPIO_GPB_AUDIO_POWER_ON, 
+
+	samcop_set_gpio_b (&h5400_samcop.dev, SAMCOP_GPIO_GPB_AUDIO_POWER_ON,
 		(power_use_count > 0) ? SAMCOP_GPIO_GPB_AUDIO_POWER_ON : 0 );
 
 	return 0;
@@ -217,7 +218,7 @@ static const struct snd_soc_dapm_widget ak4535_dapm_widgets[] = {
 };
 
 /* I'm really not sure about this, please fix if neccessary */
-static const char *audio_map [][3] = {
+static const struct snd_soc_dapm_route audio_map[] = {
 	/* Speaker is connected to speaker +- pins */
 	{ "Ext Spk", NULL, "SPP" },
 	{ "Ext Spk", NULL, "SPN" },
@@ -235,8 +236,6 @@ static const char *audio_map [][3] = {
 	/* Microphones */
 	{ "MICIN", NULL, "Internal Mic" },
 	{ "MICEXT", NULL, "Mic Jack" },
-
-	{ NULL, NULL, NULL },
 };
 
 static const char *jack_function [] = { "Off", "Headphone", "Mic", };
@@ -264,24 +263,24 @@ static struct i2c_client client_template;
 
 static int h5000_ak4535_write(void *control_data, long data, int size)
 {
-	return i2c_master_send((struct i2c_client*)control_data, 
+	return i2c_master_send((struct i2c_client*)control_data,
 		(char*) data, size);
 }
 
 static int h5000_ak4535_init (struct snd_soc_card *soc_card)
 {
 	struct snd_soc_codec *codec;
-	int i, err;
-	
-	codec = snd_soc_get_codec(soc_card, ak4535_codec_id);
+	int ret;
+
+	codec = snd_soc_card_get_codec(soc_card, ak4535_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
-	
+
 	/* NC codec pins */
 	snd_soc_dapm_disable_pin(soc_card, "MOUT1");
 	snd_soc_dapm_disable_pin(soc_card, "LOUT");
 	snd_soc_dapm_disable_pin(soc_card, "ROUT");
-	
+
 	// mp - not sure I understand here, is the codec driver wrong ?
 	snd_soc_dapm_disable_pin(soc_card, "MOUT2");	/* FIXME: These pins are marked as INPUTS */
 	snd_soc_dapm_disable_pin(soc_card, "MIN");	/* FIXME: and OUTPUTS in ak4535.c . We need to do this in order */
@@ -289,31 +288,28 @@ static int h5000_ak4535_init (struct snd_soc_card *soc_card)
 	snd_soc_dapm_disable_pin(soc_card, "MICOUT");	/* FIXME: OUTPUT -> INPUT. */
 
 	/* Add h5000 specific controls */
-	for (i = 0; i < ARRAY_SIZE (ak4535_h5000_controls); i++) {
-		err = snd_ctl_add (codec->card,
-			snd_soc_cnew(&ak4535_h5000_controls[i], codec, NULL));
-		if (err < 0)
-			return err;
-	};
-		
+	ret = snd_soc_add_new_controls(soc_card, ak4535_h5000_controls,
+		soc_card, ARRAY_SIZE(ak4535_h5000_controls));
+	if (ret < 0)
+		return ret;
 	/* Add h5000 specific widgets */
-	for (i = 0; i < ARRAY_SIZE (ak4535_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(codec, &ak4535_dapm_widgets [i]);
-	};
-
+	ret = snd_soc_dapm_new_controls(soc_card, codec,
+			ak4535_dapm_widgets, ARRAY_SIZE(ak4535_dapm_widgets));
+	if (ret < 0)
+		return ret;
 	/* Set up h5000 specific audio path audio_map */
-	for (i = 0; audio_map [i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(codec, audio_map [i][0], 
-			audio_map [i][1], audio_map [i][2]);
-	};
+	ret = snd_soc_dapm_add_routes(soc_card, audio_map,
+				     ARRAY_SIZE(audio_map));
+	if (ret < 0)
+		return ret;
+
+	snd_soc_card_config_codec(codec, NULL, h5000_ak4535_write,
+		soc_card->private_data);
 
 	snd_soc_dapm_sync(soc_card);
-	
-	snd_soc_codec_set_io(codec, NULL, h5000_ak4535_write, 
-		soc_card->private_data);
-	
-	snd_soc_codec_init(codec, soc_card);
-	
+
+	snd_soc_card_init_codec(codec, soc_card);
+
 	return 0;
 };
 
@@ -322,8 +318,8 @@ static struct snd_soc_pcm_config hifi_pcm_config = {
 	.codec		= ak4535_codec_id,
 	.codec_dai	= ak4535_codec_dai_id,
 	.platform	= pxa_platform_id,
-	.cpu_dai	= pxa2xx_i2s_id,
-	.ops		= &h5000_voice_ops,
+	.cpu_dai	= pxa2xx_i2s_dai_id,
+	.ops		= &h5000_ops,
 	.playback	= 1,
 	.capture	= 1,
 };
@@ -343,14 +339,14 @@ static int h5000_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	i2c = kmemdup(&client_template, sizeof(client_template), GFP_KERNEL);
 	if (i2c == NULL)
 		return -ENOMEM;
-	
+
 	ret = i2c_attach_client(i2c);
 	if (ret < 0) {
 		printk("failed to attach codec at addr %x\n", addr);
 		goto attach_err;
 	}
-	
-	soc_card = snd_soc_card_create("h5000", &i2c->dev, 
+
+	soc_card = snd_soc_card_create("h5000", &i2c->dev,
 		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
 	if (soc_card == NULL)
 		return -ENOMEM;
@@ -359,11 +355,11 @@ static int h5000_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	soc_card->init = h5000_ak4535_init;
 	soc_card->private_data = i2c;
 	i2c_set_clientdata(i2c, soc_card);
-	
-	ret = snd_soc_pcm_create(soc_card, &hifi_pcm_config);
+
+	ret = snd_soc_card_create_pcms(soc_card, &hifi_pcm_config, 1);
 	if (ret < 0)
 		goto err;
-	
+
 	ret = snd_soc_card_register(soc_card);
 	return ret;
 
@@ -378,7 +374,7 @@ attach_err:
 static int h5000_i2c_detach(struct i2c_client *client)
 {
 	struct snd_soc_card *soc_card = i2c_get_clientdata(client);
-	 
+
 	snd_soc_card_free(soc_card);
 	i2c_detach_client(client);
 	kfree(client);
@@ -392,10 +388,10 @@ static int h5000_i2c_attach(struct i2c_adapter *adap)
 
 static struct i2c_driver ak4535_i2c_driver = {
 	.driver = {
-		.name = "h5000 Codec",
+		.name = "ak4535 Codec",
 		.owner = THIS_MODULE,
 	},
-	.id =             I2C_DRIVERID_H5000,
+	.id =             I2C_DRIVERID_AK4535,
 	.attach_adapter = h5000_i2c_attach,
 	.detach_client =  h5000_i2c_detach,
 	.command =        NULL,
@@ -410,16 +406,16 @@ static int __init h5000_init(void)
 {
 	int ret;
 
-	if (!soc_card_is_h5400 ())
+	if (!machine_is_h5400 ())
 		return -ENODEV;
 
 	request_module("i2c-pxa");
-	
+
 	/* enable audio codec */
-	samcop_set_gpio_b(&h5400_samcop.dev, 
+	samcop_set_gpio_b(&h5400_samcop.dev,
 		SAMCOP_GPIO_GPB_CODEC_POWER_ON, SAMCOP_GPIO_GPB_CODEC_POWER_ON);
 
-	ret = i2c_add_driver(&h5000_i2c_driver);
+	ret = i2c_add_driver(&ak4535_i2c_driver);
 	if (ret < 0)
 		printk (KERN_ERR "%s: failed to add i2c driver\n",
 			__FUNCTION__);
@@ -429,9 +425,9 @@ static int __init h5000_init(void)
 
 static void __exit h5000_exit(void)
 {
-	i2c_del_driver(&h5000_i2c_driver);
-	
-	samcop_set_gpio_b(&h5400_samcop.dev, 
+	i2c_del_driver(&ak4535_i2c_driver);
+
+	samcop_set_gpio_b(&h5400_samcop.dev,
 		SAMCOP_GPIO_GPB_CODEC_POWER_ON | SAMCOP_GPIO_GPB_AUDIO_POWER_ON, 0);
 };
 

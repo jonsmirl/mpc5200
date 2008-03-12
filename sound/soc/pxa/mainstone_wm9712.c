@@ -46,7 +46,7 @@ static const struct snd_soc_dapm_widget mainstone_dapm_widgets[] = {
 };
 
 /* example soc_card audio_mapnections */
-static const char* audio_map[][3] = {
+static const struct snd_soc_dapm_route audio_map[] = {
 
 #if 0
 	/* mic is connected to mic1 - with bias */
@@ -59,7 +59,6 @@ static const char* audio_map[][3] = {
 	{"MIC2B", NULL, "Mic Bias"},
 	{"Mic Bias", NULL, "Mic 3"},
 #endif
-	{NULL, NULL, NULL},
 };
 
 static int mainstone_wm9712_write(void *control_data, long val, int reg)
@@ -80,22 +79,22 @@ static int mainstone_wm9712_init(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_codec *codec;
 	struct snd_ac97_bus_ops *ac97_ops;
-	int i, ret;
+	int ret;
 
-	codec = snd_soc_get_codec(soc_card, wm9712_codec_id);
+	codec = snd_soc_card_get_codec(soc_card, wm9712_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
-	
-	snd_soc_codec_set_io(codec, mainstone_wm9712_read, 
+
+	snd_soc_card_config_codec(codec, mainstone_wm9712_read,
 		mainstone_wm9712_write, codec->ac97);
-		
-	ac97_ops = snd_soc_get_ac97_ops(soc_card, pxa_ac97_hifi_dai_id);
-	
+
+	ac97_ops = snd_soc_card_get_ac97_ops(soc_card, pxa_ac97_hifi_dai_id);
+
 	/* register with AC97 bus for ad-hoc driver access */
 	ret = snd_soc_new_ac97_codec(codec, ac97_ops, soc_card->card, 0, 0);
 	if (ret < 0)
 		return ret;
-		
+
 	/* do a cold reset for the controller and then try
 	 * a warm reset followed by an optional cold reset for codec */
 	ac97_ops->reset(codec->ac97);
@@ -105,44 +104,45 @@ static int mainstone_wm9712_init(struct snd_soc_card *soc_card)
 		return ret;
 	}
 
-	snd_soc_codec_init(codec, soc_card);
+	snd_soc_card_init_codec(codec, soc_card);
 
 	/* Add mainstone specific widgets */
-	for(i = 0; i < ARRAY_SIZE(mainstone_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(soc_card, codec, 
-			&mainstone_dapm_widgets[i]);
-	}
+	ret = snd_soc_dapm_new_controls(soc_card, codec,
+		mainstone_dapm_widgets,
+		ARRAY_SIZE(mainstone_dapm_widgets));
+	if (ret < 0)
+		return ret;
 
-	/* set up mainstone specific audio path audio_mapnects */
-	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(soc_card, audio_map[i][0], 
-			audio_map[i][1], audio_map[i][2]);
-	}
+	/* set up mainstone specific audio path audio_map */
+	ret = snd_soc_dapm_add_routes(soc_card, audio_map,
+				     ARRAY_SIZE(audio_map));
+	if (ret < 0)
+		return ret;
 
 	snd_soc_dapm_sync(soc_card);
-	
+
 	MST_MSCWR2 &= ~MST_MSCWR2_AC97_SPKROFF;
 	return 0;
 }
 
-static struct snd_soc_pcm_config hifi_pcm_config = {
+static struct snd_soc_pcm_config pcm_config[] = {
+{
 	.name		= "HiFi",
 	.codec		= wm9712_codec_id,
 	.codec_dai	= wm9712_codec_hifi_dai_id,
-//	.platform	= pxa_platform_id,
-//	.cpu_dai	= pxa2xx_i2s_dai_id,
+	.platform	= pxa_platform_id,
+	.cpu_dai	= pxa2xx_i2s_dai_id,
 	.playback	= 1,
 	.capture	= 1,
-};
-
-static struct snd_soc_pcm_config aux_pcm_config = {
+},
+{
 	.name		= "Aux",
 	.codec		= wm9712_codec_id,
 	.codec_dai	= wm9712_codec_aux_dai_id,
-//	.platform	= pxa_platform_id,
-//	.cpu_dai	= pxa_ac97_aux_dai_id,
+	.platform	= pxa_platform_id,
+	.cpu_dai	= pxa_ac97_aux_dai_id,
 	.playback	= 1,
-};
+},};
 
 /*
  * This is an example soc_card initialisation for a wm9712 connected to a
@@ -154,7 +154,7 @@ static int mainstone_wm9712_probe(struct platform_device *pdev)
 	struct snd_soc_card *soc_card;
 	int ret;
 
-	soc_card = snd_soc_card_create("mainstone_wm9712", &pdev->dev, 
+	soc_card = snd_soc_card_create("mainstone_wm9712", &pdev->dev,
 		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
 	if (soc_card == NULL)
 		return -ENOMEM;
@@ -163,18 +163,15 @@ static int mainstone_wm9712_probe(struct platform_device *pdev)
 	soc_card->init = mainstone_wm9712_init,
 	soc_card->private_data = pdev;
 	platform_set_drvdata(pdev, soc_card);
-	
-	ret = snd_soc_pcm_create(soc_card, &hifi_pcm_config);
+
+	ret = snd_soc_card_create_pcms(soc_card, pcm_config,
+		ARRAY_SIZE(pcm_config));
 	if (ret < 0)
 		goto err;
-	
-	ret = snd_soc_pcm_create(soc_card, &aux_pcm_config);
-	if (ret < 0)
-		goto err;	
-	
+
 	ret = snd_soc_card_register(soc_card);
 	return ret;
-	
+
 err:
 	snd_soc_card_free(soc_card);
 	return ret;
@@ -194,11 +191,11 @@ static int __exit mainstone_wm9712_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM
 static long mst_audio_suspend_mask;
 
-static int mainstone_wm9712_suspend(struct platform_device *pdev, 
+static int mainstone_wm9712_suspend(struct platform_device *pdev,
 	pm_message_t state)
 {
 	struct snd_soc_card *soc_card = platform_get_drvdata(pdev);
-	
+
 	mst_audio_suspend_mask = MST_MSCWR2;
 	MST_MSCWR2 |= MST_MSCWR2_AC97_SPKROFF;
 	return snd_soc_suspend_pcms(soc_card, state);
@@ -207,7 +204,7 @@ static int mainstone_wm9712_suspend(struct platform_device *pdev,
 static int mainstone_wm9712_resume(struct platform_device *pdev)
 {
 	struct snd_soc_card *soc_card = platform_get_drvdata(pdev);
-	
+
 	MST_MSCWR2 &= mst_audio_suspend_mask | ~MST_MSCWR2_AC97_SPKROFF;
 	return snd_soc_resume_pcms(soc_card);
 }
@@ -223,13 +220,29 @@ static struct platform_driver mainstone_wm9712_driver = {
 	.suspend	= mainstone_wm9712_suspend,
 	.resume		= mainstone_wm9712_resume,
 	.driver		= {
-		.name 		= "Mainstone-WM9712",
+		.name		= "Mainstone-WM9712",
 		.owner		= THIS_MODULE,
 	},
 };
 
+static struct platform_device codec = {
+	.name		= "wm9712-codec",
+	.id		= -1,
+};
+
+static struct platform_device platform = {
+	.name		= "Mainstone-WM9712",
+	.id		= -1,
+};
+
+static struct platform_device *devices[] = {
+	&codec,
+	&platform,
+};
+
 static int __init mainstone_asoc_init(void)
 {
+	platform_add_devices(&devices[0], ARRAY_SIZE(devices));
 	return platform_driver_register(&mainstone_wm9712_driver);
 }
 

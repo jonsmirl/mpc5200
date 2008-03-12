@@ -48,6 +48,10 @@
 #define dbg(format, arg...)
 #endif
 
+/* dapm sys fs - used by the core */
+int snd_soc_dapm_sys_add(struct snd_soc_card *soc_card);
+void snd_soc_dapm_free(struct snd_soc_card *soc_card);
+
 static DEFINE_MUTEX(pcm_mutex);
 static DEFINE_MUTEX(io_mutex);
 static DEFINE_MUTEX(client_mutex);
@@ -147,12 +151,13 @@ static int soc_ac97_pcm_create(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime;
 	int ret = 0;
-	
+
 	list_for_each_entry(pcm_runtime, &soc_card->pcm_list, list) {
 		if (pcm_runtime->cpu_dai->ac97_control) {
 			ret = soc_ac97_dev_register(pcm_runtime->codec);
 			if (ret < 0) {
-				printk(KERN_ERR "asoc: AC97 device register failed\n");
+				printk(KERN_ERR "asoc: AC97 device register"
+					" failed\n");
 
 				return ret;
 			}
@@ -464,7 +469,8 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 		/* no delayed work - do we need to power up codec */
 		if (codec->bias_level != SND_SOC_BIAS_ON) {
 
-			snd_soc_dapm_set_bias(pcm_runtime, SND_SOC_BIAS_PREPARE);
+			snd_soc_dapm_set_bias(pcm_runtime,
+				SND_SOC_BIAS_PREPARE);
 
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 				snd_soc_dapm_stream_event(soc_card,
@@ -535,8 +541,8 @@ static int soc_pcm_hw_params(struct snd_pcm_substream *substream,
 	if (cpu_dai->ops->hw_params) {
 		ret = cpu_dai->ops->hw_params(substream, params, cpu_dai);
 		if (ret < 0) {
-			printk(KERN_ERR "asoc: can't set interface %s hw params\n",
-				cpu_dai->name);
+			printk(KERN_ERR "asoc: can't set interface %s "
+				"hw params\n", cpu_dai->name);
 			goto interface_err;
 		}
 	}
@@ -544,8 +550,8 @@ static int soc_pcm_hw_params(struct snd_pcm_substream *substream,
 	if (platform->pcm_ops->hw_params) {
 		ret = platform->pcm_ops->hw_params(substream, params);
 		if (ret < 0) {
-			printk(KERN_ERR "asoc: can't set platform %s hw params\n",
-				platform->name);
+			printk(KERN_ERR "asoc: can't set platform %s "
+				"hw params\n", platform->name);
 			goto platform_err;
 		}
 	}
@@ -649,10 +655,10 @@ static struct snd_pcm_ops soc_pcm_ops = {
  * snd_soc_card_suspend - suspend soc_card
  * @soc_card: soc soc_card
  *
- * Mutes, then suspends all soc_card PCM's. NOTE: soc_card driver will still 
+ * Mutes, then suspends all soc_card PCM's. NOTE: soc_card driver will still
  * have to suspend codecs/platform.
  */
-int snd_soc_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state)
+int snd_soc_card_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state)
 {
 	struct snd_soc_dai *codec_dai;
 	struct snd_soc_codec *codec;
@@ -700,10 +706,10 @@ int snd_soc_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state)
  * snd_soc_card_resume - resume soc_card
  * @soc_card: soc soc_card
  *
- * Resumes and unmutes all soc_card PCM's. NOTE: soc_card driver will still 
+ * Resumes and unmutes all soc_card PCM's. NOTE: soc_card driver will still
  * have to resume codecs/platform.
  */
-int snd_soc_resume_pcms(struct snd_soc_card *soc_card)
+int snd_soc_card_resume_pcms(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_dai *codec_dai;
 	struct snd_soc_pcm_runtime *pcm_runtime;
@@ -734,20 +740,20 @@ int snd_soc_resume_pcms(struct snd_soc_card *soc_card)
 }
 
 #else
-int snd_soc_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state)
+int snd_soc_card_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state)
 {
 	return 0;
 }
 
-int snd_soc_resume_pcms(struct snd_soc_card *soc_card)
+int snd_soc_card_resume_pcms(struct snd_soc_card *soc_card)
 {
 	return 0;
 }
 #endif
-EXPORT_SYMBOL_GPL(snd_soc_suspend_pcms);
-EXPORT_SYMBOL_GPL(snd_soc_resume_pcms);
+EXPORT_SYMBOL_GPL(snd_soc_card_suspend_pcms);
+EXPORT_SYMBOL_GPL(snd_soc_card_resume_pcms);
 
-/* Creates a new PCM based upon a pcm_config in the soc_card driver */  
+/* Creates a new PCM based upon a pcm_config in the soc_card driver */
 static int soc_create_pcm(struct snd_soc_card *soc_card,
 	struct soc_pcm_config *pcm_config)
 {
@@ -766,13 +772,13 @@ static int soc_create_pcm(struct snd_soc_card *soc_card,
 	/* yes, then check codec list */
 	list_for_each_entry(codec, &codec_list, list) {
 		if (!strcmp(config->codec, codec->name) &&
-		    codec->num == config->codec_num && 
+		    codec->num == config->codec_num &&
 		    try_module_get(codec->dev->driver->owner)) {
 			dbg("ASoC %s %s: Match for %s.%d %s.%d\n",
 			    soc_card->name, config->name,
 			    config->codec, config->codec_num,
 			    codec->name, codec->num);
-			
+
 			pcm_config->codec = codec;
 			goto codec_dai;
 		} else {
@@ -854,7 +860,7 @@ check:
 	if (!pcm_config->codec || !pcm_config->codec_dai ||
 	    !pcm_config->platform || !pcm_config->cpu_dai) {
 		dbg("ASoC %s %s: incomplete codec %d (DAI %d) platform"
-		    " %d (DAI %d)\n", 
+		    " %d (DAI %d)\n",
 		    soc_card->name, config->name,
 		    !pcm_config->codec == 0, !pcm_config->codec_dai == 0,
 		    !pcm_config->platform == 0, !pcm_config->cpu_dai == 0);
@@ -875,11 +881,12 @@ check:
 	platform = pcm_runtime->platform = pcm_config->platform;
 	pcm_config->cpu_dai->platform = pcm_config->platform;
 	pcm_config->codec_dai->codec = pcm_config->codec;
-		
+
 	ret = snd_pcm_new(soc_card->card, (char*)pcm_runtime->name,
 		soc_card->pcms++, config->playback, config->capture, &pcm);
 	if (ret < 0) {
-		printk(KERN_ERR "asoc: can't create pcm for codec %s\n", codec->name);
+		printk(KERN_ERR "asoc: can't create pcm for codec %s\n",
+			codec->name);
 		goto err;
 	}
 
@@ -963,8 +970,8 @@ static int soc_match_pcm(struct snd_soc_card *soc_card)
 
 	ret = snd_card_register(soc_card->card);
 	if (ret < 0) {
-		printk(KERN_ERR "asoc: failed to register soundcard for codec %s\n",
-				soc_card->name);
+		printk(KERN_ERR "asoc: failed to register soundcard for "
+			"codec %s\n", soc_card->name);
 		goto out_mutex;
 	}
 
@@ -1013,6 +1020,13 @@ static ssize_t codec_reg_show(struct device *dev,
 }
 static DEVICE_ATTR(codec_reg, 0444, codec_reg_show, NULL);
 
+static void soc_codec_exit(struct snd_soc_codec *codec,
+	struct snd_soc_card *soc_card)
+{
+	device_remove_file(codec->dev, &dev_attr_codec_reg);
+	if (codec->exit)
+		codec->exit(codec, soc_card);
+}
 
 static int soc_ac97_write(void *control_data, long val, int reg)
 {
@@ -1028,24 +1042,26 @@ static int soc_ac97_read(void *control_data, long val, int reg)
 	return 0;
 }
 
-
 /**
- * snd_soc_new_ac97_codec - initailise AC97 device
- * @codec: audio codec
+ * snd_soc_new_ac97_codec - create new AC97 codec.
+ * @codec: codec
  * @ops: AC97 bus operations
- * @num: AC97 codec number
+ * @card: ALSA sound card.
+ * @num: codec number.
+ * @bus_no: AC97 bus number.
  *
- * Initialises AC97 codec resources for use by ad-hoc devices only.
+ * Creates a new AC97 codec and initialises AC97 codec resources for use by
+ * ad-hoc AC97 devices.
  */
 int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
 	struct snd_ac97_bus_ops *ops, struct snd_card *card,
 	int num, int bus_no)
 {
 	struct snd_ac97 *ac97;
-	
+
 	snd_assert(codec != NULL, return -EINVAL);
 	snd_assert(ops != NULL, return -EINVAL);
-	
+
 	mutex_lock(&codec->mutex);
 
 	ac97 = kzalloc(sizeof(struct snd_ac97), GFP_KERNEL);
@@ -1069,9 +1085,9 @@ int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
 	spin_lock_init(&ac97->bus->bus_lock);
 	codec->ac97 = ac97;
 
-	snd_soc_codec_set_io(codec, soc_ac97_read, soc_ac97_write,
+	snd_soc_card_config_codec(codec, soc_ac97_read, soc_ac97_write,
 			     codec->ac97);
-		
+
 	mutex_unlock(&codec->mutex);
 	return 0;
 }
@@ -1086,7 +1102,7 @@ EXPORT_SYMBOL_GPL(snd_soc_new_ac97_codec);
 void snd_soc_free_ac97_codec(struct snd_soc_codec *codec)
 {
 	struct snd_ac97 *ac97 = codec->ac97;
-	
+
 	kfree(ac97->bus);
 	kfree(ac97);
 	codec->ac97 = NULL;
@@ -1195,6 +1211,39 @@ struct snd_kcontrol *snd_soc_cnew(const struct snd_kcontrol_new *_template,
 	return snd_ctl_new1(&template, data);
 }
 EXPORT_SYMBOL_GPL(snd_soc_cnew);
+
+/**
+ * snd_soc_add_new_controls - create and add new controls
+ * @_template: control template
+ * @data: control private data
+ * @num: number of controls
+ *
+ * Create new mixer controls from template controls and add to
+ * the sound card.
+ *
+ * Returns 0 for success, else error. On error all resources can be freed
+ * with a call to snd_soc_card_free().
+ */
+int snd_soc_add_new_controls(struct snd_soc_card *soc_card,
+	const struct snd_kcontrol_new *_template, void *data, int num)
+{
+	struct snd_kcontrol *control;
+	int i, ret;
+
+	for (i = 0; i < num; i++) {
+		control = snd_soc_cnew(_template++, data, NULL);
+		if (control == NULL)
+			return -ENOMEM;
+
+		ret = snd_ctl_add(soc_card->card, control);
+		if (ret < 0) {
+			kfree(control);
+			return ret;
+		}
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(snd_soc_add_new_controls);
 
 /**
  * snd_soc_info_enum_double - enumerated double mixer info callback
@@ -1564,36 +1613,15 @@ int snd_soc_put_volsw_2r(struct snd_kcontrol *kcontrol,
 }
 EXPORT_SYMBOL_GPL(snd_soc_put_volsw_2r);
 
-int snd_soc_codec_set_sysclk(struct snd_soc_codec *codec, int clk_id,
-	unsigned int freq, int dir)
-{
-	if (codec->set_sysclk)
-		return codec->set_sysclk(codec, clk_id, freq, dir);
-	else
-		return -EINVAL;
-}
-EXPORT_SYMBOL_GPL(snd_soc_codec_set_sysclk);
-
-int snd_soc_codec_set_clkdiv(struct snd_soc_codec *codec,
-	int div_id, int div)
-{
-	if (codec->set_clkdiv)
-		return codec->set_clkdiv(codec, div_id, div);
-	else
-		return -EINVAL;
-}
-EXPORT_SYMBOL_GPL(snd_soc_codec_set_clkdiv);
-
-int snd_soc_codec_set_pll(struct snd_soc_codec *codec,
-	int pll_id, unsigned int freq_in, unsigned int freq_out)
-{
-	if (codec->set_pll)
-		return codec->set_pll(codec, pll_id, freq_in, freq_out);
-	else
-		return -EINVAL;
-}
-EXPORT_SYMBOL_GPL(snd_soc_codec_set_pll);
-
+/**
+ * snd_soc_dai_set_sysclk - configure DAI system or master clock.
+ * @dai: DAI
+ * @clk_id: DAI specific clock ID
+ * @freq: new clock frequency in Hz
+ * @dir: new clock direction - input/output.
+ *
+ * Configures the DAI master (MCLK) or system (SYSCLK) clocking.
+ */
 int snd_soc_dai_set_sysclk(struct snd_soc_dai *dai, int clk_id,
 	unsigned int freq, int dir)
 {
@@ -1604,6 +1632,16 @@ int snd_soc_dai_set_sysclk(struct snd_soc_dai *dai, int clk_id,
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_set_sysclk);
 
+/**
+ * snd_soc_dai_set_clkdiv - configure DAI clock dividers.
+ * @dai: DAI
+ * @clk_id: DAI specific clock divider ID
+ * @div: new clock divisor.
+ *
+ * Configures the clock dividers. This is used to derive the best DAI bit and
+ * frame clocks from the system or master clock. It's best to set the DAI bit
+ * and frame clocks as low as possible to save system power.
+ */
 int snd_soc_dai_set_clkdiv(struct snd_soc_dai *dai,
 	int div_id, int div)
 {
@@ -1614,6 +1652,15 @@ int snd_soc_dai_set_clkdiv(struct snd_soc_dai *dai,
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_set_clkdiv);
 
+/**
+ * snd_soc_dai_set_pll - configure DAI PLL.
+ * @dai: DAI
+ * @pll_id: DAI specific PLL ID
+ * @freq_in: PLL input clock frequency in Hz
+ * @freq_out: requested PLL output clock frequency in Hz
+ *
+ * Configures and enables PLL to generate output clock based on input clock.
+ */
 int snd_soc_dai_set_pll(struct snd_soc_dai *dai,
 	int pll_id, unsigned int freq_in, unsigned int freq_out)
 {
@@ -1624,6 +1671,14 @@ int snd_soc_dai_set_pll(struct snd_soc_dai *dai,
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_set_pll);
 
+/**
+ * snd_soc_dai_set_fmt - configure DAI hardware audio format.
+ * @dai: DAI
+ * @clk_id: DAI specific clock ID
+ * @fmt: SND_SOC_DAIFMT_ format value.
+ *
+ * Configures the DAI hardware format and clocking.
+ */
 int snd_soc_dai_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
 	if (dai->ops->set_fmt)
@@ -1633,6 +1688,15 @@ int snd_soc_dai_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_set_fmt);
 
+/**
+ * snd_soc_dai_set_tdm_slot - configure DAI TDM.
+ * @dai: DAI
+ * @mask: DAI specific mask representing used slots.
+ * @slots: Number of slots in use.
+ *
+ * Configures a DAI for TDM operation. Both mask and slots are codec and DAI
+ * specific.
+ */
 int snd_soc_dai_set_tdm_slot(struct snd_soc_dai *dai,
 	unsigned int mask, int slots)
 {
@@ -1643,6 +1707,13 @@ int snd_soc_dai_set_tdm_slot(struct snd_soc_dai *dai,
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_set_tdm_slot);
 
+/**
+ * snd_soc_dai_set_tristate - configure DAI system or master clock.
+ * @dai: DAI
+ * @tristate: tristate enable
+ *
+ * Tristates the DAI so that others can use it.
+ */
 int snd_soc_dai_set_tristate(struct snd_soc_dai *dai, int tristate)
 {
 	if (dai->ops->set_sysclk)
@@ -1652,6 +1723,13 @@ int snd_soc_dai_set_tristate(struct snd_soc_dai *dai, int tristate)
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_set_tristate);
 
+/**
+ * snd_soc_dai_digital_mute - configure DAI system or master clock.
+ * @dai: DAI
+ * @mute: mute enable
+ *
+ * Mutes the DAI DAC.
+ */
 int snd_soc_dai_digital_mute(struct snd_soc_dai *dai, int mute)
 {
 	if (dai->ops->digital_mute)
@@ -1661,11 +1739,18 @@ int snd_soc_dai_digital_mute(struct snd_soc_dai *dai, int mute)
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_digital_mute);
 
+/**
+ * snd_soc_register_codec_dai - register a codec DAI.
+ * @template: pointer to DAI template
+ * @dev: device
+ *
+ * Creates and registers a codec Digital Audio Interface with ASoC core.
+ */
 struct snd_soc_dai *snd_soc_register_codec_dai(
 	struct snd_soc_dai_new *template, struct device *dev)
 {
 	struct snd_soc_dai *dai;
-		
+
 	BUG_ON(!dev);
 	BUG_ON(!template->name);
 
@@ -1688,6 +1773,12 @@ struct snd_soc_dai *snd_soc_register_codec_dai(
 }
 EXPORT_SYMBOL_GPL(snd_soc_register_codec_dai);
 
+/**
+ * snd_soc_unregister_codec_dai - add DAI to codec.
+ * @dai: pointer to DAI
+ *
+ * Unregisters a codec Digital Audio Interface with ASoC core.
+ */
 void snd_soc_unregister_codec_dai(struct snd_soc_dai *dai_runtime)
 {
 	mutex_lock(&client_mutex);
@@ -1697,12 +1788,63 @@ void snd_soc_unregister_codec_dai(struct snd_soc_dai *dai_runtime)
 }
 EXPORT_SYMBOL_GPL(snd_soc_unregister_codec_dai);
 
-int snd_soc_register_codec(struct snd_soc_codec *codec)
+/**
+ * snd_soc_new_codec - create new codec driver.
+ * @template: new codec driver template
+ * @cache: default register cache or NULL
+ *
+ * Creates a new codec and allocates resources including register cache.
+ */
+struct snd_soc_codec *snd_soc_new_codec(
+	struct snd_soc_codec_new *template, const char *cache)
 {
-	BUG_ON(!codec->dev);
-	BUG_ON(!codec->name);
+	struct snd_soc_codec *codec;
+
+	BUG_ON(!template->name);
+
+	codec = kzalloc(sizeof(*codec), GFP_KERNEL);
+	if (codec == NULL)
+		return NULL;
+
+	if (cache) {
+		codec->reg_cache = kmemdup(cache, template->reg_cache_size,
+			GFP_KERNEL);
+		if (codec->reg_cache == NULL) {
+			kfree(codec);
+			return NULL;
+		}
+	}
+
+	mutex_init(&codec->mutex);
+	INIT_LIST_HEAD(&codec->list);
+	INIT_LIST_HEAD(&codec->dai_list);
+
+	codec->name = template->name;
+	codec->reg_cache_size = template->reg_cache_size;
+	codec->reg_cache_step = template->reg_cache_step;
+	codec->set_bias_level = template->set_bias_level;
+	codec->init = template->init;
+	codec->exit = template->exit;
+	codec->codec_read = template->codec_read;
+	codec->codec_write = template->codec_write;
+
+	return codec;
+}
+EXPORT_SYMBOL_GPL(snd_soc_new_codec);
+
+/**
+ * snd_soc_register_codec - register codec driver.
+ * @codec: codec driver
+ * @dev: device
+ *
+ * Registers a new codec driver with ASoC core.
+ */
+int snd_soc_register_codec(struct snd_soc_codec *codec, struct device *dev)
+{
+	BUG_ON(!dev);
 
 	mutex_lock(&client_mutex);
+	codec->dev = dev;
 	list_add(&codec->list, &codec_list);
 	mutex_unlock(&client_mutex);
 	soc_match_soc_card_pcms();
@@ -1710,19 +1852,34 @@ int snd_soc_register_codec(struct snd_soc_codec *codec)
 }
 EXPORT_SYMBOL_GPL(snd_soc_register_codec);
 
-void snd_soc_unregister_codec(struct snd_soc_codec *codec)
+/**
+ * snd_soc_free_codec - unregister and free codec.
+ * @codec: codec driver
+ *
+ * Unregisters a codec driver with the core and frees all its resources.
+ */
+void snd_soc_free_codec(struct snd_soc_codec *codec)
 {
 	mutex_lock(&client_mutex);
 	list_del(&codec->list);
 	mutex_unlock(&client_mutex);
+	if (codec->reg_cache)
+		kfree(codec->reg_cache);
+	kfree(codec);
 }
-EXPORT_SYMBOL_GPL(snd_soc_unregister_codec);
+EXPORT_SYMBOL_GPL(snd_soc_free_codec);
 
+/**
+ * snd_soc_register_platform_dai - registers a  platform DAI.
+ * @dai: pointer to DAI
+ *
+ * Registers a platform Digital Audio Interfaces with ASoC core.
+ */
 struct snd_soc_dai *snd_soc_register_platform_dai(
 	struct snd_soc_dai_new *template, struct device *dev)
 {
 	struct snd_soc_dai *dai;
-		
+
 	BUG_ON(!dev);
 	BUG_ON(!template->name);
 
@@ -1745,6 +1902,12 @@ struct snd_soc_dai *snd_soc_register_platform_dai(
 }
 EXPORT_SYMBOL_GPL(snd_soc_register_platform_dai);
 
+/**
+ * snd_soc_unregister_platform_dai - unregisters a  platform DAI.
+ * @dai: pointer to DAI
+ *
+ * Unregisters platform Digital Audio Interfaces with ASoC core.
+ */
 void snd_soc_unregister_platform_dai(struct snd_soc_dai *dai_runtime)
 {
 	mutex_lock(&client_mutex);
@@ -1754,58 +1917,18 @@ void snd_soc_unregister_platform_dai(struct snd_soc_dai *dai_runtime)
 }
 EXPORT_SYMBOL_GPL(snd_soc_unregister_platform_dai);
 
-#if 0
-int snd_soc_register_platform_dais(struct snd_soc_dai_new *template, 
-	int num, struct device *dev)
-{
-	int i, ret;
-	
-	for (i = 0; i < num; i++) {
-		ret = snd_soc_register_platform_dai(template++, dev);
-	return 0;
-}
-EXPORT_SYMBOL_GPL(snd_soc_register_platform_dais);
-#endif
-
-int snd_soc_register_platform(struct snd_soc_platform *platform)
-{
-	BUG_ON(!platform->dev);
-	BUG_ON(!platform->name);
-
-	mutex_lock(&client_mutex);
-	list_add(&platform->list, &platform_list);
-	mutex_unlock(&client_mutex);
-	soc_match_soc_card_pcms();
-	return 0;
-}
-EXPORT_SYMBOL_GPL(snd_soc_register_platform);
-
-void snd_soc_unregister_platform(struct snd_soc_platform *platform)
-{
-	mutex_lock(&client_mutex);
-	list_del(&platform->list);
-	mutex_unlock(&client_mutex);
-}
-EXPORT_SYMBOL_GPL(snd_soc_unregister_platform);
-
-struct snd_soc_codec *snd_soc_codec_allocate(void)
-{
-	struct snd_soc_codec *codec;
-
-	codec = kzalloc(sizeof(*codec), GFP_KERNEL);
-	if (codec == NULL)
-		return NULL;
-
-	mutex_init(&codec->mutex);
-	INIT_LIST_HEAD(&codec->list);
-	INIT_LIST_HEAD(&codec->dai_list);
-	return codec;
-}
-EXPORT_SYMBOL_GPL(snd_soc_codec_allocate);
-
-struct snd_soc_platform *snd_soc_platform_allocate(void)
+/**
+ * snd_soc_new_platform - register platform driver.
+ * @template: new platform driver template
+ *
+ * Creates a new platform and allocates resources including register cache.
+ */
+struct snd_soc_platform *snd_soc_new_platform(
+	struct snd_soc_platform_new *template)
 {
 	struct snd_soc_platform *platform;
+
+	BUG_ON(!template->name);
 
 	platform = kzalloc(sizeof(*platform), GFP_KERNEL);
 	if (platform == NULL)
@@ -1813,10 +1936,59 @@ struct snd_soc_platform *snd_soc_platform_allocate(void)
 
 	mutex_init(&platform->mutex);
 	INIT_LIST_HEAD(&platform->dai_list);
+	platform->name = template->name;
+	platform->pcm_ops = template->pcm_ops;
+	platform->pcm_new = template->pcm_new;
+	platform->pcm_free = template->pcm_free;
+
 	return platform;
 }
-EXPORT_SYMBOL_GPL(snd_soc_platform_allocate);
+EXPORT_SYMBOL_GPL(snd_soc_new_platform);
 
+/**
+ * snd_soc_register_platform - register platform driver.
+ * @platform: platform driver
+ *
+ * Registers a platform driver with ASoC core.
+ */
+int snd_soc_register_platform(struct snd_soc_platform *platform,
+	struct device *dev)
+{
+	BUG_ON(!dev);
+
+	mutex_lock(&client_mutex);
+	platform->dev = dev;
+	list_add(&platform->list, &platform_list);
+	mutex_unlock(&client_mutex);
+	soc_match_soc_card_pcms();
+	return 0;
+}
+EXPORT_SYMBOL_GPL(snd_soc_register_platform);
+
+/**
+ * snd_soc_free_platform - unregister and free platform.
+ * @platform: platform driver
+ *
+ * Unregisters platform with core and frees all resources.
+ */
+void snd_soc_free_platform(struct snd_soc_platform *platform)
+{
+	mutex_lock(&client_mutex);
+	list_del(&platform->list);
+	mutex_unlock(&client_mutex);
+	kfree(platform);
+}
+EXPORT_SYMBOL_GPL(snd_soc_free_platform);
+
+/**
+ * snd_soc_card_create - create new ASoC sound card.
+ * @name: soc_card name
+ * @parent: parent device
+ * @idx: sound card index
+ * @xid: sound card ID
+ *
+ * Creates a new ASoC sound card.
+ */
 struct snd_soc_card *snd_soc_card_create(const char *name,
 	struct device *parent, int idx, const char *xid)
 {
@@ -1825,13 +1997,13 @@ struct snd_soc_card *snd_soc_card_create(const char *name,
 	soc_card = kzalloc(sizeof(*soc_card), GFP_KERNEL);
 	if (soc_card == NULL)
 		return NULL;
-	
+
 	soc_card->name = kstrdup(name, GFP_KERNEL);
 	if (soc_card->name == NULL) {
 		kfree(soc_card);
 		return NULL;
 	}
-	
+
 	soc_card->dev = parent;
 	mutex_init(&soc_card->mutex);
 	INIT_LIST_HEAD(&soc_card->dapm_widgets);
@@ -1842,8 +2014,8 @@ struct snd_soc_card *snd_soc_card_create(const char *name,
 	/* register a sound card */
 	soc_card->card = snd_card_new(idx, xid, THIS_MODULE, 0);
 	if (!soc_card->card) {
-		printk(KERN_ERR "asoc: can't create sound card for soc_card %s\n",
-			soc_card->name);
+		printk(KERN_ERR "asoc: can't create sound card for "
+			"soc_card %s\n", soc_card->name);
 		kfree(soc_card);
 		return ERR_PTR(-ENODEV);
 	}
@@ -1852,7 +2024,7 @@ struct snd_soc_card *snd_soc_card_create(const char *name,
 }
 EXPORT_SYMBOL_GPL(snd_soc_card_create);
 
-int snd_soc_pcm_create(struct snd_soc_card *soc_card,
+static int soc_pcm_new(struct snd_soc_card *soc_card,
 	struct snd_soc_pcm_config *config)
 {
 	struct soc_pcm_config *_config;
@@ -1891,30 +2063,45 @@ int snd_soc_pcm_create(struct snd_soc_card *soc_card,
 	soc_match_soc_card_pcms();
 	return 0;
 }
-EXPORT_SYMBOL_GPL(snd_soc_pcm_create);
 
-int snd_soc_create_pcms(struct snd_soc_card *soc_card,
+/**
+ * snd_soc_card_create_pcms - create several ASoC PCM.
+ * @soc_card: Machine
+ * @configs: Array of PCM configurations
+ * @num: Size of array
+ *
+ * Creates a new ALSA pcm for each config entry passed in. The config entry
+ * will contain the codec, codec_dai, platform and platform_dai ID's.
+ */
+int snd_soc_card_create_pcms(struct snd_soc_card *soc_card,
 			struct snd_soc_pcm_config *config, int num)
 {
 	int i, ret;
 
 	for (i = 0; i < num; i++) {
-		ret = snd_soc_pcm_create(soc_card, &config[i]);
+		ret = soc_pcm_new(soc_card, &config[i]);
 		if (ret != 0) {
 			if (config[i].name)
-				printk(KERN_ERR "asoc %s: Failed to register %s\n",
-				       soc_card->name, config[i].name);
+				printk(KERN_ERR "asoc %s: Failed to register "
+					"%s\n", soc_card->name, config[i].name);
 			else
-				printk(KERN_ERR "asoc %s: Failed to register unnamed PCM\n",
-				       soc_card->name);
+				printk(KERN_ERR "asoc %s: Failed to register "
+					"unnamed PCM\n", soc_card->name);
 			return ret;
 		}
 	}
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(snd_soc_create_pcms);
+EXPORT_SYMBOL_GPL(snd_soc_card_create_pcms);
 
+/**
+ * snd_soc_card_register - registers ASoC soc_card .
+ * @soc_card: soc_card
+ *
+ * Registers a soc_card and it's PCMs. This should be called after all
+ * codecs, platforms and PCM's have been created.
+ */
 int snd_soc_card_register(struct snd_soc_card *soc_card)
 {
 	mutex_lock(&client_mutex);
@@ -1926,30 +2113,41 @@ int snd_soc_card_register(struct snd_soc_card *soc_card)
 }
 EXPORT_SYMBOL_GPL(snd_soc_card_register);
 
+/**
+ * snd_soc_card_free - free soc_card.
+ * @soc_card: soc_card
+ *
+ * Frees all soc_card resources. Can be called at any time during soc_card
+ * initialisation process. This frees all soc card resources.
+ */
 void snd_soc_card_free(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime, *_pcm_runtime;
 	struct soc_pcm_config *config;
 
 	snd_card_free(soc_card->card);
-	
-	list_for_each_entry_safe(pcm_runtime, _pcm_runtime, &soc_card->pcm_list, list)
+
+	list_for_each_entry_safe(pcm_runtime, _pcm_runtime,
+		&soc_card->pcm_list, list)
 		run_delayed_work(&pcm_runtime->delayed_work);
 
 	if (soc_card->exit && soc_card->is_probed)
 		soc_card->exit(soc_card);
 
-	list_for_each_entry_safe(pcm_runtime, _pcm_runtime, &soc_card->pcm_list, list) {
+	list_for_each_entry_safe(pcm_runtime, _pcm_runtime,
+		&soc_card->pcm_list, list) {
 		kfree(pcm_runtime);
 	}
 	list_for_each_entry(config, &soc_card->config_list, list) {
 		if (config->codec) {
 #ifdef CONFIG_SND_SOC_AC97_BUS
 			if (config->codec->ac97) {
-				snd_soc_codec_exit(config->codec, soc_card);
+				soc_codec_exit(config->codec, soc_card);
 				soc_ac97_dev_unregister(config->codec);
 				snd_soc_free_ac97_codec(config->codec);
 			}
+#else
+			soc_codec_exit(config->codec, soc_card);
 #endif
 			module_put(config->codec->dev->driver->owner);
 		}
@@ -1966,7 +2164,14 @@ void snd_soc_card_free(struct snd_soc_card *soc_card)
 }
 EXPORT_SYMBOL_GPL(snd_soc_card_free);
 
-struct snd_soc_codec *snd_soc_get_codec(struct snd_soc_card *soc_card,
+/**
+ * snd_soc_card_get_codec - get codec.
+ * @soc_card: soc sound card
+ * @codec_id: codec ID
+ *
+ * Get a codec from a codec ID.
+ */
+struct snd_soc_codec *snd_soc_card_get_codec(struct snd_soc_card *soc_card,
 	const char *codec_id)
 {
 	struct soc_pcm_config *config;
@@ -1977,22 +2182,61 @@ struct snd_soc_codec *snd_soc_get_codec(struct snd_soc_card *soc_card,
 	}
 	return NULL;
 }
-EXPORT_SYMBOL_GPL(snd_soc_get_codec);
+EXPORT_SYMBOL_GPL(snd_soc_card_get_codec);
 
-struct snd_soc_platform * snd_soc_get_platform(struct snd_soc_card *soc_card,
+/**
+ * snd_soc_card_get_platform - get platform.
+ * @soc_card: soc sound card
+ * @codec_id: platform ID
+ *
+ * Get a platform from a platform ID.
+ */
+struct snd_soc_platform * snd_soc_card_get_platform(struct snd_soc_card *soc_card,
 	const char *platform_id)
 {
 	struct soc_pcm_config *config;
 
 	list_for_each_entry(config, &soc_card->config_list, list) {
-		if (config->platform && !strcmp(config->platform->name, platform_id))
+		if (config->platform &&
+			!strcmp(config->platform->name, platform_id))
 			return config->platform;
 	}
 	return NULL;
 }
-EXPORT_SYMBOL_GPL(snd_soc_get_platform);
+EXPORT_SYMBOL_GPL(snd_soc_card_get_platform);
 
-struct snd_soc_pcm_runtime *snd_soc_get_pcm(struct snd_soc_card *soc_card,
+/**
+ * snd_soc_card_get_dai - get dai.
+ * @soc_card: soc_card
+ * @codec_id: dai ID
+ *
+ * Get a codec or platform dai from a dai ID.
+ */
+struct snd_soc_dai *snd_soc_card_get_dai(struct snd_soc_card *soc_card,
+	const char *dai_id)
+{
+	struct soc_pcm_config *config;
+
+	list_for_each_entry(config, &soc_card->config_list, list) {
+		if (config->codec_dai &&
+			!strcmp(config->codec_dai->name, dai_id))
+			return config->codec_dai;
+		if (config->cpu_dai &&
+			!strcmp(config->cpu_dai->name, dai_id))
+			return config->cpu_dai;
+	}
+	return NULL;
+}
+EXPORT_SYMBOL_GPL(snd_soc_card_get_dai);
+
+/**
+ * snd_soc_card_get_pcm - get pcm.
+ * @soc_card: soc_card
+ * @pcm_id: pcm ID
+ *
+ * Get a pcm runtime pointer from pcm ID.
+ */
+struct snd_soc_pcm_runtime *snd_soc_card_get_pcm(struct snd_soc_card *soc_card,
 	const char *pcm_id)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime;
@@ -2003,9 +2247,16 @@ struct snd_soc_pcm_runtime *snd_soc_get_pcm(struct snd_soc_card *soc_card,
 	}
 	return NULL;
 }
-EXPORT_SYMBOL_GPL(snd_soc_get_pcm);
+EXPORT_SYMBOL_GPL(snd_soc_card_get_pcm);
 
-struct snd_ac97_bus_ops *snd_soc_get_ac97_ops(struct snd_soc_card *soc_card,
+/**
+ * snd_soc_card_get_ac97_ops - get AC97 operations.
+ * @soc_card: soc_card
+ * @dai_id:  ID
+ *
+ * Get AC97 bus operations from Digital Audio Interface ID.
+ */
+struct snd_ac97_bus_ops *snd_soc_card_get_ac97_ops(struct snd_soc_card *soc_card,
 					      const char *dai_id)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime;
@@ -2016,9 +2267,19 @@ struct snd_ac97_bus_ops *snd_soc_get_ac97_ops(struct snd_soc_card *soc_card,
 	}
 	return NULL;
 }
-EXPORT_SYMBOL_GPL(snd_soc_get_ac97_ops);
+EXPORT_SYMBOL_GPL(snd_soc_card_get_ac97_ops);
 
-void snd_soc_codec_set_io(struct snd_soc_codec *codec,
+/**
+ * snd_soc_card_config_codec - initialise codec IO.
+ * @codec: codec
+ * @soc_card_read: read function called by codec.
+ * @soc_card_write: write function called by codec.
+ * @control_data: IO control data - usually I2C, SPI, etc pointer
+ *
+ * Initialises the codec IO system with the codec IO mechanism. Codec will
+ * be able to perform IO after this point.
+ */
+void snd_soc_card_config_codec(struct snd_soc_codec *codec,
 	int (*soc_card_read)(void *, long, int),
 	int (*soc_card_write)(void *, long, int), void *control_data)
 {
@@ -2026,9 +2287,17 @@ void snd_soc_codec_set_io(struct snd_soc_codec *codec,
 	codec->soc_card_read = soc_card_read;
 	codec->soc_card_write = soc_card_write;
 }
-EXPORT_SYMBOL_GPL(snd_soc_codec_set_io);
+EXPORT_SYMBOL_GPL(snd_soc_card_config_codec);
 
-int snd_soc_codec_init(struct snd_soc_codec *codec,
+/**
+ * snd_soc_card_init_codec - initialises codec
+ * @codec: codec
+ * @soc_card: soc sound card
+ *
+ * Initialises codec hardware. Can perform IO and must only be called after a
+ * successful call to snd_soc_card_config_codec().
+ */
+int snd_soc_card_init_codec(struct snd_soc_codec *codec,
 	struct snd_soc_card *soc_card)
 {
 	int ret;
@@ -2036,23 +2305,15 @@ int snd_soc_codec_init(struct snd_soc_codec *codec,
 	/* we can add our sysfs register access now codec IO is set */
 	ret = device_create_file(codec->dev, &dev_attr_codec_reg);
 	if (ret < 0) {
-		printk(KERN_WARNING "asoc: failed to add codec sysfs entries\n");
+		printk(KERN_WARNING "asoc: failed to add codec sysfs "
+			"entries\n");
 		return ret;
 	}
 	if (codec->init)
 		ret = codec->init(codec, soc_card);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(snd_soc_codec_init);
-
-void snd_soc_codec_exit(struct snd_soc_codec *codec,
-	struct snd_soc_card *soc_card)
-{
-	device_remove_file(codec->dev, &dev_attr_codec_reg);
-	if (codec->exit)
-		codec->exit(codec, soc_card);
-}
-EXPORT_SYMBOL_GPL(snd_soc_codec_exit);
+EXPORT_SYMBOL_GPL(snd_soc_card_init_codec);
 
 static int __init asoc_init(void)
 {

@@ -451,7 +451,7 @@ static int is_connected_input_ep(struct snd_soc_dapm_widget *widget)
 static int dapm_power_widgets_ext(struct snd_soc_dapm_widget *w)
 {
 	int in, out, power, power_change, ret;
-	
+
 	/* all other widgets */
 	in = is_connected_input_ep(w);
 	dapm_clear_walk(w->soc_card);
@@ -491,7 +491,7 @@ static int dapm_power_widgets_ext(struct snd_soc_dapm_widget *w)
 				if (ret < 0)
 					return ret;
 			}
-		} 
+		}
 	} else if (power_change)
 		/* no event handler */
 		dapm_update_bits(w);
@@ -554,10 +554,10 @@ static int dapm_power_widgets(struct snd_soc_card *soc_card, int event)
 			/* programmable gain/attenuation */
 			if (w->id == snd_soc_dapm_pga) {
 				int on;
-				
+
 				if (w->event)
 					goto ext;
-				
+
 				in = is_connected_input_ep(w);
 				dapm_clear_walk(w->soc_card);
 				out = is_connected_output_ep(w);
@@ -608,7 +608,7 @@ static int dapm_power_widgets(struct snd_soc_card *soc_card, int event)
 				}
 				continue;
 			}
-ext:			
+ext:
 			/* widgets with external callbacks */
 			ret = dapm_power_widgets_ext(w);
 			if (ret < 0)
@@ -841,6 +841,12 @@ static void dapm_free_widgets(struct snd_soc_card *soc_card)
 	}
 }
 
+void snd_soc_dapm_free(struct snd_soc_card *soc_card)
+{
+	snd_soc_dapm_sys_remove(soc_card);
+	dapm_free_widgets(soc_card);
+}
+
 static int snd_soc_dapm_set_pin(struct snd_soc_card *soc_card,
 	char *pin, int status)
 {
@@ -860,13 +866,11 @@ static int snd_soc_dapm_set_pin(struct snd_soc_card *soc_card,
 }
 
 /**
- * snd_soc_dapm_sync - scan and power dapm paths
- * @codec: audio codec
+ * snd_soc_dapm_sync - synchronises DAPM.
+ * @soc_card: SoC soc_card
  *
- * Walks all dapm audio paths and powers widgets according to their
- * stream or path usage.
- *
- * Returns 0 for success.
+ * Synchronises HW DAPM widget power state with pin, stream and audio path
+ * state changes. This may cause DAPM power switching.
  */
 int snd_soc_dapm_sync(struct snd_soc_card *soc_card)
 {
@@ -874,20 +878,7 @@ int snd_soc_dapm_sync(struct snd_soc_card *soc_card)
 }
 EXPORT_SYMBOL_GPL(snd_soc_dapm_sync);
 
-/**
- * snd_soc_dapm_add_route - Add a DAPM route between dapm widgets
- * @codec: audio codec
- * @sink: name of target widget
- * @control: mixer control name
- * @source: name of source name
- *
- * Connects 2 dapm widgets together via a named audio path. The sink is
- * the widget receiving the audio signal, whilst the source is the sender
- * of the audio signal.
- *
- * Returns 0 for success else error.
- */
-int snd_soc_dapm_add_route(struct snd_soc_card *soc_card, const char *sink,
+static int soc_dapm_add_route(struct snd_soc_card *soc_card, const char *sink,
 	const char * control, const char *source)
 {
 	struct snd_soc_dapm_path *path;
@@ -990,15 +981,41 @@ err:
 	kfree(path);
 	return ret;
 }
-EXPORT_SYMBOL_GPL(snd_soc_dapm_add_route);
 
 /**
- * snd_soc_dapm_init - initialise and add any new dapm widgets
- * @codec: audio codec
+ * snd_soc_dapm_add_routes - Add a DAPM route between dapm widgets
+ * @soc_card: soc sound card
+ * @route: audio routes
+ * @num: number of routes
  *
- * Checks the codec for any new dapm widgets and creates them if found.
+ * Connects 2 dapm widgets together via a named audio path. The sink is
+ * the widget receiving the audio signal, whilst the source is the sender
+ * of the audio signal.
  *
- * Returns 0 for success.
+ * Returns 0 for success else error. On error all resources can be freed
+ * with a call to snd_soc_card_free().
+ */
+int snd_soc_dapm_add_routes(struct snd_soc_card *soc_card,
+	const struct snd_soc_dapm_route *route, int num)
+{
+	int i, ret;
+
+	for (i = 0; i < num; i++) {
+		ret = soc_dapm_add_route(soc_card, route->sink, route->control,
+					 route->source);
+		if (ret < 0)
+			return ret;
+		route++;
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(snd_soc_dapm_add_routes);
+
+/**
+ * snd_soc_dapm_init - Initialise DAPM.
+ * @soc_card: SoC soc_card
+ *
+ * Initialises DAPM resources after any new widgets or routes have been added.
  */
 int snd_soc_dapm_init(struct snd_soc_card *soc_card)
 {
@@ -1239,16 +1256,7 @@ out:
 }
 EXPORT_SYMBOL_GPL(snd_soc_dapm_put_enum_double);
 
-/**
- * snd_soc_dapm_new_control - create new dapm control
- * @codec: audio codec
- * @widget: widget template
- *
- * Creates a new dapm control based upon the template.
- *
- * Returns 0 for success else error.
- */
-int snd_soc_dapm_new_control(struct snd_soc_card *soc_card,
+static int soc_dapm_new_control(struct snd_soc_card *soc_card,
 	struct snd_soc_codec *codec, const struct snd_soc_dapm_widget *widget)
 {
 	struct snd_soc_dapm_widget *w;
@@ -1267,18 +1275,43 @@ int snd_soc_dapm_new_control(struct snd_soc_card *soc_card,
 	w->connected = 1;
 	return 0;
 }
-EXPORT_SYMBOL_GPL(snd_soc_dapm_new_control);
 
 /**
- * snd_soc_dapm_stream_event - send a stream event to the dapm core
+ * snd_soc_dapm_new_controls - create new dapm controls
+ * @soc_card: soc sound card.
  * @codec: audio codec
+ * @widget: widget
+ * @num: number of widgets
+ *
+ * Creates new dapm controls based upon the templates.
+ *
+ * Returns 0 for success else error. On error all resources can be freed
+ * with a call to snd_soc_card_free().
+ */
+int snd_soc_dapm_new_controls(struct snd_soc_card *soc_card,
+	struct snd_soc_codec *codec, const struct snd_soc_dapm_widget *widget,
+	int num)
+{
+	int i, ret;
+
+	for (i = 0; i < num; i++) {
+		ret = soc_dapm_new_control(soc_card, codec, widget);
+		if (ret < 0)
+			return ret;
+		widget++;
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(snd_soc_dapm_new_controls);
+
+/**
+ * snd_soc_dapm_stream_event - Send DAPM stream event.
+ * @soc_card: SoC soc_card
  * @stream: stream name
- * @event: stream event
+ * @event: event to send
  *
- * Sends a stream event to the dapm core. The core then makes any
- * necessary widget power changes.
- *
- * Returns 0 for success else error.
+ * Sends a device event to the dapm core. The core then makes any
+ * necessary soc_card or codec power changes.
  */
 int snd_soc_dapm_stream_event(struct snd_soc_card *soc_card,
 	char *stream, enum snd_soc_dapm_stream_event event)
@@ -1330,14 +1363,11 @@ int snd_soc_dapm_stream_event(struct snd_soc_card *soc_card,
 EXPORT_SYMBOL_GPL(snd_soc_dapm_stream_event);
 
 /**
- * snd_soc_dapm_set_bias - send a device event to the dapm core
- * @socdev: audio device
- * @event: device event
+ * snd_soc_dapm_set_bias - Sets the DAPM bias level.
+ * @codec: SoC codec
+ * @level: bias (power) level.
  *
- * Sends a device event to the dapm core. The core then makes any
- * necessary soc_card or codec power changes..
- *
- * Returns 0 for success else error.
+ * Sets soc_card and codec to new bias (power) level.
  */
 int snd_soc_dapm_set_bias(struct snd_soc_pcm_runtime *pcm_runtime,
 	enum snd_soc_dapm_bias_level level)
@@ -1354,13 +1384,14 @@ int snd_soc_dapm_set_bias(struct snd_soc_pcm_runtime *pcm_runtime,
 EXPORT_SYMBOL_GPL(snd_soc_dapm_set_bias);
 
 /**
- * snd_soc_dapm_enable_pin - enable audio pin and it's parents/children
- * @soc_card: audio soc_card
- * @pin: audio signal endpoint (or start point)
+ * snd_soc_dapm_enable_pin - enable pin.
+ * @soc_card: SoC soc_card
+ * @pin: pin name
  *
- * Set audio endpoint status - connected or disconnected.
- *
- * Returns 0 for success else error.
+ * Enables input/output pin and it's parents or children widgets iff there is
+ * a valid audio route and active audio stream.
+ * NOTE: snd_soc_dapm_resync() needs to be called after this for DAPM to
+ * do any widget power switching.
  */
 int snd_soc_dapm_enable_pin(struct snd_soc_card *soc_card, char *pin)
 {
@@ -1369,13 +1400,13 @@ int snd_soc_dapm_enable_pin(struct snd_soc_card *soc_card, char *pin)
 EXPORT_SYMBOL_GPL(snd_soc_dapm_enable_pin);
 
 /**
- * snd_soc_dapm_disable_pin - disable audio pin and it's parents/children
- * @soc_card: audio soc_card
- * @endpoint: audio signal endpoint (or start point)
+ * snd_soc_dapm_disable_pin - disable pin.
+ * @soc_card: SoC soc_card
+ * @pin: pin name
  *
- * Set audio endpoint status - connected or disconnected.
- *
- * Returns 0 for success else error.
+ * Disables input/output pin and it's parents or children widgets.
+ * NOTE: snd_soc_dapm_resync() needs to be called after this for DAPM to
+ * do any widget power switching.
  */
 int snd_soc_dapm_disable_pin(struct snd_soc_card *soc_card, char *pin)
 {
@@ -1383,6 +1414,12 @@ int snd_soc_dapm_disable_pin(struct snd_soc_card *soc_card, char *pin)
 }
 EXPORT_SYMBOL_GPL(snd_soc_dapm_disable_pin);
 
+/**
+ * snd_soc_dapm_set_policy - Set DAPM policy.
+ * @soc_card: SoC soc_card
+ *
+ * Sets the DAPM power switching policy.
+ */
 int snd_soc_dapm_set_policy(struct snd_soc_card *soc_card,
 	enum snd_soc_dapm_policy policy)
 {
@@ -1390,18 +1427,6 @@ int snd_soc_dapm_set_policy(struct snd_soc_card *soc_card,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_dapm_set_policy);
-
-/**
- * snd_soc_dapm_free - free dapm resources
- * @socdev: SoC device
- *
- * Free all dapm widgets and resources.
- */
-void snd_soc_dapm_free(struct snd_soc_card *soc_card)
-{
-	snd_soc_dapm_sys_remove(soc_card);
-	dapm_free_widgets(soc_card);
-}
 
 /* Module information */
 MODULE_AUTHOR("Liam Girdwood, liam.girdwood@wolfsonmicro.com, www.wolfsonmicro.com");

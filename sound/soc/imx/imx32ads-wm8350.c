@@ -266,7 +266,7 @@ static void imx32ads_shutdown(struct snd_pcm_substream *substream)
 	state->lr_clk_active--;
 
 	/*
-	 * We need to keep track of active streams in master mode and 
+	 * We need to keep track of active streams in master mode and
 	 * switch LRC source if necessary.
 	 */ 
 
@@ -324,7 +324,7 @@ static const struct snd_soc_dapm_widget imx32ads_dapm_widgets[] = {
 };
 
 /* imx32ads soc_card audio map */
-static const char* audio_map[][3] = {
+static const struct snd_soc_dapm_route audio_map[] = {
 
 	/* SiMIC --> IN1LN (with automatic bias) via SP1 */
 	{"IN1LN", NULL, "Mic Bias"},
@@ -351,8 +351,6 @@ static const char* audio_map[][3] = {
 	/* Out1 --> Line Out Jack */
 	{"Line Out Jack", NULL, "OUT2R"},
 	{"Line Out Jack", NULL, "OUT2L"},
-
-	{NULL, NULL, NULL},
 };
 
 #ifdef CONFIG_PM
@@ -362,7 +360,7 @@ static int imx32ads_wm8350_audio_suspend(struct platform_device *pdev,
 	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
 	struct snd_soc_card *soc_card = wm8350->audio;
 
-	return snd_soc_suspend_pcms(soc_card, state);
+	return snd_soc_card_suspend_pcms(soc_card, state);
 }
 
 static int imx32ads_wm8350_audio_resume(struct platform_device *pdev)
@@ -370,7 +368,7 @@ static int imx32ads_wm8350_audio_resume(struct platform_device *pdev)
 	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
 	struct snd_soc_card *soc_card = wm8350->audio;
 
-	return snd_soc_resume_pcms(soc_card);
+	return snd_soc_card_resume_pcms(soc_card);
 }
 
 #else
@@ -404,14 +402,14 @@ int imx32_audio_init(struct snd_soc_card *soc_card)
 	struct imx31ads_data* audio_data = soc_card->private_data;
 	struct wm8350 *wm8350 = audio_data->wm8350;
 	struct imx31ads_pcm_state *state;
-	int i;
+	int ret;
 	u16 reg;
 
-	pcm_runtime = snd_soc_get_pcm(soc_card, "HiFi");
+	pcm_runtime = snd_soc_card_get_pcm(soc_card, "HiFi");
 	if (pcm_runtime == NULL)
 		return -ENODEV;
 
-	codec = snd_soc_get_codec(soc_card, wm8350_codec_id);
+	codec = snd_soc_card_get_codec(soc_card, wm8350_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
 
@@ -421,8 +419,8 @@ int imx32_audio_init(struct snd_soc_card *soc_card)
 	pcm_runtime->private_data = state;
 
 	codec->platform_data = &imx32ads_wm8350_setup;
-	snd_soc_codec_set_io(codec, NULL, NULL,	wm8350);
-	snd_soc_codec_init(codec, soc_card);
+	snd_soc_card_config_codec(codec, NULL, NULL,	wm8350);
+	snd_soc_card_init_codec(codec, soc_card);
 
 #if 0
 	/* add imx32ads specific controls */
@@ -435,16 +433,17 @@ int imx32_audio_init(struct snd_soc_card *soc_card)
 #endif
 
 	/* Add imx32ads specific widgets */
-	for(i = 0; i < ARRAY_SIZE(imx32ads_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(soc_card, codec,
-			&imx32ads_dapm_widgets[i]);
-	}
+	ret = snd_soc_dapm_new_controls(soc_card, codec,
+					imx32ads_dapm_widgets,
+					ARRAY_SIZE(imx32ads_dapm_widgets));
+	if (ret < 0)
+		return ret;
 
 	/* set up imx32ads specific audio path audio map */
-	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(soc_card, audio_map[i][0],
-			audio_map[i][1], audio_map[i][2]);
-	}
+	ret = snd_soc_dapm_add_routes(soc_card, audio_map,
+		ARRAY_SIZE(audio_map));
+	if (ret < 0)
+		return ret;
 
 	/* disable unused imx32ads WM8350 codec pins */
 	snd_soc_dapm_disable_pin(soc_card, "OUT3");
@@ -481,13 +480,8 @@ int imx32_audio_init(struct snd_soc_card *soc_card)
 static void imx32_audio_exit(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime;
-	struct snd_soc_codec *codec;
 
-	codec = snd_soc_get_codec(soc_card, wm8350_codec_id);
-	if (codec)
-		snd_soc_codec_exit(codec, soc_card);
-
-	pcm_runtime = snd_soc_get_pcm(soc_card, "HiFi");
+	pcm_runtime = snd_soc_card_get_pcm(soc_card, "HiFi");
 	if (pcm_runtime)
 		kfree(pcm_runtime->private_data);
 }
@@ -551,7 +545,7 @@ static int __devinit imx32ads_wm8350_audio_probe(struct platform_device *pdev)
 	soc_card->dev = &pdev->dev;
 	wm8350->audio = soc_card;
 
-	ret = snd_soc_pcm_create(soc_card, &hifi_pcm_config);
+	ret = snd_soc_card_create_pcms(soc_card, &hifi_pcm_config, 1);
 	if (ret < 0)
 		goto err;
 

@@ -5,7 +5,7 @@
  *
  * Author: Richard Purdie <richard@openedhand.com>
  *
- * Based on wm8753.c by Liam Girdwood
+ * Based on wm8731.c by Liam Girdwood
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -146,22 +146,6 @@ SOC_SINGLE("Store DC Offset Switch", WM8731_APDIGI, 4, 1, 0),
 SOC_ENUM("Playback De-emphasis", wm8731_enum[1]),
 };
 
-/* add non dapm controls */
-static int wm8731_add_controls(struct snd_soc_codec *codec, 
-	struct snd_card *card)
-{
-	int err, i;
-
-	for (i = 0; i < ARRAY_SIZE(wm8731_snd_controls); i++) {
-		if ((err = snd_ctl_add(card,
-				snd_soc_cnew(&wm8731_snd_controls[i],
-					codec, NULL))) < 0)
-			return err;
-	}
-
-	return 0;
-}
-
 /* Output Mixer */
 static const struct snd_kcontrol_new wm8731_output_mixer_controls[] = {
 SOC_DAPM_SINGLE("Line Bypass Switch", WM8731_APANA, 3, 1, 0),
@@ -191,7 +175,7 @@ SND_SOC_DAPM_INPUT("RLINEIN"),
 SND_SOC_DAPM_INPUT("LLINEIN"),
 };
 
-static const char *intercon[][3] = {
+static const struct snd_soc_dapm_route audio_map[] = {
 	/* output mixer */
 	{"Output Mixer", "Line Bypass Switch", "Line Input"},
 	{"Output Mixer", "HiFi Playback Switch", "DAC"},
@@ -212,29 +196,26 @@ static const char *intercon[][3] = {
 	{"Line Input", NULL, "LLINEIN"},
 	{"Line Input", NULL, "RLINEIN"},
 	{"Mic Bias", NULL, "MICIN"},
-
-	/* terminator */
-	{NULL, NULL, NULL},
 };
 
-static int wm8731_add_widgets(struct snd_soc_codec *codec, 
+static int wm8731_add_widgets(struct snd_soc_codec *codec,
 	struct snd_soc_card *soc_card)
 {
-	int i;
+	int ret;
 
-	for(i = 0; i < ARRAY_SIZE(wm8731_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(soc_card, codec, 
-			&wm8731_dapm_widgets[i]);
-	}
+	ret = snd_soc_dapm_new_controls(soc_card, codec,
+					wm8731_dapm_widgets,
+					ARRAY_SIZE(wm8731_dapm_widgets));
+	if (ret < 0)
+		return ret;
 
-	/* set up audio path interconnects */
-	for(i = 0; intercon[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(soc_card, intercon[i][0],
-			intercon[i][1], intercon[i][2]);
-	}
+	/* set up audio path audio_map */
+	ret = snd_soc_dapm_add_routes(soc_card, audio_map,
+				     ARRAY_SIZE(audio_map));
+	if (ret < 0)
+		return ret;
 
-	snd_soc_dapm_init(soc_card);
-	return 0;
+	return snd_soc_dapm_init(soc_card);
 }
 
 struct _coeff_div {
@@ -508,7 +489,8 @@ static int wm8731_codec_init(struct snd_soc_codec *codec,
 	reg = wm8731_read_reg_cache(codec, WM8731_RINVOL);
 	wm8731_write(codec, WM8731_RINVOL, reg & ~0x0100);
 		
-	wm8731_add_controls(codec, soc_card->card);
+	snd_soc_add_new_controls(soc_card, wm8731_snd_controls, codec,
+		ARRAY_SIZE(wm8731_snd_controls));
 	wm8731_add_widgets(codec, soc_card);
 
 	return 0;
@@ -564,28 +546,23 @@ EXPORT_SYMBOL_GPL(wm8731_codec_id);
 const char wm8731_codec_dai_id[] = "wm8731-codec-dai";
 EXPORT_SYMBOL_GPL(wm8731_codec_dai_id);
 
-static int wm8731_dai_probe(struct wm8731_data *wm8731, struct device *dev)
-{
-	struct snd_soc_dai *dai;
-	int ret;
+struct snd_soc_dai_new wm8731_hifi_dai = {
+	.name		= wm8731_codec_dai_id,
+	.playback	= &wm8731_playback,
+	.capture	= &wm8731_capture,
+	.ops		= &wm8731_dai_ops,
+};
 
-	dai = snd_soc_dai_allocate();
-	if (dai == NULL)
-		return -ENOMEM;
-
-	dai->name = wm8731_codec_dai_id;
-	dai->ops = &wm8731_dai_ops;
-	dai->playback = &wm8731_playback;
-	dai->capture = &wm8731_capture;
-	dai->dev = dev;
-	ret = snd_soc_register_codec_dai(dai);
-	if (ret < 0) {
-		snd_soc_dai_free(dai);
-		return ret;
-	}
-	wm8731->dai = dai;
-	return 0;
-}
+static struct snd_soc_codec_new wm8731_codec = {
+	.name		= wm8731_codec_id,
+	.reg_cache_size = sizeof(wm8731_reg),
+	.reg_cache_step = 1,
+	.set_bias_level	= wm8731_set_bias_level,
+	.init		= wm8731_codec_init,
+	.exit		= wm8731_codec_exit,
+	.codec_read	= wm8731_read_reg_cache,
+	.codec_write	= wm8731_write,
+};
 
 static int wm8731_codec_probe(struct platform_device *pdev)
 {
@@ -595,7 +572,7 @@ static int wm8731_codec_probe(struct platform_device *pdev)
 
 	info("WM8731 Audio Codec %s", WM8731_VERSION);
 
-	codec = snd_soc_codec_allocate();
+	codec = snd_soc_new_codec(&wm8731_codec, (char *) wm8731_reg);
 	if (codec == NULL)
 		return -ENOMEM;
 
@@ -604,33 +581,21 @@ static int wm8731_codec_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto wm8731_err;
 	}
-
-	codec->dev = &pdev->dev;
-	codec->name = wm8731_codec_id;
-	codec->set_bias_level = wm8731_set_bias_level;
-	codec->codec_read = wm8731_read_reg_cache;
-	codec->codec_write = wm8731_write;
-	codec->init = wm8731_codec_init;
-	codec->exit = wm8731_codec_exit;
-	codec->reg_cache_size = WM8731_CACHEREGNUM;
-	codec->reg_cache_step = 1;
 	codec->private_data = wm8731;
 	platform_set_drvdata(pdev, codec);
 		
-	ret = snd_soc_register_codec(codec);
+	ret = snd_soc_register_codec(codec, &pdev->dev);
 	if (ret < 0)
 		goto codec_err;
-	ret = wm8731_dai_probe(wm8731, &pdev->dev);
-	if (ret < 0)
-		goto dai_err;
+	wm8731->dai = snd_soc_register_codec_dai(&wm8731_hifi_dai, &pdev->dev);
+	if (wm8731->dai == NULL)
+		goto codec_err;
 	return ret;
 
-dai_err:
-	snd_soc_register_codec(codec);
 codec_err:
 	kfree(wm8731);
 wm8731_err:
-	snd_soc_codec_free(codec);
+	snd_soc_free_codec(codec);
 	return ret;
 }
 
@@ -640,10 +605,8 @@ static int wm8731_codec_remove(struct platform_device *pdev)
 	struct wm8731_data *wm8731 = codec->private_data;
 	
 	snd_soc_unregister_codec_dai(wm8731->dai);
-	snd_soc_dai_free(wm8731->dai);
 	kfree(wm8731);
-	snd_soc_unregister_codec(codec);
-	snd_soc_codec_free(codec);
+	snd_soc_free_codec(codec);
 	return 0;
 }
 

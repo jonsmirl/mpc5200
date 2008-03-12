@@ -274,9 +274,10 @@ struct snd_soc_dapm_pin;
 struct snd_soc_card;
 struct snd_soc_codec;
 struct snd_soc_pcm_runtime;
+struct snd_soc_dapm_route;
 
 /*
- * DAPM ALSA kcontrol get/set/info for above macros
+ * DAPM ALSA kcontrol get/put for above macros
  */
 int snd_soc_dapm_put_volsw(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
@@ -286,108 +287,48 @@ int snd_soc_dapm_get_enum_double(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
 int snd_soc_dapm_put_enum_double(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
-int snd_soc_dapm_new_control(struct snd_soc_card *soc_card,
-	struct snd_soc_codec *codec, const struct snd_soc_dapm_widget *widget);
 
-/**
- * snd_soc_dapm_add_route - adds DAPM audio route.
- * @soc_card: SoC soc_card
- * @sink_name: sink (audio route destination) name.
- * @control_name: ALSA kcontrol name - or NULL for no kcontrol.
- * @source_name: source (audio route start) name.
- *
- * Adds a DAPM audio route between source and sink. The route connection
- * status is controlled by the ALSA kcontrol. i.e. a MUX or Mixer.
- */
-int snd_soc_dapm_add_route(struct snd_soc_card *soc_card,
-	const char *sink_name, const char *control_name, const char *src_name);
+/* dapm - configuration */
+int snd_soc_dapm_new_controls(struct snd_soc_card *soc_card,
+	struct snd_soc_codec *codec, const struct snd_soc_dapm_widget *widget,
+	int num);
 
-/**
- * snd_soc_dapm_init - Initialise DAPM.
- * @soc_card: SoC soc_card
- *
- * Initialises DAPM resources after any new widgets or routes have been added.
- */
+int snd_soc_dapm_add_routes(struct snd_soc_card *soc_card,
+	const struct snd_soc_dapm_route *route, int num);
+
 int snd_soc_dapm_init(struct snd_soc_card *soc_card);
 
-/**
- * snd_soc_dapm_exit - Frees DAPM resources.
- * @soc_card: SoC soc_card
- *
- * Frees all DAPM resources.
- */
-void snd_soc_dapm_exit(struct snd_soc_card *soc_card);
-
-/**
- * snd_soc_dapm_set_policy - Set DAPM policy.
- * @soc_card: SoC soc_card
- *
- * Sets the DAPM power switching policy.
- */
+/* dapm - policy and event */
 int snd_soc_dapm_set_policy(struct snd_soc_card *soc_card,
 	enum snd_soc_dapm_policy policy);
 
-/**
- * snd_soc_dapm_stream_event - Send DAPM stream event.
- * @soc_card: SoC soc_card
- * @stream: stream name
- * @event: event to send
- *
- * Sends a device event to the dapm core. The core then makes any
- * necessary soc_card or codec power changes.
- */
 int snd_soc_dapm_stream_event(struct snd_soc_card *soc_card, char *stream,
 	enum snd_soc_dapm_stream_event event);
 
-/**
- * snd_soc_dapm_set_bias - Sets the DAPM bias level.
- * @codec: SoC codec
- * @level: bias (power) level.
- *
- * Sets soc_card and codec to new bias (power) level.
- */
 int snd_soc_dapm_set_bias(struct snd_soc_pcm_runtime *pcm_runtime,
 	enum snd_soc_dapm_bias_level level);
 
-/**
- * snd_soc_dapm_enable_pin - enable pin.
- * @soc_card: SoC soc_card
- * @pin: pin name
- *
- * Enables input/output pin and it's parents or children widgets iff there is
- * a valid audio route and active audio stream.
- * NOTE: snd_soc_dapm_resync() needs to be called after this for DAPM to
- * do any widget power switching.
- */
+/* dapm - pin status */
 int snd_soc_dapm_enable_pin(struct snd_soc_card *soc_card, char *pin);
 
-/**
- * snd_soc_dapm_disable_pin - disable pin.
- * @soc_card: SoC soc_card
- * @pin: pin name
- *
- * Disables input/output pin and it's parents or children widgets.
- * NOTE: snd_soc_dapm_resync() needs to be called after this for DAPM to
- * do any widget power switching.
- */
 int snd_soc_dapm_disable_pin(struct snd_soc_card *soc_card, char *pin);
 
-/**
- * snd_soc_dapm_sync - disable pin.
- * @soc_card: SoC soc_card
- *
- * Resynchronises DAPM widget power state with pin, stream and audio path
- * state changes. This may cause DAPM power switching.
- */
 int snd_soc_dapm_sync(struct snd_soc_card *soc_card);
 
-/* dapm sys fs - used by the core */
-int snd_soc_dapm_sys_add(struct snd_soc_card *soc_card);
-
-void snd_soc_dapm_free(struct snd_soc_card *soc_card);
+/*
+ * DAPM audio route definition.
+ *
+ * Defines an audio route originating at source via control and finishing
+ * at sink.
+ */
+struct snd_soc_dapm_route {
+	const char *sink;
+	const char *control;
+	const char *source;
+};
 
 /*
- * DAPM audio route.
+ * DAPM audio route runtime.
  *
  * DAPM audio path between two widgets.
  */

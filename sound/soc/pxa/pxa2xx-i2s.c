@@ -18,6 +18,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
+#include <linux/clk.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/initval.h>
@@ -53,6 +54,8 @@ static struct pxa2xx_pcm_dma_params pxa2xx_i2s_pcm_stereo_in = {
 	.dcmd			= DCMD_INCTRGADDR | DCMD_FLOWSRC |
 				  DCMD_BURST32 | DCMD_WIDTH4,
 };
+
+static struct clk *i2s_clk;
 
 static struct pxa2xx_gpio gpio_bus[] = {
 	{ /* I2S SoC Slave */
@@ -100,7 +103,7 @@ static int pxa2xx_i2s_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 		unsigned int fmt)
 {
 	struct pxa_i2s_priv *pxa_i2s = cpu_dai->private_data;
-	
+
 	/* interface format */
 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_I2S:
@@ -128,7 +131,7 @@ static int pxa2xx_i2s_set_dai_sysclk(struct snd_soc_dai *cpu_dai,
 		int clk_id, unsigned int freq, int dir)
 {
 	struct pxa_i2s_priv *pxa_i2s = cpu_dai->private_data;
-	
+
 	if (clk_id != PXA2XX_I2S_SYSCLK)
 		return -ENODEV;
 
@@ -147,7 +150,7 @@ static int pxa2xx_i2s_hw_params(struct snd_pcm_substream *substream,
 	pxa_gpio_mode(gpio_bus[pxa_i2s->master].tx);
 	pxa_gpio_mode(gpio_bus[pxa_i2s->master].frm);
 	pxa_gpio_mode(gpio_bus[pxa_i2s->master].clk);
-	pxa_set_cken(CKEN_I2S, 1);
+	clk_enable(i2s_clk);
 	pxa_i2s_wait();
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
@@ -234,16 +237,16 @@ static void pxa2xx_i2s_shutdown(struct snd_pcm_substream *substream,
 	if (SACR1 & (SACR1_DREC | SACR1_DRPL)) {
 		SACR0 &= ~SACR0_ENB;
 		pxa_i2s_wait();
-		pxa_set_cken(CKEN_I2S, 0);
+		clk_disable(i2s_clk);
 	}
 }
 
 #ifdef CONFIG_PM
-static int pxa2xx_i2s_suspend(struct snd_soc_dai *dai, 
+static int pxa2xx_i2s_suspend(struct snd_soc_dai *dai,
 	pm_message_t state)
 {
 	struct pxa_i2s_priv *pxa_i2s = dai->private_data;
-	
+
 	if (!dai->active)
 		return 0;
 
@@ -262,7 +265,7 @@ static int pxa2xx_i2s_suspend(struct snd_soc_dai *dai,
 static int pxa2xx_i2s_resume(struct snd_soc_dai *dai)
 {
 	struct pxa_i2s_priv *pxa_i2s = dai->private_data;
-	
+
 	if (!dai->active)
 		return 0;
 
@@ -287,8 +290,8 @@ static int pxa2xx_i2s_resume(struct snd_soc_dai *dai)
 		SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000)
 
 /* for modprobe */
-const char pxa2xx_i2s_id[] = "pxa2xx-i2s";
-EXPORT_SYMBOL_GPL(pxa2xx_i2s_id);
+const char pxa2xx_i2s_dai_id[] = "pxa2xx-i2s";
+EXPORT_SYMBOL_GPL(pxa2xx_i2s_dai_id);
 
 static struct snd_soc_dai_caps pxa2xx_i2s_playback = {
 	.stream_name	= "Playback",
@@ -312,44 +315,43 @@ static struct snd_soc_dai_ops pxa2xx_i2s_ops = {
 	.shutdown	= pxa2xx_i2s_shutdown,
 	.trigger	= pxa2xx_i2s_trigger,
 	.hw_params	= pxa2xx_i2s_hw_params,
-	
+
 	/* dai ops */
 	.set_fmt	= pxa2xx_i2s_set_dai_fmt,
 	.set_sysclk	= pxa2xx_i2s_set_dai_sysclk,
+};
+
+struct snd_soc_dai_new pxa2xx_i2s_dai = {
+	.name		= pxa2xx_i2s_id,
+	.playback	= &pxa2xx_i2s_playback,
+	.capture	= &pxa2xx_i2s_capture,
+	.ops		= &pxa2xx_i2s_ops,
 };
 
 static int pxa2xx_i2s_probe(struct platform_device *pdev)
 {
 	struct snd_soc_dai *dai;
 	struct pxa_i2s_priv *i2s;
-	int ret;
-	
+
+	i2s_clk = clk_get(&pdev->dev, "I2SCLK");
+	if (IS_ERR(i2s_clk))
+		return -ENODEV;
+
 	i2s = kzalloc(sizeof(struct pxa_i2s_priv), GFP_KERNEL);
-	if (i2s == NULL)
+	if (i2s == NULL) {
+		clk_put(i2s_clk);
 		return -ENOMEM;
-
-	dai = snd_soc_dai_allocate();
-	if (dai == NULL) {
-		ret = -ENOMEM;
-		goto alloc_err;
 	}
-	dai->ops = &pxa2xx_i2s_ops;
-	dai->playback = &pxa2xx_i2s_playback;
-	dai->capture = &pxa2xx_i2s_capture;
-	dai->dev = &pdev->dev;
-	dai->name = pxa2xx_i2s_id;
-	dai->private_data = i2s;
-	ret = snd_soc_register_platform_dai(dai);
-	if (ret < 0)
-		goto reg_err;
 
+	dai = snd_soc_register_codec_dai(&pxa2xx_i2s_dai, &pdev->dev);
+	if (dai == NULL) {
+		kfree(i2s);
+		clk_put(i2s_clk);
+		return -ENOMEM;
+	}
+	dai->private_data = i2s;
 	platform_set_drvdata(pdev, i2s);
-	return ret;
-reg_err:
-	snd_soc_dai_free(dai);
-alloc_err:
-	kfree(i2s);
-	return ret;
+	return 0;
 }
 
 static int pxa2xx_i2s_remove(struct platform_device *pdev)
@@ -357,8 +359,10 @@ static int pxa2xx_i2s_remove(struct platform_device *pdev)
 	struct snd_soc_dai *dai = platform_get_drvdata(pdev);
 
 	snd_soc_unregister_platform_dai(dai);
+	clk_disable(i2s_clk);
+	clk_put(i2s_clk);
 	kfree(dai->private_data);
-	snd_soc_dai_free(dai);
+	kfree(dai);
 	return 0;
 }
 

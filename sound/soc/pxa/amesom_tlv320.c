@@ -21,6 +21,9 @@
 #include <linux/moduleparam.h>
 #include <linux/device.h>
 #include <linux/i2c.h>
+#include <linux/platform_device.h>
+
+#include <sound/initval.h>
 #include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -105,7 +108,7 @@ static struct snd_soc_ops tlv320_voice_ops = {
 
 static unsigned short normal_i2c[] = {
 #ifdef TLV320AIC24K
- 	0x41,
+	0x41,
 #else
 	0x40,
 #endif
@@ -120,42 +123,41 @@ static struct i2c_client client_template;
 
 static int amesom_tlv320_write(void *control_data, long data, int size)
 {
-	return i2c_master_send((struct i2c_client*)control_data, 
+	return i2c_master_send((struct i2c_client*)control_data,
 		(char*) data, size);
 }
 
 /*
  * Logic for a tlv320 as connected on a Sharp SL-C7x0 Device
  */
-static int amesom_init(struct snd_soc_card *soc_card)
+static int amesom_tlv320_init(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_codec *codec;
-	int i, ret;
-	
-	codec = snd_soc_get_codec(soc_card, tlv320_codec_id);
+
+	codec = snd_soc_card_get_codec(soc_card, tlv320_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
-		
+
 	/* SSP port 2 slave */
 	pxa_gpio_mode(GPIO11_SSP2RX_MD);
 	pxa_gpio_mode(GPIO13_SSP2TX_MD);
 	pxa_gpio_mode(GPIO50_SSP2CLKS_MD);
 	pxa_gpio_mode(GPIO14_SSP2FRMS_MD);
-	
-	snd_soc_codec_set_io(codec, NULL, amesom_tlv320_write, 
+
+	snd_soc_card_config_codec(codec, NULL, amesom_tlv320_write,
 		soc_card->private_data);
-	
-	snd_soc_codec_init(codec, soc_card);
-	
+
+	snd_soc_card_init_codec(codec, soc_card);
+
 	return 0;
 }
 
 static struct snd_soc_pcm_config hifi_pcm_config = {
 	.name		= "HiFi",
 	.codec		= tlv320_codec_id,
-	.codec_dai	= tlv320_codec_dai_id,
+//	.codec_dai	= tlv320_codec_dai_id,
 	.platform	= pxa_platform_id,
-	.cpu_dai	= pxa2xx_ssp2_dai_id,
+//	.cpu_dai	= pxa2xx_ssp2_dai_id,
 	.ops		= &tlv320_voice_ops,
 	.playback	= 1,
 	.capture	= 1,
@@ -167,7 +169,7 @@ static int tlv320_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	struct i2c_client *i2c;
 	int ret;
 
-	if (addr != tlv320_I2C_ADDR)
+	if (addr != 0x40 || addr != 0x41)
 		return -ENODEV;
 
 	client_template.adapter = adap;
@@ -176,27 +178,27 @@ static int tlv320_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	i2c = kmemdup(&client_template, sizeof(client_template), GFP_KERNEL);
 	if (i2c == NULL)
 		return -ENOMEM;
-	
+
 	ret = i2c_attach_client(i2c);
 	if (ret < 0) {
 		printk("failed to attach codec at addr %x\n", addr);
 		goto attach_err;
 	}
-	
-	soc_card = snd_soc_card_create("amesom", &i2c->dev, 
+
+	soc_card = snd_soc_card_create("amesom", &i2c->dev,
 		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
 	if (soc_card == NULL)
 		return -ENOMEM;
 
 	soc_card->longname = "tlv320";
-	soc_card->init = amesom_init;
+	soc_card->init = amesom_tlv320_init;
 	soc_card->private_data = i2c;
 	i2c_set_clientdata(i2c, soc_card);
-	
-	ret = snd_soc_pcm_create(soc_card, &hifi_pcm_config);
+
+	ret = snd_soc_card_create_pcms(soc_card, &hifi_pcm_config, 1);
 	if (ret < 0)
 		goto err;
-	
+
 	ret = snd_soc_card_register(soc_card);
 	return ret;
 
@@ -211,7 +213,7 @@ attach_err:
 static int tlv320_i2c_detach(struct i2c_client *client)
 {
 	struct snd_soc_card *soc_card = i2c_get_clientdata(client);
-	 
+
 	snd_soc_card_free(soc_card);
 	i2c_detach_client(client);
 	kfree(client);
@@ -228,7 +230,7 @@ static struct i2c_driver tlv320_i2c_driver = {
 		.name = "tlv320 I2C Codec",
 		.owner = THIS_MODULE,
 	},
-	.id =             I2C_DRIVERID_tlv320,
+	.id =             I2C_DRIVERID_TLV320,
 	.attach_adapter = tlv320_i2c_attach,
 	.detach_client =  tlv320_i2c_detach,
 	.command =        NULL,
@@ -252,7 +254,7 @@ static int __init amesom_tlv320_probe(struct platform_device *pdev)
 }
 
 static int __exit amesom_tlv320_remove(struct platform_device *pdev)
-{	
+{
 	i2c_del_driver(&tlv320_i2c_driver);
 	return 0;
 }
@@ -262,7 +264,7 @@ static struct platform_driver amesom_tlv320_driver = {
 	.probe		= amesom_tlv320_probe,
 	.remove		= __devexit_p(amesom_tlv320_remove),
 	.driver		= {
-		.name 		= "amesom-tlv320",
+		.name		= "amesom-tlv320",
 		.owner		= THIS_MODULE,
 	},
 };

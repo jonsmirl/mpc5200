@@ -19,7 +19,10 @@
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
+#include <linux/i2c.h>
+
 #include <sound/driver.h>
+#include <sound/initval.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/soc.h>
@@ -31,10 +34,9 @@
 #include <asm/arch/magician.h>
 #include <asm/arch/magician_cpld.h>
 #include <asm/mach-types.h>
+
 #include "../codecs/uda1380.h"
 #include "pxa2xx-pcm.h"
-#include "pxa2xx-i2s.h"
-#include "pxa2xx-ssp.h"
 
 #define MAGICIAN_HP_ON     0
 #define MAGICIAN_HP_OFF    1
@@ -61,14 +63,14 @@ extern struct platform_device magician_cpld;
 static void magician_ext_control(struct snd_soc_card *soc_card)
 {
 	if (magician_spk_func == MAGICIAN_SPK_ON)
-		snd_soc_dapm_enable_pin(soc_card "Speaker");
+		snd_soc_dapm_enable_pin(soc_card, "Speaker");
 	else
-		snd_soc_dapm_disable_pin(soc_card "Speaker");
-	
+		snd_soc_dapm_disable_pin(soc_card, "Speaker");
+
 	if (magician_hp_func == MAGICIAN_HP_ON)
-		snd_soc_dapm_enable_pin(soc_card "Headphone Jack");
+		snd_soc_dapm_enable_pin(soc_card, "Headphone Jack");
 	else
-		snd_soc_dapm_disable_pin(soc_card "Headphone Jack");
+		snd_soc_dapm_disable_pin(soc_card, "Headphone Jack");
 
 	switch (magician_in_sel) {
 	case MAGICIAN_MIC:
@@ -378,7 +380,7 @@ static const struct snd_soc_dapm_widget uda1380_dapm_widgets[] = {
 };
 
 /* magician soc_card audio_map */
-static const char *audio_map[][3] = {
+static const struct snd_soc_dapm_route audio_map[] = {
 
 	/* Headphone connected to VOUTL, VOUTR */
 	{"Headphone Jack", NULL, "VOUTL"},
@@ -391,8 +393,6 @@ static const char *audio_map[][3] = {
 	/* Mics are connected to VINM */
 	{"VINM", NULL, "Headset Mic"},
 	{"VINM", NULL, "Call Mic"},
-
-	{NULL, NULL, NULL},
 };
 
 static const char *hp_function[] = { "On", "Off" };
@@ -424,7 +424,7 @@ static struct i2c_client client_template;
 
 static int magician_uda1380_write(void *control_data, long data, int size)
 {
-	return i2c_master_send((struct i2c_client*)control_data, 
+	return i2c_master_send((struct i2c_client*)control_data,
 		(char*) data, size);
 }
 
@@ -434,9 +434,9 @@ static int magician_uda1380_write(void *control_data, long data, int size)
 static int magician_uda1380_init(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_codec *codec;
-	int i, err;
-	
-	codec = snd_soc_get_codec(soc_card, uda1380_codec_id);
+	int ret;
+
+	codec = snd_soc_card_get_codec(soc_card, uda1380_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
 
@@ -449,52 +449,50 @@ static int magician_uda1380_init(struct snd_soc_card *soc_card)
 	snd_soc_dapm_disable_pin(soc_card, "VINR");
 
 	/* Add magician specific controls */
-	for (i = 0; i < ARRAY_SIZE(uda1380_magician_controls); i++) {
-		if ((err = snd_ctl_add(codec->card,
-				snd_soc_cnew(&uda1380_magician_controls[i],
-				codec, NULL))) < 0)
-			return err;
-	}
+	ret = snd_soc_add_new_controls(soc_card, uda1380_magician_controls,
+		soc_card, ARRAY_SIZE(uda1380_magician_controls));
+	if (ret < 0)
+		return ret;
 
 	/* Add magician specific widgets */
-	for (i = 0; i < ARRAY_SIZE(uda1380_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(codec, &uda1380_dapm_widgets[i]);
-	}
+	ret = snd_soc_dapm_new_controls(soc_card, codec,
+			uda1380_dapm_widgets, ARRAY_SIZE(uda1380_dapm_widgets));
+	if (ret < 0)
+		return ret;
 
-	/* Set up magician specific audio path interconnects */
-	for (i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(codec, audio_map[i][0],
-				audio_map[i][1], audio_map[i][2]);
-	}
+	ret = snd_soc_dapm_add_routes(soc_card, audio_map,
+				     ARRAY_SIZE(audio_map));
+	if (ret < 0)
+		return ret;
+
+	snd_soc_card_config_codec(codec, NULL, magician_uda1380_write,
+		soc_card->private_data);
 
 	snd_soc_dapm_sync(soc_card);
-	
-	snd_soc_codec_set_io(codec, NULL, magician_uda1380_write, 
-		soc_card->private_data);
-	
-	snd_soc_codec_init(codec, soc_card);
+
+	snd_soc_card_init_codec(codec, soc_card);
 	return 0;
 }
 
-static struct snd_soc_pcm_config playback_pcm_config = {
+static struct snd_soc_pcm_config pcm_config[] = {
+{
 	.name		= "HiFi Playback",
 	.codec		= uda1380_codec_id,
 	.codec_dai	= uda1380_codec_dai_id,
 	.platform	= pxa_platform_id,
-	.cpu_dai	= pxa2xx_ssp1_dai_id,
+//	.cpu_dai	= pxa2xx_ssp1_dai_id,
 	.ops		= &magician_playback_ops,
 	.playback	= 1,
-};
-
-static struct snd_soc_pcm_config capture_pcm_config = {
+},
+{
 	.name		= "HiFi Capture",
 	.codec		= uda1380_codec_id,
 	.codec_dai	= uda1380_codec_dai_id,
 	.platform	= pxa_platform_id,
-	.cpu_dai	= pxa2xx_i2s_id,
+	.cpu_dai	= pxa2xx_i2s_dai_id,
 	.ops		= &magician_capture_ops,
 	.capture	= 1,
-};
+},};
 
 static int magician_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 {
@@ -511,14 +509,14 @@ static int magician_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	i2c = kmemdup(&client_template, sizeof(client_template), GFP_KERNEL);
 	if (i2c == NULL)
 		return -ENOMEM;
-	
+
 	ret = i2c_attach_client(i2c);
 	if (ret < 0) {
 		printk("failed to attach codec at addr %x\n", addr);
 		goto attach_err;
 	}
-	
-	soc_card = snd_soc_card_create("magician", &i2c->dev, 
+
+	soc_card = snd_soc_card_create("magician", &i2c->dev,
 		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
 	if (soc_card == NULL)
 		return -ENOMEM;
@@ -527,15 +525,12 @@ static int magician_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	soc_card->init = magician_uda1380_init;
 	soc_card->private_data = i2c;
 	i2c_set_clientdata(i2c, soc_card);
-	
-	ret = snd_soc_pcm_create(soc_card, &playback_pcm_config);
+
+	ret = snd_soc_card_create_pcms(soc_card, pcm_config,
+					ARRAY_SIZE(pcm_config));
 	if (ret < 0)
 		goto err;
-		
-	ret = snd_soc_pcm_create(soc_card, &capture_pcm_config);
-	if (ret < 0)
-		goto err;
-	
+
 	ret = snd_soc_card_register(soc_card);
 	return ret;
 
@@ -550,7 +545,7 @@ attach_err:
 static int magician_i2c_detach(struct i2c_client *client)
 {
 	struct snd_soc_card *soc_card = i2c_get_clientdata(client);
-	 
+
 	snd_soc_card_free(soc_card);
 	i2c_detach_client(client);
 	kfree(client);
@@ -582,7 +577,7 @@ static int __init magician_init(void)
 {
 	int ret;
 
-	if (!soc_card_is_magician())
+	if (!machine_is_magician())
 		return -ENODEV;
 
 	magician_egpio_enable(&magician_cpld, EGPIO_NR_MAGICIAN_CODEC_POWER);
@@ -595,7 +590,7 @@ static int __init magician_init(void)
 	/* correct place? we'll need it to talk to the uda1380 */
 	request_module("i2c-pxa");
 
-	ret = i2c_add_driver(&magician_i2c_driver);
+	ret = i2c_add_driver(&uda1380_i2c_driver);
 	if (ret < 0)
 		printk (KERN_ERR "%s: failed to add i2c driver\n",
 			__FUNCTION__);
@@ -609,8 +604,8 @@ static int __init magician_init(void)
 
 static void __exit magician_exit(void)
 {
-	i2c_del_driver(&magician_i2c_driver);
-	
+	i2c_del_driver(&uda1380_i2c_driver);
+
 	magician_egpio_disable(&magician_cpld, EGPIO_NR_MAGICIAN_SPK_POWER);
 	magician_egpio_disable(&magician_cpld, EGPIO_NR_MAGICIAN_EP_POWER);
 	magician_egpio_disable(&magician_cpld, EGPIO_NR_MAGICIAN_MIC_POWER);

@@ -198,11 +198,11 @@ static int cken[3] = {CKEN_SSP, CKEN_NSSP, CKEN_ASSP};
 #endif
 
 #ifdef CONFIG_PM
-int pxa2xx_ssp_suspend(struct snd_soc_dai_runtime *rdai, 
+int pxa2xx_ssp_suspend(struct snd_soc_dai_runtime *rdai,
 	pm_message_t state)
 {
 	struct ssp_priv *ssp = rdai->private_data;
-	
+
 	if (!rdai->active)
 		return 0;
 
@@ -214,7 +214,7 @@ int pxa2xx_ssp_suspend(struct snd_soc_dai_runtime *rdai,
 int pxa2xx_ssp_resume(struct snd_soc_dai_runtime *rdai)
 {
 	struct ssp_priv *ssp = rdai->private_data;
-	
+
 	if (!rdai->active)
 		return 0;
 
@@ -238,7 +238,7 @@ static int pxa2xx_ssp_set_dai_sysclk(struct snd_soc_dai_runtime *cpu_dai,
 {
 	struct ssp_priv *ssp = cpu_dai->private_data;
 	int port = dai_to_port(cpu_dai);
-	
+
 	u32 sscr0 = SSCR0_P(port) &
 		~(SSCR0_ECS |  SSCR0_NCS | SSCR0_MOD | SSCR0_ADC);
 
@@ -579,11 +579,11 @@ static int pxa2xx_ssp_trigger(struct snd_pcm_substream *substream, int cmd,
 static int pxa2xx_ssp_new(struct snd_soc_dai_runtime *dai)
 {
 	struct ssp_priv *ssp;
-	
+
 	ssp = kzalloc(sizeof(struct ssp_priv), GFP_KERNEL);
 	if (ssp == NULL)
 		return -ENOMEM;
-	
+
 	dai->private_data = ssp;
 	return 0;
 }
@@ -594,13 +594,13 @@ static void pxa2xx_ssp_free(struct snd_soc_dai_runtime *dai)
 }
 
 struct snd_soc_dai pxa2xx_ssp[] = {
-{	
+{
 	.name	= "pxa2xx-ssp1",
 	.id	= PXA2XX_DAI_SSP1,
 
 	.new	= pxa2xx_ssp_new,
 	.free	= pxa2xx_ssp_free,
-	
+
 	.playback = {
 		.stream_name	= "Playback",
 		.channels_min	= 1,
@@ -615,13 +615,13 @@ struct snd_soc_dai pxa2xx_ssp[] = {
 		.rates		= PXA2XX_SSP_RATES,
 		.formats	= PXA2XX_SSP_FORMATS,
 	},
-	
+
 	/* alsa ops */
-	.startup 	= pxa2xx_ssp_startup,
-	.shutdown 	= pxa2xx_ssp_shutdown,
-	.trigger 	= pxa2xx_ssp_trigger,
-	.hw_params 	= pxa2xx_ssp_hw_params,
-	
+	.startup	= pxa2xx_ssp_startup,
+	.shutdown	= pxa2xx_ssp_shutdown,
+	.trigger	= pxa2xx_ssp_trigger,
+	.hw_params	= pxa2xx_ssp_hw_params,
+
 	/* dai ops */
 	.set_sysclk	= pxa2xx_ssp_set_dai_sysclk,
 	.set_clkdiv	= pxa2xx_ssp_set_dai_clkdiv,
@@ -630,13 +630,13 @@ struct snd_soc_dai pxa2xx_ssp[] = {
 	.set_tdm_slot	= pxa2xx_ssp_set_dai_tdm_slot,
 	.set_tristate	= pxa2xx_ssp_set_dai_tristate,
 },
-{	
+{
 	.name	= "pxa2xx-ssp2",
 	.id	= PXA2XX_DAI_SSP2,
 
 	.new	= pxa2xx_ssp_new,
 	.free	= pxa2xx_ssp_free,
-	
+
 	.playback = {
 		.stream_name	= "Playback",
 		.channels_min	= 1,
@@ -651,13 +651,13 @@ struct snd_soc_dai pxa2xx_ssp[] = {
 		.rates		= PXA2XX_SSP_RATES,
 		.formats	= PXA2XX_SSP_FORMATS,
 	},
-	
+
 	/* alsa ops */
-	.startup 	= pxa2xx_ssp_startup,
-	.shutdown 	= pxa2xx_ssp_shutdown,
-	.trigger 	= pxa2xx_ssp_trigger,
-	.hw_params 	= pxa2xx_ssp_hw_params,
-	
+	.startup	= pxa2xx_ssp_startup,
+	.shutdown	= pxa2xx_ssp_shutdown,
+	.trigger	= pxa2xx_ssp_trigger,
+	.hw_params	= pxa2xx_ssp_hw_params,
+
 	/* dai ops */
 	.set_sysclk	= pxa2xx_ssp_set_dai_sysclk,
 	.set_clkdiv	= pxa2xx_ssp_set_dai_clkdiv,
@@ -666,13 +666,13 @@ struct snd_soc_dai pxa2xx_ssp[] = {
 	.set_tdm_slot	= pxa2xx_ssp_set_dai_tdm_slot,
 	.set_tristate	= pxa2xx_ssp_set_dai_tristate,
 },
-{	
+{
 	.name	= "pxa2xx-ssp3",
 	.id	= PXA2XX_DAI_SSP3,
 
 	.new	= pxa2xx_ssp_new,
 	.free	= pxa2xx_ssp_free,
-	
+
 	.playback = {
 		.stream_name	= "Playback",
 		.channels_min	= 1,
@@ -687,13 +687,13 @@ struct snd_soc_dai pxa2xx_ssp[] = {
 		.rates		= PXA2XX_SSP_RATES,
 		.formats	= PXA2XX_SSP_FORMATS,
 	},
-	
+
 	/* alsa ops */
-	.startup 	= pxa2xx_ssp_startup,
-	.shutdown 	= pxa2xx_ssp_shutdown,
-	.trigger 	= pxa2xx_ssp_trigger,
-	.hw_params 	= pxa2xx_ssp_hw_params,
-	
+	.startup	= pxa2xx_ssp_startup,
+	.shutdown	= pxa2xx_ssp_shutdown,
+	.trigger	= pxa2xx_ssp_trigger,
+	.hw_params	= pxa2xx_ssp_hw_params,
+
 	/* dai ops */
 	.set_sysclk	= pxa2xx_ssp_set_dai_sysclk,
 	.set_clkdiv	= pxa2xx_ssp_set_dai_clkdiv,

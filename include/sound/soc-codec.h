@@ -1,5 +1,5 @@
 /*
- * linux/sound/soc-codec.h -- ALSA SoC Layer
+ * linux/sound/soc-codec.h -- ALSA SoC codec interface
  *
  * Author:		Liam Girdwood
  * Created:		Aug 11th 2005
@@ -115,105 +115,12 @@ struct snd_ac97_bus_ops;
 struct snd_kcontrol;
 struct snd_kcontrol_new;
 struct snd_soc_dai_new;
-
-/*
- * Enumerated kcontrol
- */
-struct soc_enum {
-	unsigned short reg;
-	unsigned short reg2;
-	unsigned char shift_l;
-	unsigned char shift_r;
-	unsigned int mask;
-	const char **texts;
-	void *dapm;
-};
-
-/*
- * SoC Audio Codec.
- *
- * Describes a SoC audio codec
- */
-struct snd_soc_codec {
-
-	/*
-	 * Codec runtime
-	 */
-	const char *name;
-	struct device *dev;
-	unsigned int active;			/* is codec active */
-	struct delayed_work delayed_work;
-	struct snd_ac97 *ac97;  		/* for ad-hoc ac97 devices */
-	struct mutex mutex;
-	struct list_head list;
-	struct list_head dai_list;		/* list of DAI's */
-	struct snd_soc_card *soc_card;	/* parent soc_card */
-	int num;
-	/*
-	 *  Codec power control and state. Optional.
-	 */
-	enum snd_soc_dapm_bias_level bias_level;
-	enum snd_soc_dapm_bias_level suspend_bias_level;
-	int (*set_bias_level)(struct snd_soc_codec *codec, 
-		enum snd_soc_dapm_bias_level level);
-	
-	/* 
-	 * Initialisation and cleanup - Optional, both can perform IO.
-	 * Normally used to power up/down codec power domain (bias) and do any
-	 * codec init/exit IO.
-	 */
-	int (*init)(struct snd_soc_codec *codec, 
-		struct snd_soc_card *soc_card);
-	void (*exit)(struct snd_soc_codec *codec, 
-		struct snd_soc_card *soc_card);
-
-	/*
-	 * Codec-wide clocking configuration - all optional.
-	 * Called by soc_card drivers, usually in their init().
-	 */
-	int (*set_sysclk)(struct snd_soc_codec *dai, int clk_id,
-		unsigned int freq, int dir);
-	int (*set_clkdiv)(struct snd_soc_codec *dai,
-		int div_id, int div);
-	int (*set_pll)(struct snd_soc_codec *dai,
-		int pll_id, unsigned int freq_in, unsigned int freq_out);
-	
-	/* 
-	 * Codec control IO.
-	 * 
-	 * All codec IO is performed by calling codec_read() and codec_write().
-	 * codec_read/write() formats the IO data for the codec and then calls
-	 * the soc_card_read and soc_card_write respectively to physically
-	 * perform the IO operation.
-	 * 
-	 * The soc_card_read and soc_card_write functions can either wrap the
-	 * kernel I2C, SPI read and write functions or do custom IO. 
-	 */
-	unsigned int (*codec_read)(struct snd_soc_codec *codec, 
-		unsigned int reg);
-	int (*codec_write)(struct snd_soc_codec *codec, unsigned int reg, 
-		unsigned int value);
-	int (*soc_card_write)(void *control_data, long data, int bytes);
-	int (*soc_card_read)(void *control_data, long data, int bytes);
-	void *control_data; 			/* codec control data */
-	
-	
-	/* 
-	 * Register cacheing. Codec registers can be cached to siginificantly
-	 * speed up IO operations over slow busses. e.g. I2C, SPI
-	 */
-	void *reg_cache;			/* cache data */
-	short reg_cache_size;			/* number of registers */
-	short reg_cache_step;			/* register size (bytes) */
-	
-	void *private_data;			/* core doesnt touch this */
-	void *platform_data;			/* or this */
-};
+struct snd_soc_codec_new;
 
 /*
  * KControls.
  *
- * Called by the convenience macros to get/set/info kcontrols.
+ * Called by the convenience macros to get/put/info kcontrols.
  */
 int snd_soc_info_enum_double(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_info *uinfo);
@@ -240,123 +147,154 @@ int snd_soc_get_volsw_2r(struct snd_kcontrol *kcontrol,
 int snd_soc_put_volsw_2r(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
 
-/**
- * snd_soc_cnew - create new kcontrol.
- * @_template: template kcontrol
- * @data: private kcontrol data
- * @long_name: kcontrol long name
- *
- * Creates a new ASoC ALSA kcontrol.
- */
+/* control creation */
 struct snd_kcontrol *snd_soc_cnew(const struct snd_kcontrol_new *_template,
 	void *data, char *long_name);
 
-/**
- * snd_soc_register_codec - register ASoC codec driver.
- * @codec: codec driver
- *
- * Registers a codec driver with ASoC core.
- */
-int snd_soc_register_codec(struct snd_soc_codec *codec);
+int snd_soc_add_new_controls(struct snd_soc_card *soc_card,
+	const struct snd_kcontrol_new *_template, void *data, int num);
 
-/**
- * snd_soc_unregister_codec - unregister ASoC codec driver.
- * @codec: codec driver
- *
- * Unregisters a codec driver with ASoC core.
- */
-void snd_soc_unregister_codec(struct snd_soc_codec *codec);
+/* codec creation and registration */
+struct snd_soc_codec *snd_soc_new_codec(
+	struct snd_soc_codec_new *template, const char *cache);
 
-/**
- * snd_soc_codec_allocate - allocate and initialize a codec.
- * @codec: codec driver
- *
- * Allocates and initializes struct codec before calling register.
- */
-struct snd_soc_codec *snd_soc_codec_allocate(void);
+int snd_soc_register_codec(struct snd_soc_codec *codec, struct device *dev);
 
-/**
- * snd_soc_codec_free - free codec.
- * @codec: codec driver
- */
-static inline void snd_soc_codec_free(struct snd_soc_codec *codec)
-{
-	kfree(codec);
-}
+void snd_soc_free_codec(struct snd_soc_codec *codec);
 
-/**
- * snd_soc_register_codec_dai - register a codec DAI.
- * @dai: pointer to DAI
- *
- * Registers codec Digital Audio Interfaces with ASoC core.
- */
-struct snd_soc_dai *snd_soc_register_codec_dai(
-	struct snd_soc_dai_new *template, struct device *dev);
-
-/**
- * snd_soc_unregister_codec_dai - add DAI to codec.
- * @dai: pointer to DAI
- *
- * Unregisters codec Digital Audio Interfaces with ASoC core.
- */
-void snd_soc_unregister_codec_dai(struct snd_soc_dai *dai);
-
-/**
- * snd_soc_codec_set_sysclk - configure codec system or master clock.
- * @codec: codec
- * @clk_id: Codec specific clock ID
- * @freq: new clock frequency in Hz
- * @dir: new clock direction - input/output.
- *
- * Configures the codec master (MCLK) or system (SYSCLK) clocking.
- */
-int snd_soc_codec_set_sysclk(struct snd_soc_codec *codec, int clk_id,
-	unsigned int freq, int dir);
-
-/**
- * snd_soc_codec_set_clkdiv - configure codec clock dividers.
- * @codec: codec
- * @clk_id: Codec specific clock divider ID
- * @div: new clock divisor.
- *
- * Configures codec clock dividers.
- */
-int snd_soc_dai_set_clkdiv(struct snd_soc_dai *dai,
-	int div_id, int div);
-
-/**
- * snd_soc_codec_set_pll - configure codec PLL.
- * @codec: codec
- * @pll_id: DAI specific PLL ID
- * @freq_in: PLL input clock frequency in Hz
- * @freq_out: requested PLL output clock frequency in Hz
- *
- * Configures and enables PLL to generate output clock based on input clock.
- */
-int snd_soc_codec_set_pll(struct snd_soc_codec *codec,
-	int pll_id, unsigned int freq_in, unsigned int freq_out);
-
-/* Codec read and write */
-#define snd_soc_read(codec, reg) codec->codec_read(codec, reg)
-#define snd_soc_write(codec, reg, value) codec->codec_write(codec, reg, value)
-
-/* codec register bit access */
-int snd_soc_update_bits(struct snd_soc_codec *codec, unsigned short reg,
-				unsigned short mask, unsigned short value);
-int snd_soc_test_bits(struct snd_soc_codec *codec, unsigned short reg,
-				unsigned short mask, unsigned short value);
-/**
- * snd_soc_new_ac97_codec - create new AC97 codec.
- * @codec: codec
- * @ops: AC97 bus operations
- * @card: ALSA sound card.
- * @num: codec number.
- * @bus_no: AC97 bus number.
- *
- * Creates a new AC97 codec.
- */
 int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
 	struct snd_ac97_bus_ops *ops, struct snd_card *card,
 	int num, int bus_no);
+
+/* codec dia registration */
+struct snd_soc_dai *snd_soc_register_codec_dai(
+	struct snd_soc_dai_new *template, struct device *dev);
+
+void snd_soc_unregister_codec_dai(struct snd_soc_dai *dai);
+
+/*
+ * Enumerated kcontrol
+ */
+struct soc_enum {
+	unsigned short reg;
+	unsigned short reg2;
+	unsigned char shift_l;
+	unsigned char shift_r;
+	unsigned int mask;
+	const char **texts;
+	void *dapm;
+};
+
+/*
+ * New codec template - used for conveniently creating new codec drivers.
+ * The fields have the same meaning as snd_soc_codec below.
+ */
+struct snd_soc_codec_new {
+	const char *name;
+	short reg_cache_size;
+	short reg_cache_step;
+
+	int (*set_bias_level)(struct snd_soc_codec *codec,
+		enum snd_soc_dapm_bias_level level);
+
+	int (*init)(struct snd_soc_codec *codec,
+		struct snd_soc_card *soc_card);
+	void (*exit)(struct snd_soc_codec *codec,
+		struct snd_soc_card *soc_card);
+
+	unsigned int (*codec_read)(struct snd_soc_codec *codec,
+		unsigned int reg);
+	int (*codec_write)(struct snd_soc_codec *codec, unsigned int reg,
+		unsigned int value);
+};
+
+/*
+ * SoC Audio Codec.
+ *
+ * Describes a rutime ASoC audio codec.
+ */
+struct snd_soc_codec {
+
+	/*
+	 * Codec runtime
+	 */
+	const char *name;
+	struct device *dev;
+	unsigned int active;		/* is codec active */
+	struct delayed_work delayed_work;
+	struct snd_ac97 *ac97;		/* for ad-hoc ac97 devices */
+	struct mutex mutex;		/* codec mutex */
+	struct list_head list;
+	struct list_head dai_list;	/* list of DAI's */
+	struct snd_soc_card *soc_card;	/* parent soc_card */
+	int num;
+
+	/*  Codec power control and state. Optional. */
+	enum snd_soc_dapm_bias_level bias_level;
+	enum snd_soc_dapm_bias_level suspend_bias_level;
+	int (*set_bias_level)(struct snd_soc_codec *codec,
+		enum snd_soc_dapm_bias_level level);
+
+	/*
+	 * Initialisation and cleanup - Optional, both can perform IO.
+	 * Normally used to power up/down codec power domain (bias) and do any
+	 * codec init/exit IO. Called by snd_soc_card_config_codec() and
+	 * snd_soc_codec_exit() in soc card driver.
+	 */
+	int (*init)(struct snd_soc_codec *codec,
+		struct snd_soc_card *soc_card);
+	void (*exit)(struct snd_soc_codec *codec,
+		struct snd_soc_card *soc_card);
+
+	/*
+	 * Codec control IO.
+	 *
+	 * All codec IO is performed by calling codec_read() and codec_write().
+	 * codec_read/write() formats the IO data for the codec and then calls
+	 * the soc_card_read and soc_card_write respectively to physically
+	 * perform the IO operation. IOW, codec read/write only does formatting
+	 * whilst soc card read/write does the physical IO.
+	 *
+	 * The soc_card_read and soc_card_write functions can either wrap the
+	 * kernel I2C, SPI read and write functions or do custom IO.
+	 */
+	unsigned int (*codec_read)(struct snd_soc_codec *codec,
+		unsigned int reg);
+	int (*codec_write)(struct snd_soc_codec *codec, unsigned int reg,
+		unsigned int value);
+	int (*soc_card_write)(void *control_data, long data, int bytes);
+	int (*soc_card_read)(void *control_data, long data, int bytes);
+	void *control_data;			/* codec control data */
+
+
+	/*
+	 * Register cacheing. Codec registers can be cached to siginificantly
+	 * speed up IO operations over slow busses. e.g. I2C, SPI
+	 */
+	void *reg_cache;			/* cache data */
+	short reg_cache_size;			/* number of registers */
+	short reg_cache_step;			/* register size (bytes) */
+
+	void *private_data;			/* core doesnt touch this */
+	void *platform_data;			/* or this */
+};
+
+/* Codec register read and write */
+static inline unsigned int snd_soc_read(struct snd_soc_codec *codec, int reg)
+{
+	return codec->codec_read(codec, reg);
+}
+
+static inline int snd_soc_write(struct snd_soc_codec *codec,
+	unsigned int reg, unsigned int value)
+{
+	return codec->codec_write(codec, reg, value);
+}
+
+int snd_soc_update_bits(struct snd_soc_codec *codec, unsigned short reg,
+				unsigned short mask, unsigned short value);
+
+int snd_soc_test_bits(struct snd_soc_codec *codec, unsigned short reg,
+				unsigned short mask, unsigned short value);
 
 #endif

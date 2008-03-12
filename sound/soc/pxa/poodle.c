@@ -18,6 +18,7 @@
 #include <linux/moduleparam.h>
 #include <linux/timer.h>
 #include <linux/interrupt.h>
+#include <linux/i2c.h>
 #include <linux/platform_device.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -189,7 +190,8 @@ static int poodle_set_spk(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
-static int poodle_amp_event(struct snd_soc_dapm_widget *w, int event)
+static int poodle_amp_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *control, int event)
 {
 	if (SND_SOC_DAPM_EVENT_ON(event))
 		locomo_gpio_write(&poodle_locomo_device.dev,
@@ -208,7 +210,7 @@ SND_SOC_DAPM_SPK("Ext Spk", poodle_amp_event),
 };
 
 /* Corgi soc_card audio_mapnections to the codec pins */
-static const char *audio_map[][3] = {
+static const struct snd_soc_dapm_route audio_map[] = {
 
 	/* headphone connected to LHPOUT1, RHPOUT1 */
 	{"Headphone Jack", NULL, "LHPOUT"},
@@ -217,8 +219,6 @@ static const char *audio_map[][3] = {
 	/* speaker connected to LOUT, ROUT */
 	{"Ext Spk", NULL, "ROUT"},
 	{"Ext Spk", NULL, "LOUT"},
-
-	{NULL, NULL, NULL},
 };
 
 static const char *jack_function[] = {"Off", "Headphone"};
@@ -252,7 +252,7 @@ static struct i2c_client client_template;
 
 static int poodle_wm8731_write(void *control_data, long data, int size)
 {
-	return i2c_master_send((struct i2c_client*)control_data, 
+	return i2c_master_send((struct i2c_client*)control_data,
 		(char*) data, size);
 }
 
@@ -262,44 +262,40 @@ static int poodle_wm8731_write(void *control_data, long data, int size)
 static int poodle_init(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_codec *codec;
-	int i, ret;
-	
-	codec = snd_soc_get_codec(soc_card, wm8731_codec_id);
+	int ret;
+
+	codec = snd_soc_card_get_codec(soc_card, wm8731_codec_id);
 	if (codec == NULL)
 		return -ENODEV;
-		
+
 	/* set up poodle codec pins */
 	snd_soc_dapm_disable_pin(soc_card, "LLINEIN");
 	snd_soc_dapm_disable_pin(soc_card, "RLINEIN");
 	snd_soc_dapm_enable_pin(soc_card, "MICIN");
-	
+
 	/* add poodle specific controls */
-	for (i = 0; i < ARRAY_SIZE(wm8731_poodle_controls); i++) {
-		if ((ret = snd_ctl_add(soc_card->card,
-				snd_soc_cnew(&wm8731_poodle_controls[i],
-					soc_card, NULL))) < 0)
-			return ret;
-	}
+	ret = snd_soc_add_new_controls(soc_card, wm8731_poodle_controls,
+		soc_card, ARRAY_SIZE(wm8731_poodle_controls));
+	if (ret < 0)
+		return ret;
 
 	/* Add poodle specific widgets */
-	for(i = 0; i < ARRAY_SIZE(wm8731_dapm_widgets); i++) {
-		snd_soc_dapm_new_control(soc_card, codec, 
-			&wm8731_dapm_widgets[i]);
-	}
+	ret = snd_soc_dapm_new_controls(soc_card, codec,
+			wm8731_dapm_widgets, ARRAY_SIZE(wm8731_dapm_widgets));
+	if (ret < 0)
+		return ret;
 
 	/* Set up poodle specific audio path audio_map */
-	for(i = 0; audio_map[i][0] != NULL; i++) {
-		snd_soc_dapm_add_route(soc_card, audio_map[i][0],
-			audio_map[i][1], audio_map[i][2]);
-	}
-	
-	snd_soc_dapm_sync(soc_card);
-	
-	snd_soc_codec_set_io(codec, NULL, poodle_wm8731_write, 
+	ret = snd_soc_dapm_add_routes(soc_card, audio_map,
+				     ARRAY_SIZE(audio_map));
+	if (ret < 0)
+		return ret;
+
+
+	snd_soc_card_config_codec(codec, NULL, poodle_wm8731_write,
 		soc_card->private_data);
-	
-	snd_soc_codec_init(codec, soc_card);
-	
+	snd_soc_dapm_sync(soc_card);
+
 	return 0;
 }
 
@@ -308,7 +304,7 @@ static struct snd_soc_pcm_config hifi_pcm_config = {
 	.codec		= wm8731_codec_id,
 	.codec_dai	= wm8731_codec_dai_id,
 	.platform	= pxa_platform_id,
-	.cpu_dai	= pxa2xx_i2s_id,
+	.cpu_dai	= pxa2xx_i2s_dai_id,
 	.ops		= &poodle_ops,
 	.playback	= 1,
 	.capture	= 1,
@@ -329,14 +325,14 @@ static int wm8731_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	i2c = kmemdup(&client_template, sizeof(client_template), GFP_KERNEL);
 	if (i2c == NULL)
 		return -ENOMEM;
-	
+
 	ret = i2c_attach_client(i2c);
 	if (ret < 0) {
 		printk("failed to attach codec at addr %x\n", addr);
 		goto attach_err;
 	}
-	
-	soc_card = snd_soc_card_create("poodle", &i2c->dev, 
+
+	soc_card = snd_soc_card_create("poodle", &i2c->dev,
 		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
 	if (soc_card == NULL)
 		return -ENOMEM;
@@ -345,11 +341,11 @@ static int wm8731_i2c_probe(struct i2c_adapter *adap, int addr, int kind)
 	soc_card->init = poodle_init;
 	soc_card->private_data = i2c;
 	i2c_set_clientdata(i2c, soc_card);
-	
-	ret = snd_soc_pcm_create(soc_card, &hifi_pcm_config);
+
+	ret = snd_soc_card_create_pcms(soc_card, &hifi_pcm_config, 1);
 	if (ret < 0)
 		goto err;
-	
+
 	ret = snd_soc_card_register(soc_card);
 	return ret;
 
@@ -364,7 +360,7 @@ attach_err:
 static int wm8731_i2c_detach(struct i2c_client *client)
 {
 	struct snd_soc_card *soc_card = i2c_get_clientdata(client);
-	 
+
 	snd_soc_card_free(soc_card);
 	i2c_detach_client(client);
 	kfree(client);
@@ -396,7 +392,7 @@ static int __init poodle_wm8731_probe(struct platform_device *pdev)
 {
 	int ret;
 
-	if (!soc_card_is_poodle())
+	if (!machine_is_poodle())
 		return -ENODEV;
 
 	locomo_gpio_set_dir(&poodle_locomo_device.dev,
@@ -416,13 +412,13 @@ static int __init poodle_wm8731_probe(struct platform_device *pdev)
 }
 
 static int __exit poodle_wm8731_remove(struct platform_device *pdev)
-{	
+{
 	i2c_del_driver(&wm8731_i2c_driver);
 	return 0;
 }
 
 #ifdef CONFIG_PM
-static int poodle_wm8731_suspend(struct platform_device *pdev, 
+static int poodle_wm8731_suspend(struct platform_device *pdev,
 	pm_message_t state)
 {
 	struct snd_soc_card *soc_card = pdev->dev.driver_data;
@@ -446,7 +442,7 @@ static struct platform_driver poodle_wm8731_driver = {
 	.suspend	= poodle_wm8731_suspend,
 	.resume		= poodle_wm8731_resume,
 	.driver		= {
-		.name 		= "poodle-wm8731",
+		.name		= "poodle-wm8731",
 		.owner		= THIS_MODULE,
 	},
 };

@@ -494,28 +494,33 @@ static int imx31_pcm_new(struct snd_soc_platform *platform,
 const char imx31_platform_id[] = "imx31-pcm";
 EXPORT_SYMBOL_GPL(imx31_platform_id);
 
+static struct snd_soc_platform_new imx3x_platform = {
+	.name		= imx31_platform_id,
+	.pcm_ops	= &imx31_pcm_ops,
+	.pcm_new	= imx31_pcm_new,
+#if IMX31_DMA_BOUNCE
+	.pcm_free	= NULL,
+#else
+	.pcm_free	= imx31_pcm_free_dma_buffers,
+#endif
+};
+
 static int imx31_pcm_probe(struct platform_device *pdev)
 {
 	struct snd_soc_platform *platform;
 	int ret;
 
-	platform = snd_soc_platform_allocate();
-	if (platform == NULL)
+	platform = snd_soc_new_platform(&imx3x_platform);
+	if (platform == NULL) {
+		dev_err(&pdev->dev, "Unable to allocate ASoC platform\n");
 		return -ENOMEM;
+	}
 
-	platform->pcm_ops = &imx31_pcm_ops;
-	platform->pcm_new = imx31_pcm_new,
-#if IMX31_DMA_BOUNCE
-	platform->pcm_free = NULL,
-#else
-	platform->pcm_free = imx31_pcm_free_dma_buffers,
-#endif
-	platform->dev = &pdev->dev;
-	platform->name = imx31_platform_id;
-	ret = snd_soc_register_platform(platform);
-	if (ret < 0)
-		snd_soc_platform_free(platform);
 	platform_set_drvdata(pdev, platform);
+	ret = snd_soc_register_platform(platform, &pdev->dev);
+	if (ret < 0)
+		snd_soc_free_platform(platform);
+
 	return ret;
 }
 
@@ -523,8 +528,7 @@ static int imx31_pcm_remove(struct platform_device *pdev)
 {
 	struct snd_soc_platform *platform = platform_get_drvdata(pdev);
 
-	snd_soc_unregister_platform(platform);
-	snd_soc_platform_free(platform);
+	snd_soc_free_platform(platform);
 	return 0;
 }
 
