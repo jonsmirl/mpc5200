@@ -109,7 +109,7 @@ static int wm8731_write(struct snd_soc_codec *codec, unsigned int reg,
 	data[1] = value & 0x00ff;
 
 	wm8731_write_reg_cache (codec, reg, value);
-	if (codec->soc_card_write(codec->control_data, (long)data, 2) == 2)
+	if (codec->soc_phys_write(codec->control_data, (long)data, 2) == 2)
 		return 0;
 	else
 		return -EIO;
@@ -459,7 +459,7 @@ static int wm8731_resume(struct platform_device *pdev)
 	for (i = 0; i < ARRAY_SIZE(wm8731_reg); i++) {
 		data[0] = (i << 1) | ((cache[i] >> 8) & 0x0001);
 		data[1] = cache[i] & 0x00ff;
-		codec->soc_card_write(codec->control_data, (long)data, 2);
+		codec->soc_phys_write(codec->control_data, (long)data, 2);
 	}
 	wm8731_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 	wm8731_set_bias_level(codec, codec->suspend_bias_level);

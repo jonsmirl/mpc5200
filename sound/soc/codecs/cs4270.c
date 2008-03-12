@@ -29,7 +29,9 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <sound/core.h>
-#include <sound/soc.h>
+#include <sound/pcm.h>
+#include <sound/soc-codec.h>
+#include <sound/soc-dai.h>
 #include <sound/initval.h>
 #include <linux/i2c.h>
 
@@ -201,7 +203,7 @@ static struct {
  * driver what the input settings can be.  This would need to be implemented
  * for stand-alone mode to work.
  */
-static int cs4270_set_dai_sysclk(struct snd_soc_codec_dai *codec_dai,
+static int cs4270_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 				 int clk_id, unsigned int freq, int dir)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
@@ -229,13 +231,13 @@ static int cs4270_set_dai_sysclk(struct snd_soc_codec_dai *codec_dai,
 		return -EINVAL;
 	}
 
-	codec_dai->playback.rates = rates;
-	codec_dai->playback.rate_min = rate_min;
-	codec_dai->playback.rate_max = rate_max;
+	codec_dai->playback->rates = rates;
+	codec_dai->playback->rate_min = rate_min;
+	codec_dai->playback->rate_max = rate_max;
 
-	codec_dai->capture.rates = rates;
-	codec_dai->capture.rate_min = rate_min;
-	codec_dai->capture.rate_max = rate_max;
+	codec_dai->capture->rates = rates;
+	codec_dai->capture->rate_min = rate_min;
+	codec_dai->capture->rate_max = rate_max;
 
 	return 0;
 }
@@ -251,7 +253,7 @@ static int cs4270_set_dai_sysclk(struct snd_soc_codec_dai *codec_dai,
  * data for playback only, but ASoC currently does not support different
  * formats for playback vs. record.
  */
-static int cs4270_set_dai_fmt(struct snd_soc_codec_dai *codec_dai,
+static int cs4270_set_dai_fmt(struct snd_soc_dai *codec_dai,
 			      unsigned int format)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
@@ -366,11 +368,10 @@ static int cs4270_i2c_write(struct snd_soc_codec *codec, unsigned int reg,
  * hardware accordingly.
  */
 static int cs4270_hw_params(struct snd_pcm_substream *substream,
-			    struct snd_pcm_hw_params *params)
+			    struct snd_pcm_hw_params *params,
+			    struct snd_soc_dai *dai)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_device *socdev = rtd->socdev;
-	struct snd_soc_codec *codec = socdev->codec;
+	struct snd_soc_codec *codec = dai->codec;
 	struct cs4270_private *cs4270 = codec->private_data;
 	unsigned int ret = 0;
 	unsigned int i;
@@ -471,7 +472,7 @@ static int cs4270_hw_params(struct snd_pcm_substream *substream,
  * board does not have the MUTEA or MUTEB pins connected to such circuitry,
  * then this function will do nothing.
  */
-static int cs4270_mute(struct snd_soc_codec_dai *dai, int mute)
+static int cs4270_mute(struct snd_soc_dai *dai, int mute)
 {
 	struct snd_soc_codec *codec = dai->codec;
 	int reg6;
@@ -667,7 +668,7 @@ error:
 
 #endif /* USE_I2C*/
 
-struct snd_soc_codec_dai cs4270_dai = {
+struct snd_soc_dai cs4270_dai = {
 	.name = "CS4270",
 	.playback = {
 		.stream_name = "Playback",

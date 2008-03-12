@@ -54,8 +54,8 @@ struct snd_soc_dai * snd_soc_card_get_dai(struct snd_soc_card *soc_card,
 
 /* codec initialisation */
 void snd_soc_card_config_codec(struct snd_soc_codec *codec,
-	int (*soc_card_read)(void *, long, int),
-	int (*soc_card_write)(void *, long, int), void *control_data);
+	unsigned int (*soc_phys_read)(void *, int),
+	int (*soc_phys_write)(void *, long, int), void *control_data);
 
 int snd_soc_card_init_codec(struct snd_soc_codec *codec,
 	struct snd_soc_card *soc_card);

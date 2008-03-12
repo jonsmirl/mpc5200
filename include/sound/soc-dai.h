@@ -18,6 +18,8 @@
 
 #include <linux/list.h>
 
+struct snd_pcm_substream;
+
 /*
  * DAI hardware audio formats.
  *

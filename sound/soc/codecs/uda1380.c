@@ -124,7 +124,7 @@ static int uda1380_write(struct snd_soc_codec *codec, unsigned int reg,
 	if (!codec->active && (reg >= UDA1380_MVOL))
 		return 0;
 	dbg("uda hw write %x val %x", reg, value);
-	if (codec->soc_card_write(codec->control_data, (long)data, 3) == 3) {
+	if (codec->soc_phys_write(codec->control_data, (long)data, 3) == 3) {
 #if UDA1380_DEBUG
 		unsigned int val;
 		i2c_master_send(codec->control_data, data, 1);
@@ -660,7 +660,7 @@ static int uda1380_resume(struct platform_device *pdev)
 	for (i = 0; i < ARRAY_SIZE(uda1380_reg); i++) {
 		data[0] = (i << 1) | ((cache[i] >> 8) & 0x0001);
 		data[1] = cache[i] & 0x00ff;
-		codec->soc_card_write(codec->control_data, (long)data, 2);
+		codec->soc_phys_write(codec->control_data, (long)data, 2);
 	}
 	uda1380_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 	uda1380_set_bias_level(codec, codec->suspend_bias_level);

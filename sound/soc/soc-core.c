@@ -1035,11 +1035,10 @@ static int soc_ac97_write(void *control_data, long val, int reg)
 	return 0;
 }
 
-static int soc_ac97_read(void *control_data, long val, int reg)
+static unsigned int soc_ac97_read(void *control_data, int reg)
 {
 	struct snd_ac97 *ac97 = (struct snd_ac97 *)control_data;
-	val = ac97->bus->ops->read(ac97, reg);
-	return 0;
+	return ac97->bus->ops->read(ac97, reg);
 }
 
 /**
@@ -2272,20 +2271,20 @@ EXPORT_SYMBOL_GPL(snd_soc_card_get_ac97_ops);
 /**
  * snd_soc_card_config_codec - initialise codec IO.
  * @codec: codec
- * @soc_card_read: read function called by codec.
- * @soc_card_write: write function called by codec.
+ * @soc_phys_read: read function called by codec.
+ * @soc_phys_write: write function called by codec.
  * @control_data: IO control data - usually I2C, SPI, etc pointer
  *
  * Initialises the codec IO system with the codec IO mechanism. Codec will
  * be able to perform IO after this point.
  */
 void snd_soc_card_config_codec(struct snd_soc_codec *codec,
-	int (*soc_card_read)(void *, long, int),
-	int (*soc_card_write)(void *, long, int), void *control_data)
+	unsigned int (*soc_phys_read)(void *, int),
+	int (*soc_phys_write)(void *, long, int), void *control_data)
 {
 	codec->control_data = control_data;
-	codec->soc_card_read = soc_card_read;
-	codec->soc_card_write = soc_card_write;
+	codec->soc_phys_read = soc_phys_read;
+	codec->soc_phys_write = soc_phys_write;
 }
 EXPORT_SYMBOL_GPL(snd_soc_card_config_codec);
 
