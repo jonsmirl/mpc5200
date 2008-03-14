@@ -693,6 +693,8 @@ int snd_soc_card_suspend_pcms(struct snd_soc_card *soc_card, pm_message_t state)
 		if (stream != NULL)
 			snd_soc_dapm_stream_event(soc_card, stream,
 				SND_SOC_DAPM_STREAM_SUSPEND);
+		if (!codec_dai->capture)
+			continue;
 		stream = codec_dai->capture->stream_name;
 		if (stream != NULL)
 			snd_soc_dapm_stream_event(soc_card, stream,
@@ -721,6 +723,8 @@ int snd_soc_card_resume_pcms(struct snd_soc_card *soc_card)
 		if (stream != NULL)
 			snd_soc_dapm_stream_event(soc_card, stream,
 				SND_SOC_DAPM_STREAM_RESUME);
+		if (!codec_dai->capture)
+			continue;
 		stream = codec_dai->capture->stream_name;
 		if (stream != NULL)
 			snd_soc_dapm_stream_event(soc_card, stream,
