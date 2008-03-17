@@ -487,6 +487,8 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"Mono Mixer", "Aux Playback Switch",     "Aux DAC"},
 	{"Mono Mixer", "Bypass Playback Switch",  "Line Mixer"},
 	{"Mono Mixer", "PCM Playback Switch",     "AC97 Mixer"},
+	{"Mono Mixer", "Mic 1 Sidetone Switch", "Mic A PGA"},
+	{"Mono Mixer", "Mic 2 Sidetone Switch", "Mic B PGA"},
 	{"Mono Mixer", NULL,  "Capture Mono Mux"},
 
 	/* DAC inv mux 1 */
