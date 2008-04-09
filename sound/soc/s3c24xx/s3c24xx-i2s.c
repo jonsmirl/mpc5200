@@ -180,7 +180,7 @@ static void s3c24xx_snd_rxctrl(int on)
 static int s3c24xx_snd_lrsync(void)
 {
 	u32 iiscon;
-	unsigned long timeout = jiffies + msecs_to_jiffies(5);
+	int timeout = 50; /* 5ms */
 
 	DBG("Entered %s\n", __FUNCTION__);
 
@@ -189,8 +189,9 @@ static int s3c24xx_snd_lrsync(void)
 		if (iiscon & S3C2410_IISCON_LRINDEX)
 			break;
 
-		if (time_after(jiffies, timeout))
+		if (!timeout--)
 			return -ETIMEDOUT;
+		udelay(100);
 	}
 
 	return 0;
