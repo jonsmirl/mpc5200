@@ -1856,21 +1856,18 @@ int snd_soc_register_codec(struct snd_soc_codec *codec, struct device *dev)
 EXPORT_SYMBOL_GPL(snd_soc_register_codec);
 
 /**
- * snd_soc_free_codec - unregister and free codec.
+ * snd_soc_unregister_codec - unregister a codec.
  * @codec: codec driver
  *
- * Unregisters a codec driver with the core and frees all its resources.
+ * Unregisters a codec driver with the core.
  */
-void snd_soc_free_codec(struct snd_soc_codec *codec)
+void snd_soc_unregister_codec(struct snd_soc_codec *codec)
 {
 	mutex_lock(&client_mutex);
 	list_del(&codec->list);
 	mutex_unlock(&client_mutex);
-	if (codec->reg_cache)
-		kfree(codec->reg_cache);
-	kfree(codec);
 }
-EXPORT_SYMBOL_GPL(snd_soc_free_codec);
+EXPORT_SYMBOL_GPL(snd_soc_unregister_codec);
 
 /**
  * snd_soc_register_platform_dai - registers a  platform DAI.

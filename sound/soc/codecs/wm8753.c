@@ -1584,7 +1584,9 @@ voice_err:
 codec_err:
 	kfree(codec->private_data);
 err:
-	snd_soc_free_codec(codec);
+	snd_soc_unregister_codec(codec);
+	kfree(codec->reg_cache);
+	kfree(codec);
 	return ret;
 }
 
@@ -1603,7 +1605,9 @@ static int wm8753_codec_remove(struct platform_device *pdev)
 
 	/* free codec */
 	kfree(codec->private_data);
-	snd_soc_free_codec(codec);
+	snd_soc_unregister_codec(codec);
+	kfree(codec->reg_cache);
+	kfree(codec);
 	return 0;
 }
 

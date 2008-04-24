@@ -1436,7 +1436,9 @@ static int wm8350_codec_probe(struct platform_device *pdev)
 codec_err:
 	kfree(wm8350);
 prv_err:
-	snd_soc_free_codec(codec);
+	snd_soc_unregister_codec(codec);
+	kfree(codec->reg_cache);
+	kfree(codec);
 	return ret;
 }
 
@@ -1446,7 +1448,9 @@ static int wm8350_codec_remove(struct platform_device *pdev)
 	struct wm8350_data *wm8350 = codec->private_data;
 	
 	snd_soc_unregister_codec_dai(wm8350->dai);
-	snd_soc_free_codec(codec);
+	snd_soc_unregister_codec(codec);
+	kfree(codec->reg_cache);
+	kfree(codec);
 	kfree(wm8350);
 	return 0;
 }

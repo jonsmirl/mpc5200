@@ -160,7 +160,7 @@ struct snd_soc_codec *snd_soc_new_codec(
 
 int snd_soc_register_codec(struct snd_soc_codec *codec, struct device *dev);
 
-void snd_soc_free_codec(struct snd_soc_codec *codec);
+void snd_soc_unregister_codec(struct snd_soc_codec *codec);
 
 int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
 	struct snd_ac97_bus_ops *ops, struct snd_card *card,

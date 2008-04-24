@@ -898,7 +898,9 @@ static int wm8750_codec_probe(struct platform_device *pdev)
 codec_err:
 	kfree(wm8750);
 wm8750_err:
-	snd_soc_free_codec(codec);
+	snd_soc_unregister_codec(codec);
+	kfree(codec->reg_cache);
+	kfree(codec);
 	return ret;
 }
 
@@ -909,7 +911,9 @@ static int wm8750_codec_remove(struct platform_device *pdev)
 	
 	snd_soc_unregister_codec_dai(wm8750->dai);
 	kfree(wm8750);
-	snd_soc_free_codec(codec);
+	snd_soc_unregister_codec(codec);
+	kfree(codec->reg_cache);
+	kfree(codec);
 	return 0;
 }
 static struct platform_driver wm8750_codec_driver = {

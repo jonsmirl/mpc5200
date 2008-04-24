@@ -715,7 +715,9 @@ aux_dai_err:
 codec_err:
 	kfree(wm9712);
 priv_err:
-	snd_soc_free_codec(codec);
+	snd_soc_unregister_codec(codec);
+	kfree(codec->reg_cache);
+	kfree(codec);
 	return ret;
 }
 
@@ -728,7 +730,9 @@ static int wm9712_codec_remove(struct platform_device *pdev)
 	snd_soc_unregister_codec_dai(wm9712->aux_dai);
 
 	kfree(codec->private_data);
-	snd_soc_free_codec(codec);
+	snd_soc_unregister_codec(codec);
+	kfree(codec->reg_cache);
+	kfree(codec);
 	return 0;
 }
 
