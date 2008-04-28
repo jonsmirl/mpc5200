@@ -85,7 +85,7 @@ config SND_SOC_WM9713
 # Cirrus Logic CS4270 Codec
 config SND_SOC_CS4270
 	tristate
-	depends on SND_SOC
+	depends on SND_SOC && I2C
 
 # Cirrus Logic CS4270 Codec Hardware Mute Support
 # Select if you have external muting circuitry attached to your CS4270.
