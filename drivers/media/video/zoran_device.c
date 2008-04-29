@@ -60,7 +60,8 @@
 
 extern const struct zoran_format zoran_formats[];
 
-static int lml33dpath = 0;	/* 1 will use digital path in capture
+static int lml33dpath;		/* default = 0
+				 * 1 will use digital path in capture
 				 * mode instead of analog. It can be
 				 * used for picture adjustments using
 				 * tool like xawtv while watching image
@@ -250,7 +251,7 @@ void
 jpeg_codec_sleep (struct zoran *zr,
 		  int           sleep)
 {
-	GPIO(zr, zr->card.gpio[GPIO_JPEG_SLEEP], !sleep);
+	GPIO(zr, zr->card.gpio[ZR_GPIO_JPEG_SLEEP], !sleep);
 	if (!sleep) {
 		dprintk(3,
 			KERN_DEBUG
@@ -277,9 +278,9 @@ jpeg_codec_reset (struct zoran *zr)
 				  0);
 		udelay(2);
 	} else {
-		GPIO(zr, zr->card.gpio[GPIO_JPEG_RESET], 0);
+		GPIO(zr, zr->card.gpio[ZR_GPIO_JPEG_RESET], 0);
 		udelay(2);
-		GPIO(zr, zr->card.gpio[GPIO_JPEG_RESET], 1);
+		GPIO(zr, zr->card.gpio[ZR_GPIO_JPEG_RESET], 1);
 		udelay(2);
 	}
 
@@ -688,7 +689,7 @@ static inline void
 set_frame (struct zoran *zr,
 	   int           val)
 {
-	GPIO(zr, zr->card.gpio[GPIO_JPEG_FRAME], val);
+	GPIO(zr, zr->card.gpio[ZR_GPIO_JPEG_FRAME], val);
 }
 
 static void
@@ -704,8 +705,8 @@ set_videobus_dir (struct zoran *zr,
 			GPIO(zr, 5, 1);
 		break;
 	default:
-		GPIO(zr, zr->card.gpio[GPIO_VID_DIR],
-		     zr->card.gpio_pol[GPIO_VID_DIR] ? !val : val);
+		GPIO(zr, zr->card.gpio[ZR_GPIO_VID_DIR],
+		     zr->card.gpio_pol[ZR_GPIO_VID_DIR] ? !val : val);
 		break;
 	}
 }
@@ -927,11 +928,6 @@ count_reset_interrupt (struct zoran *zr)
 	return isr;
 }
 
-/* hack */
-extern void zr36016_write (struct videocodec *codec,
-			   u16                reg,
-			   u32                val);
-
 void
 jpeg_start (struct zoran *zr)
 {
@@ -987,7 +983,7 @@ void
 zr36057_enable_jpg (struct zoran          *zr,
 		    enum zoran_codec_mode  mode)
 {
-	static int zero = 0;
+	static int zero;
 	static int one = 1;
 	struct vfe_settings cap;
 	int field_size =
@@ -1726,7 +1722,7 @@ decoder_command (struct zoran *zr,
 		return -EIO;
 
 	if (zr->card.type == LML33 &&
-	    (cmd == DECODER_SET_NORM || DECODER_SET_INPUT)) {
+	    (cmd == DECODER_SET_NORM || cmd == DECODER_SET_INPUT)) {
 		int res;
 
 		// Bt819 needs to reset its FIFO buffer using #FRST pin and

@@ -201,7 +201,7 @@ found:
 
 static void simple_callback (struct urb *urb)
 {
-	complete ((struct completion *) urb->context);
+	complete(urb->context);
 }
 
 static struct urb *simple_alloc_urb (
@@ -378,6 +378,7 @@ alloc_sglist (int nents, int max, int vary)
 	sg = kmalloc (nents * sizeof *sg, GFP_KERNEL);
 	if (!sg)
 		return NULL;
+	sg_init_table(sg, nents);
 
 	for (i = 0; i < nents; i++) {
 		char		*buf;
@@ -390,7 +391,7 @@ alloc_sglist (int nents, int max, int vary)
 		}
 
 		/* kmalloc pages are always physically contiguous! */
-		sg_init_one(&sg[i], buf, size);
+		sg_set_buf(&sg[i], buf, size);
 
 		switch (pattern) {
 		case 0:
@@ -1045,7 +1046,7 @@ static void unlink1_callback (struct urb *urb)
 		status = usb_submit_urb (urb, GFP_ATOMIC);
 	if (status) {
 		urb->status = status;
-		complete ((struct completion *) urb->context);
+		complete(urb->context);
 	}
 }
 
@@ -1135,7 +1136,7 @@ static int verify_not_halted (int ep, struct urb *urb)
 		dbg ("ep %02x bogus status: %04x != 0", ep, status);
 		return -EINVAL;
 	}
-	retval = simple_io (urb, 1, 0, 0, __FUNCTION__);
+	retval = simple_io (urb, 1, 0, 0, __func__);
 	if (retval != 0)
 		return -EINVAL;
 	return 0;
@@ -1157,7 +1158,7 @@ static int verify_halted (int ep, struct urb *urb)
 		dbg ("ep %02x bogus status: %04x != 1", ep, status);
 		return -EINVAL;
 	}
-	retval = simple_io (urb, 1, 0, -EPIPE, __FUNCTION__);
+	retval = simple_io (urb, 1, 0, -EPIPE, __func__);
 	if (retval != -EPIPE)
 		return -EINVAL;
 	retval = simple_io (urb, 1, 0, -EPIPE, "verify_still_halted");
@@ -1403,7 +1404,7 @@ static struct urb *iso_alloc_urb (
 		return NULL;
 	maxp = 0x7ff & le16_to_cpu(desc->wMaxPacketSize);
 	maxp *= 1 + (0x3 & (le16_to_cpu(desc->wMaxPacketSize) >> 11));
-	packets = (bytes + maxp - 1) / maxp;
+	packets = DIV_ROUND_UP(bytes, maxp);
 
 	urb = usb_alloc_urb (packets, GFP_KERNEL);
 	if (!urb)
@@ -1563,7 +1564,8 @@ usbtest_ioctl (struct usb_interface *intf, unsigned int code, void *buf)
 	if (mutex_lock_interruptible(&dev->lock))
 		return -ERESTARTSYS;
 
-	if (intf->dev.power.power_state.event != PM_EVENT_ON) {
+	/* FIXME: What if a system sleep starts while a test is running? */
+	if (!intf->is_active) {
 		mutex_unlock(&dev->lock);
 		return -EHOSTUNREACH;
 	}

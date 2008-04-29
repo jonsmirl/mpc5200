@@ -338,8 +338,7 @@ const struct file_operations proc_maps_operations = {
 #define PSS_SHIFT 12
 
 #ifdef CONFIG_PROC_PAGE_MONITOR
-struct mem_size_stats
-{
+struct mem_size_stats {
 	struct vm_area_struct *vma;
 	unsigned long resident;
 	unsigned long shared_clean;
@@ -347,6 +346,7 @@ struct mem_size_stats
 	unsigned long private_clean;
 	unsigned long private_dirty;
 	unsigned long referenced;
+	unsigned long swap;
 	u64 pss;
 };
 
@@ -363,6 +363,12 @@ static int smaps_pte_range(pmd_t *pmd, unsigned long addr, unsigned long end,
 	pte = pte_offset_map_lock(vma->vm_mm, pmd, addr, &ptl);
 	for (; addr != end; pte++, addr += PAGE_SIZE) {
 		ptent = *pte;
+
+		if (is_swap_pte(ptent)) {
+			mss->swap += PAGE_SIZE;
+			continue;
+		}
+
 		if (!pte_present(ptent))
 			continue;
 
@@ -421,7 +427,8 @@ static int show_smap(struct seq_file *m, void *v)
 		   "Shared_Dirty:   %8lu kB\n"
 		   "Private_Clean:  %8lu kB\n"
 		   "Private_Dirty:  %8lu kB\n"
-		   "Referenced:     %8lu kB\n",
+		   "Referenced:     %8lu kB\n"
+		   "Swap:           %8lu kB\n",
 		   (vma->vm_end - vma->vm_start) >> 10,
 		   mss.resident >> 10,
 		   (unsigned long)(mss.pss >> (10 + PSS_SHIFT)),
@@ -429,7 +436,8 @@ static int show_smap(struct seq_file *m, void *v)
 		   mss.shared_dirty  >> 10,
 		   mss.private_clean >> 10,
 		   mss.private_dirty >> 10,
-		   mss.referenced >> 10);
+		   mss.referenced >> 10,
+		   mss.swap >> 10);
 
 	return ret;
 }
@@ -527,13 +535,21 @@ struct pagemapread {
 	char __user *out, *end;
 };
 
-#define PM_ENTRY_BYTES sizeof(u64)
-#define PM_RESERVED_BITS    3
-#define PM_RESERVED_OFFSET  (64 - PM_RESERVED_BITS)
-#define PM_RESERVED_MASK    (((1LL<<PM_RESERVED_BITS)-1) << PM_RESERVED_OFFSET)
-#define PM_SPECIAL(nr)      (((nr) << PM_RESERVED_OFFSET) | PM_RESERVED_MASK)
-#define PM_NOT_PRESENT      PM_SPECIAL(1LL)
-#define PM_SWAP             PM_SPECIAL(2LL)
+#define PM_ENTRY_BYTES      sizeof(u64)
+#define PM_STATUS_BITS      3
+#define PM_STATUS_OFFSET    (64 - PM_STATUS_BITS)
+#define PM_STATUS_MASK      (((1LL << PM_STATUS_BITS) - 1) << PM_STATUS_OFFSET)
+#define PM_STATUS(nr)       (((nr) << PM_STATUS_OFFSET) & PM_STATUS_MASK)
+#define PM_PSHIFT_BITS      6
+#define PM_PSHIFT_OFFSET    (PM_STATUS_OFFSET - PM_PSHIFT_BITS)
+#define PM_PSHIFT_MASK      (((1LL << PM_PSHIFT_BITS) - 1) << PM_PSHIFT_OFFSET)
+#define PM_PSHIFT(x)        (((u64) (x) << PM_PSHIFT_OFFSET) & PM_PSHIFT_MASK)
+#define PM_PFRAME_MASK      ((1LL << PM_PSHIFT_OFFSET) - 1)
+#define PM_PFRAME(x)        ((x) & PM_PFRAME_MASK)
+
+#define PM_PRESENT          PM_STATUS(4LL)
+#define PM_SWAP             PM_STATUS(2LL)
+#define PM_NOT_PRESENT      PM_PSHIFT(PAGE_SHIFT)
 #define PM_END_OF_BUFFER    1
 
 static int add_to_pagemap(unsigned long addr, u64 pfn,
@@ -571,10 +587,10 @@ static int pagemap_pte_hole(unsigned long start, unsigned long end,
 	return err;
 }
 
-u64 swap_pte_to_pagemap_entry(pte_t pte)
+static u64 swap_pte_to_pagemap_entry(pte_t pte)
 {
 	swp_entry_t e = pte_to_swp_entry(pte);
-	return PM_SWAP | swp_type(e) | (swp_offset(e) << MAX_SWAPFILES_SHIFT);
+	return swp_type(e) | (swp_offset(e) << MAX_SWAPFILES_SHIFT);
 }
 
 static int pagemap_pte_range(pmd_t *pmd, unsigned long addr, unsigned long end,
@@ -588,9 +604,11 @@ static int pagemap_pte_range(pmd_t *pmd, unsigned long addr, unsigned long end,
 		u64 pfn = PM_NOT_PRESENT;
 		pte = pte_offset_map(pmd, addr);
 		if (is_swap_pte(*pte))
-			pfn = swap_pte_to_pagemap_entry(*pte);
+			pfn = PM_PFRAME(swap_pte_to_pagemap_entry(*pte))
+				| PM_PSHIFT(PAGE_SHIFT) | PM_SWAP;
 		else if (pte_present(*pte))
-			pfn = pte_pfn(*pte);
+			pfn = PM_PFRAME(pte_pfn(*pte))
+				| PM_PSHIFT(PAGE_SHIFT) | PM_PRESENT;
 		/* unmap so we're not in atomic when we copy to userspace */
 		pte_unmap(pte);
 		err = add_to_pagemap(addr, pfn, pm);
@@ -611,12 +629,20 @@ static struct mm_walk pagemap_walk = {
 /*
  * /proc/pid/pagemap - an array mapping virtual pages to pfns
  *
- * For each page in the address space, this file contains one 64-bit
- * entry representing the corresponding physical page frame number
- * (PFN) if the page is present. If there is a swap entry for the
- * physical page, then an encoding of the swap file number and the
- * page's offset into the swap file are returned. If no page is
- * present at all, PM_NOT_PRESENT is returned. This allows determining
+ * For each page in the address space, this file contains one 64-bit entry
+ * consisting of the following:
+ *
+ * Bits 0-55  page frame number (PFN) if present
+ * Bits 0-4   swap type if swapped
+ * Bits 5-55  swap offset if swapped
+ * Bits 55-60 page shift (page size = 1<<page shift)
+ * Bit  61    reserved for future use
+ * Bit  62    page swapped
+ * Bit  63    page present
+ *
+ * If the page is not present but in swap, then the PFN contains an
+ * encoding of the swap file number and the page's offset into the
+ * swap. Unmapped pages return a null PFN. This allows determining
  * precisely which pages are mapped (or in swap) and comparing mapped
  * pages between processes.
  *
@@ -640,17 +666,17 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
 
 	ret = -EACCES;
 	if (!ptrace_may_attach(task))
-		goto out;
+		goto out_task;
 
 	ret = -EINVAL;
 	/* file position must be aligned */
 	if (*ppos % PM_ENTRY_BYTES)
-		goto out;
+		goto out_task;
 
 	ret = 0;
 	mm = get_task_mm(task);
 	if (!mm)
-		goto out;
+		goto out_task;
 
 	ret = -ENOMEM;
 	uaddr = (unsigned long)buf & PAGE_MASK;
@@ -658,7 +684,7 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
 	pagecount = (PAGE_ALIGN(uend) - uaddr) / PAGE_SIZE;
 	pages = kmalloc(pagecount * sizeof(struct page *), GFP_KERNEL);
 	if (!pages)
-		goto out_task;
+		goto out_mm;
 
 	down_read(&current->mm->mmap_sem);
 	ret = get_user_pages(current, current->mm, uaddr, pagecount,
@@ -667,6 +693,12 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
 
 	if (ret < 0)
 		goto out_free;
+
+	if (ret != pagecount) {
+		pagecount = ret;
+		ret = -EFAULT;
+		goto out_pages;
+	}
 
 	pm.out = buf;
 	pm.end = buf + count;
@@ -699,15 +731,17 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
 			ret = pm.out - buf;
 	}
 
+out_pages:
 	for (; pagecount; pagecount--) {
 		page = pages[pagecount-1];
 		if (!PageReserved(page))
 			SetPageDirty(page);
 		page_cache_release(page);
 	}
-	mmput(mm);
 out_free:
 	kfree(pages);
+out_mm:
+	mmput(mm);
 out_task:
 	put_task_struct(task);
 out:

@@ -152,7 +152,7 @@ _GLOBAL(low_choose_750fx_pll)
 	mtspr	SPRN_HID1,r4
 
 	/* Store new HID1 image */
-	rlwinm	r6,r1,0,0,18
+	rlwinm	r6,r1,0,0,(31-THREAD_SHIFT)
 	lwz	r6,TI_CPU(r6)
 	slwi	r6,r6,2
 	addis	r6,r6,nap_save_hid1@ha
@@ -281,7 +281,7 @@ _GLOBAL(_tlbia)
 #endif /* CONFIG_SMP */
 #else /* !(CONFIG_40x || CONFIG_44x || CONFIG_FSL_BOOKE) */
 #if defined(CONFIG_SMP)
-	rlwinm	r8,r1,0,0,18
+	rlwinm	r8,r1,0,0,(31-THREAD_SHIFT)
 	lwz	r8,TI_CPU(r8)
 	oris	r8,r8,10
 	mfmsr	r10
@@ -377,7 +377,7 @@ _GLOBAL(_tlbie)
 #endif /* CONFIG_SMP */
 #else /* !(CONFIG_40x || CONFIG_44x || CONFIG_FSL_BOOKE) */
 #if defined(CONFIG_SMP)
-	rlwinm	r8,r1,0,0,18
+	rlwinm	r8,r1,0,0,(31-THREAD_SHIFT)
 	lwz	r8,TI_CPU(r8)
 	oris	r8,r8,11
 	mfmsr	r10
@@ -783,6 +783,21 @@ _GLOBAL(__lshrdi3)
 	or	r4,r4,r6	# LSW |= t1
 	srw	r3,r3,r5	# MSW = MSW >> count
 	or	r4,r4,r7	# LSW |= t2
+	blr
+
+/*
+ * 64-bit comparison: __ucmpdi2(u64 a, u64 b)
+ * Returns 0 if a < b, 1 if a == b, 2 if a > b.
+ */
+_GLOBAL(__ucmpdi2)
+	cmplw	r3,r5
+	li	r3,1
+	bne	1f
+	cmplw	r4,r6
+	beqlr
+1:	li	r3,0
+	bltlr
+	li	r3,2
 	blr
 
 _GLOBAL(abs)

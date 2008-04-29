@@ -67,7 +67,7 @@ static int __init blackfin_dma_init(void)
 
 	for (i = 0; i < MAX_BLACKFIN_DMA_CHANNEL; i++) {
 		dma_ch[i].chan_status = DMA_CHANNEL_FREE;
-		dma_ch[i].regs = base_addr[i];
+		dma_ch[i].regs = dma_io_base_addr[i];
 		mutex_init(&(dma_ch[i].dmalock));
 	}
 	/* Mark MEMDMA Channel 0 as requested since we're using it internally */
@@ -105,13 +105,17 @@ int request_dma(unsigned int channel, char *device_id)
 	mutex_unlock(&(dma_ch[channel].dmalock));
 
 #ifdef CONFIG_BF54x
-	if (channel >= CH_UART2_RX && channel <= CH_UART3_TX &&
-		strncmp(device_id, "BFIN_UART", 9) == 0)
-		dma_ch[channel].regs->peripheral_map |=
-			(channel - CH_UART2_RX + 0xC);
-	else
-		dma_ch[channel].regs->peripheral_map |=
-			(channel - CH_UART2_RX + 0x6);
+	if (channel >= CH_UART2_RX && channel <= CH_UART3_TX) {
+		if (strncmp(device_id, "BFIN_UART", 9) == 0) {
+			dma_ch[channel].regs->peripheral_map &= 0x0FFF;
+			dma_ch[channel].regs->peripheral_map |=
+				((channel - CH_UART2_RX + 0xC)<<12);
+		} else {
+			dma_ch[channel].regs->peripheral_map &= 0x0FFF;
+			dma_ch[channel].regs->peripheral_map |=
+				((channel - CH_UART2_RX + 0x6)<<12);
+		}
+	}
 #endif
 
 	dma_ch[channel].device_id = device_id;

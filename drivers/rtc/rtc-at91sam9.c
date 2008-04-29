@@ -274,7 +274,7 @@ static irqreturn_t at91_rtc_interrupt(int irq, void *_rtc)
 	 * SR clears it, so we must only read it in this irq handler!
 	 */
 	mr = rtt_readl(rtc, MR) & (AT91_RTT_ALMIEN | AT91_RTT_RTTINCIEN);
-	sr = rtt_readl(rtc, SR) & mr;
+	sr = rtt_readl(rtc, SR) & (mr >> 16);
 	if (!sr)
 		return IRQ_NONE;
 
@@ -288,7 +288,7 @@ static irqreturn_t at91_rtc_interrupt(int irq, void *_rtc)
 
 	rtc_update_irq(rtc->rtcdev, 1, events);
 
-	pr_debug("%s: num=%ld, events=0x%02lx\n", __FUNCTION__,
+	pr_debug("%s: num=%ld, events=0x%02lx\n", __func__,
 		events >> 8, events & 0x000000FF);
 
 	return IRQ_HANDLED;
@@ -320,6 +320,10 @@ static int __init at91_rtc_probe(struct platform_device *pdev)
 	rtc = kzalloc(sizeof *rtc, GFP_KERNEL);
 	if (!rtc)
 		return -ENOMEM;
+
+	/* platform setup code should have handled this; sigh */
+	if (!device_can_wakeup(&pdev->dev))
+		device_init_wakeup(&pdev->dev, 1);
 
 	platform_set_drvdata(pdev, rtc);
 	rtc->rtt = (void __force __iomem *) (AT91_VA_BASE_SYS - AT91_BASE_SYS);

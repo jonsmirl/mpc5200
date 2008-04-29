@@ -558,6 +558,7 @@ static int r128_do_init_cce(struct drm_device * dev, drm_r128_init_t * init)
 #if __OS_HAS_AGP
 	if (dev_priv->is_pci) {
 #endif
+		dev_priv->gart_info.table_mask = DMA_BIT_MASK(32);
 		dev_priv->gart_info.gart_table_location = DRM_ATI_GART_MAIN;
 		dev_priv->gart_info.table_size = R128_PCIGART_TABLE_SIZE;
 		dev_priv->gart_info.addr = NULL;
@@ -816,7 +817,7 @@ static struct drm_buf *r128_freelist_get(struct drm_device * dev)
 	for (i = 0; i < dma->buf_count; i++) {
 		buf = dma->buflist[i];
 		buf_priv = buf->dev_private;
-		if (buf->file_priv == 0)
+		if (!buf->file_priv)
 			return buf;
 	}
 

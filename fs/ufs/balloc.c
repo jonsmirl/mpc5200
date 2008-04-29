@@ -277,7 +277,7 @@ static void ufs_change_blocknr(struct inode *inode, sector_t beg,
 			if (!page)/* it was truncated */
 				continue;
 			if (IS_ERR(page)) {/* or EIO */
-				ufs_error(inode->i_sb, __FUNCTION__,
+				ufs_error(inode->i_sb, __func__,
 					  "read of page %llu failed\n",
 					  (unsigned long long)index);
 				continue;
@@ -308,15 +308,15 @@ static void ufs_change_blocknr(struct inode *inode, sector_t beg,
 				ll_rw_block(READ, 1, &bh);
 				wait_on_buffer(bh);
 				if (!buffer_uptodate(bh)) {
-					ufs_error(inode->i_sb, __FUNCTION__,
+					ufs_error(inode->i_sb, __func__,
 						  "read of block failed\n");
 					break;
 				}
 			}
 
 			UFSD(" change from %llu to %llu, pos %u\n",
-			     (unsigned long long)pos + oldb,
-			     (unsigned long long)pos + newb, pos);
+			     (unsigned long long)(pos + oldb),
+			     (unsigned long long)(pos + newb), pos);
 
 			bh->b_blocknr = newb + pos;
 			unmap_underlying_metadata(bh->b_bdev,

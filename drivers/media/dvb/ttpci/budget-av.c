@@ -178,7 +178,7 @@ static int ciintf_read_cam_control(struct dvb_ca_en50221 *ca, int slot, u8 addre
 	udelay(1);
 
 	result = ttpci_budget_debiread(&budget_av->budget, DEBICICAM, address & 3, 1, 0, 0);
-	if ((result == -ETIMEDOUT) || ((result == 0xff) && ((address & 3) < 2))) {
+	if (result == -ETIMEDOUT) {
 		ciintf_slot_shutdown(ca, slot);
 		printk(KERN_INFO "budget-av: cam ejected 3\n");
 		return -ETIMEDOUT;
@@ -577,7 +577,7 @@ static struct stv0299_config typhoon_config = {
 	.mclk = 88000000UL,
 	.invert = 0,
 	.skip_reinit = 0,
-	.lock_output = STV0229_LOCKOUTPUT_1,
+	.lock_output = STV0299_LOCKOUTPUT_1,
 	.volt13_op0_op1 = STV0299_VOLT13_OP0,
 	.min_delay_ms = 100,
 	.set_symbol_rate = philips_su1278_ty_ci_set_symbol_rate,
@@ -590,7 +590,7 @@ static struct stv0299_config cinergy_1200s_config = {
 	.mclk = 88000000UL,
 	.invert = 0,
 	.skip_reinit = 0,
-	.lock_output = STV0229_LOCKOUTPUT_0,
+	.lock_output = STV0299_LOCKOUTPUT_0,
 	.volt13_op0_op1 = STV0299_VOLT13_OP0,
 	.min_delay_ms = 100,
 	.set_symbol_rate = philips_su1278_ty_ci_set_symbol_rate,
@@ -602,7 +602,7 @@ static struct stv0299_config cinergy_1200s_1894_0010_config = {
 	.mclk = 88000000UL,
 	.invert = 1,
 	.skip_reinit = 0,
-	.lock_output = STV0229_LOCKOUTPUT_1,
+	.lock_output = STV0299_LOCKOUTPUT_1,
 	.volt13_op0_op1 = STV0299_VOLT13_OP0,
 	.min_delay_ms = 100,
 	.set_symbol_rate = philips_su1278_ty_ci_set_symbol_rate,
@@ -869,7 +869,7 @@ static struct stv0299_config philips_sd1878_config = {
 	.mclk = 88000000UL,
 	.invert = 0,
 	.skip_reinit = 0,
-	.lock_output = STV0229_LOCKOUTPUT_1,
+	.lock_output = STV0299_LOCKOUTPUT_1,
 	.volt13_op0_op1 = STV0299_VOLT13_OP0,
 	.min_delay_ms = 100,
 	.set_symbol_rate = philips_sd1878_ci_set_symbol_rate,
@@ -896,6 +896,7 @@ static u8 read_pwm(struct budget_av *budget_av)
 #define SUBID_DVBS_CINERGY1200		0x1154
 #define SUBID_DVBS_CYNERGY1200N 	0x1155
 #define SUBID_DVBS_TV_STAR		0x0014
+#define SUBID_DVBS_TV_STAR_PLUS_X4	0x0015
 #define SUBID_DVBS_TV_STAR_CI		0x0016
 #define SUBID_DVBS_EASYWATCH_1  	0x001a
 #define SUBID_DVBS_EASYWATCH_2  	0x001b
@@ -910,6 +911,7 @@ static u8 read_pwm(struct budget_av *budget_av)
 #define SUBID_DVBC_CINERGY1200		0x1156
 #define SUBID_DVBC_CINERGY1200_MK3	0x1176
 
+#define SUBID_DVBT_EASYWATCH		0x003a
 #define SUBID_DVBT_KNC1_PLUS		0x0031
 #define SUBID_DVBT_KNC1			0x0030
 #define SUBID_DVBT_CINERGY1200		0x1157
@@ -939,6 +941,12 @@ static void frontend_init(struct budget_av *budget_av)
 	switch (saa->pci->subsystem_device) {
 
 	case SUBID_DVBS_KNC1:
+		/*
+		 * maybe that setting is needed for other dvb-s cards as well,
+		 * but so far it has been only confirmed for this type
+		 */
+		budget_av->reinitialise_demod = 1;
+		/* fall through */
 	case SUBID_DVBS_KNC1_PLUS:
 	case SUBID_DVBS_EASYWATCH_1:
 		if (saa->pci->subsystem_vendor == 0x1894) {
@@ -957,6 +965,7 @@ static void frontend_init(struct budget_av *budget_av)
 		break;
 
 	case SUBID_DVBS_TV_STAR:
+	case SUBID_DVBS_TV_STAR_PLUS_X4:
 	case SUBID_DVBS_TV_STAR_CI:
 	case SUBID_DVBS_CYNERGY1200N:
 	case SUBID_DVBS_EASYWATCH:
@@ -1018,6 +1027,7 @@ static void frontend_init(struct budget_av *budget_av)
 		}
 		break;
 
+	case SUBID_DVBT_EASYWATCH:
 	case SUBID_DVBT_KNC1:
 	case SUBID_DVBT_KNC1_PLUS:
 	case SUBID_DVBT_CINERGY1200:
@@ -1248,7 +1258,9 @@ MAKE_BUDGET_INFO(satewpls1, "Satelco EasyWatch DVB-S light", BUDGET_KNC1S);
 MAKE_BUDGET_INFO(satewps, "Satelco EasyWatch DVB-S", BUDGET_KNC1S);
 MAKE_BUDGET_INFO(satewplc, "Satelco EasyWatch DVB-C", BUDGET_KNC1CP);
 MAKE_BUDGET_INFO(satewcmk3, "Satelco EasyWatch DVB-C MK3", BUDGET_KNC1C_MK3);
+MAKE_BUDGET_INFO(satewt, "Satelco EasyWatch DVB-T", BUDGET_KNC1T);
 MAKE_BUDGET_INFO(knc1sp, "KNC1 DVB-S Plus", BUDGET_KNC1SP);
+MAKE_BUDGET_INFO(knc1spx4, "KNC1 DVB-S Plus X4", BUDGET_KNC1SP);
 MAKE_BUDGET_INFO(knc1cp, "KNC1 DVB-C Plus", BUDGET_KNC1CP);
 MAKE_BUDGET_INFO(knc1cmk3, "KNC1 DVB-C MK3", BUDGET_KNC1C_MK3);
 MAKE_BUDGET_INFO(knc1cpmk3, "KNC1 DVB-C Plus MK3", BUDGET_KNC1CP_MK3);
@@ -1266,12 +1278,14 @@ static struct pci_device_id pci_tbl[] = {
 	MAKE_EXTENSION_PCI(knc1sp, 0x1131, 0x0011),
 	MAKE_EXTENSION_PCI(knc1sp, 0x1894, 0x0011),
 	MAKE_EXTENSION_PCI(kncxs, 0x1894, 0x0014),
+	MAKE_EXTENSION_PCI(knc1spx4, 0x1894, 0x0015),
 	MAKE_EXTENSION_PCI(kncxs, 0x1894, 0x0016),
 	MAKE_EXTENSION_PCI(satewpls, 0x1894, 0x001e),
 	MAKE_EXTENSION_PCI(satewpls1, 0x1894, 0x001a),
 	MAKE_EXTENSION_PCI(satewps, 0x1894, 0x001b),
 	MAKE_EXTENSION_PCI(satewplc, 0x1894, 0x002a),
 	MAKE_EXTENSION_PCI(satewcmk3, 0x1894, 0x002c),
+	MAKE_EXTENSION_PCI(satewt, 0x1894, 0x003a),
 	MAKE_EXTENSION_PCI(knc1c, 0x1894, 0x0020),
 	MAKE_EXTENSION_PCI(knc1cp, 0x1894, 0x0021),
 	MAKE_EXTENSION_PCI(knc1cmk3, 0x1894, 0x0022),

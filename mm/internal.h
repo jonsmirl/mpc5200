@@ -34,8 +34,7 @@ static inline void __put_page(struct page *page)
 	atomic_dec(&page->_count);
 }
 
-extern void __init __free_pages_bootmem(struct page *page,
-						unsigned int order);
+extern void __free_pages_bootmem(struct page *page, unsigned int order);
 
 /*
  * function for dealing with page's order in buddy system.
@@ -47,4 +46,17 @@ static inline unsigned long page_order(struct page *page)
 	VM_BUG_ON(!PageBuddy(page));
 	return page_private(page);
 }
+
+/*
+ * FLATMEM and DISCONTIGMEM configurations use alloc_bootmem_node,
+ * so all functions starting at paging_init should be marked __init
+ * in those cases. SPARSEMEM, however, allows for memory hotplug,
+ * and alloc_bootmem_node is not used.
+ */
+#ifdef CONFIG_SPARSEMEM
+#define __paginginit __meminit
+#else
+#define __paginginit __init
+#endif
+
 #endif

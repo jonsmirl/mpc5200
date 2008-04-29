@@ -169,6 +169,7 @@ static inline void check_wait(void)
 
 	case CPU_24K:
 	case CPU_34K:
+	case CPU_1004K:
 		cpu_wait = r4k_wait;
 		if (read_c0_config7() & MIPS_CONF7_WII)
 			cpu_wait = r4k_wait_irqoff;
@@ -550,7 +551,7 @@ static inline void cpu_probe_legacy(struct cpuinfo_mips *c)
 	}
 }
 
-static char unknown_isa[] __initdata = KERN_ERR \
+static char unknown_isa[] __cpuinitdata = KERN_ERR \
 	"Unsupported ISA type, c0.config0: %d.";
 
 static inline unsigned int decode_config0(struct cpuinfo_mips *c)
@@ -656,7 +657,7 @@ static inline unsigned int decode_config3(struct cpuinfo_mips *c)
 	return config3 & MIPS_CONF_M;
 }
 
-static void __init decode_configs(struct cpuinfo_mips *c)
+static void __cpuinit decode_configs(struct cpuinfo_mips *c)
 {
 	/* MIPS32 or MIPS64 compliant CPU.  */
 	c->options = MIPS_CPU_4KEX | MIPS_CPU_4K_CACHE | MIPS_CPU_COUNTER |
@@ -674,6 +675,12 @@ static void __init decode_configs(struct cpuinfo_mips *c)
 	if (!decode_config3(c))
 		return;
 }
+
+#ifdef CONFIG_CPU_MIPSR2
+extern void spram_config(void);
+#else
+static inline void spram_config(void) {}
+#endif
 
 static inline void cpu_probe_mips(struct cpuinfo_mips *c)
 {
@@ -711,7 +718,12 @@ static inline void cpu_probe_mips(struct cpuinfo_mips *c)
 	case PRID_IMP_74K:
 		c->cputype = CPU_74K;
 		break;
+	case PRID_IMP_1004K:
+		c->cputype = CPU_1004K;
+		break;
 	}
+
+	spram_config();
 }
 
 static inline void cpu_probe_alchemy(struct cpuinfo_mips *c)
@@ -778,7 +790,7 @@ static inline void cpu_probe_sandcraft(struct cpuinfo_mips *c)
 	}
 }
 
-static inline void cpu_probe_philips(struct cpuinfo_mips *c)
+static inline void cpu_probe_nxp(struct cpuinfo_mips *c)
 {
 	decode_configs(c);
 	switch (c->processor_id & 0xff00) {
@@ -787,7 +799,7 @@ static inline void cpu_probe_philips(struct cpuinfo_mips *c)
 		c->isa_level = MIPS_CPU_ISA_M32R1;
 		break;
 	default:
-		panic("Unknown Philips Core!"); /* REVISIT: die? */
+		panic("Unknown NXP Core!"); /* REVISIT: die? */
 		break;
 	}
 }
@@ -814,7 +826,7 @@ const char *__cpu_name[NR_CPUS];
 /*
  * Name a CPU
  */
-static __init const char *cpu_to_name(struct cpuinfo_mips *c)
+static __cpuinit const char *cpu_to_name(struct cpuinfo_mips *c)
 {
 	const char *name = NULL;
 
@@ -876,6 +888,7 @@ static __init const char *cpu_to_name(struct cpuinfo_mips *c)
 	case CPU_24K:		name = "MIPS 24K"; break;
 	case CPU_25KF:		name = "MIPS 25Kf"; break;
 	case CPU_34K:		name = "MIPS 34K"; break;
+	case CPU_1004K:		name = "MIPS 1004K"; break;
 	case CPU_74K:		name = "MIPS 74K"; break;
 	case CPU_VR4111:	name = "NEC VR4111"; break;
 	case CPU_VR4121:	name = "NEC VR4121"; break;
@@ -896,7 +909,7 @@ static __init const char *cpu_to_name(struct cpuinfo_mips *c)
 	return name;
 }
 
-__init void cpu_probe(void)
+__cpuinit void cpu_probe(void)
 {
 	struct cpuinfo_mips *c = &current_cpu_data;
 	unsigned int cpu = smp_processor_id();
@@ -925,8 +938,8 @@ __init void cpu_probe(void)
 	case PRID_COMP_SANDCRAFT:
 		cpu_probe_sandcraft(c);
 		break;
- 	case PRID_COMP_PHILIPS:
-		cpu_probe_philips(c);
+	case PRID_COMP_NXP:
+		cpu_probe_nxp(c);
 		break;
 	default:
 		c->cputype = CPU_UNKNOWN;
@@ -959,7 +972,7 @@ __init void cpu_probe(void)
 		c->srsets = 1;
 }
 
-__init void cpu_report(void)
+__cpuinit void cpu_report(void)
 {
 	struct cpuinfo_mips *c = &current_cpu_data;
 

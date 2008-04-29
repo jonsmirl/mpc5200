@@ -36,6 +36,7 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/flash.h>
 #include <linux/irq.h>
+#include <linux/i2c.h>
 #include <linux/interrupt.h>
 #if defined(CONFIG_USB_MUSB_HDRC) || defined(CONFIG_USB_MUSB_HDRC_MODULE)
 #include <linux/usb/musb.h>
@@ -187,6 +188,46 @@ static struct platform_device bfin_uart_device = {
 };
 #endif
 
+#if defined(CONFIG_BFIN_SIR) || defined(CONFIG_BFIN_SIR_MODULE)
+static struct resource bfin_sir_resources[] = {
+#ifdef CONFIG_BFIN_SIR0
+	{
+		.start = 0xFFC00400,
+		.end = 0xFFC004FF,
+		.flags = IORESOURCE_MEM,
+	},
+#endif
+#ifdef CONFIG_BFIN_SIR1
+	{
+		.start = 0xFFC02000,
+		.end = 0xFFC020FF,
+		.flags = IORESOURCE_MEM,
+	},
+#endif
+#ifdef CONFIG_BFIN_SIR2
+	{
+		.start = 0xFFC02100,
+		.end = 0xFFC021FF,
+		.flags = IORESOURCE_MEM,
+	},
+#endif
+#ifdef CONFIG_BFIN_SIR3
+	{
+		.start = 0xFFC03100,
+		.end = 0xFFC031FF,
+		.flags = IORESOURCE_MEM,
+	},
+#endif
+};
+
+static struct platform_device bfin_sir_device = {
+	.name = "bfin_sir",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(bfin_sir_resources),
+	.resource = bfin_sir_resources,
+};
+#endif
+
 #if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
 static struct resource smsc911x_resources[] = {
 	{
@@ -285,8 +326,8 @@ static struct mtd_partition partition_info[] = {
 	},
 	{
 		.name = "File System",
-		.offset = 4 * SIZE_1M,
-		.size = (256 - 4) * SIZE_1M,
+		.offset = MTDPART_OFS_APPEND,
+		.size = MTDPART_SIZ_FULL,
 	},
 };
 
@@ -323,21 +364,22 @@ static struct platform_device bf5xx_nand_device = {
 };
 #endif
 
-#if defined(CONFIG_SDH_BFIN) || defined(CONFIG_SDH_BFIN)
+#if defined(CONFIG_SDH_BFIN) || defined(CONFIG_SDH_BFIN_MODULE)
 static struct platform_device bf54x_sdh_device = {
 	.name = "bfin-sdh",
 	.id = 0,
 };
 #endif
 
+#if defined(CONFIG_MTD_PHYSMAP) || defined(CONFIG_MTD_PHYSMAP_MODULE)
 static struct mtd_partition ezkit_partitions[] = {
 	{
 		.name       = "Bootloader",
-		.size       = 0x20000,
+		.size       = 0x40000,
 		.offset     = 0,
 	}, {
 		.name       = "Kernel",
-		.size       = 0xE0000,
+		.size       = 0x1C0000,
 		.offset     = MTDPART_OFS_APPEND,
 	}, {
 		.name       = "RootFS",
@@ -367,6 +409,7 @@ static struct platform_device ezkit_flash_device = {
 	.num_resources = 1,
 	.resource      = &ezkit_flash_resource,
 };
+#endif
 
 #if defined(CONFIG_SPI_BFIN) || defined(CONFIG_SPI_BFIN_MODULE)
 /* all SPI peripherals info goes here */
@@ -381,8 +424,8 @@ static struct mtd_partition bfin_spi_flash_partitions[] = {
 		.mask_flags = MTD_CAP_ROM
 	}, {
 		.name = "linux kernel",
-		.size = 0x1c0000,
-		.offset = 0x40000
+		.size = MTDPART_SIZ_FULL,
+		.offset = MTDPART_OFS_APPEND,
 	}
 };
 
@@ -397,6 +440,14 @@ static struct bfin5xx_spi_chip spi_flash_chip_info = {
 	.enable_dma = 0,         /* use dma transfer with this chip*/
 	.bits_per_word = 8,
 	.cs_change_per_word = 0,
+};
+#endif
+
+#if defined(CONFIG_SND_BLACKFIN_AD1836) \
+	|| defined(CONFIG_SND_BLACKFIN_AD1836_MODULE)
+static struct bfin5xx_spi_chip ad1836_spi_chip_info = {
+	.enable_dma = 0,
+	.bits_per_word = 16,
 };
 #endif
 
@@ -441,6 +492,16 @@ static struct spi_board_info bf54x_spi_board_info[] __initdata = {
 		.platform_data = &bfin_spi_flash_data,
 		.controller_data = &spi_flash_chip_info,
 		.mode = SPI_MODE_3,
+	},
+#endif
+#if defined(CONFIG_SND_BLACKFIN_AD1836) \
+	|| defined(CONFIG_SND_BLACKFIN_AD1836_MODULE)
+	{
+		.modalias = "ad1836-spi",
+		.max_speed_hz = 3125000,     /* max spi clock (SCK) speed in HZ */
+		.bus_num = 1,
+		.chip_select = CONFIG_SND_BLACKFIN_SPI_PFBIT,
+		.controller_data = &ad1836_spi_chip_info,
 	},
 #endif
 #if defined(CONFIG_TOUCHSCREEN_AD7877) || defined(CONFIG_TOUCHSCREEN_AD7877_MODULE)
@@ -571,6 +632,29 @@ static struct platform_device i2c_bfin_twi1_device = {
 #endif
 #endif
 
+#ifdef CONFIG_I2C_BOARDINFO
+static struct i2c_board_info __initdata bfin_i2c_board_info0[] = {
+};
+
+#if !defined(CONFIG_BF542)	/* The BF542 only has 1 TWI */
+static struct i2c_board_info __initdata bfin_i2c_board_info1[] = {
+#if defined(CONFIG_TWI_LCD) || defined(CONFIG_TWI_LCD_MODULE)
+	{
+		I2C_BOARD_INFO("pcf8574_lcd", 0x22),
+		.type = "pcf8574_lcd",
+	},
+#endif
+#if defined(CONFIG_TWI_KEYPAD) || defined(CONFIG_TWI_KEYPAD_MODULE)
+	{
+		I2C_BOARD_INFO("pcf8574_keypad", 0x27),
+		.type = "pcf8574_keypad",
+		.irq = 212,
+	},
+#endif
+};
+#endif
+#endif
+
 #if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
 #include <linux/gpio_keys.h>
 
@@ -594,6 +678,19 @@ static struct platform_device bfin_device_gpiokeys = {
 };
 #endif
 
+static struct resource bfin_gpios_resources = {
+	.start = 0,
+	.end   = MAX_BLACKFIN_GPIOS - 1,
+	.flags = IORESOURCE_IRQ,
+};
+
+static struct platform_device bfin_gpios_device = {
+	.name = "simple-gpio",
+	.id = -1,
+	.num_resources = 1,
+	.resource = &bfin_gpios_resources,
+};
+
 static struct platform_device *ezkit_devices[] __initdata = {
 #if defined(CONFIG_RTC_DRV_BFIN) || defined(CONFIG_RTC_DRV_BFIN_MODULE)
 	&rtc_device,
@@ -601,6 +698,10 @@ static struct platform_device *ezkit_devices[] __initdata = {
 
 #if defined(CONFIG_SERIAL_BFIN) || defined(CONFIG_SERIAL_BFIN_MODULE)
 	&bfin_uart_device,
+#endif
+
+#if defined(CONFIG_BFIN_SIR) || defined(CONFIG_BFIN_SIR_MODULE)
+	&bfin_sir_device,
 #endif
 
 #if defined(CONFIG_FB_BF54X_LQ043) || defined(CONFIG_FB_BF54X_LQ043_MODULE)
@@ -623,7 +724,7 @@ static struct platform_device *ezkit_devices[] __initdata = {
 	&bf5xx_nand_device,
 #endif
 
-#if defined(CONFIG_SDH_BFIN) || defined(CONFIG_SDH_BFIN)
+#if defined(CONFIG_SDH_BFIN) || defined(CONFIG_SDH_BFIN_MODULE)
 	&bf54x_sdh_device,
 #endif
 
@@ -646,12 +747,27 @@ static struct platform_device *ezkit_devices[] __initdata = {
 #if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
 	&bfin_device_gpiokeys,
 #endif
+
+	&bfin_gpios_device,
+
+#if defined(CONFIG_MTD_PHYSMAP) || defined(CONFIG_MTD_PHYSMAP_MODULE)
 	&ezkit_flash_device,
+#endif
 };
 
 static int __init ezkit_init(void)
 {
-	printk(KERN_INFO "%s(): registering device resources\n", __FUNCTION__);
+	printk(KERN_INFO "%s(): registering device resources\n", __func__);
+
+#ifdef CONFIG_I2C_BOARDINFO
+	i2c_register_board_info(0, bfin_i2c_board_info0,
+				ARRAY_SIZE(bfin_i2c_board_info0));
+#if !defined(CONFIG_BF542)	/* The BF542 only has 1 TWI */
+	i2c_register_board_info(1, bfin_i2c_board_info1,
+				ARRAY_SIZE(bfin_i2c_board_info1));
+#endif
+#endif
+
 	platform_add_devices(ezkit_devices, ARRAY_SIZE(ezkit_devices));
 
 #if defined(CONFIG_SPI_BFIN) || defined(CONFIG_SPI_BFIN_MODULE)

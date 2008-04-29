@@ -244,9 +244,8 @@ static void shmem_free_inode(struct super_block *sb)
 	}
 }
 
-/*
+/**
  * shmem_recalc_inode - recalculate the size of an inode
- *
  * @inode: inode to recalc
  *
  * We have to calculate the free blocks since the mm can drop
@@ -270,9 +269,8 @@ static void shmem_recalc_inode(struct inode *inode)
 	}
 }
 
-/*
+/**
  * shmem_swp_entry - find the swap vector position in the info structure
- *
  * @info:  info structure for the inode
  * @index: index of the page to find
  * @page:  optional page to add to the structure. Has to be preset to
@@ -374,13 +372,13 @@ static void shmem_swp_set(struct shmem_inode_info *info, swp_entry_t *entry, uns
 	}
 }
 
-/*
+/**
  * shmem_swp_alloc - get the position of the swap entry for the page.
- *                   If it does not exist allocate the entry.
- *
  * @info:	info structure for the inode
  * @index:	index of the page to find
  * @sgp:	check and recheck i_size? skip allocation?
+ *
+ * If the entry does not exist, allocate it.
  */
 static swp_entry_t *shmem_swp_alloc(struct shmem_inode_info *info, unsigned long index, enum sgp_type sgp)
 {
@@ -440,9 +438,8 @@ static swp_entry_t *shmem_swp_alloc(struct shmem_inode_info *info, unsigned long
 	return entry;
 }
 
-/*
+/**
  * shmem_free_swp - free some swap entries in a directory
- *
  * @dir:        pointer to the directory
  * @edir:       pointer after last entry of the directory
  * @punch_lock: pointer to spinlock when needed for the holepunch case
@@ -1082,104 +1079,47 @@ redirty:
 
 #ifdef CONFIG_NUMA
 #ifdef CONFIG_TMPFS
-static int shmem_parse_mpol(char *value, int *policy, nodemask_t *policy_nodes)
+static void shmem_show_mpol(struct seq_file *seq, struct mempolicy *mpol)
 {
-	char *nodelist = strchr(value, ':');
-	int err = 1;
+	char buffer[64];
 
-	if (nodelist) {
-		/* NUL-terminate policy string */
-		*nodelist++ = '\0';
-		if (nodelist_parse(nodelist, *policy_nodes))
-			goto out;
-		if (!nodes_subset(*policy_nodes, node_states[N_HIGH_MEMORY]))
-			goto out;
-	}
-	if (!strcmp(value, "default")) {
-		*policy = MPOL_DEFAULT;
-		/* Don't allow a nodelist */
-		if (!nodelist)
-			err = 0;
-	} else if (!strcmp(value, "prefer")) {
-		*policy = MPOL_PREFERRED;
-		/* Insist on a nodelist of one node only */
-		if (nodelist) {
-			char *rest = nodelist;
-			while (isdigit(*rest))
-				rest++;
-			if (!*rest)
-				err = 0;
-		}
-	} else if (!strcmp(value, "bind")) {
-		*policy = MPOL_BIND;
-		/* Insist on a nodelist */
-		if (nodelist)
-			err = 0;
-	} else if (!strcmp(value, "interleave")) {
-		*policy = MPOL_INTERLEAVE;
-		/*
-		 * Default to online nodes with memory if no nodelist
-		 */
-		if (!nodelist)
-			*policy_nodes = node_states[N_HIGH_MEMORY];
-		err = 0;
-	}
-out:
-	/* Restore string for error message */
-	if (nodelist)
-		*--nodelist = ':';
-	return err;
+	if (!mpol || mpol->mode == MPOL_DEFAULT)
+		return;		/* show nothing */
+
+	mpol_to_str(buffer, sizeof(buffer), mpol, 1);
+
+	seq_printf(seq, ",mpol=%s", buffer);
 }
 
-static void shmem_show_mpol(struct seq_file *seq, int policy,
-			    const nodemask_t policy_nodes)
+static struct mempolicy *shmem_get_sbmpol(struct shmem_sb_info *sbinfo)
 {
-	char *policy_string;
-
-	switch (policy) {
-	case MPOL_PREFERRED:
-		policy_string = "prefer";
-		break;
-	case MPOL_BIND:
-		policy_string = "bind";
-		break;
-	case MPOL_INTERLEAVE:
-		policy_string = "interleave";
-		break;
-	default:
-		/* MPOL_DEFAULT */
-		return;
+	struct mempolicy *mpol = NULL;
+	if (sbinfo->mpol) {
+		spin_lock(&sbinfo->stat_lock);	/* prevent replace/use races */
+		mpol = sbinfo->mpol;
+		mpol_get(mpol);
+		spin_unlock(&sbinfo->stat_lock);
 	}
-
-	seq_printf(seq, ",mpol=%s", policy_string);
-
-	if (policy != MPOL_INTERLEAVE ||
-	    !nodes_equal(policy_nodes, node_states[N_HIGH_MEMORY])) {
-		char buffer[64];
-		int len;
-
-		len = nodelist_scnprintf(buffer, sizeof(buffer), policy_nodes);
-		if (len < sizeof(buffer))
-			seq_printf(seq, ":%s", buffer);
-		else
-			seq_printf(seq, ":?");
-	}
+	return mpol;
 }
 #endif /* CONFIG_TMPFS */
 
 static struct page *shmem_swapin(swp_entry_t entry, gfp_t gfp,
 			struct shmem_inode_info *info, unsigned long idx)
 {
+	struct mempolicy mpol, *spol;
 	struct vm_area_struct pvma;
 	struct page *page;
+
+	spol = mpol_cond_copy(&mpol,
+				mpol_shared_policy_lookup(&info->policy, idx));
 
 	/* Create a pseudo vma that just contains the policy */
 	pvma.vm_start = 0;
 	pvma.vm_pgoff = idx;
 	pvma.vm_ops = NULL;
-	pvma.vm_policy = mpol_shared_policy_lookup(&info->policy, idx);
+	pvma.vm_policy = spol;
 	page = swapin_readahead(entry, gfp, &pvma, 0);
-	mpol_free(pvma.vm_policy);
 	return page;
 }
 
@@ -1187,27 +1127,21 @@ static struct page *shmem_alloc_page(gfp_t gfp,
 			struct shmem_inode_info *info, unsigned long idx)
 {
 	struct vm_area_struct pvma;
-	struct page *page;
 
 	/* Create a pseudo vma that just contains the policy */
 	pvma.vm_start = 0;
 	pvma.vm_pgoff = idx;
 	pvma.vm_ops = NULL;
 	pvma.vm_policy = mpol_shared_policy_lookup(&info->policy, idx);
-	page = alloc_page_vma(gfp, &pvma, 0);
-	mpol_free(pvma.vm_policy);
-	return page;
+
+	/*
+	 * alloc_page_vma() will drop the shared policy reference
+	 */
+	return alloc_page_vma(gfp, &pvma, 0);
 }
 #else /* !CONFIG_NUMA */
 #ifdef CONFIG_TMPFS
-static inline int shmem_parse_mpol(char *value, int *policy,
-						nodemask_t *policy_nodes)
-{
-	return 1;
-}
-
-static inline void shmem_show_mpol(struct seq_file *seq, int policy,
-			    const nodemask_t policy_nodes)
+static inline void shmem_show_mpol(struct seq_file *seq, struct mempolicy *p)
 {
 }
 #endif /* CONFIG_TMPFS */
@@ -1224,6 +1158,13 @@ static inline struct page *shmem_alloc_page(gfp_t gfp,
 	return alloc_page(gfp);
 }
 #endif /* CONFIG_NUMA */
+
+#if !defined(CONFIG_NUMA) || !defined(CONFIG_TMPFS)
+static inline struct mempolicy *shmem_get_sbmpol(struct shmem_sb_info *sbinfo)
+{
+	return NULL;
+}
+#endif
 
 /*
  * shmem_getpage - either get the page from swap or allocate a new one
@@ -1370,14 +1311,17 @@ repeat:
 			shmem_swp_unmap(entry);
 			spin_unlock(&info->lock);
 			unlock_page(swappage);
-			page_cache_release(swappage);
 			if (error == -ENOMEM) {
 				/* allow reclaim from this memory cgroup */
-				error = mem_cgroup_cache_charge(NULL,
+				error = mem_cgroup_cache_charge(swappage,
 					current->mm, gfp & ~__GFP_HIGHMEM);
-				if (error)
+				if (error) {
+					page_cache_release(swappage);
 					goto failed;
+				}
+				mem_cgroup_uncharge_page(swappage);
 			}
+			page_cache_release(swappage);
 			goto repeat;
 		}
 	} else if (sgp == SGP_READ && !filepage) {
@@ -1576,8 +1520,8 @@ shmem_get_inode(struct super_block *sb, int mode, dev_t dev)
 		case S_IFREG:
 			inode->i_op = &shmem_inode_operations;
 			inode->i_fop = &shmem_file_operations;
-			mpol_shared_policy_init(&info->policy, sbinfo->policy,
-							&sbinfo->policy_nodes);
+			mpol_shared_policy_init(&info->policy,
+						 shmem_get_sbmpol(sbinfo));
 			break;
 		case S_IFDIR:
 			inc_nlink(inode);
@@ -1591,8 +1535,7 @@ shmem_get_inode(struct super_block *sb, int mode, dev_t dev)
 			 * Must not load anything in the rbtree,
 			 * mpol_free_shared_policy will not be called.
 			 */
-			mpol_shared_policy_init(&info->policy, MPOL_DEFAULT,
-						NULL);
+			mpol_shared_policy_init(&info->policy, NULL);
 			break;
 		}
 	} else
@@ -2019,7 +1962,7 @@ static const struct inode_operations shmem_symlink_inode_operations = {
 };
 
 #ifdef CONFIG_TMPFS_POSIX_ACL
-/**
+/*
  * Superblocks without xattr inode operations will get security.* xattr
  * support from the VFS "for free". As soon as we have any other xattrs
  * like ACLs, we also need to implement the security.* handlers at
@@ -2207,8 +2150,7 @@ static int shmem_parse_options(char *options, struct shmem_sb_info *sbinfo,
 			if (*rest)
 				goto bad_val;
 		} else if (!strcmp(this_char,"mpol")) {
-			if (shmem_parse_mpol(value, &sbinfo->policy,
-					     &sbinfo->policy_nodes))
+			if (mpol_parse_str(value, &sbinfo->mpol, 1))
 				goto bad_val;
 		} else {
 			printk(KERN_ERR "tmpfs: Bad mount option %s\n",
@@ -2259,8 +2201,9 @@ static int shmem_remount_fs(struct super_block *sb, int *flags, char *data)
 	sbinfo->free_blocks = config.max_blocks - blocks;
 	sbinfo->max_inodes  = config.max_inodes;
 	sbinfo->free_inodes = config.max_inodes - inodes;
-	sbinfo->policy      = config.policy;
-	sbinfo->policy_nodes = config.policy_nodes;
+
+	mpol_put(sbinfo->mpol);
+	sbinfo->mpol        = config.mpol;	/* transfers initial ref */
 out:
 	spin_unlock(&sbinfo->stat_lock);
 	return error;
@@ -2281,7 +2224,7 @@ static int shmem_show_options(struct seq_file *seq, struct vfsmount *vfs)
 		seq_printf(seq, ",uid=%u", sbinfo->uid);
 	if (sbinfo->gid != 0)
 		seq_printf(seq, ",gid=%u", sbinfo->gid);
-	shmem_show_mpol(seq, sbinfo->policy, sbinfo->policy_nodes);
+	shmem_show_mpol(seq, sbinfo->mpol);
 	return 0;
 }
 #endif /* CONFIG_TMPFS */
@@ -2311,8 +2254,7 @@ static int shmem_fill_super(struct super_block *sb,
 	sbinfo->mode = S_IRWXUGO | S_ISVTX;
 	sbinfo->uid = current->fsuid;
 	sbinfo->gid = current->fsgid;
-	sbinfo->policy = MPOL_DEFAULT;
-	sbinfo->policy_nodes = node_states[N_HIGH_MEMORY];
+	sbinfo->mpol = NULL;
 	sb->s_fs_info = sbinfo;
 
 #ifdef CONFIG_TMPFS
@@ -2558,12 +2500,11 @@ out4:
 }
 module_init(init_tmpfs)
 
-/*
+/**
  * shmem_file_setup - get an unlinked file living in tmpfs
- *
  * @name: name for dentry (to be seen in /proc/<pid>/maps
  * @size: size to be set for the file
- *
+ * @flags: vm_flags
  */
 struct file *shmem_file_setup(char *name, loff_t size, unsigned long flags)
 {
@@ -2618,9 +2559,8 @@ put_memory:
 	return ERR_PTR(error);
 }
 
-/*
+/**
  * shmem_zero_setup - setup a shared anonymous mapping
- *
  * @vma: the vma to be mmapped is prepared by do_mmap_pgoff
  */
 int shmem_zero_setup(struct vm_area_struct *vma)

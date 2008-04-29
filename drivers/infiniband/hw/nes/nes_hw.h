@@ -905,7 +905,7 @@ struct nes_hw_qp {
 };
 
 struct nes_hw_cq {
-	struct nes_hw_cqe volatile *cq_vbase;	/* PCI memory for host rings */
+	struct nes_hw_cqe *cq_vbase;	/* PCI memory for host rings */
 	void (*ce_handler)(struct nes_device *nesdev, struct nes_hw_cq *cq);
 	dma_addr_t cq_pbase;	/* PCI memory for host rings */
 	u16 cq_head;
@@ -962,7 +962,7 @@ struct nes_arp_entry {
 #define DEFAULT_JUMBO_NES_QL_LOW    12
 #define DEFAULT_JUMBO_NES_QL_TARGET 40
 #define DEFAULT_JUMBO_NES_QL_HIGH   128
-#define NES_NIC_CQ_DOWNWARD_TREND   8
+#define NES_NIC_CQ_DOWNWARD_TREND   16
 
 struct nes_hw_tune_timer {
     //u16 cq_count;

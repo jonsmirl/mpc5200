@@ -32,6 +32,7 @@
 #include <linux/interrupt.h>
 #include <linux/swap.h>
 #include <linux/slab.h>
+#include <linux/genhd.h>
 #include <linux/smp.h>
 #include <linux/signal.h>
 #include <linux/module.h>
@@ -377,7 +378,6 @@ static int stram_read_proc(char *page, char **start, off_t off,
 #endif
 
 #ifdef CONFIG_BLOCK
-extern const struct seq_operations partitions_op;
 static int partitions_open(struct inode *inode, struct file *file)
 {
 	return seq_open(file, &partitions_op);
@@ -389,7 +389,6 @@ static const struct file_operations proc_partitions_operations = {
 	.release	= seq_release,
 };
 
-extern const struct seq_operations diskstats_op;
 static int diskstats_open(struct inode *inode, struct file *file)
 {
 	return seq_open(file, &diskstats_op);
@@ -455,6 +454,20 @@ static const struct file_operations proc_slabstats_operations = {
 	.release	= seq_release_private,
 };
 #endif
+#endif
+
+#ifdef CONFIG_MMU
+static int vmalloc_open(struct inode *inode, struct file *file)
+{
+	return seq_open(file, &vmalloc_op);
+}
+
+static const struct file_operations proc_vmalloc_operations = {
+	.open		= vmalloc_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= seq_release,
+};
 #endif
 
 static int show_stat(struct seq_file *p, void *v)
@@ -869,6 +882,9 @@ void __init proc_misc_init(void)
 #ifdef CONFIG_DEBUG_SLAB_LEAK
 	create_seq_entry("slab_allocators", 0 ,&proc_slabstats_operations);
 #endif
+#endif
+#ifdef CONFIG_MMU
+	proc_create("vmallocinfo", S_IRUSR, NULL, &proc_vmalloc_operations);
 #endif
 	create_seq_entry("buddyinfo",S_IRUGO, &fragmentation_file_operations);
 	create_seq_entry("pagetypeinfo", S_IRUGO, &pagetypeinfo_file_ops);

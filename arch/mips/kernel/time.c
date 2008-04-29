@@ -38,7 +38,6 @@ int __weak rtc_mips_set_time(unsigned long sec)
 {
 	return 0;
 }
-EXPORT_SYMBOL(rtc_mips_set_time);
 
 int __weak rtc_mips_set_mmss(unsigned long nowtime)
 {
@@ -50,12 +49,10 @@ int update_persistent_clock(struct timespec now)
 	return rtc_mips_set_mmss(now.tv_sec);
 }
 
-int null_perf_irq(void)
+static int null_perf_irq(void)
 {
 	return 0;
 }
-
-EXPORT_SYMBOL(null_perf_irq);
 
 int (*perf_irq)(void) = null_perf_irq;
 
@@ -157,6 +154,6 @@ void __init time_init(void)
 {
 	plat_time_init();
 
-	if (mips_clockevent_init() || !cpu_has_mfc0_count_bug())
+	if (!mips_clockevent_init() || !cpu_has_mfc0_count_bug())
 		init_mips_clocksource();
 }

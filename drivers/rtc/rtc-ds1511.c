@@ -181,8 +181,7 @@ ds1511_wdog_disable(void)
  * stupidly, some callers call with year unmolested;
  * and some call with  year = year - 1900.  thanks.
  */
- int
-ds1511_rtc_set_time(struct device *dev, struct rtc_time *rtc_tm)
+static int ds1511_rtc_set_time(struct device *dev, struct rtc_time *rtc_tm)
 {
 	u8 mon, day, dow, hrs, min, sec, yrs, cen;
 	unsigned int flags;
@@ -245,8 +244,7 @@ ds1511_rtc_set_time(struct device *dev, struct rtc_time *rtc_tm)
 	return 0;
 }
 
- int
-ds1511_rtc_read_time(struct device *dev, struct rtc_time *rtc_tm)
+static int ds1511_rtc_read_time(struct device *dev, struct rtc_time *rtc_tm)
 {
 	unsigned int century;
 	unsigned int flags;
@@ -625,6 +623,9 @@ ds1511_rtc_remove(struct platform_device *pdev)
 	kfree(pdata);
 	return 0;
 }
+
+/* work with hotplug and coldplug */
+MODULE_ALIAS("platform:ds1511");
 
 static struct platform_driver ds1511_rtc_driver = {
 	.probe		= ds1511_rtc_probe,

@@ -981,13 +981,13 @@ isdn_readbchan_tty(int di, int channel, struct tty_struct *tty, int cisco_hack)
 }
 
 
-static __inline int
+static inline int
 isdn_minor2drv(int minor)
 {
 	return (dev->drvmap[minor]);
 }
 
-static __inline int
+static inline int
 isdn_minor2chan(int minor)
 {
 	return (dev->chanmap[minor]);
@@ -1924,7 +1924,7 @@ isdn_free_channel(int di, int ch, int usage)
 
 	if ((di < 0) || (ch < 0)) {
 		printk(KERN_WARNING "%s: called with invalid drv(%d) or channel(%d)\n",
-			__FUNCTION__, di, ch);
+			__func__, di, ch);
 		return;
 	}
 	for (i = 0; i < ISDN_MAX_CHANNELS; i++)

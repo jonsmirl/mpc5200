@@ -61,6 +61,7 @@
 #define USB_DEVICE_ID_VERNIER_GOTEMP	0x0002
 #define USB_DEVICE_ID_VERNIER_SKIP	0x0003
 #define USB_DEVICE_ID_VERNIER_CYCLOPS	0x0004
+#define USB_DEVICE_ID_VERNIER_LCSPEC	0x0006
 
 #define USB_VENDOR_ID_MICROCHIP		0x04d8
 #define USB_DEVICE_ID_PICDEM		0x000c
@@ -92,6 +93,7 @@ static struct usb_device_id ld_usb_table [] = {
 	{ USB_DEVICE(USB_VENDOR_ID_VERNIER, USB_DEVICE_ID_VERNIER_SKIP) },
 	{ USB_DEVICE(USB_VENDOR_ID_VERNIER, USB_DEVICE_ID_VERNIER_CYCLOPS) },
 	{ USB_DEVICE(USB_VENDOR_ID_MICROCHIP, USB_DEVICE_ID_PICDEM) },
+	{ USB_DEVICE(USB_VENDOR_ID_VERNIER, USB_DEVICE_ID_VERNIER_LCSPEC) },
 	{ }					/* Terminating entry */
 };
 MODULE_DEVICE_TABLE(usb, ld_usb_table);
@@ -229,7 +231,7 @@ static void ld_usb_interrupt_in_callback(struct urb *urb)
 			goto exit;
 		} else {
 			dbg_info(&dev->intf->dev, "%s: nonzero status received: %d\n",
-				 __FUNCTION__, status);
+				 __func__, status);
 			spin_lock(&dev->rbsl);
 			goto resubmit; /* maybe we can recover */
 		}
@@ -245,7 +247,7 @@ static void ld_usb_interrupt_in_callback(struct urb *urb)
 			memcpy(actual_buffer+1, dev->interrupt_in_buffer, urb->actual_length);
 			dev->ring_head = next_ring_head;
 			dbg_info(&dev->intf->dev, "%s: received %d bytes\n",
-				 __FUNCTION__, urb->actual_length);
+				 __func__, urb->actual_length);
 		} else {
 			dev_warn(&dev->intf->dev,
 				 "Ring buffer overflow, %d bytes dropped\n",
@@ -284,7 +286,7 @@ static void ld_usb_interrupt_out_callback(struct urb *urb)
 			status == -ESHUTDOWN))
 		dbg_info(&dev->intf->dev,
 			 "%s - nonzero write interrupt status received: %d\n",
-			 __FUNCTION__, status);
+			 __func__, status);
 
 	dev->interrupt_out_busy = 0;
 	wake_up_interruptible(&dev->write_wait);
@@ -307,7 +309,7 @@ static int ld_usb_open(struct inode *inode, struct file *file)
 
 	if (!interface) {
 		err("%s - error, can't find device for minor %d\n",
-		     __FUNCTION__, subminor);
+		     __func__, subminor);
 		return -ENODEV;
 	}
 
@@ -554,7 +556,7 @@ static ssize_t ld_usb_write(struct file *file, const char __user *buffer,
 	bytes_to_write = min(count, write_buffer_size*dev->interrupt_out_endpoint_size);
 	if (bytes_to_write < count)
 		dev_warn(&dev->intf->dev, "Write buffer overflow, %zd bytes dropped\n",count-bytes_to_write);
-	dbg_info(&dev->intf->dev, "%s: count = %zd, bytes_to_write = %zd\n", __FUNCTION__, count, bytes_to_write);
+	dbg_info(&dev->intf->dev, "%s: count = %zd, bytes_to_write = %zd\n", __func__, count, bytes_to_write);
 
 	if (copy_from_user(dev->interrupt_out_buffer, buffer, bytes_to_write)) {
 		retval = -EFAULT;

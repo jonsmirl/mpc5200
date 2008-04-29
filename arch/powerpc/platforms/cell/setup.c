@@ -57,6 +57,7 @@
 #include "interrupt.h"
 #include "pervasive.h"
 #include "ras.h"
+#include "io-workarounds.h"
 
 #ifdef DEBUG
 #define DBG(fmt...) udbg_printf(fmt)
@@ -81,12 +82,85 @@ static void cell_progress(char *s, unsigned short hex)
 	printk("*** %04x : %s\n", hex, s ? s : "");
 }
 
+static void cell_fixup_pcie_rootcomplex(struct pci_dev *dev)
+{
+	struct pci_controller *hose;
+	const char *s;
+	int i;
+
+	if (!machine_is(cell))
+		return;
+
+	/* We're searching for a direct child of the PHB */
+	if (dev->bus->self != NULL || dev->devfn != 0)
+		return;
+
+	hose = pci_bus_to_host(dev->bus);
+	if (hose == NULL)
+		return;
+
+	/* Only on PCIE */
+	if (!of_device_is_compatible(hose->dn, "pciex"))
+		return;
+
+	/* And only on axon */
+	s = of_get_property(hose->dn, "model", NULL);
+	if (!s || strcmp(s, "Axon") != 0)
+		return;
+
+	for (i = 0; i < PCI_BRIDGE_RESOURCES; i++) {
+		dev->resource[i].start = dev->resource[i].end = 0;
+		dev->resource[i].flags = 0;
+	}
+
+	printk(KERN_DEBUG "PCI: Hiding resources on Axon PCIE RC %s\n",
+	       pci_name(dev));
+}
+DECLARE_PCI_FIXUP_HEADER(PCI_ANY_ID, PCI_ANY_ID, cell_fixup_pcie_rootcomplex);
+
+static int __devinit cell_setup_phb(struct pci_controller *phb)
+{
+	const char *model;
+	struct device_node *np;
+
+	int rc = rtas_setup_phb(phb);
+	if (rc)
+		return rc;
+
+	np = phb->dn;
+	model = of_get_property(np, "model", NULL);
+	if (model == NULL || strcmp(np->name, "pci"))
+		return 0;
+
+	/* Setup workarounds for spider */
+	if (strcmp(model, "Spider"))
+		return 0;
+
+	iowa_register_bus(phb, &spiderpci_ops, &spiderpci_iowa_init,
+				  (void *)SPIDER_PCI_REG_BASE);
+	io_workaround_init();
+
+	return 0;
+}
+
 static int __init cell_publish_devices(void)
 {
+	struct device_node *root = of_find_node_by_path("/");
+	struct device_node *np;
 	int node;
 
 	/* Publish OF platform devices for southbridge IOs */
 	of_platform_bus_probe(NULL, NULL, NULL);
+
+	/* On spider based blades, we need to manually create the OF
+	 * platform devices for the PCI host bridges
+	 */
+	for_each_child_of_node(root, np) {
+		if (np->type == NULL || (strcmp(np->type, "pci") != 0 &&
+					 strcmp(np->type, "pciex") != 0))
+			continue;
+		of_platform_device_create(np, NULL, NULL);
+	}
 
 	/* There is no device for the MIC memory controller, thus we create
 	 * a platform device for it to attach the EDAC driver to.
@@ -96,6 +170,7 @@ static int __init cell_publish_devices(void)
 			continue;
 		platform_device_register_simple("cbe-mic", node, NULL, 0);
 	}
+
 	return 0;
 }
 machine_subsys_initcall(cell, cell_publish_devices);
@@ -149,6 +224,11 @@ static void __init cell_init_irq(void)
 	mpic_init_IRQ();
 }
 
+static void __init cell_set_dabrx(void)
+{
+	mtspr(SPRN_DABRX, DABRX_KERNEL | DABRX_USER);
+}
+
 static void __init cell_setup_arch(void)
 {
 #ifdef CONFIG_SPU_BASE
@@ -157,6 +237,8 @@ static void __init cell_setup_arch(void)
 #endif
 
 	cbe_regs_init();
+
+	cell_set_dabrx();
 
 #ifdef CONFIG_CBE_RAS
 	cbe_ras_init();
@@ -170,7 +252,7 @@ static void __init cell_setup_arch(void)
 
 	/* Find and initialize PCI host bridges */
 	init_pci_config_tokens();
-	find_and_init_phbs();
+
 	cbe_pervasive_init();
 #ifdef CONFIG_DUMMY_CONSOLE
 	conswitchp = &dummy_con;
@@ -206,7 +288,7 @@ define_machine(cell) {
 	.calibrate_decr		= generic_calibrate_decr,
 	.progress		= cell_progress,
 	.init_IRQ       	= cell_init_irq,
-	.pci_setup_phb		= rtas_setup_phb,
+	.pci_setup_phb		= cell_setup_phb,
 #ifdef CONFIG_KEXEC
 	.machine_kexec		= default_machine_kexec,
 	.machine_kexec_prepare	= default_machine_kexec_prepare,

@@ -21,7 +21,8 @@
 #include <asm/arch/pxa-regs.h>
 #include <asm/hardware/scoop.h>
 
-static void corgiled_amber_set(struct led_classdev *led_cdev, enum led_brightness value)
+static void corgiled_amber_set(struct led_classdev *led_cdev,
+			       enum led_brightness value)
 {
 	if (value)
 		GPSR0 = GPIO_bit(CORGI_GPIO_LED_ORANGE);
@@ -29,7 +30,8 @@ static void corgiled_amber_set(struct led_classdev *led_cdev, enum led_brightnes
 		GPCR0 = GPIO_bit(CORGI_GPIO_LED_ORANGE);
 }
 
-static void corgiled_green_set(struct led_classdev *led_cdev, enum led_brightness value)
+static void corgiled_green_set(struct led_classdev *led_cdev,
+			       enum led_brightness value)
 {
 	if (value)
 		set_scoop_gpio(&corgiscoop_device.dev, CORGI_SCP_LED_GREEN);
@@ -53,7 +55,8 @@ static struct led_classdev corgi_green_led = {
 static int corgiled_suspend(struct platform_device *dev, pm_message_t state)
 {
 #ifdef CONFIG_LEDS_TRIGGERS
-	if (corgi_amber_led.trigger && strcmp(corgi_amber_led.trigger->name, "sharpsl-charge"))
+	if (corgi_amber_led.trigger &&
+	    strcmp(corgi_amber_led.trigger->name, "sharpsl-charge"))
 #endif
 		led_classdev_suspend(&corgi_amber_led);
 	led_classdev_suspend(&corgi_green_led);
@@ -99,6 +102,7 @@ static struct platform_driver corgiled_driver = {
 #endif
 	.driver		= {
 		.name		= "corgi-led",
+		.owner		= THIS_MODULE,
 	},
 };
 
@@ -109,7 +113,7 @@ static int __init corgiled_init(void)
 
 static void __exit corgiled_exit(void)
 {
- 	platform_driver_unregister(&corgiled_driver);
+	platform_driver_unregister(&corgiled_driver);
 }
 
 module_init(corgiled_init);
@@ -118,3 +122,4 @@ module_exit(corgiled_exit);
 MODULE_AUTHOR("Richard Purdie <rpurdie@openedhand.com>");
 MODULE_DESCRIPTION("Corgi LED driver");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS("platform:corgi-led");

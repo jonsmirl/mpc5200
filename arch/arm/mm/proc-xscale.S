@@ -114,6 +114,10 @@ clean_addr:	.word	CLEAN_ADDR
  * Nothing too exciting at the moment
  */
 ENTRY(cpu_xscale_proc_init)
+	@ enable write buffer coalescing. Some bootloader disable it
+	mrc	p15, 0, r1, c1, c0, 1
+	bic	r1, r1, #1
+	mcr	p15, 0, r1, c1, c0, 1
 	mov	pc, lr
 
 /*
@@ -523,6 +527,7 @@ xscale_crval:
 	.type	xscale_processor_functions, #object
 ENTRY(xscale_processor_functions)
 	.word	v5t_early_abort
+	.word	pabort_noifar
 	.word	cpu_xscale_proc_init
 	.word	cpu_xscale_proc_fin
 	.word	cpu_xscale_reset

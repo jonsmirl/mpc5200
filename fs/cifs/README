@@ -3,7 +3,14 @@ features such as hierarchical dfs like namespace, hardlinks, locking and more.
 It was designed to comply with the SNIA CIFS Technical Reference (which 
 supersedes the 1992 X/Open SMB Standard) as well as to perform best practice 
 practical interoperability with Windows 2000, Windows XP, Samba and equivalent 
-servers.  
+servers.  This code was developed in participation with the Protocol Freedom
+Information Foundation.
+
+Please see
+  http://protocolfreedom.org/ and
+  http://samba.org/samba/PFIF/
+for more details.
+
 
 For questions or bug reports please contact:
     sfrench@samba.org (sfrench@us.ibm.com) 
@@ -461,7 +468,7 @@ A partial list of the supported mount options follows:
  cifsacl        Report mode bits (e.g. on stat) based on the Windows ACL for
 	        the file. (EXPERIMENTAL)
  servern        Specify the server 's netbios name (RFC1001 name) to use
-		when attempting to setup a session to the server.  This is
+		when attempting to setup a session to the server. 
 		This is needed for mounting to some older servers (such
 		as OS/2 or Windows 98 and Windows ME) since they do not
 		support a default server name.  A server name can be up

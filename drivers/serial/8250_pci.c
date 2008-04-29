@@ -775,7 +775,7 @@ pci_default_setup(struct serial_private *priv, struct pciserial_board *board,
  * This list is ordered alphabetically by vendor then device.
  * Specific entries must come before more generic entries.
  */
-static struct pci_serial_quirk pci_serial_quirks[] = {
+static struct pci_serial_quirk pci_serial_quirks[] __refdata = {
 	/*
 	* ADDI-DATA GmbH communication cards <info@addi-data.com>
 	*/
@@ -1214,13 +1214,6 @@ static struct pciserial_board pci_boards[] __devinitdata = {
 		.base_baud	= 115200,
 		.uart_offset	= 8,
 	},
-	[pbn_b0_8_115200] = {
-		.flags		= FL_BASE0,
-		.num_ports	= 8,
-		.base_baud	= 115200,
-		.uart_offset	= 8,
-	},
-
 	[pbn_b0_1_921600] = {
 		.flags		= FL_BASE0,
 		.num_ports	= 1,

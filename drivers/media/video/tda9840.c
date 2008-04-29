@@ -31,11 +31,11 @@
 
 #include "tda9840.h"
 
-static int debug = 0;		/* insmod parameter */
+static int debug;		/* insmod parameter */
 module_param(debug, int, 0644);
 MODULE_PARM_DESC(debug, "Turn on/off device debugging (default:off).");
 #define dprintk(args...) \
-	    do { if (debug) { printk("%s: %s()[%d]: ", KBUILD_MODNAME, __FUNCTION__, __LINE__); printk(args); } } while (0)
+	    do { if (debug) { printk("%s: %s()[%d]: ", KBUILD_MODNAME, __func__, __LINE__); printk(args); } } while (0)
 
 #define	SWITCH		0x00
 #define	LEVEL_ADJUST	0x02
@@ -172,7 +172,7 @@ static int detect(struct i2c_adapter *adapter, int address, int kind)
 
 	/* allocate memory for client structure */
 	client = kmalloc(sizeof(struct i2c_client), GFP_KERNEL);
-	if (0 == client) {
+	if (!client) {
 		printk("not enough kernel memory\n");
 		return -ENOMEM;
 	}

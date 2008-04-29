@@ -40,6 +40,7 @@
 #endif
 #include <linux/ata_platform.h>
 #include <linux/irq.h>
+#include <linux/i2c.h>
 #include <asm/dma.h>
 #include <asm/bfin5xx_spi.h>
 #include <asm/reboot.h>
@@ -109,10 +110,11 @@ static struct platform_device net2272_bfin_device = {
 };
 #endif
 
+#if defined(CONFIG_MTD_BF5xx) || defined(CONFIG_MTD_BF5xx_MODULE)
 static struct mtd_partition stamp_partitions[] = {
 	{
 		.name   = "Bootloader",
-		.size   = 0x20000,
+		.size   = 0x40000,
 		.offset = 0,
 	}, {
 		.name   = "Kernel",
@@ -152,6 +154,7 @@ static struct platform_device stamp_flash_device = {
 	.num_resources = ARRAY_SIZE(stamp_flash_resource),
 	.resource      = stamp_flash_resource,
 };
+#endif
 
 #if defined(CONFIG_SPI_BFIN) || defined(CONFIG_SPI_BFIN_MODULE)
 /* all SPI peripherals info goes here */
@@ -160,17 +163,17 @@ static struct platform_device stamp_flash_device = {
 static struct mtd_partition bfin_spi_flash_partitions[] = {
 	{
 		.name = "bootloader",
-		.size = 0x00020000,
+		.size = 0x00040000,
 		.offset = 0,
 		.mask_flags = MTD_CAP_ROM
 	}, {
 		.name = "kernel",
 		.size = 0xe0000,
-		.offset = 0x20000
+		.offset = MTDPART_OFS_APPEND,
 	}, {
 		.name = "file system",
-		.size = 0x700000,
-		.offset = 0x00100000,
+		.size = MTDPART_SIZ_FULL,
+		.offset = MTDPART_OFS_APPEND,
 	}
 };
 
@@ -209,13 +212,6 @@ static struct bfin5xx_spi_chip spi_si3xxx_chip_info = {
 	.enable_dma	= 0,
 	.bits_per_word	= 8,
 	.cs_change_per_word = 1,
-};
-#endif
-
-#if defined(CONFIG_AD5304) || defined(CONFIG_AD5304_MODULE)
-static struct bfin5xx_spi_chip ad5304_chip_info = {
-	.enable_dma = 0,
-	.bits_per_word = 16,
 };
 #endif
 
@@ -308,17 +304,6 @@ static struct spi_board_info bfin_spi_board_info[] __initdata = {
 	},
 #endif
 
-#if defined(CONFIG_AD5304) || defined(CONFIG_AD5304_MODULE)
-	{
-		.modalias = "ad5304_spi",
-		.max_speed_hz = 1000000,     /* max spi clock (SCK) speed in HZ */
-		.bus_num = 0,
-		.chip_select = 2,
-		.platform_data = NULL,
-		.controller_data = &ad5304_chip_info,
-		.mode = SPI_MODE_2,
-	},
-#endif
 #if defined(CONFIG_SPI_SPIDEV) || defined(CONFIG_SPI_SPIDEV_MODULE)
 	{
 		.modalias = "spidev",
@@ -382,6 +367,25 @@ static struct platform_device bfin_uart_device = {
 	.id = 1,
 	.num_resources = ARRAY_SIZE(bfin_uart_resources),
 	.resource = bfin_uart_resources,
+};
+#endif
+
+#if defined(CONFIG_BFIN_SIR) || defined(CONFIG_BFIN_SIR_MODULE)
+static struct resource bfin_sir_resources[] = {
+#ifdef CONFIG_BFIN_SIR0
+	{
+		.start = 0xFFC00400,
+		.end = 0xFFC004FF,
+		.flags = IORESOURCE_MEM,
+	},
+#endif
+};
+
+static struct platform_device bfin_sir_device = {
+	.name = "bfin_sir",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(bfin_sir_resources),
+	.resource = bfin_sir_resources,
 };
 #endif
 
@@ -457,6 +461,19 @@ static struct platform_device bfin_device_gpiokeys = {
 };
 #endif
 
+static struct resource bfin_gpios_resources = {
+	.start = 0,
+	.end   = MAX_BLACKFIN_GPIOS - 1,
+	.flags = IORESOURCE_IRQ,
+};
+
+static struct platform_device bfin_gpios_device = {
+	.name = "simple-gpio",
+	.id = -1,
+	.num_resources = 1,
+	.resource = &bfin_gpios_resources,
+};
+
 #if defined(CONFIG_I2C_GPIO) || defined(CONFIG_I2C_GPIO_MODULE)
 #include <linux/i2c-gpio.h>
 
@@ -474,6 +491,31 @@ static struct platform_device i2c_gpio_device = {
 	.dev		= {
 		.platform_data	= &i2c_gpio_data,
 	},
+};
+#endif
+
+#ifdef CONFIG_I2C_BOARDINFO
+static struct i2c_board_info __initdata bfin_i2c_board_info[] = {
+#if defined(CONFIG_JOYSTICK_AD7142) || defined(CONFIG_JOYSTICK_AD7142_MODULE)
+	{
+		I2C_BOARD_INFO("ad7142_joystick", 0x2C),
+		.type = "ad7142_joystick",
+		.irq = 39,
+	},
+#endif
+#if defined(CONFIG_TWI_LCD) || defined(CONFIG_TWI_LCD_MODULE)
+	{
+		I2C_BOARD_INFO("pcf8574_lcd", 0x22),
+		.type = "pcf8574_lcd",
+	},
+#endif
+#if defined(CONFIG_TWI_KEYPAD) || defined(CONFIG_TWI_KEYPAD_MODULE)
+	{
+		I2C_BOARD_INFO("pcf8574_keypad", 0x27),
+		.type = "pcf8574_keypad",
+		.irq = 39,
+	},
+#endif
 };
 #endif
 
@@ -502,6 +544,10 @@ static struct platform_device *stamp_devices[] __initdata = {
 	&bfin_uart_device,
 #endif
 
+#if defined(CONFIG_BFIN_SIR) || defined(CONFIG_BFIN_SIR_MODULE)
+	&bfin_sir_device,
+#endif
+
 #if defined(CONFIG_SERIAL_BFIN_SPORT) || defined(CONFIG_SERIAL_BFIN_SPORT_MODULE)
 	&bfin_sport0_uart_device,
 	&bfin_sport1_uart_device,
@@ -518,14 +564,25 @@ static struct platform_device *stamp_devices[] __initdata = {
 #if defined(CONFIG_I2C_GPIO) || defined(CONFIG_I2C_GPIO_MODULE)
 	&i2c_gpio_device,
 #endif
+
+	&bfin_gpios_device,
+
+#if defined(CONFIG_MTD_BF5xx) || defined(CONFIG_MTD_BF5xx_MODULE)
 	&stamp_flash_device,
+#endif
 };
 
 static int __init stamp_init(void)
 {
 	int ret;
 
-	printk(KERN_INFO "%s(): registering device resources\n", __FUNCTION__);
+	printk(KERN_INFO "%s(): registering device resources\n", __func__);
+
+#ifdef CONFIG_I2C_BOARDINFO
+	i2c_register_board_info(0, bfin_i2c_board_info,
+				ARRAY_SIZE(bfin_i2c_board_info));
+#endif
+
 	ret = platform_add_devices(stamp_devices, ARRAY_SIZE(stamp_devices));
 	if (ret < 0)
 		return ret;

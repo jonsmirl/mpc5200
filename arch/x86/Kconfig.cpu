@@ -21,8 +21,8 @@ config M386
 
 	  Here are the settings recommended for greatest speed:
 	  - "386" for the AMD/Cyrix/Intel 386DX/DXL/SL/SLC/SX, Cyrix/TI
-	  486DLC/DLC2, UMC 486SX-S and NexGen Nx586.  Only "386" kernels
-	  will run on a 386 class machine.
+	  486DLC/DLC2, and UMC 486SX-S.  Only "386" kernels will run on a 386
+	  class machine.
 	  - "486" for the AMD/Cyrix/IBM/Intel 486DX/DX2/DX4 or
 	  SL/SLC/SLC2/SLC3/SX/SX2 and UMC U5D or U5S.
 	  - "586" for generic Pentium CPUs lacking the TSC
@@ -278,6 +278,11 @@ config GENERIC_CPU
 
 endchoice
 
+config X86_CPU
+	def_bool y
+	select GENERIC_FIND_FIRST_BIT
+	select GENERIC_FIND_NEXT_BIT
+
 config X86_GENERIC
 	bool "Generic x86 support"
 	depends on X86_32
@@ -377,6 +382,19 @@ config X86_OOSTORE
 	def_bool y
 	depends on (MWINCHIP3D || MWINCHIP2 || MWINCHIPC6) && MTRR
 
+#
+# P6_NOPs are a relatively minor optimization that require a family >=
+# 6 processor, except that it is broken on certain VIA chips.
+# Furthermore, AMD chips prefer a totally different sequence of NOPs
+# (which work on all CPUs).  As a result, disallow these if we're
+# compiling X86_GENERIC but not X86_64 (these NOPs do work on all
+# x86-64 capable chips); the list of processors in the right-hand clause
+# are the cores that benefit from this optimization.
+#
+config X86_P6_NOP
+	def_bool y
+	depends on (X86_64 || !X86_GENERIC) && (M686 || MPENTIUMII || MPENTIUMIII || MPENTIUMM || MCORE2 || MPENTIUM4 || MPSC)
+
 config X86_TSC
 	def_bool y
 	depends on ((MWINCHIP3D || MWINCHIP2 || MCRUSOE || MEFFICEON || MCYRIXIII || MK7 || MK6 || MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M686 || M586MMX || M586TSC || MK8 || MVIAC3_2 || MVIAC7 || MGEODEGX1 || MGEODE_LX || MCORE2) && !X86_NUMAQ) || X86_64
@@ -385,11 +403,12 @@ config X86_TSC
 # generates cmov.
 config X86_CMOV
 	def_bool y
-	depends on (MK7 || MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M686 || MVIAC3_2 || MVIAC7)
+	depends on (MK7 || MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M686 || MVIAC3_2 || MVIAC7 || X86_64)
 
 config X86_MINIMUM_CPU_FAMILY
 	int
 	default "64" if X86_64
+	default "6" if X86_32 && X86_P6_NOP
 	default "4" if X86_32 && (X86_XADD || X86_CMPXCHG || X86_BSWAP || X86_WP_WORKS_OK)
 	default "3"
 

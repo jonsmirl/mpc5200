@@ -307,15 +307,6 @@ void free_initrd_mem(unsigned long start, unsigned long end)
 #endif
 
 #ifdef CONFIG_MEMORY_HOTPLUG
-void online_page(struct page *page)
-{
-	ClearPageReserved(page);
-	init_page_count(page);
-	__free_page(page);
-	totalram_pages++;
-	num_physpages++;
-}
-
 int arch_add_memory(int nid, u64 start, u64 size)
 {
 	pg_data_t *pgdat;
@@ -328,7 +319,7 @@ int arch_add_memory(int nid, u64 start, u64 size)
 	/* We only have ZONE_NORMAL, so this is easy.. */
 	ret = __add_pages(pgdat->node_zones + ZONE_NORMAL, start_pfn, nr_pages);
 	if (unlikely(ret))
-		printk("%s: Failed, __add_pages() == %d\n", __FUNCTION__, ret);
+		printk("%s: Failed, __add_pages() == %d\n", __func__, ret);
 
 	return ret;
 }

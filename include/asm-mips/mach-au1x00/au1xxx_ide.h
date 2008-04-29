@@ -70,7 +70,6 @@ typedef struct
         ide_hwif_t              *hwif;
 #ifdef CONFIG_BLK_DEV_IDE_AU1XXX_MDMA2_DBDMA
         ide_drive_t             *drive;
-        u8                      white_list, black_list;
         struct dbdma_cmd        *dma_table_cpu;
         dma_addr_t              dma_table_dma;
 #endif
@@ -80,65 +79,6 @@ typedef struct
         pm_state                pm;
 #endif
 } _auide_hwif;
-
-#ifdef CONFIG_BLK_DEV_IDE_AU1XXX_MDMA2_DBDMA
-/* HD white list */
-static const struct drive_list_entry dma_white_list [] = {
-/*
- * Hitachi
- */
-        { "HITACHI_DK14FA-20"    ,       NULL            },
-        { "HTS726060M9AT00"      ,       NULL            },
-/*
- * Maxtor
- */
-        { "Maxtor 6E040L0"      ,       NULL            },
-        { "Maxtor 6Y080P0"      ,       NULL            },
-        { "Maxtor 6Y160P0"      ,       NULL            },
-/*
- * Seagate
- */
-        { "ST3120026A"          ,       NULL            },
-        { "ST320014A"           ,       NULL            },
-        { "ST94011A"            ,       NULL            },
-        { "ST340016A"           ,       NULL            },
-/*
- * Western Digital
- */
-        { "WDC WD400UE-00HCT0"  ,       NULL            },
-        { "WDC WD400JB-00JJC0"  ,       NULL            },
-        { NULL                  ,       NULL            }
-};
-
-/* HD black list */
-static const struct drive_list_entry dma_black_list [] = {
-/*
- * Western Digital
- */
-        { "WDC WD100EB-00CGH0"  ,       NULL            },
-        { "WDC WD200BB-00AUA1"  ,       NULL            },
-        { "WDC AC24300L"        ,       NULL            },
-        { NULL                  ,       NULL            }
-};
-#endif
-
-/* function prototyping */
-u8 auide_inb(unsigned long port);
-u16 auide_inw(unsigned long port);
-u32 auide_inl(unsigned long port);
-void auide_insw(unsigned long port, void *addr, u32 count);
-void auide_insl(unsigned long port, void *addr, u32 count);
-void auide_outb(u8 addr, unsigned long port);
-void auide_outbsync(ide_drive_t *drive, u8 addr, unsigned long port);
-void auide_outw(u16 addr, unsigned long port);
-void auide_outl(u32 addr, unsigned long port);
-void auide_outsw(unsigned long port, void *addr, u32 count);
-void auide_outsl(unsigned long port, void *addr, u32 count);
-static void auide_tune_drive(ide_drive_t *drive, byte pio);
-static int auide_tune_chipset(ide_drive_t *drive, u8 speed);
-static int auide_ddma_init( _auide_hwif *auide );
-static void auide_setup_ports(hw_regs_t *hw, _auide_hwif *ahwif);
-int __init auide_probe(void);
 
 /*******************************************************************************
 * PIO Mode timing calculation :                                                *

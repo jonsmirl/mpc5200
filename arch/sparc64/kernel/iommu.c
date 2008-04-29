@@ -134,7 +134,8 @@ unsigned long iommu_range_alloc(struct device *dev,
 	else
 		boundary_size = ALIGN(1UL << 32, 1 << IO_PAGE_SHIFT);
 
-	n = iommu_area_alloc(arena->map, limit, start, npages, 0,
+	n = iommu_area_alloc(arena->map, limit, start, npages,
+			     iommu->page_table_map_base >> IO_PAGE_SHIFT,
 			     boundary_size >> IO_PAGE_SHIFT, 0);
 	if (n == -1) {
 		if (likely(pass < 1)) {
@@ -172,9 +173,11 @@ void iommu_range_free(struct iommu *iommu, dma_addr_t dma_addr, unsigned long np
 }
 
 int iommu_table_init(struct iommu *iommu, int tsbsize,
-		     u32 dma_offset, u32 dma_addr_mask)
+		     u32 dma_offset, u32 dma_addr_mask,
+		     int numa_node)
 {
-	unsigned long i, tsbbase, order, sz, num_tsb_entries;
+	unsigned long i, order, sz, num_tsb_entries;
+	struct page *page;
 
 	num_tsb_entries = tsbsize / sizeof(iopte_t);
 
@@ -187,11 +190,12 @@ int iommu_table_init(struct iommu *iommu, int tsbsize,
 	/* Allocate and initialize the free area map.  */
 	sz = num_tsb_entries / 8;
 	sz = (sz + 7UL) & ~7UL;
-	iommu->arena.map = kzalloc(sz, GFP_KERNEL);
+	iommu->arena.map = kmalloc_node(sz, GFP_KERNEL, numa_node);
 	if (!iommu->arena.map) {
 		printk(KERN_ERR "IOMMU: Error, kmalloc(arena.map) failed.\n");
 		return -ENOMEM;
 	}
+	memset(iommu->arena.map, 0, sz);
 	iommu->arena.limit = num_tsb_entries;
 
 	if (tlb_type != hypervisor)
@@ -200,22 +204,23 @@ int iommu_table_init(struct iommu *iommu, int tsbsize,
 	/* Allocate and initialize the dummy page which we
 	 * set inactive IO PTEs to point to.
 	 */
-	iommu->dummy_page = __get_free_pages(GFP_KERNEL, 0);
-	if (!iommu->dummy_page) {
+	page = alloc_pages_node(numa_node, GFP_KERNEL, 0);
+	if (!page) {
 		printk(KERN_ERR "IOMMU: Error, gfp(dummy_page) failed.\n");
 		goto out_free_map;
 	}
+	iommu->dummy_page = (unsigned long) page_address(page);
 	memset((void *)iommu->dummy_page, 0, PAGE_SIZE);
 	iommu->dummy_page_pa = (unsigned long) __pa(iommu->dummy_page);
 
 	/* Now allocate and setup the IOMMU page table itself.  */
 	order = get_order(tsbsize);
-	tsbbase = __get_free_pages(GFP_KERNEL, order);
-	if (!tsbbase) {
+	page = alloc_pages_node(numa_node, GFP_KERNEL, order);
+	if (!page) {
 		printk(KERN_ERR "IOMMU: Error, gfp(tsb) failed.\n");
 		goto out_free_dummy_page;
 	}
-	iommu->page_table = (iopte_t *)tsbbase;
+	iommu->page_table = (iopte_t *)page_address(page);
 
 	for (i = 0; i < num_tsb_entries; i++)
 		iopte_make_dummy(iommu, &iommu->page_table[i]);
@@ -276,20 +281,24 @@ static inline void iommu_free_ctx(struct iommu *iommu, int ctx)
 static void *dma_4u_alloc_coherent(struct device *dev, size_t size,
 				   dma_addr_t *dma_addrp, gfp_t gfp)
 {
-	struct iommu *iommu;
-	iopte_t *iopte;
 	unsigned long flags, order, first_page;
+	struct iommu *iommu;
+	struct page *page;
+	int npages, nid;
+	iopte_t *iopte;
 	void *ret;
-	int npages;
 
 	size = IO_PAGE_ALIGN(size);
 	order = get_order(size);
 	if (order >= 10)
 		return NULL;
 
-	first_page = __get_free_pages(gfp, order);
-	if (first_page == 0UL)
+	nid = dev->archdata.numa_node;
+	page = alloc_pages_node(nid, gfp, order);
+	if (unlikely(!page))
 		return NULL;
+
+	first_page = (unsigned long) page_address(page);
 	memset((char *)first_page, 0, PAGE_SIZE << order);
 
 	iommu = dev->archdata.iommu;
@@ -516,9 +525,11 @@ static int dma_4u_map_sg(struct device *dev, struct scatterlist *sglist,
 	unsigned long flags, handle, prot, ctx;
 	dma_addr_t dma_next = 0, dma_addr;
 	unsigned int max_seg_size;
+	unsigned long seg_boundary_size;
 	int outcount, incount, i;
 	struct strbuf *strbuf;
 	struct iommu *iommu;
+	unsigned long base_shift;
 
 	BUG_ON(direction == DMA_NONE);
 
@@ -549,8 +560,11 @@ static int dma_4u_map_sg(struct device *dev, struct scatterlist *sglist,
 	outs->dma_length = 0;
 
 	max_seg_size = dma_get_max_seg_size(dev);
+	seg_boundary_size = ALIGN(dma_get_seg_boundary(dev) + 1,
+				  IO_PAGE_SIZE) >> IO_PAGE_SHIFT;
+	base_shift = iommu->page_table_map_base >> IO_PAGE_SHIFT;
 	for_each_sg(sglist, s, nelems, i) {
-		unsigned long paddr, npages, entry, slen;
+		unsigned long paddr, npages, entry, out_entry = 0, slen;
 		iopte_t *base;
 
 		slen = s->length;
@@ -593,7 +607,9 @@ static int dma_4u_map_sg(struct device *dev, struct scatterlist *sglist,
 			 * - allocated dma_addr isn't contiguous to previous allocation
 			 */
 			if ((dma_addr != dma_next) ||
-			    (outs->dma_length + s->length > max_seg_size)) {
+			    (outs->dma_length + s->length > max_seg_size) ||
+			    (is_span_boundary(out_entry, base_shift,
+					      seg_boundary_size, outs, s))) {
 				/* Can't merge: create a new segment */
 				segstart = s;
 				outcount++;
@@ -607,6 +623,7 @@ static int dma_4u_map_sg(struct device *dev, struct scatterlist *sglist,
 			/* This is a new segment, fill entries */
 			outs->dma_address = dma_addr;
 			outs->dma_length = slen;
+			out_entry = entry;
 		}
 
 		/* Calculate next page pointer for contiguous check */
@@ -626,7 +643,7 @@ static int dma_4u_map_sg(struct device *dev, struct scatterlist *sglist,
 iommu_map_failed:
 	for_each_sg(sglist, s, nelems, i) {
 		if (s->dma_length != 0) {
-			unsigned long vaddr, npages, entry, i;
+			unsigned long vaddr, npages, entry, j;
 			iopte_t *base;
 
 			vaddr = s->dma_address & IO_PAGE_MASK;
@@ -637,8 +654,8 @@ iommu_map_failed:
 				>> IO_PAGE_SHIFT;
 			base = iommu->page_table + entry;
 
-			for (i = 0; i < npages; i++)
-				iopte_make_dummy(iommu, base + i);
+			for (j = 0; j < npages; j++)
+				iopte_make_dummy(iommu, base + j);
 
 			s->dma_address = DMA_ERROR_CODE;
 			s->dma_length = 0;
@@ -803,7 +820,7 @@ static void dma_4u_sync_sg_for_cpu(struct device *dev,
 	spin_unlock_irqrestore(&iommu->lock, flags);
 }
 
-const struct dma_ops sun4u_dma_ops = {
+static const struct dma_ops sun4u_dma_ops = {
 	.alloc_coherent		= dma_4u_alloc_coherent,
 	.free_coherent		= dma_4u_free_coherent,
 	.map_single		= dma_4u_map_single,

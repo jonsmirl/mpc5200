@@ -38,7 +38,7 @@
 #define MXB_BOARD_CAN_DO_VBI(dev)   (dev->revision != 0)
 
 /* global variable */
-static int mxb_num = 0;
+static int mxb_num;
 
 /* initial frequence the tuner will be tuned to.
    in verden (lower saxony, germany) 4148 is a
@@ -47,7 +47,7 @@ static int freq = 4148;
 module_param(freq, int, 0644);
 MODULE_PARM_DESC(freq, "initial frequency the tuner will be tuned to while setup");
 
-static int debug = 0;
+static int debug;
 module_param(debug, int, 0644);
 MODULE_PARM_DESC(debug, "Turn on/off device debugging (default:off).");
 
@@ -221,9 +221,8 @@ static int mxb_probe(struct saa7146_dev* dev)
 	device_for_each_child(&mxb->i2c_adapter.dev, mxb, mxb_check_clients);
 
 	/* check if all devices are present */
-	if(    0 == mxb->tea6420_1	|| 0 == mxb->tea6420_2	|| 0 == mxb->tea6415c
-	    || 0 == mxb->tda9840	|| 0 == mxb->saa7111a	|| 0 == mxb->tuner ) {
-
+	if (!mxb->tea6420_1 || !mxb->tea6420_2 || !mxb->tea6415c ||
+	    !mxb->tda9840 || !mxb->saa7111a || !mxb->tuner) {
 		printk("mxb: did not find all i2c devices. aborting\n");
 		i2c_del_adapter(&mxb->i2c_adapter);
 		kfree(mxb);

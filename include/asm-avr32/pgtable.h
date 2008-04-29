@@ -157,6 +157,7 @@ extern struct page *empty_zero_page;
 #define _PAGE_S(x)	_PAGE_NORMAL(x)
 
 #define PAGE_COPY	_PAGE_P(PAGE_WRITE | PAGE_READ)
+#define PAGE_SHARED	_PAGE_S(PAGE_WRITE | PAGE_READ)
 
 #ifndef __ASSEMBLY__
 /*
@@ -211,6 +212,10 @@ static inline int pte_young(pte_t pte)
 {
 	return pte_val(pte) & _PAGE_ACCESSED;
 }
+static inline int pte_special(pte_t pte)
+{
+	return 0;
+}
 
 /*
  * The following only work if pte_present() is not true.
@@ -249,6 +254,10 @@ static inline pte_t pte_mkdirty(pte_t pte)
 static inline pte_t pte_mkyoung(pte_t pte)
 {
 	set_pte(&pte, __pte(pte_val(pte) | _PAGE_ACCESSED));
+	return pte;
+}
+static inline pte_t pte_mkspecial(pte_t pte)
+{
 	return pte;
 }
 

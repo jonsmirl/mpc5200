@@ -127,10 +127,12 @@ static inline long iommu_batch_end(void)
 static void *dma_4v_alloc_coherent(struct device *dev, size_t size,
 				   dma_addr_t *dma_addrp, gfp_t gfp)
 {
-	struct iommu *iommu;
 	unsigned long flags, order, first_page, npages, n;
+	struct iommu *iommu;
+	struct page *page;
 	void *ret;
 	long entry;
+	int nid;
 
 	size = IO_PAGE_ALIGN(size);
 	order = get_order(size);
@@ -139,10 +141,12 @@ static void *dma_4v_alloc_coherent(struct device *dev, size_t size,
 
 	npages = size >> IO_PAGE_SHIFT;
 
-	first_page = __get_free_pages(gfp, order);
-	if (unlikely(first_page == 0UL))
+	nid = dev->archdata.numa_node;
+	page = alloc_pages_node(nid, gfp, order);
+	if (unlikely(!page))
 		return NULL;
 
+	first_page = (unsigned long) page_address(page);
 	memset((char *)first_page, 0, PAGE_SIZE << order);
 
 	iommu = dev->archdata.iommu;
@@ -335,8 +339,10 @@ static int dma_4v_map_sg(struct device *dev, struct scatterlist *sglist,
 	unsigned long flags, handle, prot;
 	dma_addr_t dma_next = 0, dma_addr;
 	unsigned int max_seg_size;
+	unsigned long seg_boundary_size;
 	int outcount, incount, i;
 	struct iommu *iommu;
+	unsigned long base_shift;
 	long err;
 
 	BUG_ON(direction == DMA_NONE);
@@ -362,8 +368,11 @@ static int dma_4v_map_sg(struct device *dev, struct scatterlist *sglist,
 	iommu_batch_start(dev, prot, ~0UL);
 
 	max_seg_size = dma_get_max_seg_size(dev);
+	seg_boundary_size = ALIGN(dma_get_seg_boundary(dev) + 1,
+				  IO_PAGE_SIZE) >> IO_PAGE_SHIFT;
+	base_shift = iommu->page_table_map_base >> IO_PAGE_SHIFT;
 	for_each_sg(sglist, s, nelems, i) {
-		unsigned long paddr, npages, entry, slen;
+		unsigned long paddr, npages, entry, out_entry = 0, slen;
 
 		slen = s->length;
 		/* Sanity check */
@@ -406,7 +415,9 @@ static int dma_4v_map_sg(struct device *dev, struct scatterlist *sglist,
 			 * - allocated dma_addr isn't contiguous to previous allocation
 			 */
 			if ((dma_addr != dma_next) ||
-			    (outs->dma_length + s->length > max_seg_size)) {
+			    (outs->dma_length + s->length > max_seg_size) ||
+			    (is_span_boundary(out_entry, base_shift,
+					      seg_boundary_size, outs, s))) {
 				/* Can't merge: create a new segment */
 				segstart = s;
 				outcount++;
@@ -420,6 +431,7 @@ static int dma_4v_map_sg(struct device *dev, struct scatterlist *sglist,
 			/* This is a new segment, fill entries */
 			outs->dma_address = dma_addr;
 			outs->dma_length = slen;
+			out_entry = entry;
 		}
 
 		/* Calculate next page pointer for contiguous check */
@@ -891,6 +903,8 @@ static void __init pci_sun4v_pbm_init(struct pci_controller_info *p,
 	pbm->next = pci_pbm_root;
 	pci_pbm_root = pbm;
 
+	pbm->numa_node = of_node_to_nid(dp);
+
 	pbm->scan_bus = pci_sun4v_scan_bus;
 	pbm->pci_ops = &sun4v_pci_ops;
 	pbm->config_space_reg_bits = 12;
@@ -905,6 +919,7 @@ static void __init pci_sun4v_pbm_init(struct pci_controller_info *p,
 	pbm->name = dp->full_name;
 
 	printk("%s: SUN4V PCI Bus Module\n", pbm->name);
+	printk("%s: On NUMA node %d\n", pbm->name, pbm->numa_node);
 
 	pci_determine_mem_io_space(pbm);
 

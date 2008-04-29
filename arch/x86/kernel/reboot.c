@@ -1,5 +1,4 @@
 #include <linux/module.h>
-#include <linux/init.h>
 #include <linux/reboot.h>
 #include <linux/init.h>
 #include <linux/pm.h>
@@ -9,6 +8,7 @@
 #include <asm/apic.h>
 #include <asm/desc.h>
 #include <asm/hpet.h>
+#include <asm/pgtable.h>
 #include <asm/reboot_fixups.h>
 #include <asm/reboot.h>
 
@@ -16,7 +16,6 @@
 # include <linux/dmi.h>
 # include <linux/ctype.h>
 # include <linux/mc146818rtc.h>
-# include <asm/pgtable.h>
 #else
 # include <asm/iommu.h>
 #endif
@@ -152,6 +151,24 @@ static struct dmi_system_id __initdata reboot_dmi_table[] = {
 			DMI_MATCH(DMI_BOARD_NAME, "0WF810"),
 		},
 	},
+	{       /* Handle problems with rebooting on Dell Optiplex 745's DFF*/
+		.callback = set_bios_reboot,
+		.ident = "Dell OptiPlex 745",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "Dell Inc."),
+			DMI_MATCH(DMI_PRODUCT_NAME, "OptiPlex 745"),
+			DMI_MATCH(DMI_BOARD_NAME, "0MM599"),
+		},
+	},
+	{       /* Handle problems with rebooting on Dell Optiplex 745 with 0KW626 */
+		.callback = set_bios_reboot,
+		.ident = "Dell OptiPlex 745",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "Dell Inc."),
+			DMI_MATCH(DMI_PRODUCT_NAME, "OptiPlex 745"),
+			DMI_MATCH(DMI_BOARD_NAME, "0KW626"),
+		},
+	},
 	{	/* Handle problems with rebooting on Dell 2400's */
 		.callback = set_bios_reboot,
 		.ident = "Dell PowerEdge 2400",
@@ -258,7 +275,7 @@ void machine_real_restart(unsigned char *code, int length)
 	/* Remap the kernel at virtual address zero, as well as offset zero
 	   from the kernel segment.  This assumes the kernel segment starts at
 	   virtual address PAGE_OFFSET. */
-	memcpy(swapper_pg_dir, swapper_pg_dir + USER_PGD_PTRS,
+	memcpy(swapper_pg_dir, swapper_pg_dir + KERNEL_PGD_BOUNDARY,
 		sizeof(swapper_pg_dir [0]) * KERNEL_PGD_PTRS);
 
 	/*
@@ -326,6 +343,10 @@ static inline void kb_wait(void)
 	}
 }
 
+void __attribute__((weak)) mach_reboot_fixups(void)
+{
+}
+
 static void native_machine_emergency_restart(void)
 {
 	int i;
@@ -337,6 +358,8 @@ static void native_machine_emergency_restart(void)
 		/* Could also try the reset bit in the Hammer NB */
 		switch (reboot_type) {
 		case BOOT_KBD:
+			mach_reboot_fixups(); /* for board specific fixups */
+
 			for (i = 0; i < 10; i++) {
 				kb_wait();
 				udelay(50);
@@ -376,7 +399,7 @@ static void native_machine_emergency_restart(void)
 	}
 }
 
-static void native_machine_shutdown(void)
+void native_machine_shutdown(void)
 {
 	/* Stop the cpus and apics */
 #ifdef CONFIG_SMP
@@ -388,16 +411,16 @@ static void native_machine_shutdown(void)
 #ifdef CONFIG_X86_32
 	/* See if there has been given a command line override */
 	if ((reboot_cpu != -1) && (reboot_cpu < NR_CPUS) &&
-		cpu_isset(reboot_cpu, cpu_online_map))
+		cpu_online(reboot_cpu))
 		reboot_cpu_id = reboot_cpu;
 #endif
 
 	/* Make certain the cpu I'm about to reboot on is online */
-	if (!cpu_isset(reboot_cpu_id, cpu_online_map))
+	if (!cpu_online(reboot_cpu_id))
 		reboot_cpu_id = smp_processor_id();
 
 	/* Make certain I only run on the appropriate processor */
-	set_cpus_allowed(current, cpumask_of_cpu(reboot_cpu_id));
+	set_cpus_allowed_ptr(current, &cpumask_of_cpu(reboot_cpu_id));
 
 	/* O.K Now that I'm on the appropriate processor,
 	 * stop all of the others.
@@ -447,7 +470,10 @@ struct machine_ops machine_ops = {
 	.shutdown = native_machine_shutdown,
 	.emergency_restart = native_machine_emergency_restart,
 	.restart = native_machine_restart,
-	.halt = native_machine_halt
+	.halt = native_machine_halt,
+#ifdef CONFIG_KEXEC
+	.crash_shutdown = native_machine_crash_shutdown,
+#endif
 };
 
 void machine_power_off(void)
@@ -475,3 +501,9 @@ void machine_halt(void)
 	machine_ops.halt();
 }
 
+#ifdef CONFIG_KEXEC
+void machine_crash_shutdown(struct pt_regs *regs)
+{
+	machine_ops.crash_shutdown(regs);
+}
+#endif

@@ -56,7 +56,7 @@ MODULE_LICENSE("GPL");
 #define I2C_NAME(s) (s)->name
 
 
-static int debug = 0;
+static int debug;
 module_param(debug, int, 0);
 MODULE_PARM_DESC(debug, "Debug level (0-1)");
 
@@ -311,7 +311,7 @@ bt856_detect_client (struct i2c_adapter *adapter,
 		return 0;
 
 	client = kzalloc(sizeof(struct i2c_client), GFP_KERNEL);
-	if (client == 0)
+	if (!client)
 		return -ENOMEM;
 	client->addr = address;
 	client->adapter = adapter;

@@ -911,8 +911,7 @@ static int isp116x_hub_status_data(struct usb_hcd *hcd, char *buf)
 		buf[0] = 0;
 
 	for (i = 0; i < ports; i++) {
-		u32 status = isp116x->rhport[i] =
-		    isp116x_read_reg32(isp116x, i ? HCRHPORT2 : HCRHPORT1);
+		u32 status = isp116x_read_reg32(isp116x, i ? HCRHPORT2 : HCRHPORT1);
 
 		if (status & (RH_PS_CSC | RH_PS_PESC | RH_PS_PSSC
 			      | RH_PS_OCIC | RH_PS_PRSC)) {
@@ -1031,7 +1030,9 @@ static int isp116x_hub_control(struct usb_hcd *hcd,
 		DBG("GetPortStatus\n");
 		if (!wIndex || wIndex > ports)
 			goto error;
-		tmp = isp116x->rhport[--wIndex];
+		spin_lock_irqsave(&isp116x->lock, flags);
+		tmp = isp116x_read_reg32(isp116x, (--wIndex) ? HCRHPORT2 : HCRHPORT1);
+		spin_unlock_irqrestore(&isp116x->lock, flags);
 		*(__le32 *) buf = cpu_to_le32(tmp);
 		DBG("GetPortStatus: port[%d]  %08x\n", wIndex + 1, tmp);
 		break;
@@ -1080,8 +1081,6 @@ static int isp116x_hub_control(struct usb_hcd *hcd,
 		spin_lock_irqsave(&isp116x->lock, flags);
 		isp116x_write_reg32(isp116x, wIndex
 				    ? HCRHPORT2 : HCRHPORT1, tmp);
-		isp116x->rhport[wIndex] =
-		    isp116x_read_reg32(isp116x, wIndex ? HCRHPORT2 : HCRHPORT1);
 		spin_unlock_irqrestore(&isp116x->lock, flags);
 		break;
 	case SetPortFeature:
@@ -1095,24 +1094,22 @@ static int isp116x_hub_control(struct usb_hcd *hcd,
 			spin_lock_irqsave(&isp116x->lock, flags);
 			isp116x_write_reg32(isp116x, wIndex
 					    ? HCRHPORT2 : HCRHPORT1, RH_PS_PSS);
+			spin_unlock_irqrestore(&isp116x->lock, flags);
 			break;
 		case USB_PORT_FEAT_POWER:
 			DBG("USB_PORT_FEAT_POWER\n");
 			spin_lock_irqsave(&isp116x->lock, flags);
 			isp116x_write_reg32(isp116x, wIndex
 					    ? HCRHPORT2 : HCRHPORT1, RH_PS_PPS);
+			spin_unlock_irqrestore(&isp116x->lock, flags);
 			break;
 		case USB_PORT_FEAT_RESET:
 			DBG("USB_PORT_FEAT_RESET\n");
 			root_port_reset(isp116x, wIndex);
-			spin_lock_irqsave(&isp116x->lock, flags);
 			break;
 		default:
 			goto error;
 		}
-		isp116x->rhport[wIndex] =
-		    isp116x_read_reg32(isp116x, wIndex ? HCRHPORT2 : HCRHPORT1);
-		spin_unlock_irqrestore(&isp116x->lock, flags);
 		break;
 
 	default:
@@ -1403,7 +1400,7 @@ static int isp116x_bus_suspend(struct usb_hcd *hcd)
 		spin_unlock_irqrestore(&isp116x->lock, flags);
 		val &= (~HCCONTROL_HCFS & ~HCCONTROL_RWE);
 		val |= HCCONTROL_USB_SUSPEND;
-		if (device_may_wakeup(&hcd->self.root_hub->dev))
+		if (hcd->self.root_hub->do_remote_wakeup)
 			val |= HCCONTROL_RWE;
 		/* Wait for usb transfers to finish */
 		msleep(2);
@@ -1445,11 +1442,6 @@ static int isp116x_bus_resume(struct usb_hcd *hcd)
 		break;
 	case HCCONTROL_USB_OPER:
 		spin_unlock_irq(&isp116x->lock);
-		/* Without setting power_state here the
-		   SUSPENDED state won't be removed from
-		   sysfs/usbN/power.state as a response to remote
-		   wakeup. Maybe in the future. */
-		hcd->self.root_hub->dev.power.power_state = PMSG_ON;
 		return 0;
 	default:
 		/* HCCONTROL_USB_RESET: this may happen, when during
@@ -1463,7 +1455,6 @@ static int isp116x_bus_resume(struct usb_hcd *hcd)
 		if ((isp116x->rhdesca & RH_A_NDP) == 2)
 			isp116x_hub_control(hcd, SetPortFeature,
 					    USB_PORT_FEAT_POWER, 2, NULL, 0);
-		hcd->self.root_hub->dev.power.power_state = PMSG_ON;
 		return 0;
 	}
 
@@ -1489,8 +1480,6 @@ static int isp116x_bus_resume(struct usb_hcd *hcd)
 	isp116x_write_reg32(isp116x, HCCONTROL,
 			    (val & ~HCCONTROL_HCFS) | HCCONTROL_USB_OPER);
 	spin_unlock_irq(&isp116x->lock);
-	/* see analogous comment above */
-	hcd->self.root_hub->dev.power.power_state = PMSG_ON;
 	hcd->state = HC_STATE_RUNNING;
 
 	return 0;
@@ -1666,7 +1655,6 @@ static int __devinit isp116x_probe(struct platform_device *pdev)
 static int isp116x_suspend(struct platform_device *dev, pm_message_t state)
 {
 	VDBG("%s: state %x\n", __func__, state.event);
-	dev->dev.power.power_state = state;
 	return 0;
 }
 
@@ -1675,8 +1663,7 @@ static int isp116x_suspend(struct platform_device *dev, pm_message_t state)
 */
 static int isp116x_resume(struct platform_device *dev)
 {
-	VDBG("%s:  state %x\n", __func__, dev->power.power_state.event);
-	dev->dev.power.power_state = PMSG_ON;
+	VDBG("%s\n", __func__);
 	return 0;
 }
 
@@ -1687,14 +1674,18 @@ static int isp116x_resume(struct platform_device *dev)
 
 #endif
 
+/* work with hotplug and coldplug */
+MODULE_ALIAS("platform:isp116x-hcd");
+
 static struct platform_driver isp116x_driver = {
 	.probe = isp116x_probe,
 	.remove = isp116x_remove,
 	.suspend = isp116x_suspend,
 	.resume = isp116x_resume,
 	.driver = {
-		   .name = (char *)hcd_name,
-		   },
+		.name = (char *)hcd_name,
+		.owner	= THIS_MODULE,
+	},
 };
 
 /*-----------------------------------------------------------------*/

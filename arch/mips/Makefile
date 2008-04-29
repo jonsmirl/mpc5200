@@ -12,6 +12,8 @@
 # for "archclean" cleaning up for this architecture.
 #
 
+KBUILD_DEFCONFIG := ip22_defconfig
+
 cflags-y :=
 
 #
@@ -408,21 +410,21 @@ load-$(CONFIG_CASIO_E55)	+= 0xffffffff80004000
 load-$(CONFIG_TANBAC_TB022X)	+= 0xffffffff80000000
 
 #
-# Common Philips PNX8550
+# Common NXP PNX8550
 #
-core-$(CONFIG_SOC_PNX8550)	+= arch/mips/philips/pnx8550/common/
+core-$(CONFIG_SOC_PNX8550)	+= arch/mips/nxp/pnx8550/common/
 cflags-$(CONFIG_SOC_PNX8550)	+= -Iinclude/asm-mips/mach-pnx8550
 
 #
-# Philips PNX8550 JBS board
+# NXP PNX8550 JBS board
 #
-libs-$(CONFIG_PNX8550_JBS)	+= arch/mips/philips/pnx8550/jbs/
+libs-$(CONFIG_PNX8550_JBS)	+= arch/mips/nxp/pnx8550/jbs/
 #cflags-$(CONFIG_PNX8550_JBS)	+= -Iinclude/asm-mips/mach-pnx8550
 load-$(CONFIG_PNX8550_JBS)	+= 0xffffffff80060000
 
-# Philips PNX8550 STB810 board
+# NXP PNX8550 STB810 board
 #
-libs-$(CONFIG_PNX8550_STB810)	+= arch/mips/philips/pnx8550/stb810/
+libs-$(CONFIG_PNX8550_STB810)	+= arch/mips/nxp/pnx8550/stb810/
 load-$(CONFIG_PNX8550_STB810)	+= 0xffffffff80060000
 
 # NEC EMMA2RH boards
@@ -480,10 +482,13 @@ endif
 # be 16kb aligned or the handling of the current variable will break.
 # Simplified: what IP22 does at 128MB+ in ksegN, IP28 does at 512MB+ in xkphys
 #
-#core-$(CONFIG_SGI_IP28)		+= arch/mips/sgi-ip22/ arch/mips/arc/arc_con.o
+ifdef CONFIG_SGI_IP28
+  ifeq ($(call cc-option-yn,-mr10k-cache-barrier=1), n)
+      $(error gcc doesn't support needed option -mr10k-cache-barrier=1)
+  endif
+endif
 core-$(CONFIG_SGI_IP28)		+= arch/mips/sgi-ip22/
 cflags-$(CONFIG_SGI_IP28)	+= -mr10k-cache-barrier=1 -Iinclude/asm-mips/mach-ip28
-#cflags-$(CONFIG_SGI_IP28)	+= -Iinclude/asm-mips/mach-ip28
 load-$(CONFIG_SGI_IP28)		+= 0xa800000020004000
 
 #

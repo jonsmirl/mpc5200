@@ -58,13 +58,13 @@ enum opcode {
 	insn_invalid,
 	insn_addu, insn_addiu, insn_and, insn_andi, insn_beq,
 	insn_beql, insn_bgez, insn_bgezl, insn_bltz, insn_bltzl,
-	insn_bne, insn_daddu, insn_daddiu, insn_dmfc0, insn_dmtc0,
-	insn_dsll, insn_dsll32, insn_dsra, insn_dsrl, insn_dsrl32,
-	insn_dsubu, insn_eret, insn_j, insn_jal, insn_jr, insn_ld,
-	insn_ll, insn_lld, insn_lui, insn_lw, insn_mfc0, insn_mtc0,
-	insn_ori, insn_rfe, insn_sc, insn_scd, insn_sd, insn_sll,
-	insn_sra, insn_srl, insn_subu, insn_sw, insn_tlbp, insn_tlbwi,
-	insn_tlbwr, insn_xor, insn_xori
+	insn_bne, insn_cache, insn_daddu, insn_daddiu, insn_dmfc0,
+	insn_dmtc0, insn_dsll, insn_dsll32, insn_dsra, insn_dsrl,
+	insn_dsrl32, insn_dsubu, insn_eret, insn_j, insn_jal, insn_jr,
+	insn_ld, insn_ll, insn_lld, insn_lui, insn_lw, insn_mfc0,
+	insn_mtc0, insn_ori, insn_pref, insn_rfe, insn_sc, insn_scd,
+	insn_sd, insn_sll, insn_sra, insn_srl, insn_subu, insn_sw,
+	insn_tlbp, insn_tlbwi, insn_tlbwr, insn_xor, insn_xori
 };
 
 struct insn {
@@ -82,7 +82,7 @@ struct insn {
 	 | (e) << RE_SH						\
 	 | (f) << FUNC_SH)
 
-static struct insn insn_table[] __initdata = {
+static struct insn insn_table[] __cpuinitdata = {
 	{ insn_addiu, M(addiu_op, 0, 0, 0, 0, 0), RS | RT | SIMM },
 	{ insn_addu, M(spec_op, 0, 0, 0, 0, addu_op), RS | RT | RD },
 	{ insn_and, M(spec_op, 0, 0, 0, 0, and_op), RS | RT | RD },
@@ -94,6 +94,7 @@ static struct insn insn_table[] __initdata = {
 	{ insn_bltz, M(bcond_op, 0, bltz_op, 0, 0, 0), RS | BIMM },
 	{ insn_bltzl, M(bcond_op, 0, bltzl_op, 0, 0, 0), RS | BIMM },
 	{ insn_bne, M(bne_op, 0, 0, 0, 0, 0), RS | RT | BIMM },
+	{ insn_cache,  M(cache_op, 0, 0, 0, 0, 0),  RS | RT | SIMM },
 	{ insn_daddiu, M(daddiu_op, 0, 0, 0, 0, 0), RS | RT | SIMM },
 	{ insn_daddu, M(spec_op, 0, 0, 0, 0, daddu_op), RS | RT | RD },
 	{ insn_dmfc0, M(cop0_op, dmfc_op, 0, 0, 0, 0), RT | RD | SET},
@@ -116,6 +117,7 @@ static struct insn insn_table[] __initdata = {
 	{ insn_mfc0,  M(cop0_op, mfc_op, 0, 0, 0, 0),  RT | RD | SET},
 	{ insn_mtc0,  M(cop0_op, mtc_op, 0, 0, 0, 0),  RT | RD | SET},
 	{ insn_ori,  M(ori_op, 0, 0, 0, 0, 0),  RS | RT | UIMM },
+	{ insn_pref,  M(pref_op, 0, 0, 0, 0, 0),  RS | RT | SIMM },
 	{ insn_rfe,  M(cop0_op, cop_op, 0, 0, 0, rfe_op),  0 },
 	{ insn_sc,  M(sc_op, 0, 0, 0, 0, 0),  RS | RT | SIMM },
 	{ insn_scd,  M(scd_op, 0, 0, 0, 0, 0),  RS | RT | SIMM },
@@ -135,7 +137,7 @@ static struct insn insn_table[] __initdata = {
 
 #undef M
 
-static inline __init u32 build_rs(u32 arg)
+static inline __cpuinit u32 build_rs(u32 arg)
 {
 	if (arg & ~RS_MASK)
 		printk(KERN_WARNING "Micro-assembler field overflow\n");
@@ -143,7 +145,7 @@ static inline __init u32 build_rs(u32 arg)
 	return (arg & RS_MASK) << RS_SH;
 }
 
-static inline __init u32 build_rt(u32 arg)
+static inline __cpuinit u32 build_rt(u32 arg)
 {
 	if (arg & ~RT_MASK)
 		printk(KERN_WARNING "Micro-assembler field overflow\n");
@@ -151,7 +153,7 @@ static inline __init u32 build_rt(u32 arg)
 	return (arg & RT_MASK) << RT_SH;
 }
 
-static inline __init u32 build_rd(u32 arg)
+static inline __cpuinit u32 build_rd(u32 arg)
 {
 	if (arg & ~RD_MASK)
 		printk(KERN_WARNING "Micro-assembler field overflow\n");
@@ -159,7 +161,7 @@ static inline __init u32 build_rd(u32 arg)
 	return (arg & RD_MASK) << RD_SH;
 }
 
-static inline __init u32 build_re(u32 arg)
+static inline __cpuinit u32 build_re(u32 arg)
 {
 	if (arg & ~RE_MASK)
 		printk(KERN_WARNING "Micro-assembler field overflow\n");
@@ -167,7 +169,7 @@ static inline __init u32 build_re(u32 arg)
 	return (arg & RE_MASK) << RE_SH;
 }
 
-static inline __init u32 build_simm(s32 arg)
+static inline __cpuinit u32 build_simm(s32 arg)
 {
 	if (arg > 0x7fff || arg < -0x8000)
 		printk(KERN_WARNING "Micro-assembler field overflow\n");
@@ -175,7 +177,7 @@ static inline __init u32 build_simm(s32 arg)
 	return arg & 0xffff;
 }
 
-static inline __init u32 build_uimm(u32 arg)
+static inline __cpuinit u32 build_uimm(u32 arg)
 {
 	if (arg & ~IMM_MASK)
 		printk(KERN_WARNING "Micro-assembler field overflow\n");
@@ -183,7 +185,7 @@ static inline __init u32 build_uimm(u32 arg)
 	return arg & IMM_MASK;
 }
 
-static inline __init u32 build_bimm(s32 arg)
+static inline __cpuinit u32 build_bimm(s32 arg)
 {
 	if (arg > 0x1ffff || arg < -0x20000)
 		printk(KERN_WARNING "Micro-assembler field overflow\n");
@@ -194,7 +196,7 @@ static inline __init u32 build_bimm(s32 arg)
 	return ((arg < 0) ? (1 << 15) : 0) | ((arg >> 2) & 0x7fff);
 }
 
-static inline __init u32 build_jimm(u32 arg)
+static inline __cpuinit u32 build_jimm(u32 arg)
 {
 	if (arg & ~((JIMM_MASK) << 2))
 		printk(KERN_WARNING "Micro-assembler field overflow\n");
@@ -202,7 +204,7 @@ static inline __init u32 build_jimm(u32 arg)
 	return (arg >> 2) & JIMM_MASK;
 }
 
-static inline __init u32 build_func(u32 arg)
+static inline __cpuinit u32 build_func(u32 arg)
 {
 	if (arg & ~FUNC_MASK)
 		printk(KERN_WARNING "Micro-assembler field overflow\n");
@@ -210,7 +212,7 @@ static inline __init u32 build_func(u32 arg)
 	return arg & FUNC_MASK;
 }
 
-static inline __init u32 build_set(u32 arg)
+static inline __cpuinit u32 build_set(u32 arg)
 {
 	if (arg & ~SET_MASK)
 		printk(KERN_WARNING "Micro-assembler field overflow\n");
@@ -222,7 +224,7 @@ static inline __init u32 build_set(u32 arg)
  * The order of opcode arguments is implicitly left to right,
  * starting with RS and ending with FUNC or IMM.
  */
-static void __init build_insn(u32 **buf, enum opcode opc, ...)
+static void __cpuinit build_insn(u32 **buf, enum opcode opc, ...)
 {
 	struct insn *ip = NULL;
 	unsigned int i;
@@ -337,6 +339,7 @@ I_u1s2(_bgezl)
 I_u1s2(_bltz)
 I_u1s2(_bltzl)
 I_u1u2s3(_bne)
+I_u2s3u1(_cache)
 I_u1u2u3(_dmfc0)
 I_u1u2u3(_dmtc0)
 I_u2u1s3(_daddiu)
@@ -359,6 +362,7 @@ I_u2s3u1(_lw)
 I_u1u2u3(_mfc0)
 I_u1u2u3(_mtc0)
 I_u2u1u3(_ori)
+I_u2s3u1(_pref)
 I_0(_rfe)
 I_u2s3u1(_sc)
 I_u2s3u1(_scd)
@@ -375,14 +379,14 @@ I_u3u1u2(_xor)
 I_u2u1u3(_xori)
 
 /* Handle labels. */
-void __init uasm_build_label(struct uasm_label **lab, u32 *addr, int lid)
+void __cpuinit uasm_build_label(struct uasm_label **lab, u32 *addr, int lid)
 {
 	(*lab)->addr = addr;
 	(*lab)->lab = lid;
 	(*lab)++;
 }
 
-int __init uasm_in_compat_space_p(long addr)
+int __cpuinit uasm_in_compat_space_p(long addr)
 {
 	/* Is this address in 32bit compat space? */
 #ifdef CONFIG_64BIT
@@ -392,7 +396,7 @@ int __init uasm_in_compat_space_p(long addr)
 #endif
 }
 
-int __init uasm_rel_highest(long val)
+int __cpuinit uasm_rel_highest(long val)
 {
 #ifdef CONFIG_64BIT
 	return ((((val + 0x800080008000L) >> 48) & 0xffff) ^ 0x8000) - 0x8000;
@@ -401,7 +405,7 @@ int __init uasm_rel_highest(long val)
 #endif
 }
 
-int __init uasm_rel_higher(long val)
+int __cpuinit uasm_rel_higher(long val)
 {
 #ifdef CONFIG_64BIT
 	return ((((val + 0x80008000L) >> 32) & 0xffff) ^ 0x8000) - 0x8000;
@@ -410,17 +414,17 @@ int __init uasm_rel_higher(long val)
 #endif
 }
 
-int __init uasm_rel_hi(long val)
+int __cpuinit uasm_rel_hi(long val)
 {
 	return ((((val + 0x8000L) >> 16) & 0xffff) ^ 0x8000) - 0x8000;
 }
 
-int __init uasm_rel_lo(long val)
+int __cpuinit uasm_rel_lo(long val)
 {
 	return ((val & 0xffff) ^ 0x8000) - 0x8000;
 }
 
-void __init UASM_i_LA_mostly(u32 **buf, unsigned int rs, long addr)
+void __cpuinit UASM_i_LA_mostly(u32 **buf, unsigned int rs, long addr)
 {
 	if (!uasm_in_compat_space_p(addr)) {
 		uasm_i_lui(buf, rs, uasm_rel_highest(addr));
@@ -436,7 +440,7 @@ void __init UASM_i_LA_mostly(u32 **buf, unsigned int rs, long addr)
 		uasm_i_lui(buf, rs, uasm_rel_hi(addr));
 }
 
-void __init UASM_i_LA(u32 **buf, unsigned int rs, long addr)
+void __cpuinit UASM_i_LA(u32 **buf, unsigned int rs, long addr)
 {
 	UASM_i_LA_mostly(buf, rs, addr);
 	if (uasm_rel_lo(addr)) {
@@ -448,7 +452,7 @@ void __init UASM_i_LA(u32 **buf, unsigned int rs, long addr)
 }
 
 /* Handle relocations. */
-void __init
+void __cpuinit
 uasm_r_mips_pc16(struct uasm_reloc **rel, u32 *addr, int lid)
 {
 	(*rel)->addr = addr;
@@ -457,7 +461,7 @@ uasm_r_mips_pc16(struct uasm_reloc **rel, u32 *addr, int lid)
 	(*rel)++;
 }
 
-static inline void __init
+static inline void __cpuinit
 __resolve_relocs(struct uasm_reloc *rel, struct uasm_label *lab)
 {
 	long laddr = (long)lab->addr;
@@ -474,7 +478,7 @@ __resolve_relocs(struct uasm_reloc *rel, struct uasm_label *lab)
 	}
 }
 
-void __init
+void __cpuinit
 uasm_resolve_relocs(struct uasm_reloc *rel, struct uasm_label *lab)
 {
 	struct uasm_label *l;
@@ -485,7 +489,7 @@ uasm_resolve_relocs(struct uasm_reloc *rel, struct uasm_label *lab)
 				__resolve_relocs(rel, l);
 }
 
-void __init
+void __cpuinit
 uasm_move_relocs(struct uasm_reloc *rel, u32 *first, u32 *end, long off)
 {
 	for (; rel->lab != UASM_LABEL_INVALID; rel++)
@@ -493,7 +497,7 @@ uasm_move_relocs(struct uasm_reloc *rel, u32 *first, u32 *end, long off)
 			rel->addr += off;
 }
 
-void __init
+void __cpuinit
 uasm_move_labels(struct uasm_label *lab, u32 *first, u32 *end, long off)
 {
 	for (; lab->lab != UASM_LABEL_INVALID; lab++)
@@ -501,7 +505,7 @@ uasm_move_labels(struct uasm_label *lab, u32 *first, u32 *end, long off)
 			lab->addr += off;
 }
 
-void __init
+void __cpuinit
 uasm_copy_handler(struct uasm_reloc *rel, struct uasm_label *lab, u32 *first,
 		  u32 *end, u32 *target)
 {
@@ -513,7 +517,7 @@ uasm_copy_handler(struct uasm_reloc *rel, struct uasm_label *lab, u32 *first,
 	uasm_move_labels(lab, first, end, off);
 }
 
-int __init uasm_insn_has_bdelay(struct uasm_reloc *rel, u32 *addr)
+int __cpuinit uasm_insn_has_bdelay(struct uasm_reloc *rel, u32 *addr)
 {
 	for (; rel->lab != UASM_LABEL_INVALID; rel++) {
 		if (rel->addr == addr
@@ -526,49 +530,57 @@ int __init uasm_insn_has_bdelay(struct uasm_reloc *rel, u32 *addr)
 }
 
 /* Convenience functions for labeled branches. */
-void __init
+void __cpuinit
 uasm_il_bltz(u32 **p, struct uasm_reloc **r, unsigned int reg, int lid)
 {
 	uasm_r_mips_pc16(r, *p, lid);
 	uasm_i_bltz(p, reg, 0);
 }
 
-void __init
+void __cpuinit
 uasm_il_b(u32 **p, struct uasm_reloc **r, int lid)
 {
 	uasm_r_mips_pc16(r, *p, lid);
 	uasm_i_b(p, 0);
 }
 
-void __init
+void __cpuinit
 uasm_il_beqz(u32 **p, struct uasm_reloc **r, unsigned int reg, int lid)
 {
 	uasm_r_mips_pc16(r, *p, lid);
 	uasm_i_beqz(p, reg, 0);
 }
 
-void __init
+void __cpuinit
 uasm_il_beqzl(u32 **p, struct uasm_reloc **r, unsigned int reg, int lid)
 {
 	uasm_r_mips_pc16(r, *p, lid);
 	uasm_i_beqzl(p, reg, 0);
 }
 
-void __init
+void __cpuinit
+uasm_il_bne(u32 **p, struct uasm_reloc **r, unsigned int reg1,
+	unsigned int reg2, int lid)
+{
+	uasm_r_mips_pc16(r, *p, lid);
+	uasm_i_bne(p, reg1, reg2, 0);
+}
+
+void __cpuinit
 uasm_il_bnez(u32 **p, struct uasm_reloc **r, unsigned int reg, int lid)
 {
 	uasm_r_mips_pc16(r, *p, lid);
 	uasm_i_bnez(p, reg, 0);
 }
 
-void __init
+void __cpuinit
 uasm_il_bgezl(u32 **p, struct uasm_reloc **r, unsigned int reg, int lid)
 {
 	uasm_r_mips_pc16(r, *p, lid);
 	uasm_i_bgezl(p, reg, 0);
 }
 
-void __init
+void __cpuinit
 uasm_il_bgez(u32 **p, struct uasm_reloc **r, unsigned int reg, int lid)
 {
 	uasm_r_mips_pc16(r, *p, lid);

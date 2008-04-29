@@ -130,6 +130,7 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 	case PCI_VENDOR_ID_TDI:
 		if (pdev->device == PCI_DEVICE_ID_TDI_EHCI) {
 			ehci->is_tdi_rh_tt = 1;
+			hcd->has_tt = 1;
 			tdi_reset(ehci);
 		}
 		break;
@@ -150,6 +151,20 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 			if (pdev->revision < 0xa4)
 				ehci->no_selective_suspend = 1;
 			break;
+		}
+		break;
+	case PCI_VENDOR_ID_VIA:
+		if (pdev->device == 0x3104 && (pdev->revision & 0xf0) == 0x60) {
+			u8 tmp;
+
+			/* The VT6212 defaults to a 1 usec EHCI sleep time which
+			 * hogs the PCI bus *badly*. Setting bit 5 of 0x4B makes
+			 * that sleep time use the conventional 10 usec.
+			 */
+			pci_read_config_byte(pdev, 0x4b, &tmp);
+			if (tmp & 0x20)
+				break;
+			pci_write_config_byte(pdev, 0x4b, tmp | 0x20);
 		}
 		break;
 	}
@@ -207,6 +222,7 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
 		ehci_warn(ehci, "selective suspend/wakeup unavailable\n");
 #endif
 
+	ehci_port_power(ehci, 1);
 	retval = ehci_pci_reinit(ehci, pdev);
 done:
 	return retval;
@@ -285,7 +301,7 @@ static int ehci_pci_resume(struct usb_hcd *hcd)
 	if (ehci_readl(ehci, &ehci->regs->configured_flag) == FLAG_CF) {
 		int	mask = INTR_MASK;
 
-		if (!device_may_wakeup(&hcd->self.root_hub->dev))
+		if (!hcd->self.root_hub->do_remote_wakeup)
 			mask &= ~STS_PCD;
 		ehci_writel(ehci, mask, &ehci->regs->intr_enable);
 		ehci_readl(ehci, &ehci->regs->intr_enable);
@@ -315,7 +331,6 @@ static int ehci_pci_resume(struct usb_hcd *hcd)
 
 	/* here we "know" root ports should always stay powered */
 	ehci_port_power(ehci, 1);
-	ehci_handover_companion_ports(ehci);
 
 	hcd->state = HC_STATE_SUSPENDED;
 	return 0;
@@ -339,8 +354,8 @@ static const struct hc_driver ehci_pci_hc_driver = {
 	.reset =		ehci_pci_setup,
 	.start =		ehci_run,
 #ifdef	CONFIG_PM
-	.suspend =		ehci_pci_suspend,
-	.resume =		ehci_pci_resume,
+	.pci_suspend =		ehci_pci_suspend,
+	.pci_resume =		ehci_pci_resume,
 #endif
 	.stop =			ehci_stop,
 	.shutdown =		ehci_shutdown,

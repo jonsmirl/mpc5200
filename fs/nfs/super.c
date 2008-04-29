@@ -198,7 +198,7 @@ static match_table_t nfs_secflavor_tokens = {
 };
 
 
-static void nfs_umount_begin(struct vfsmount *, int);
+static void nfs_umount_begin(struct super_block *);
 static int  nfs_statfs(struct dentry *, struct kstatfs *);
 static int  nfs_show_options(struct seq_file *, struct vfsmount *);
 static int  nfs_show_stats(struct seq_file *, struct vfsmount *);
@@ -441,10 +441,52 @@ static const char *nfs_pseudoflavour_to_name(rpc_authflavor_t flavour)
 	return sec_flavours[i].str;
 }
 
+static void nfs_show_mountd_options(struct seq_file *m, struct nfs_server *nfss,
+				    int showdefaults)
+{
+	struct sockaddr *sap = (struct sockaddr *)&nfss->mountd_address;
+
+	switch (sap->sa_family) {
+	case AF_INET: {
+		struct sockaddr_in *sin = (struct sockaddr_in *)sap;
+		seq_printf(m, ",mountaddr=" NIPQUAD_FMT,
+				NIPQUAD(sin->sin_addr.s_addr));
+		break;
+	}
+	case AF_INET6: {
+		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
+		seq_printf(m, ",mountaddr=" NIP6_FMT,
+				NIP6(sin6->sin6_addr));
+		break;
+	}
+	default:
+		if (showdefaults)
+			seq_printf(m, ",mountaddr=unspecified");
+	}
+
+	if (nfss->mountd_version || showdefaults)
+		seq_printf(m, ",mountvers=%u", nfss->mountd_version);
+	if (nfss->mountd_port || showdefaults)
+		seq_printf(m, ",mountport=%u", nfss->mountd_port);
+
+	switch (nfss->mountd_protocol) {
+	case IPPROTO_UDP:
+		seq_printf(m, ",mountproto=udp");
+		break;
+	case IPPROTO_TCP:
+		seq_printf(m, ",mountproto=tcp");
+		break;
+	default:
+		if (showdefaults)
+			seq_printf(m, ",mountproto=auto");
+	}
+}
+
 /*
  * Describe the mount options in force on this server representation
  */
-static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss, int showdefaults)
+static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
+				   int showdefaults)
 {
 	static const struct proc_nfs_info {
 		int flag;
@@ -452,6 +494,8 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss, 
 		const char *nostr;
 	} nfs_info[] = {
 		{ NFS_MOUNT_SOFT, ",soft", ",hard" },
+		{ NFS_MOUNT_INTR, ",intr", ",nointr" },
+		{ NFS_MOUNT_POSIX, ",posix", "" },
 		{ NFS_MOUNT_NOCTO, ",nocto", "" },
 		{ NFS_MOUNT_NOAC, ",noac", "" },
 		{ NFS_MOUNT_NONLM, ",nolock", "" },
@@ -462,18 +506,22 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss, 
 	};
 	const struct proc_nfs_info *nfs_infop;
 	struct nfs_client *clp = nfss->nfs_client;
+	u32 version = clp->rpc_ops->version;
 
-	seq_printf(m, ",vers=%d", clp->rpc_ops->version);
-	seq_printf(m, ",rsize=%d", nfss->rsize);
-	seq_printf(m, ",wsize=%d", nfss->wsize);
+	seq_printf(m, ",vers=%u", version);
+	seq_printf(m, ",rsize=%u", nfss->rsize);
+	seq_printf(m, ",wsize=%u", nfss->wsize);
+	if (nfss->bsize != 0)
+		seq_printf(m, ",bsize=%u", nfss->bsize);
+	seq_printf(m, ",namlen=%u", nfss->namelen);
 	if (nfss->acregmin != 3*HZ || showdefaults)
-		seq_printf(m, ",acregmin=%d", nfss->acregmin/HZ);
+		seq_printf(m, ",acregmin=%u", nfss->acregmin/HZ);
 	if (nfss->acregmax != 60*HZ || showdefaults)
-		seq_printf(m, ",acregmax=%d", nfss->acregmax/HZ);
+		seq_printf(m, ",acregmax=%u", nfss->acregmax/HZ);
 	if (nfss->acdirmin != 30*HZ || showdefaults)
-		seq_printf(m, ",acdirmin=%d", nfss->acdirmin/HZ);
+		seq_printf(m, ",acdirmin=%u", nfss->acdirmin/HZ);
 	if (nfss->acdirmax != 60*HZ || showdefaults)
-		seq_printf(m, ",acdirmax=%d", nfss->acdirmax/HZ);
+		seq_printf(m, ",acdirmax=%u", nfss->acdirmax/HZ);
 	for (nfs_infop = nfs_info; nfs_infop->flag; nfs_infop++) {
 		if (nfss->flags & nfs_infop->flag)
 			seq_puts(m, nfs_infop->str);
@@ -482,9 +530,24 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss, 
 	}
 	seq_printf(m, ",proto=%s",
 		   rpc_peeraddr2str(nfss->client, RPC_DISPLAY_PROTO));
+	if (version == 4) {
+		if (nfss->port != NFS_PORT)
+			seq_printf(m, ",port=%u", nfss->port);
+	} else
+		if (nfss->port)
+			seq_printf(m, ",port=%u", nfss->port);
+
 	seq_printf(m, ",timeo=%lu", 10U * nfss->client->cl_timeout->to_initval / HZ);
 	seq_printf(m, ",retrans=%u", nfss->client->cl_timeout->to_retries);
 	seq_printf(m, ",sec=%s", nfs_pseudoflavour_to_name(nfss->client->cl_auth->au_flavor));
+
+	if (version != 4)
+		nfs_show_mountd_options(m, nfss, showdefaults);
+
+#ifdef CONFIG_NFS_V4
+	if (clp->rpc_ops->version == 4)
+		seq_printf(m, ",clientaddr=%s", clp->cl_ipaddr);
+#endif
 }
 
 /*
@@ -529,10 +592,10 @@ static int nfs_show_stats(struct seq_file *m, struct vfsmount *mnt)
 
 	seq_printf(m, "\n\tcaps:\t");
 	seq_printf(m, "caps=0x%x", nfss->caps);
-	seq_printf(m, ",wtmult=%d", nfss->wtmult);
-	seq_printf(m, ",dtsize=%d", nfss->dtsize);
-	seq_printf(m, ",bsize=%d", nfss->bsize);
-	seq_printf(m, ",namelen=%d", nfss->namelen);
+	seq_printf(m, ",wtmult=%u", nfss->wtmult);
+	seq_printf(m, ",dtsize=%u", nfss->dtsize);
+	seq_printf(m, ",bsize=%u", nfss->bsize);
+	seq_printf(m, ",namlen=%u", nfss->namelen);
 
 #ifdef CONFIG_NFS_V4
 	if (nfss->nfs_client->rpc_ops->version == 4) {
@@ -546,9 +609,9 @@ static int nfs_show_stats(struct seq_file *m, struct vfsmount *mnt)
 	/*
 	 * Display security flavor in effect for this mount
 	 */
-	seq_printf(m, "\n\tsec:\tflavor=%d", auth->au_ops->au_flavor);
+	seq_printf(m, "\n\tsec:\tflavor=%u", auth->au_ops->au_flavor);
 	if (auth->au_flavor)
-		seq_printf(m, ",pseudoflavor=%d", auth->au_flavor);
+		seq_printf(m, ",pseudoflavor=%u", auth->au_flavor);
 
 	/*
 	 * Display superblock I/O counters
@@ -584,15 +647,11 @@ static int nfs_show_stats(struct seq_file *m, struct vfsmount *mnt)
  * Begin unmount by attempting to remove all automounted mountpoints we added
  * in response to xdev traversals and referrals
  */
-static void nfs_umount_begin(struct vfsmount *vfsmnt, int flags)
+static void nfs_umount_begin(struct super_block *sb)
 {
-	struct nfs_server *server = NFS_SB(vfsmnt->mnt_sb);
+	struct nfs_server *server = NFS_SB(sb);
 	struct rpc_clnt *rpc;
 
-	shrink_submounts(vfsmnt, &nfs_automount_list);
-
-	if (!(flags & MNT_FORCE))
-		return;
 	/* -EIO all pending I/O */
 	rpc = server->client_acl;
 	if (!IS_ERR(rpc))
@@ -632,7 +691,7 @@ static int nfs_verify_server_address(struct sockaddr *addr)
 	switch (addr->sa_family) {
 	case AF_INET: {
 		struct sockaddr_in *sa = (struct sockaddr_in *)addr;
-		return sa->sin_addr.s_addr != INADDR_ANY;
+		return sa->sin_addr.s_addr != htonl(INADDR_ANY);
 	}
 	case AF_INET6: {
 		struct in6_addr *sa = &((struct sockaddr_in6 *)addr)->sin6_addr;
@@ -684,14 +743,28 @@ static void nfs_parse_server_address(char *value,
 static int nfs_parse_mount_options(char *raw,
 				   struct nfs_parsed_mount_data *mnt)
 {
-	char *p, *string;
-	unsigned short port = 0;
+	char *p, *string, *secdata;
+	int rc;
 
 	if (!raw) {
 		dfprintk(MOUNT, "NFS: mount options string was NULL.\n");
 		return 1;
 	}
 	dfprintk(MOUNT, "NFS: nfs mount opts='%s'\n", raw);
+
+	secdata = alloc_secdata();
+	if (!secdata)
+		goto out_nomem;
+
+	rc = security_sb_copy_data(raw, secdata);
+	if (rc)
+		goto out_security_failure;
+
+	rc = security_sb_parse_opts_str(secdata, &mnt->lsm_opts);
+	if (rc)
+		goto out_security_failure;
+
+	free_secdata(secdata);
 
 	while ((p = strsep(&raw, ",")) != NULL) {
 		substring_t args[MAX_OPT_ARGS];
@@ -785,7 +858,7 @@ static int nfs_parse_mount_options(char *raw,
 				return 0;
 			if (option < 0 || option > 65535)
 				return 0;
-			port = option;
+			mnt->nfs_server.port = option;
 			break;
 		case Opt_rsize:
 			if (match_int(args, &mnt->rsize))
@@ -1035,14 +1108,18 @@ static int nfs_parse_mount_options(char *raw,
 		}
 	}
 
-	nfs_set_port((struct sockaddr *)&mnt->nfs_server.address, port);
+	nfs_set_port((struct sockaddr *)&mnt->nfs_server.address,
+				mnt->nfs_server.port);
 
 	return 1;
 
 out_nomem:
 	printk(KERN_INFO "NFS: not enough memory to parse option\n");
 	return 0;
-
+out_security_failure:
+	free_secdata(secdata);
+	printk(KERN_INFO "NFS: security options invalid: %d\n", rc);
+	return 0;
 out_unrec_vers:
 	printk(KERN_INFO "NFS: unrecognized NFS version number\n");
 	return 0;
@@ -1153,7 +1230,9 @@ static int nfs_validate_mount_data(void *options,
 	args->acregmax		= 60;
 	args->acdirmin		= 30;
 	args->acdirmax		= 60;
+	args->mount_server.port	= 0;	/* autobind unless user sets port */
 	args->mount_server.protocol = XPRT_TRANSPORT_UDP;
+	args->nfs_server.port	= 0;	/* autobind unless user sets port */
 	args->nfs_server.protocol = XPRT_TRANSPORT_TCP;
 
 	switch (data->version) {
@@ -1192,7 +1271,6 @@ static int nfs_validate_mount_data(void *options,
 		args->flags		= data->flags;
 		args->rsize		= data->rsize;
 		args->wsize		= data->wsize;
-		args->flags		= data->flags;
 		args->timeo		= data->timeo;
 		args->retrans		= data->retrans;
 		args->acregmin		= data->acregmin;
@@ -1214,6 +1292,35 @@ static int nfs_validate_mount_data(void *options,
 		args->namlen		= data->namlen;
 		args->bsize		= data->bsize;
 		args->auth_flavors[0]	= data->pseudoflavor;
+		if (!args->nfs_server.hostname)
+			goto out_nomem;
+
+		/*
+		 * The legacy version 6 binary mount data from userspace has a
+		 * field used only to transport selinux information into the
+		 * the kernel.  To continue to support that functionality we
+		 * have a touch of selinux knowledge here in the NFS code. The
+		 * userspace code converted context=blah to just blah so we are
+		 * converting back to the full string selinux understands.
+		 */
+		if (data->context[0]){
+#ifdef CONFIG_SECURITY_SELINUX
+			int rc;
+			char *opts_str = kmalloc(sizeof(data->context) + 8, GFP_KERNEL);
+			if (!opts_str)
+				return -ENOMEM;
+			strcpy(opts_str, "context=");
+			data->context[NFS_MAX_CONTEXT_LEN] = '\0';
+			strcat(opts_str, &data->context[0]);
+			rc = security_sb_parse_opts_str(opts_str, &args->lsm_opts);
+			kfree(opts_str);
+			if (rc)
+				return rc;
+#else
+			return -EINVAL;
+#endif
+		}
+
 		break;
 	default: {
 		unsigned int len;
@@ -1233,6 +1340,8 @@ static int nfs_validate_mount_data(void *options,
 		len = c - dev_name;
 		/* N.B. caller will free nfs_server.hostname in all cases */
 		args->nfs_server.hostname = kstrndup(dev_name, len, GFP_KERNEL);
+		if (!args->nfs_server.hostname)
+			goto out_nomem;
 
 		c++;
 		if (strlen(c) > NFS_MAXPATHLEN)
@@ -1275,6 +1384,10 @@ out_v3_not_compiled:
 	dfprintk(MOUNT, "NFS: NFSv3 is not compiled into kernel\n");
 	return -EPROTONOSUPPORT;
 #endif /* !CONFIG_NFS_V3 */
+
+out_nomem:
+	dfprintk(MOUNT, "NFS: not enough memory to handle mount options\n");
+	return -ENOMEM;
 
 out_no_address:
 	dfprintk(MOUNT, "NFS: mount program didn't pass remote address\n");
@@ -1476,6 +1589,8 @@ static int nfs_get_sb(struct file_system_type *fs_type,
 	};
 	int error;
 
+	security_init_mnt_opts(&data.lsm_opts);
+
 	/* Validate the mount data */
 	error = nfs_validate_mount_data(raw_data, &data, &mntfh, dev_name);
 	if (error < 0)
@@ -1515,6 +1630,10 @@ static int nfs_get_sb(struct file_system_type *fs_type,
 		goto error_splat_super;
 	}
 
+	error = security_sb_set_mnt_opts(s, &data.lsm_opts);
+	if (error)
+		goto error_splat_root;
+
 	s->s_flags |= MS_ACTIVE;
 	mnt->mnt_sb = s;
 	mnt->mnt_root = mntroot;
@@ -1523,12 +1642,15 @@ static int nfs_get_sb(struct file_system_type *fs_type,
 out:
 	kfree(data.nfs_server.hostname);
 	kfree(data.mount_server.hostname);
+	security_free_mnt_opts(&data.lsm_opts);
 	return error;
 
 out_err_nosb:
 	nfs_free_server(server);
 	goto out;
 
+error_splat_root:
+	dput(mntroot);
 error_splat_super:
 	up_write(&s->s_umount);
 	deactivate_super(s);
@@ -1608,6 +1730,9 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type, int flags,
 	mnt->mnt_sb = s;
 	mnt->mnt_root = mntroot;
 
+	/* clone any lsm security options from the parent to the new sb */
+	security_sb_clone_mnt_opts(data->sb, s);
+
 	dprintk("<-- nfs_xdev_get_sb() = 0\n");
 	return 0;
 
@@ -1651,28 +1776,6 @@ static void nfs4_fill_super(struct super_block *sb)
 }
 
 /*
- * If the user didn't specify a port, set the port number to
- * the NFS version 4 default port.
- */
-static void nfs4_default_port(struct sockaddr *sap)
-{
-	switch (sap->sa_family) {
-	case AF_INET: {
-		struct sockaddr_in *ap = (struct sockaddr_in *)sap;
-		if (ap->sin_port == 0)
-			ap->sin_port = htons(NFS_PORT);
-		break;
-	}
-	case AF_INET6: {
-		struct sockaddr_in6 *ap = (struct sockaddr_in6 *)sap;
-		if (ap->sin6_port == 0)
-			ap->sin6_port = htons(NFS_PORT);
-		break;
-	}
-	}
-}
-
-/*
  * Validate NFSv4 mount options
  */
 static int nfs4_validate_mount_data(void *options,
@@ -1696,6 +1799,7 @@ static int nfs4_validate_mount_data(void *options,
 	args->acregmax		= 60;
 	args->acdirmin		= 30;
 	args->acdirmax		= 60;
+	args->nfs_server.port	= NFS_PORT; /* 2049 unless user set port= */
 	args->nfs_server.protocol = XPRT_TRANSPORT_TCP;
 
 	switch (data->version) {
@@ -1711,9 +1815,6 @@ static int nfs4_validate_mount_data(void *options,
 		if (!nfs_verify_server_address((struct sockaddr *)
 						&args->nfs_server.address))
 			goto out_no_address;
-
-		nfs4_default_port((struct sockaddr *)
-				  &args->nfs_server.address);
 
 		switch (data->auth_flavourlen) {
 		case 0:
@@ -1772,9 +1873,6 @@ static int nfs4_validate_mount_data(void *options,
 						&args->nfs_server.address))
 			return -EINVAL;
 
-		nfs4_default_port((struct sockaddr *)
-				  &args->nfs_server.address);
-
 		switch (args->auth_flavor_len) {
 		case 0:
 			args->auth_flavors[0] = RPC_AUTH_UNIX;
@@ -1797,12 +1895,16 @@ static int nfs4_validate_mount_data(void *options,
 			return -ENAMETOOLONG;
 		/* N.B. caller will free nfs_server.hostname in all cases */
 		args->nfs_server.hostname = kstrndup(dev_name, len, GFP_KERNEL);
+		if (!args->nfs_server.hostname)
+			goto out_nomem;
 
 		c++;			/* step over the ':' */
 		len = strlen(c);
 		if (len > NFS4_MAXPATHLEN)
 			return -ENAMETOOLONG;
 		args->nfs_server.export_path = kstrndup(c, len, GFP_KERNEL);
+		if (!args->nfs_server.export_path)
+			goto out_nomem;
 
 		dprintk("NFS: MNTPATH: '%s'\n", args->nfs_server.export_path);
 
@@ -1823,6 +1925,10 @@ out_inval_auth:
 	dfprintk(MOUNT, "NFS4: Invalid number of RPC auth flavours %d\n",
 		 data->auth_flavourlen);
 	return -EINVAL;
+
+out_nomem:
+	dfprintk(MOUNT, "NFS4: not enough memory to handle mount options\n");
+	return -ENOMEM;
 
 out_no_address:
 	dfprintk(MOUNT, "NFS4: mount program didn't pass remote address\n");
@@ -1849,6 +1955,8 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
 		.mntflags = flags,
 	};
 	int error;
+
+	security_init_mnt_opts(&data.lsm_opts);
 
 	/* Validate the mount data */
 	error = nfs4_validate_mount_data(raw_data, &data, dev_name);
@@ -1898,6 +2006,7 @@ out:
 	kfree(data.client_address);
 	kfree(data.nfs_server.export_path);
 	kfree(data.nfs_server.hostname);
+	security_free_mnt_opts(&data.lsm_opts);
 	return error;
 
 out_free:

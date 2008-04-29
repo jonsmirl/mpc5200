@@ -23,9 +23,9 @@
 #include <asm/page.h>
 #include <asm/processor.h>
 
-/* The kernel image occupies 0x4000000 to 0x1000000 (4MB --> 32MB).
- * The page copy blockops can use 0x2000000 to 0x4000000.
- * The TSB is mapped in the 0x4000000 to 0x6000000 range.
+/* The kernel image occupies 0x4000000 to 0x6000000 (4MB --> 96MB).
+ * The page copy blockops can use 0x6000000 to 0x8000000.
+ * The TSB is mapped in the 0x8000000 to 0xa000000 range.
  * The PROM resides in an area spanning 0xf0000000 to 0x100000000.
  * The vmalloc area spans 0x100000000 to 0x200000000.
  * Since modules need to be in the lowest 32-bits of the address space,
@@ -33,8 +33,8 @@
  * There is a single static kernel PMD which maps from 0x0 to address
  * 0x400000000.
  */
-#define	TLBTEMP_BASE		_AC(0x0000000002000000,UL)
-#define	TSBMAP_BASE		_AC(0x0000000004000000,UL)
+#define	TLBTEMP_BASE		_AC(0x0000000006000000,UL)
+#define	TSBMAP_BASE		_AC(0x0000000008000000,UL)
 #define MODULES_VADDR		_AC(0x0000000010000000,UL)
 #define MODULES_LEN		_AC(0x00000000e0000000,UL)
 #define MODULES_END		_AC(0x00000000f0000000,UL)
@@ -506,6 +506,11 @@ static inline pte_t pte_mkyoung(pte_t pte)
 	return __pte(pte_val(pte) | mask);
 }
 
+static inline pte_t pte_mkspecial(pte_t pte)
+{
+	return pte;
+}
+
 static inline unsigned long pte_young(pte_t pte)
 {
 	unsigned long mask;
@@ -606,6 +611,11 @@ static inline unsigned long pte_present(pte_t pte)
 	: "0" (val), "i" (_PAGE_PRESENT_4U), "i" (_PAGE_PRESENT_4V));
 
 	return val;
+}
+
+static inline int pte_special(pte_t pte)
+{
+	return 0;
 }
 
 #define pmd_set(pmdp, ptep)	\
@@ -761,6 +771,8 @@ extern unsigned long get_fb_unmapped_area(struct file *filp, unsigned long,
 extern void pgtable_cache_init(void);
 extern void sun4v_register_fault_status(void);
 extern void sun4v_ktsb_register(void);
+extern void __init cheetah_ecache_flush_init(void);
+extern void sun4v_patch_tlb_handlers(void);
 
 extern unsigned long cmdline_memory_size;
 

@@ -74,7 +74,7 @@ static inline int saa7146_wait_for_debi_done_sleep(struct saa7146_dev *dev,
 		if (err) {
 			printk(KERN_ERR "%s: %s timed out while waiting for "
 					"registers getting programmed\n",
-					dev->name, __FUNCTION__);
+					dev->name, __func__);
 			return -ETIMEDOUT;
 		}
 		msleep(1);
@@ -89,7 +89,7 @@ static inline int saa7146_wait_for_debi_done_sleep(struct saa7146_dev *dev,
 		saa7146_read(dev, MC2);
 		if (err) {
 			DEB_S(("%s: %s timed out while waiting for transfer "
-				"completion\n",	dev->name, __FUNCTION__));
+				"completion\n",	dev->name, __func__));
 			return -ETIMEDOUT;
 		}
 		msleep(1);
@@ -111,7 +111,7 @@ static inline int saa7146_wait_for_debi_done_busyloop(struct saa7146_dev *dev,
 		if (!loops--) {
 			printk(KERN_ERR "%s: %s timed out while waiting for "
 					"registers getting programmed\n",
-					dev->name, __FUNCTION__);
+					dev->name, __func__);
 			return -ETIMEDOUT;
 		}
 		udelay(1);
@@ -125,7 +125,7 @@ static inline int saa7146_wait_for_debi_done_busyloop(struct saa7146_dev *dev,
 		saa7146_read(dev, MC2);
 		if (!loops--) {
 			DEB_S(("%s: %s timed out while waiting for transfer "
-				"completion\n", dev->name, __FUNCTION__));
+				"completion\n", dev->name, __func__));
 			return -ETIMEDOUT;
 		}
 		udelay(5);
@@ -306,25 +306,22 @@ static irqreturn_t interrupt_hw(int irq, void *dev_id)
 		return IRQ_NONE;
 	}
 
-	if( 0 != (dev->ext)) {
-		if( 0 != (dev->ext->irq_mask & isr )) {
-			if( 0 != dev->ext->irq_func ) {
+	if (dev->ext) {
+		if (dev->ext->irq_mask & isr) {
+			if (dev->ext->irq_func)
 				dev->ext->irq_func(dev, &isr);
-			}
 			isr &= ~dev->ext->irq_mask;
 		}
 	}
 	if (0 != (isr & (MASK_27))) {
 		DEB_INT(("irq: RPS0 (0x%08x).\n",isr));
-		if( 0 != dev->vv_data && 0 != dev->vv_callback) {
+		if (dev->vv_data && dev->vv_callback)
 			dev->vv_callback(dev,isr);
-		}
 		isr &= ~MASK_27;
 	}
 	if (0 != (isr & (MASK_28))) {
-		if( 0 != dev->vv_data && 0 != dev->vv_callback) {
+		if (dev->vv_data && dev->vv_callback)
 			dev->vv_callback(dev,isr);
-		}
 		isr &= ~MASK_28;
 	}
 	if (0 != (isr & (MASK_16|MASK_17))) {

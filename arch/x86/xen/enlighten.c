@@ -25,6 +25,7 @@
 #include <linux/mm.h>
 #include <linux/page-flags.h>
 #include <linux/highmem.h>
+#include <linux/console.h>
 
 #include <xen/interface/xen.h>
 #include <xen/interface/physdev.h>
@@ -95,7 +96,7 @@ struct shared_info *HYPERVISOR_shared_info = (void *)&dummy_shared_info;
  *
  * 0: not available, 1: available
  */
-static int have_vcpu_info_placement = 0;
+static int have_vcpu_info_placement = 1;
 
 static void __init xen_vcpu_setup(int cpu)
 {
@@ -103,6 +104,7 @@ static void __init xen_vcpu_setup(int cpu)
 	int err;
 	struct vcpu_info *vcpup;
 
+	BUG_ON(HYPERVISOR_shared_info == &dummy_shared_info);
 	per_cpu(xen_vcpu, cpu) = &HYPERVISOR_shared_info->vcpu_info[cpu];
 
 	if (!have_vcpu_info_placement)
@@ -153,6 +155,8 @@ static void xen_cpuid(unsigned int *ax, unsigned int *bx,
 	if (*ax == 1)
 		maskedx = ~((1 << X86_FEATURE_APIC) |  /* disable APIC */
 			    (1 << X86_FEATURE_ACPI) |  /* disable ACPI */
+			    (1 << X86_FEATURE_MCE)  |  /* disable MCE */
+			    (1 << X86_FEATURE_MCA)  |  /* disable MCA */
 			    (1 << X86_FEATURE_ACC));   /* thermal monitoring */
 
 	asm(XEN_EMULATE_PREFIX "cpuid"
@@ -528,26 +532,37 @@ static void xen_apic_write(unsigned long reg, u32 val)
 static void xen_flush_tlb(void)
 {
 	struct mmuext_op *op;
-	struct multicall_space mcs = xen_mc_entry(sizeof(*op));
+	struct multicall_space mcs;
+
+	preempt_disable();
+
+	mcs = xen_mc_entry(sizeof(*op));
 
 	op = mcs.args;
 	op->cmd = MMUEXT_TLB_FLUSH_LOCAL;
 	MULTI_mmuext_op(mcs.mc, op, 1, NULL, DOMID_SELF);
 
 	xen_mc_issue(PARAVIRT_LAZY_MMU);
+
+	preempt_enable();
 }
 
 static void xen_flush_tlb_single(unsigned long addr)
 {
 	struct mmuext_op *op;
-	struct multicall_space mcs = xen_mc_entry(sizeof(*op));
+	struct multicall_space mcs;
 
+	preempt_disable();
+
+	mcs = xen_mc_entry(sizeof(*op));
 	op = mcs.args;
 	op->cmd = MMUEXT_INVLPG_LOCAL;
 	op->arg1.linear_addr = addr & PAGE_MASK;
 	MULTI_mmuext_op(mcs.mc, op, 1, NULL, DOMID_SELF);
 
 	xen_mc_issue(PARAVIRT_LAZY_MMU);
+
+	preempt_enable();
 }
 
 static void xen_flush_tlb_others(const cpumask_t *cpus, struct mm_struct *mm,
@@ -652,23 +667,25 @@ static void xen_write_cr3(unsigned long cr3)
 
 /* Early in boot, while setting up the initial pagetable, assume
    everything is pinned. */
-static __init void xen_alloc_pt_init(struct mm_struct *mm, u32 pfn)
+static __init void xen_alloc_pte_init(struct mm_struct *mm, u32 pfn)
 {
+#ifdef CONFIG_FLATMEM
 	BUG_ON(mem_map);	/* should only be used early */
+#endif
 	make_lowmem_page_readonly(__va(PFN_PHYS(pfn)));
 }
 
-/* Early release_pt assumes that all pts are pinned, since there's
+/* Early release_pte assumes that all pts are pinned, since there's
    only init_mm and anything attached to that is pinned. */
-static void xen_release_pt_init(u32 pfn)
+static void xen_release_pte_init(u32 pfn)
 {
 	make_lowmem_page_readwrite(__va(PFN_PHYS(pfn)));
 }
 
-static void pin_pagetable_pfn(unsigned level, unsigned long pfn)
+static void pin_pagetable_pfn(unsigned cmd, unsigned long pfn)
 {
 	struct mmuext_op op;
-	op.cmd = level;
+	op.cmd = cmd;
 	op.arg1.mfn = pfn_to_mfn(pfn);
 	if (HYPERVISOR_mmuext_op(&op, 1, NULL, DOMID_SELF))
 		BUG();
@@ -685,7 +702,8 @@ static void xen_alloc_ptpage(struct mm_struct *mm, u32 pfn, unsigned level)
 
 		if (!PageHighMem(page)) {
 			make_lowmem_page_readonly(__va(PFN_PHYS(pfn)));
-			pin_pagetable_pfn(level, pfn);
+			if (level == PT_PTE)
+				pin_pagetable_pfn(MMUEXT_PIN_L1_TABLE, pfn);
 		} else
 			/* make sure there are no stray mappings of
 			   this page */
@@ -693,27 +711,39 @@ static void xen_alloc_ptpage(struct mm_struct *mm, u32 pfn, unsigned level)
 	}
 }
 
-static void xen_alloc_pt(struct mm_struct *mm, u32 pfn)
+static void xen_alloc_pte(struct mm_struct *mm, u32 pfn)
 {
-	xen_alloc_ptpage(mm, pfn, MMUEXT_PIN_L1_TABLE);
+	xen_alloc_ptpage(mm, pfn, PT_PTE);
 }
 
-static void xen_alloc_pd(struct mm_struct *mm, u32 pfn)
+static void xen_alloc_pmd(struct mm_struct *mm, u32 pfn)
 {
-	xen_alloc_ptpage(mm, pfn, MMUEXT_PIN_L2_TABLE);
+	xen_alloc_ptpage(mm, pfn, PT_PMD);
 }
 
 /* This should never happen until we're OK to use struct page */
-static void xen_release_pt(u32 pfn)
+static void xen_release_ptpage(u32 pfn, unsigned level)
 {
 	struct page *page = pfn_to_page(pfn);
 
 	if (PagePinned(page)) {
 		if (!PageHighMem(page)) {
-			pin_pagetable_pfn(MMUEXT_UNPIN_TABLE, pfn);
+			if (level == PT_PTE)
+				pin_pagetable_pfn(MMUEXT_UNPIN_TABLE, pfn);
 			make_lowmem_page_readwrite(__va(PFN_PHYS(pfn)));
 		}
+		ClearPagePinned(page);
 	}
+}
+
+static void xen_release_pte(u32 pfn)
+{
+	xen_release_ptpage(pfn, PT_PTE);
+}
+
+static void xen_release_pmd(u32 pfn)
+{
+	xen_release_ptpage(pfn, PT_PMD);
 }
 
 #ifdef CONFIG_HIGHPTE
@@ -804,32 +834,42 @@ static __init void xen_pagetable_setup_start(pgd_t *base)
 			  PFN_DOWN(__pa(xen_start_info->pt_base)));
 }
 
-static __init void xen_pagetable_setup_done(pgd_t *base)
+static __init void setup_shared_info(void)
 {
-	/* This will work as long as patching hasn't happened yet
-	   (which it hasn't) */
-	pv_mmu_ops.alloc_pt = xen_alloc_pt;
-	pv_mmu_ops.alloc_pd = xen_alloc_pd;
-	pv_mmu_ops.release_pt = xen_release_pt;
-	pv_mmu_ops.release_pd = xen_release_pt;
-	pv_mmu_ops.set_pte = xen_set_pte;
-
 	if (!xen_feature(XENFEAT_auto_translated_physmap)) {
+		unsigned long addr = fix_to_virt(FIX_PARAVIRT_BOOTMAP);
+
 		/*
 		 * Create a mapping for the shared info page.
 		 * Should be set_fixmap(), but shared_info is a machine
 		 * address with no corresponding pseudo-phys address.
 		 */
-		set_pte_mfn(fix_to_virt(FIX_PARAVIRT_BOOTMAP),
+		set_pte_mfn(addr,
 			    PFN_DOWN(xen_start_info->shared_info),
 			    PAGE_KERNEL);
 
-		HYPERVISOR_shared_info =
-			(struct shared_info *)fix_to_virt(FIX_PARAVIRT_BOOTMAP);
-
+		HYPERVISOR_shared_info = (struct shared_info *)addr;
 	} else
 		HYPERVISOR_shared_info =
 			(struct shared_info *)__va(xen_start_info->shared_info);
+
+#ifndef CONFIG_SMP
+	/* In UP this is as good a place as any to set up shared info */
+	xen_setup_vcpu_info_placement();
+#endif
+}
+
+static __init void xen_pagetable_setup_done(pgd_t *base)
+{
+	/* This will work as long as patching hasn't happened yet
+	   (which it hasn't) */
+	pv_mmu_ops.alloc_pte = xen_alloc_pte;
+	pv_mmu_ops.alloc_pmd = xen_alloc_pmd;
+	pv_mmu_ops.release_pte = xen_release_pte;
+	pv_mmu_ops.release_pmd = xen_release_pmd;
+	pv_mmu_ops.set_pte = xen_set_pte;
+
+	setup_shared_info();
 
 	/* Actually pin the pagetable down, but we can't set PG_pinned
 	   yet because the page structures don't exist yet. */
@@ -864,7 +904,6 @@ void __init xen_setup_vcpu_info_placement(void)
 		pv_irq_ops.irq_disable = xen_irq_disable_direct;
 		pv_irq_ops.irq_enable = xen_irq_enable_direct;
 		pv_mmu_ops.read_cr2 = xen_read_cr2_direct;
-		pv_cpu_ops.iret = xen_iret_direct;
 	}
 }
 
@@ -968,8 +1007,8 @@ static const struct pv_cpu_ops xen_cpu_ops __initdata = {
 	.read_tsc = native_read_tsc,
 	.read_pmc = native_read_pmc,
 
-	.iret = (void *)&hypercall_page[__HYPERVISOR_iret],
-	.irq_enable_syscall_ret = NULL,  /* never called */
+	.iret = xen_iret,
+	.irq_enable_syscall_ret = xen_sysexit,
 
 	.load_tr_desc = paravirt_nop,
 	.set_ldt = xen_set_ldt,
@@ -1034,11 +1073,11 @@ static const struct pv_mmu_ops xen_mmu_ops __initdata = {
 	.pte_update = paravirt_nop,
 	.pte_update_defer = paravirt_nop,
 
-	.alloc_pt = xen_alloc_pt_init,
-	.release_pt = xen_release_pt_init,
-	.alloc_pd = xen_alloc_pt_init,
-	.alloc_pd_clone = paravirt_nop,
-	.release_pd = xen_release_pt_init,
+	.alloc_pte = xen_alloc_pte_init,
+	.release_pte = xen_release_pte_init,
+	.alloc_pmd = xen_alloc_pte_init,
+	.alloc_pmd_clone = paravirt_nop,
+	.release_pmd = xen_release_pte_init,
 
 #ifdef CONFIG_HIGHPTE
 	.kmap_atomic_pte = xen_kmap_atomic_pte,
@@ -1181,15 +1220,9 @@ asmlinkage void __init xen_start_kernel(void)
 	x86_write_percpu(xen_cr3, __pa(pgd));
 	x86_write_percpu(xen_current_cr3, __pa(pgd));
 
-#ifdef CONFIG_SMP
 	/* Don't do the full vcpu_info placement stuff until we have a
-	   possible map. */
+	   possible map and a non-dummy shared_info. */
 	per_cpu(xen_vcpu, 0) = &HYPERVISOR_shared_info->vcpu_info[0];
-#else
-	/* May as well do it now, since there's no good time to call
-	   it later on UP. */
-	xen_setup_vcpu_info_placement();
-#endif
 
 	pv_info.kernel_rpl = 1;
 	if (xen_feature(XENFEAT_supervisor_mode_kernel))
@@ -1208,6 +1241,9 @@ asmlinkage void __init xen_start_kernel(void)
 	boot_params.hdr.ramdisk_image = xen_start_info->mod_start
 		? __pa(xen_start_info->mod_start) : 0;
 	boot_params.hdr.ramdisk_size = xen_start_info->mod_len;
+
+	if (!is_initial_xendomain())
+		add_preferred_console("hvc", 0, NULL);
 
 	/* Start the world */
 	start_kernel();

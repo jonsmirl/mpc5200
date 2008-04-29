@@ -116,7 +116,7 @@ static void uml_dev_close(struct work_struct *work)
 	dev_close(lp->dev);
 }
 
-irqreturn_t uml_net_interrupt(int irq, void *dev_id)
+static irqreturn_t uml_net_interrupt(int irq, void *dev_id)
 {
 	struct net_device *dev = dev_id;
 	struct uml_net_private *lp = dev->priv;
@@ -256,11 +256,7 @@ static struct net_device_stats *uml_net_get_stats(struct net_device *dev)
 
 static void uml_net_set_multicast_list(struct net_device *dev)
 {
-	if (dev->flags & IFF_PROMISC)
-		return;
-	else if (dev->mc_count)
-		dev->flags |= IFF_ALLMULTI;
-	else dev->flags &= ~IFF_ALLMULTI;
+	return;
 }
 
 static void uml_net_tx_timeout(struct net_device *dev)
@@ -300,7 +296,7 @@ static struct ethtool_ops uml_net_ethtool_ops = {
 	.get_link	= ethtool_op_get_link,
 };
 
-void uml_net_user_timer_expire(unsigned long _conn)
+static void uml_net_user_timer_expire(unsigned long _conn)
 {
 #ifdef undef
 	struct connection *conn = (struct connection *)_conn;
@@ -790,7 +786,7 @@ static int uml_inetaddr_event(struct notifier_block *this, unsigned long event,
 }
 
 /* uml_net_init shouldn't be called twice on two CPUs at the same time */
-struct notifier_block uml_inetaddr_notifier = {
+static struct notifier_block uml_inetaddr_notifier = {
 	.notifier_call		= uml_inetaddr_event,
 };
 

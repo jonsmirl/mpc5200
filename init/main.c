@@ -102,12 +102,6 @@ static inline void mark_rodata_ro(void) { }
 extern void tc_init(void);
 #endif
 
-#ifdef CONFIG_ACPI_CUSTOM_DSDT_INITRD
-extern int populate_rootfs(void);
-#else
-static inline void populate_rootfs(void) {}
-#endif
-
 enum system_states system_state;
 EXPORT_SYMBOL(system_state);
 
@@ -254,7 +248,7 @@ early_param("quiet", quiet_kernel);
 static int __init loglevel(char *str)
 {
 	get_option(&str, &console_loglevel);
-	return 1;
+	return 0;
 }
 
 early_param("loglevel", loglevel);
@@ -365,9 +359,30 @@ static void __init smp_init(void)
 #endif
 
 static inline void setup_per_cpu_areas(void) { }
+static inline void setup_nr_cpu_ids(void) { }
 static inline void smp_prepare_cpus(unsigned int maxcpus) { }
 
 #else
+
+#if NR_CPUS > BITS_PER_LONG
+cpumask_t cpu_mask_all __read_mostly = CPU_MASK_ALL;
+EXPORT_SYMBOL(cpu_mask_all);
+#endif
+
+/* Setup number of possible processor ids */
+int nr_cpu_ids __read_mostly = NR_CPUS;
+EXPORT_SYMBOL(nr_cpu_ids);
+
+/* An arch may set nr_cpu_ids earlier if needed, so this would be redundant */
+static void __init setup_nr_cpu_ids(void)
+{
+	int cpu, highest_cpu = 0;
+
+	for_each_possible_cpu(cpu)
+		highest_cpu = cpu;
+
+	nr_cpu_ids = highest_cpu + 1;
+}
 
 #ifndef CONFIG_HAVE_SETUP_PER_CPU_AREA
 unsigned long __per_cpu_offset[NR_CPUS] __read_mostly;
@@ -506,7 +521,11 @@ static void __init boot_cpu_init(void)
 	cpu_set(cpu, cpu_possible_map);
 }
 
-void __init __attribute__((weak)) smp_setup_processor_id(void)
+void __init __weak smp_setup_processor_id(void)
+{
+}
+
+void __init __weak thread_info_cache_init(void)
 {
 }
 
@@ -543,6 +562,7 @@ asmlinkage void __init start_kernel(void)
 	setup_command_line(command_line);
 	unwind_setup();
 	setup_per_cpu_areas();
+	setup_nr_cpu_ids();
 	smp_prepare_boot_cpu();	/* arch-specific boot-cpu hooks */
 
 	/*
@@ -629,6 +649,7 @@ asmlinkage void __init start_kernel(void)
 	if (efi_enabled)
 		efi_enter_virtual_mode();
 #endif
+	thread_info_cache_init();
 	fork_init(num_physpages);
 	proc_caches_init();
 	buffer_init();
@@ -650,7 +671,6 @@ asmlinkage void __init start_kernel(void)
 
 	check_bugs();
 
-	populate_rootfs(); /* For DSDT override from initramfs */
 	acpi_early_init(); /* before LAPIC and SMP init */
 
 	/* Do the rest non-__init'ed, we're now alive */
@@ -818,7 +838,7 @@ static int __init kernel_init(void * unused)
 	/*
 	 * init can run on any cpu.
 	 */
-	set_cpus_allowed(current, CPU_MASK_ALL);
+	set_cpus_allowed_ptr(current, CPU_MASK_ALL_PTR);
 	/*
 	 * Tell the world that we're going to be the grim
 	 * reaper of innocent orphaned children.

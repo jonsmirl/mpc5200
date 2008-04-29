@@ -228,7 +228,7 @@ static int rs5c313_rtc_read_time(struct device *dev, struct rtc_time *tm)
 		ndelay(700);	/* CE:L */
 
 		if (cnt++ > 100) {
-			dev_err(dev, "%s: timeout error\n", __FUNCTION__);
+			dev_err(dev, "%s: timeout error\n", __func__);
 			return -EIO;
 		}
 	}
@@ -289,7 +289,7 @@ static int rs5c313_rtc_set_time(struct device *dev, struct rtc_time *tm)
 		ndelay(700);	/* CE:L */
 
 		if (cnt++ > 100) {
-			dev_err(dev, "%s: timeout error\n", __FUNCTION__);
+			dev_err(dev, "%s: timeout error\n", __func__);
 			return -EIO;
 		}
 	}
@@ -421,3 +421,4 @@ MODULE_VERSION(DRV_VERSION);
 MODULE_AUTHOR("kogiidena , Nobuhiro Iwamatsu <iwamatsu@nigauri.org>");
 MODULE_DESCRIPTION("Ricoh RS5C313 RTC device driver");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS("platform:" DRV_NAME);

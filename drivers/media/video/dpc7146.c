@@ -54,11 +54,11 @@
 
 #define DPC_BOARD_CAN_DO_VBI(dev)   (dev->revision != 0)
 
-static int debug = 0;
+static int debug;
 module_param(debug, int, 0);
 MODULE_PARM_DESC(debug, "debug verbosity");
 
-static int dpc_num = 0;
+static int dpc_num;
 
 #define DPC_INPUTS	2
 static struct v4l2_input dpc_inputs[DPC_INPUTS] = {
@@ -131,7 +131,7 @@ static int dpc_probe(struct saa7146_dev* dev)
 	device_for_each_child(&dpc->i2c_adapter.dev, dpc, dpc_check_clients);
 
 	/* check if all devices are present */
-	if( 0 == dpc->saa7111a ) {
+	if (!dpc->saa7111a) {
 		DEB_D(("dpc_v4l2.o: dpc_attach failed for this device.\n"));
 		i2c_del_adapter(&dpc->i2c_adapter);
 		kfree(dpc);

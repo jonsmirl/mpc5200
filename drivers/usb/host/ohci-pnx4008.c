@@ -280,7 +280,6 @@ static const struct hc_driver ohci_pnx4008_hc_driver = {
 	 */
 	.hub_status_data = ohci_hub_status_data,
 	.hub_control = ohci_hub_control,
-	.hub_irq_enable = ohci_rhsc_enable,
 #ifdef	CONFIG_PM
 	.bus_suspend = ohci_bus_suspend,
 	.bus_resume = ohci_bus_resume,
@@ -456,9 +455,13 @@ static int usb_hcd_pnx4008_remove(struct platform_device *pdev)
 	return 0;
 }
 
+/* work with hotplug and coldplug */
+MODULE_ALIAS("platform:usb-ohci");
+
 static struct platform_driver usb_hcd_pnx4008_driver = {
 	.driver = {
 		.name = "usb-ohci",
+		.owner	= THIS_MODULE,
 	},
 	.probe = usb_hcd_pnx4008_probe,
 	.remove = usb_hcd_pnx4008_remove,

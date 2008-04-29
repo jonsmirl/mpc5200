@@ -904,6 +904,7 @@ recalc:
 			original_pm_idle();
 		else
 			default_idle();
+		local_irq_disable();
 		jiffies_since_last_check = jiffies - last_jiffies;
 		if (jiffies_since_last_check > idle_period)
 			goto recalc;
@@ -911,6 +912,8 @@ recalc:
 
 	if (apm_idle_done)
 		apm_do_busy();
+
+	local_irq_enable();
 }
 
 /**
@@ -2217,7 +2220,6 @@ static struct dmi_system_id __initdata apm_dmi_table[] = {
  */
 static int __init apm_init(void)
 {
-	struct proc_dir_entry *apm_proc;
 	struct desc_struct *gdt;
 	int err;
 
@@ -2322,9 +2324,7 @@ static int __init apm_init(void)
 	set_base(gdt[APM_DS >> 3],
 		 __va((unsigned long)apm_info.bios.dseg << 4));
 
-	apm_proc = create_proc_entry("apm", 0, NULL);
-	if (apm_proc)
-		apm_proc->proc_fops = &apm_file_ops;
+	proc_create("apm", 0, NULL, &apm_file_ops);
 
 	kapmd_task = kthread_create(apm, NULL, "kapmd");
 	if (IS_ERR(kapmd_task)) {

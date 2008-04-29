@@ -21,6 +21,7 @@
 #include <asm/setup.h>
 #include <asm/cpcmd.h>
 #include <asm/sclp.h>
+#include "entry.h"
 
 /*
  * Create a Kernel NSS if the SAVESYS= parameter is defined
@@ -88,13 +89,17 @@ static noinline __init void create_kernel_nss(void)
 
 	__cpcmd(defsys_cmd, NULL, 0, &response);
 
-	if (response != 0)
+	if (response != 0) {
+		kernel_nss_name[0] = '\0';
 		return;
+	}
 
 	__cpcmd(savesys_cmd, NULL, 0, &response);
 
-	if (response != strlen(savesys_cmd))
+	if (response != strlen(savesys_cmd)) {
+		kernel_nss_name[0] = '\0';
 		return;
+	}
 
 	ipl_flags = IPL_NSS_VALID;
 }
@@ -139,6 +144,10 @@ static noinline __init void detect_machine_type(void)
 	/* Running on a P/390 ? */
 	if (cpuinfo->cpu_id.machine == 0x7490)
 		machine_flags |= 4;
+
+	/* Running under KVM ? */
+	if (cpuinfo->cpu_id.version == 0xfe)
+		machine_flags |= 64;
 }
 
 #ifdef CONFIG_64BIT

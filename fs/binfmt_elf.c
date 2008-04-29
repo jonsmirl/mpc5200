@@ -543,7 +543,6 @@ static int load_elf_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 	unsigned long interp_load_addr = 0;
 	unsigned long start_code, end_code, start_data, end_data;
 	unsigned long reloc_func_desc = 0;
-	struct files_struct *files;
 	int executable_stack = EXSTACK_DEFAULT;
 	unsigned long def_flags = 0;
 	struct {
@@ -593,20 +592,9 @@ static int load_elf_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 		goto out_free_ph;
 	}
 
-	files = current->files;	/* Refcounted so ok */
-	retval = unshare_files();
-	if (retval < 0)
-		goto out_free_ph;
-	if (files == current->files) {
-		put_files_struct(files);
-		files = NULL;
-	}
-
-	/* exec will make our files private anyway, but for the a.out
-	   loader stuff we need to do it earlier */
 	retval = get_unused_fd();
 	if (retval < 0)
-		goto out_free_fh;
+		goto out_free_ph;
 	get_file(bprm->file);
 	fd_install(elf_exec_fileno = retval, bprm->file);
 
@@ -727,12 +715,6 @@ static int load_elf_binary(struct linux_binprm *bprm, struct pt_regs *regs)
 	retval = flush_old_exec(bprm);
 	if (retval)
 		goto out_free_dentry;
-
-	/* Discard our unneeded old files struct */
-	if (files) {
-		put_files_struct(files);
-		files = NULL;
-	}
 
 	/* OK, This is the point of no return */
 	current->flags &= ~PF_FORKNOEXEC;
@@ -1016,9 +998,6 @@ out_free_interp:
 	kfree(elf_interpreter);
 out_free_file:
 	sys_close(elf_exec_fileno);
-out_free_fh:
-	if (files)
-		reset_files_struct(current, files);
 out_free_ph:
 	kfree(elf_phdata);
 	goto out;
@@ -1424,6 +1403,18 @@ struct elf_note_info {
 	int thread_notes;
 };
 
+/*
+ * When a regset has a writeback hook, we call it on each thread before
+ * dumping user memory.  On register window machines, this makes sure the
+ * user memory backing the register data is up to date before we read it.
+ */
+static void do_thread_regset_writeback(struct task_struct *task,
+				       const struct user_regset *regset)
+{
+	if (regset->writeback)
+		regset->writeback(task, regset, 1);
+}
+
 static int fill_thread_core_info(struct elf_thread_core_info *t,
 				 const struct user_regset_view *view,
 				 long signr, size_t *total)
@@ -1445,6 +1436,8 @@ static int fill_thread_core_info(struct elf_thread_core_info *t,
 		  sizeof(t->prstatus), &t->prstatus);
 	*total += notesize(&t->notes[0]);
 
+	do_thread_regset_writeback(t->task, &view->regsets[0]);
+
 	/*
 	 * Each other regset might generate a note too.  For each regset
 	 * that has no core_note_type or is inactive, we leave t->notes[i]
@@ -1452,6 +1445,7 @@ static int fill_thread_core_info(struct elf_thread_core_info *t,
 	 */
 	for (i = 1; i < view->n; ++i) {
 		const struct user_regset *regset = &view->regsets[i];
+		do_thread_regset_writeback(t->task, regset);
 		if (regset->core_note_type &&
 		    (!regset->active || regset->active(t->task, regset))) {
 			int ret;

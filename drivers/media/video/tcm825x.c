@@ -851,7 +851,7 @@ static int tcm825x_probe(struct i2c_client *client)
 	sensor->platform_data = client->dev.platform_data;
 
 	if (sensor->platform_data == NULL
-	    && !sensor->platform_data->is_okay())
+	    || !sensor->platform_data->is_okay())
 		return -ENODEV;
 
 	sensor->v4l2_int_device = &tcm825x_int_device;
@@ -906,7 +906,7 @@ static int __init tcm825x_init(void)
 	rval = i2c_add_driver(&tcm825x_i2c_driver);
 	if (rval)
 		printk(KERN_INFO "%s: failed registering " TCM825X_NAME "\n",
-		       __FUNCTION__);
+		       __func__);
 
 	return rval;
 }

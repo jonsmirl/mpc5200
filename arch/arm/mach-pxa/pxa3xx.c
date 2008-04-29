@@ -119,7 +119,7 @@ static unsigned long clk_pxa3xx_ac97_getrate(struct clk *clk)
 
 	ac97_div = AC97_DIV;
 
-	/* This may loose precision for some rates but won't for the 
+	/* This may loose precision for some rates but won't for the
 	 * standard 24.576MHz.
 	 */
 	rate /= (ac97_div >> 12) & 0x7fff;
@@ -148,28 +148,20 @@ static void clk_pxa3xx_cken_enable(struct clk *clk)
 {
 	unsigned long mask = 1ul << (clk->cken & 0x1f);
 
-	local_irq_disable();
-
 	if (clk->cken < 32)
 		CKENA |= mask;
 	else
 		CKENB |= mask;
-
-	local_irq_enable();
 }
 
 static void clk_pxa3xx_cken_disable(struct clk *clk)
 {
 	unsigned long mask = 1ul << (clk->cken & 0x1f);
 
-	local_irq_disable();
-
 	if (clk->cken < 32)
 		CKENA &= ~mask;
 	else
 		CKENB &= ~mask;
-
-	local_irq_enable();
 }
 
 static const struct clkops clk_pxa3xx_cken_ops = {
@@ -241,6 +233,7 @@ static struct clk pxa3xx_clks[] = {
 	PXA3xx_CKEN("I2CCLK", I2C,  32842000, 0, &pxa_device_i2c.dev),
 	PXA3xx_CKEN("UDCCLK", UDC,  48000000, 5, &pxa_device_udc.dev),
 	PXA3xx_CKEN("USBCLK", USBH, 48000000, 0, &pxa27x_device_ohci.dev),
+	PXA3xx_CKEN("KBDCLK", KEYPAD,  32768, 0, &pxa27x_device_keypad.dev),
 
 	PXA3xx_CKEN("SSPCLK", SSP1, 13000000, 0, &pxa27x_device_ssp1.dev),
 	PXA3xx_CKEN("SSPCLK", SSP2, 13000000, 0, &pxa27x_device_ssp2.dev),
@@ -361,8 +354,10 @@ static void pxa3xx_cpu_pm_enter(suspend_state_t state)
 	/*
 	 * Don't sleep if no wakeup sources are defined
 	 */
-	if (wakeup_src == 0)
+	if (wakeup_src == 0) {
+		printk(KERN_ERR "Not suspending: no wakeup sources\n");
 		return;
+	}
 
 	switch (state) {
 	case PM_SUSPEND_STANDBY:
@@ -502,15 +497,9 @@ static int pxa3xx_set_wake(unsigned int irq, unsigned int on)
 
 	return 0;
 }
-
-static void pxa3xx_init_irq_pm(void)
-{
-	pxa_init_irq_set_wake(pxa3xx_set_wake);
-}
-
 #else
 static inline void pxa3xx_init_pm(void) {}
-static inline void pxa3xx_init_irq_pm(void) {}
+#define pxa3xx_set_wake	NULL
 #endif
 
 void __init pxa3xx_init_irq(void)
@@ -521,10 +510,8 @@ void __init pxa3xx_init_irq(void)
 	value |= (1 << 6);
 	__asm__ __volatile__("mcr p15, 0, %0, c15, c1, 0\n": :"r"(value));
 
-	pxa_init_irq_low();
-	pxa_init_irq_high();
-	pxa_init_irq_gpio(128);
-	pxa3xx_init_irq_pm();
+	pxa_init_irq(56, pxa3xx_set_wake);
+	pxa_init_gpio(128, NULL);
 }
 
 /*
@@ -546,11 +533,9 @@ static struct platform_device *devices[] __initdata = {
 
 static struct sys_device pxa3xx_sysdev[] = {
 	{
-		.id	= 0,
 		.cls	= &pxa_irq_sysclass,
 	}, {
-		.id	= 1,
-		.cls	= &pxa_irq_sysclass,
+		.cls	= &pxa3xx_mfp_sysclass,
 	}, {
 		.cls	= &pxa_gpio_sysclass,
 	},
@@ -588,4 +573,4 @@ static int __init pxa3xx_init(void)
 	return ret;
 }
 
-subsys_initcall(pxa3xx_init);
+postcore_initcall(pxa3xx_init);

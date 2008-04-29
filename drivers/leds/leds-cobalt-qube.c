@@ -18,7 +18,7 @@ static void __iomem *led_port;
 static u8 led_value;
 
 static void qube_front_led_set(struct led_classdev *led_cdev,
-                               enum led_brightness brightness)
+			       enum led_brightness brightness)
 {
 	if (brightness)
 		led_value = LED_FRONT_LEFT | LED_FRONT_RIGHT;
@@ -74,6 +74,9 @@ static int __devexit cobalt_qube_led_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+/* work with hotplug and coldplug */
+MODULE_ALIAS("platform:cobalt-qube-leds");
 
 static struct platform_driver cobalt_qube_led_driver = {
 	.probe	= cobalt_qube_led_probe,

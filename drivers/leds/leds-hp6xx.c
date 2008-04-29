@@ -17,7 +17,8 @@
 #include <asm/hd64461.h>
 #include <asm/hp6xx.h>
 
-static void hp6xxled_green_set(struct led_classdev *led_cdev, enum led_brightness value)
+static void hp6xxled_green_set(struct led_classdev *led_cdev,
+			       enum led_brightness value)
 {
 	u8 v8;
 
@@ -28,7 +29,8 @@ static void hp6xxled_green_set(struct led_classdev *led_cdev, enum led_brightnes
 		outb(v8 | PKDR_LED_GREEN, PKDR);
 }
 
-static void hp6xxled_red_set(struct led_classdev *led_cdev, enum led_brightness value)
+static void hp6xxled_red_set(struct led_classdev *led_cdev,
+			     enum led_brightness value)
 {
 	u16 v16;
 
@@ -90,6 +92,9 @@ static int hp6xxled_remove(struct platform_device *pdev)
 	return 0;
 }
 
+/* work with hotplug and coldplug */
+MODULE_ALIAS("platform:hp6xx-led");
+
 static struct platform_driver hp6xxled_driver = {
 	.probe		= hp6xxled_probe,
 	.remove		= hp6xxled_remove,
@@ -99,6 +104,7 @@ static struct platform_driver hp6xxled_driver = {
 #endif
 	.driver		= {
 		.name		= "hp6xx-led",
+		.owner		= THIS_MODULE,
 	},
 };
 

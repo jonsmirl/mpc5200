@@ -25,6 +25,7 @@
 #define __ASM_DB1200_H
 
 #include <linux/types.h>
+#include <asm/mach-au1x00/au1xxx_psc.h>
 
 // This is defined in au1000.h with bogus value
 #undef AU1X00_EXTERNAL_INT
@@ -168,15 +169,15 @@ static BCSR * const bcsr = (BCSR *)BCSR_KSEG1_ADDR;
 #define BCSR_INT_SD0INSERT	0x1000
 #define BCSR_INT_SD0EJECT	0x2000
 
-#define AU1XXX_SMC91111_PHYS_ADDR	(0x19000300)
-#define AU1XXX_SMC91111_IRQ			DB1200_ETH_INT
+#define SMC91C111_PHYS_ADDR	0x19000300
+#define SMC91C111_INT		DB1200_ETH_INT
 
-#define AU1XXX_ATA_PHYS_ADDR		(0x18800000)
-#define AU1XXX_ATA_PHYS_LEN			(0x100)
-#define AU1XXX_ATA_REG_OFFSET	(5)
-#define AU1XXX_ATA_INT			DB1200_IDE_INT
-#define AU1XXX_ATA_DDMA_REQ		DSCR_CMD0_DMA_REQ1;
-#define AU1XXX_ATA_RQSIZE		128
+#define IDE_PHYS_ADDR		0x18800000
+#define IDE_REG_SHIFT		5
+#define IDE_PHYS_LEN		(16 << IDE_REG_SHIFT)
+#define IDE_INT 		DB1200_IDE_INT
+#define IDE_DDMA_REQ		DSCR_CMD0_DMA_REQ1
+#define IDE_RQSIZE		128
 
 #define NAND_PHYS_ADDR   0x20000000
 

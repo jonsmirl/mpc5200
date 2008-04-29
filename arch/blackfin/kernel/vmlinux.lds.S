@@ -56,6 +56,10 @@ SECTIONS
 		*(.text.*)
 		*(.fixup)
 
+#if !L1_CODE_LENGTH
+		*(.l1.text)
+#endif
+
 		. = ALIGN(16);
 		___start___ex_table = .;
 		*(__ex_table)
@@ -73,6 +77,12 @@ SECTIONS
 		___bss_start = .;
 		*(.bss .bss.*)
 		*(COMMON)
+#if !L1_DATA_A_LENGTH
+		*(.l1.bss)
+#endif
+#if !L1_DATA_B_LENGTH
+		*(.l1.bss.B)
+#endif
 		___bss_stop = .;
 	}
 
@@ -82,6 +92,15 @@ SECTIONS
 		/* This gets done first, so the glob doesn't suck it in */
 		. = ALIGN(32);
 		*(.data.cacheline_aligned)
+
+#if !L1_DATA_A_LENGTH
+		. = ALIGN(32);
+		*(.data_l1.cacheline_aligned)
+		*(.l1.data)
+#endif
+#if !L1_DATA_B_LENGTH
+		*(.l1.data.B)
+#endif
 
 		DATA_DATA
 		*(.data.*)
@@ -152,7 +171,6 @@ SECTIONS
 		. = ALIGN(4);
 		__stext_l1 = .;
 		*(.l1.text)
-
 		. = ALIGN(4);
 		__etext_l1 = .;
 	}
@@ -202,8 +220,6 @@ SECTIONS
 	STABS_DEBUG
 
 	DWARF_DEBUG
-
-	NOTES
 
 	/DISCARD/ :
 	{

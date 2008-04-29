@@ -123,6 +123,7 @@ enum radeon_family {
 	CHIP_R420,
 	CHIP_RV410,
 	CHIP_RS400,
+	CHIP_RS690,
 	CHIP_RV515,
 	CHIP_R520,
 	CHIP_RV530,
@@ -303,6 +304,9 @@ typedef struct drm_radeon_private {
 
 	u32 scratch_ages[5];
 
+	unsigned int crtc_last_cnt;
+	unsigned int crtc2_last_cnt;
+
 	/* starting from here on, data is preserved accross an open */
 	uint32_t flags;		/* see radeon_chip_flags */
 	unsigned long fb_aper_offset;
@@ -373,13 +377,13 @@ extern int radeon_irq_emit(struct drm_device *dev, void *data, struct drm_file *
 extern int radeon_irq_wait(struct drm_device *dev, void *data, struct drm_file *file_priv);
 
 extern void radeon_do_release(struct drm_device * dev);
-extern int radeon_driver_vblank_wait(struct drm_device * dev,
-				     unsigned int *sequence);
-extern int radeon_driver_vblank_wait2(struct drm_device * dev,
-				      unsigned int *sequence);
+extern u32 radeon_get_vblank_counter(struct drm_device *dev, int crtc);
+extern int radeon_enable_vblank(struct drm_device *dev, int crtc);
+extern void radeon_disable_vblank(struct drm_device *dev, int crtc);
+extern void radeon_do_release(struct drm_device * dev);
 extern irqreturn_t radeon_driver_irq_handler(DRM_IRQ_ARGS);
 extern void radeon_driver_irq_preinstall(struct drm_device * dev);
-extern void radeon_driver_irq_postinstall(struct drm_device * dev);
+extern int radeon_driver_irq_postinstall(struct drm_device * dev);
 extern void radeon_driver_irq_uninstall(struct drm_device * dev);
 extern int radeon_vblank_crtc_get(struct drm_device *dev);
 extern int radeon_vblank_crtc_set(struct drm_device *dev, int64_t value);
@@ -467,6 +471,36 @@ extern int r300_do_cp_cmdbuf(struct drm_device * dev,
 #define RADEON_IGPGART_ENABLE           0x38
 #define RADEON_IGPGART_UNK_39           0x39
 
+#define RS690_MC_INDEX                  0x78
+#   define RS690_MC_INDEX_MASK          0x1ff
+#   define RS690_MC_INDEX_WR_EN         (1 << 9)
+#   define RS690_MC_INDEX_WR_ACK        0x7f
+#define RS690_MC_DATA                   0x7c
+
+#define RS690_MC_MISC_CNTL              0x18
+#define RS690_MC_GART_FEATURE_ID        0x2b
+#define RS690_MC_GART_BASE              0x2c
+#define RS690_MC_GART_CACHE_CNTL	0x2e
+#   define RS690_MC_GART_CC_NO_CHANGE   0x0
+#   define RS690_MC_GART_CC_CLEAR       0x1
+#   define RS690_MC_GART_CLEAR_STATUS   (1 << 1)
+#       define RS690_MC_GART_CLEAR_DONE     (0 << 1)
+#       define RS690_MC_GART_CLEAR_PENDING  (1 << 1)
+#define RS690_MC_AGP_SIZE               0x38
+#   define RS690_MC_GART_DIS            0x0
+#   define RS690_MC_GART_EN             0x1
+#   define RS690_MC_AGP_SIZE_32MB       (0 << 1)
+#   define RS690_MC_AGP_SIZE_64MB       (1 << 1)
+#   define RS690_MC_AGP_SIZE_128MB      (2 << 1)
+#   define RS690_MC_AGP_SIZE_256MB      (3 << 1)
+#   define RS690_MC_AGP_SIZE_512MB      (4 << 1)
+#   define RS690_MC_AGP_SIZE_1GB        (5 << 1)
+#   define RS690_MC_AGP_SIZE_2GB        (6 << 1)
+#define RS690_MC_AGP_MODE_CONTROL       0x39
+#define RS690_MC_FB_LOCATION            0x100
+#define RS690_MC_AGP_LOCATION           0x101
+#define RS690_MC_AGP_BASE               0x102
+
 #define R520_MC_IND_INDEX 0x70
 #define R520_MC_IND_WR_EN (1<<24)
 #define R520_MC_IND_DATA  0x74
@@ -526,6 +560,12 @@ extern int r300_do_cp_cmdbuf(struct drm_device * dev,
 #define GET_SCRATCH( x )	(dev_priv->writeback_works			\
 				? DRM_READ32( dev_priv->ring_rptr, RADEON_SCRATCHOFF(x) ) \
 				: RADEON_READ( RADEON_SCRATCH_REG0 + 4*(x) ) )
+
+#define RADEON_CRTC_CRNT_FRAME 0x0214
+#define RADEON_CRTC2_CRNT_FRAME 0x0314
+
+#define RADEON_CRTC_STATUS		0x005c
+#define RADEON_CRTC2_STATUS		0x03fc
 
 #define RADEON_GEN_INT_CNTL		0x0040
 #	define RADEON_CRTC_VBLANK_MASK		(1 << 0)
@@ -1075,6 +1115,13 @@ do {									\
 		RADEON_WRITE(R520_MC_IND_DATA, (val));			\
 		RADEON_WRITE(R520_MC_IND_INDEX, 0);	\
 	} while (0)
+
+#define RS690_WRITE_MCIND( addr, val )					\
+do {								\
+	RADEON_WRITE(RS690_MC_INDEX, RS690_MC_INDEX_WR_EN | ((addr) & RS690_MC_INDEX_MASK));	\
+	RADEON_WRITE(RS690_MC_DATA, val);			\
+	RADEON_WRITE(RS690_MC_INDEX, RS690_MC_INDEX_WR_ACK);	\
+} while (0)
 
 #define CP_PACKET0( reg, n )						\
 	(RADEON_CP_PACKET0 | ((n) << 16) | ((reg) >> 2))

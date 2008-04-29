@@ -49,12 +49,12 @@ int mdiobus_register(struct mii_bus *bus)
 	int i;
 	int err = 0;
 
-	mutex_init(&bus->mdio_lock);
-
 	if (NULL == bus || NULL == bus->name ||
 			NULL == bus->read ||
 			NULL == bus->write)
 		return -EINVAL;
+
+	mutex_init(&bus->mdio_lock);
 
 	if (bus->reset)
 		bus->reset(bus);
@@ -88,6 +88,9 @@ int mdiobus_register(struct mii_bus *bus)
 			snprintf(phydev->dev.bus_id, BUS_ID_SIZE, PHY_ID_FMT, bus->id, i);
 
 			phydev->bus = bus;
+
+			/* Run all of the fixups for this PHY */
+			phy_scan_fixups(phydev);
 
 			err = device_register(&phydev->dev);
 

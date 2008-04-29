@@ -466,7 +466,6 @@ static const struct hc_driver ohci_s3c2410_hc_driver = {
 	 */
 	.hub_status_data =	ohci_s3c2410_hub_status_data,
 	.hub_control =		ohci_s3c2410_hub_control,
-	.hub_irq_enable =	ohci_rhsc_enable,
 #ifdef	CONFIG_PM
 	.bus_suspend =		ohci_bus_suspend,
 	.bus_resume =		ohci_bus_resume,
@@ -501,3 +500,4 @@ static struct platform_driver ohci_hcd_s3c2410_driver = {
 	},
 };
 
+MODULE_ALIAS("platform:s3c2410-ohci");

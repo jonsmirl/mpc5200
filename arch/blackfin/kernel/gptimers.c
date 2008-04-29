@@ -1,9 +1,9 @@
 /*
- * bfin_gptimers.c - derived from bf53x_timers.c
- *  Driver for General Purpose Timer functions on the Blackfin processor
+ * gptimers.c - Blackfin General Purpose Timer core API
  *
- *  Copyright (C) 2005 John DeHority
- *  Copyright (C) 2006 Hella Aglaia GmbH (awe@aglaia-gmbh.de)
+ * Copyright (c) 2005-2008 Analog Devices Inc.
+ * Copyright (C) 2005 John DeHority
+ * Copyright (C) 2006 Hella Aglaia GmbH (awe@aglaia-gmbh.de)
  *
  * Licensed under the GPLv2.
  */
@@ -52,12 +52,14 @@ static volatile GPTIMER_timer_regs *const timer_regs[MAX_BLACKFIN_GPTIMERS] =
 	(GPTIMER_timer_regs *)TIMER5_CONFIG,
 	(GPTIMER_timer_regs *)TIMER6_CONFIG,
 	(GPTIMER_timer_regs *)TIMER7_CONFIG,
-#endif
-#if (MAX_BLACKFIN_GPTIMERS > 8)
+# if (MAX_BLACKFIN_GPTIMERS > 8)
 	(GPTIMER_timer_regs *)TIMER8_CONFIG,
 	(GPTIMER_timer_regs *)TIMER9_CONFIG,
 	(GPTIMER_timer_regs *)TIMER10_CONFIG,
+#  if (MAX_BLACKFIN_GPTIMERS > 11)
 	(GPTIMER_timer_regs *)TIMER11_CONFIG,
+#  endif
+# endif
 #endif
 };
 
@@ -80,12 +82,14 @@ static uint32_t const trun_mask[MAX_BLACKFIN_GPTIMERS] =
 	TIMER_STATUS_TRUN5,
 	TIMER_STATUS_TRUN6,
 	TIMER_STATUS_TRUN7,
-#endif
-#if (MAX_BLACKFIN_GPTIMERS > 8)
+# if (MAX_BLACKFIN_GPTIMERS > 8)
 	TIMER_STATUS_TRUN8,
 	TIMER_STATUS_TRUN9,
 	TIMER_STATUS_TRUN10,
+#  if (MAX_BLACKFIN_GPTIMERS > 11)
 	TIMER_STATUS_TRUN11,
+#  endif
+# endif
 #endif
 };
 
@@ -100,12 +104,14 @@ static uint32_t const tovf_mask[MAX_BLACKFIN_GPTIMERS] =
 	TIMER_STATUS_TOVF5,
 	TIMER_STATUS_TOVF6,
 	TIMER_STATUS_TOVF7,
-#endif
-#if (MAX_BLACKFIN_GPTIMERS > 8)
+# if (MAX_BLACKFIN_GPTIMERS > 8)
 	TIMER_STATUS_TOVF8,
 	TIMER_STATUS_TOVF9,
 	TIMER_STATUS_TOVF10,
+#  if (MAX_BLACKFIN_GPTIMERS > 11)
 	TIMER_STATUS_TOVF11,
+#  endif
+# endif
 #endif
 };
 
@@ -120,12 +126,14 @@ static uint32_t const timil_mask[MAX_BLACKFIN_GPTIMERS] =
 	TIMER_STATUS_TIMIL5,
 	TIMER_STATUS_TIMIL6,
 	TIMER_STATUS_TIMIL7,
-#endif
-#if (MAX_BLACKFIN_GPTIMERS > 8)
+# if (MAX_BLACKFIN_GPTIMERS > 8)
 	TIMER_STATUS_TIMIL8,
 	TIMER_STATUS_TIMIL9,
 	TIMER_STATUS_TIMIL10,
+#  if (MAX_BLACKFIN_GPTIMERS > 11)
 	TIMER_STATUS_TIMIL11,
+#  endif
+# endif
 #endif
 };
 

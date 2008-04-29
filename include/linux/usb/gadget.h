@@ -15,8 +15,6 @@
 #ifndef __LINUX_USB_GADGET_H
 #define __LINUX_USB_GADGET_H
 
-#ifdef __KERNEL__
-
 struct usb_ep;
 
 /**
@@ -848,6 +846,4 @@ extern struct usb_ep *usb_ep_autoconfig(struct usb_gadget *,
 
 extern void usb_ep_autoconfig_reset(struct usb_gadget *) __devinit;
 
-#endif  /* __KERNEL__ */
-
-#endif	/* __LINUX_USB_GADGET_H */
+#endif /* __LINUX_USB_GADGET_H */

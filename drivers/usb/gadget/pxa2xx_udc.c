@@ -103,6 +103,12 @@ static const char ep0name [] = "ep0";
 #error "Can't configure both IXP and PXA"
 #endif
 
+/* IXP doesn't yet support <linux/clk.h> */
+#define clk_get(dev,name)	NULL
+#define clk_enable(clk)		do { } while (0)
+#define clk_disable(clk)	do { } while (0)
+#define clk_put(clk)		do { } while (0)
+
 #endif
 
 #include "pxa2xx_udc.h"
@@ -229,7 +235,7 @@ static int pxa2xx_ep_enable (struct usb_ep *_ep,
 			|| ep->bEndpointAddress != desc->bEndpointAddress
 			|| ep->fifo_size < le16_to_cpu
 						(desc->wMaxPacketSize)) {
-		DMSG("%s, bad ep or descriptor\n", __FUNCTION__);
+		DMSG("%s, bad ep or descriptor\n", __func__);
 		return -EINVAL;
 	}
 
@@ -237,7 +243,7 @@ static int pxa2xx_ep_enable (struct usb_ep *_ep,
 	if (ep->bmAttributes != desc->bmAttributes
 			&& ep->bmAttributes != USB_ENDPOINT_XFER_BULK
 			&& desc->bmAttributes != USB_ENDPOINT_XFER_INT) {
-		DMSG("%s, %s type mismatch\n", __FUNCTION__, _ep->name);
+		DMSG("%s, %s type mismatch\n", __func__, _ep->name);
 		return -EINVAL;
 	}
 
@@ -246,13 +252,13 @@ static int pxa2xx_ep_enable (struct usb_ep *_ep,
 				&& le16_to_cpu (desc->wMaxPacketSize)
 						!= BULK_FIFO_SIZE)
 			|| !desc->wMaxPacketSize) {
-		DMSG("%s, bad %s maxpacket\n", __FUNCTION__, _ep->name);
+		DMSG("%s, bad %s maxpacket\n", __func__, _ep->name);
 		return -ERANGE;
 	}
 
 	dev = ep->dev;
 	if (!dev->driver || dev->gadget.speed == USB_SPEED_UNKNOWN) {
-		DMSG("%s, bogus device state\n", __FUNCTION__);
+		DMSG("%s, bogus device state\n", __func__);
 		return -ESHUTDOWN;
 	}
 
@@ -277,7 +283,7 @@ static int pxa2xx_ep_disable (struct usb_ep *_ep)
 
 	ep = container_of (_ep, struct pxa2xx_ep, ep);
 	if (!_ep || !ep->desc) {
-		DMSG("%s, %s not enabled\n", __FUNCTION__,
+		DMSG("%s, %s not enabled\n", __func__,
 			_ep ? ep->ep.name : NULL);
 		return -EINVAL;
 	}
@@ -455,7 +461,7 @@ void ep0start(struct pxa2xx_udc *dev, u32 flags, const char *tag)
 	USIR0 = USIR0_IR0;
 	dev->req_pending = 0;
 	DBG(DBG_VERY_NOISY, "%s %s, %02x/%02x\n",
-		__FUNCTION__, tag, UDCCS0, flags);
+		__func__, tag, UDCCS0, flags);
 }
 
 static int
@@ -645,20 +651,20 @@ pxa2xx_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 	req = container_of(_req, struct pxa2xx_request, req);
 	if (unlikely (!_req || !_req->complete || !_req->buf
 			|| !list_empty(&req->queue))) {
-		DMSG("%s, bad params\n", __FUNCTION__);
+		DMSG("%s, bad params\n", __func__);
 		return -EINVAL;
 	}
 
 	ep = container_of(_ep, struct pxa2xx_ep, ep);
 	if (unlikely (!_ep || (!ep->desc && ep->ep.name != ep0name))) {
-		DMSG("%s, bad ep\n", __FUNCTION__);
+		DMSG("%s, bad ep\n", __func__);
 		return -EINVAL;
 	}
 
 	dev = ep->dev;
 	if (unlikely (!dev->driver
 			|| dev->gadget.speed == USB_SPEED_UNKNOWN)) {
-		DMSG("%s, bogus device state\n", __FUNCTION__);
+		DMSG("%s, bogus device state\n", __func__);
 		return -ESHUTDOWN;
 	}
 
@@ -801,7 +807,7 @@ static int pxa2xx_ep_set_halt(struct usb_ep *_ep, int value)
 	if (unlikely (!_ep
 			|| (!ep->desc && ep->ep.name != ep0name))
 			|| ep->bmAttributes == USB_ENDPOINT_XFER_ISOC) {
-		DMSG("%s, bad ep\n", __FUNCTION__);
+		DMSG("%s, bad ep\n", __func__);
 		return -EINVAL;
 	}
 	if (value == 0) {
@@ -853,7 +859,7 @@ static int pxa2xx_ep_fifo_status(struct usb_ep *_ep)
 
 	ep = container_of(_ep, struct pxa2xx_ep, ep);
 	if (!_ep) {
-		DMSG("%s, bad ep\n", __FUNCTION__);
+		DMSG("%s, bad ep\n", __func__);
 		return -ENODEV;
 	}
 	/* pxa can't report unclaimed bytes from IN fifos */
@@ -872,7 +878,7 @@ static void pxa2xx_ep_fifo_flush(struct usb_ep *_ep)
 
 	ep = container_of(_ep, struct pxa2xx_ep, ep);
 	if (!_ep || ep->ep.name == ep0name || !list_empty(&ep->queue)) {
-		DMSG("%s, bad ep\n", __FUNCTION__);
+		DMSG("%s, bad ep\n", __func__);
 		return;
 	}
 
@@ -934,20 +940,31 @@ static void udc_disable(struct pxa2xx_udc *);
 /* We disable the UDC -- and its 48 MHz clock -- whenever it's not
  * in active use.
  */
-static int pullup(struct pxa2xx_udc *udc, int is_active)
+static int pullup(struct pxa2xx_udc *udc)
 {
-	is_active = is_active && udc->vbus && udc->pullup;
+	int is_active = udc->vbus && udc->pullup && !udc->suspended;
 	DMSG("%s\n", is_active ? "active" : "inactive");
-	if (is_active)
-		udc_enable(udc);
-	else {
-		if (udc->gadget.speed != USB_SPEED_UNKNOWN) {
-			DMSG("disconnect %s\n", udc->driver
-				? udc->driver->driver.name
-				: "(no driver)");
-			stop_activity(udc, udc->driver);
+	if (is_active) {
+		if (!udc->active) {
+			udc->active = 1;
+			/* Enable clock for USB device */
+			clk_enable(udc->clk);
+			udc_enable(udc);
 		}
-		udc_disable(udc);
+	} else {
+		if (udc->active) {
+			if (udc->gadget.speed != USB_SPEED_UNKNOWN) {
+				DMSG("disconnect %s\n", udc->driver
+					? udc->driver->driver.name
+					: "(no driver)");
+				stop_activity(udc, udc->driver);
+			}
+			udc_disable(udc);
+			/* Disable clock for USB device */
+			clk_disable(udc->clk);
+			udc->active = 0;
+		}
+
 	}
 	return 0;
 }
@@ -958,9 +975,9 @@ static int pxa2xx_udc_vbus_session(struct usb_gadget *_gadget, int is_active)
 	struct pxa2xx_udc	*udc;
 
 	udc = container_of(_gadget, struct pxa2xx_udc, gadget);
-	udc->vbus = is_active = (is_active != 0);
+	udc->vbus = (is_active != 0);
 	DMSG("vbus %s\n", is_active ? "supplied" : "inactive");
-	pullup(udc, is_active);
+	pullup(udc);
 	return 0;
 }
 
@@ -975,9 +992,8 @@ static int pxa2xx_udc_pullup(struct usb_gadget *_gadget, int is_active)
 	if (!udc->mach->gpio_pullup && !udc->mach->udc_command)
 		return -EOPNOTSUPP;
 
-	is_active = (is_active != 0);
-	udc->pullup = is_active;
-	pullup(udc, is_active);
+	udc->pullup = (is_active != 0);
+	pullup(udc);
 	return 0;
 }
 
@@ -997,7 +1013,7 @@ static const struct usb_gadget_ops pxa2xx_udc_ops = {
 #ifdef CONFIG_USB_GADGET_DEBUG_FS
 
 static int
-udc_seq_show(struct seq_file *m, void *d)
+udc_seq_show(struct seq_file *m, void *_d)
 {
 	struct pxa2xx_udc	*dev = m->private;
 	unsigned long		flags;
@@ -1146,11 +1162,6 @@ static void udc_disable(struct pxa2xx_udc *dev)
 
 	udc_clear_mask_UDCCR(UDCCR_UDE);
 
-#ifdef	CONFIG_ARCH_PXA
-        /* Disable clock for USB device */
-	clk_disable(dev->clk);
-#endif
-
 	ep0_idle (dev);
 	dev->gadget.speed = USB_SPEED_UNKNOWN;
 }
@@ -1190,11 +1201,6 @@ static void udc_reinit(struct pxa2xx_udc *dev)
 static void udc_enable (struct pxa2xx_udc *dev)
 {
 	udc_clear_mask_UDCCR(UDCCR_UDE);
-
-#ifdef	CONFIG_ARCH_PXA
-        /* Enable clock for USB device */
-	clk_enable(dev->clk);
-#endif
 
 	/* try to clear these bits before we enable the udc */
 	udc_ack_int_UDCCR(UDCCR_SUSIR|/*UDCCR_RSTIR|*/UDCCR_RESIR);
@@ -1286,7 +1292,7 @@ fail:
 	 * for set_configuration as well as eventual disconnect.
 	 */
 	DMSG("registered gadget driver '%s'\n", driver->driver.name);
-	pullup(dev, 1);
+	pullup(dev);
 	dump_state(dev);
 	return 0;
 }
@@ -1329,7 +1335,8 @@ int usb_gadget_unregister_driver(struct usb_gadget_driver *driver)
 		return -EINVAL;
 
 	local_irq_disable();
-	pullup(dev, 0);
+	dev->pullup = 0;
+	pullup(dev);
 	stop_activity(dev, driver);
 	local_irq_enable();
 
@@ -1806,7 +1813,7 @@ pxa2xx_udc_irq(int irq, void *_dev)
 
 static void nop_release (struct device *dev)
 {
-	DMSG("%s %s\n", __FUNCTION__, dev->bus_id);
+	DMSG("%s %s\n", __func__, dev->bus_id);
 }
 
 /* this uses load-time allocation and initialization (instead of
@@ -2131,13 +2138,11 @@ static int __init pxa2xx_udc_probe(struct platform_device *pdev)
 	if (irq < 0)
 		return -ENODEV;
 
-#ifdef	CONFIG_ARCH_PXA
 	dev->clk = clk_get(&pdev->dev, "UDCCLK");
 	if (IS_ERR(dev->clk)) {
 		retval = PTR_ERR(dev->clk);
 		goto err_clk;
 	}
-#endif
 
 	pr_debug("%s: IRQ %d%s%s\n", driver_name, irq,
 		dev->has_cfr ? "" : " (!cfr)",
@@ -2250,10 +2255,8 @@ lubbock_fail0:
 	if (dev->mach->gpio_vbus)
 		gpio_free(dev->mach->gpio_vbus);
  err_gpio_vbus:
-#ifdef	CONFIG_ARCH_PXA
 	clk_put(dev->clk);
  err_clk:
-#endif
 	return retval;
 }
 
@@ -2269,7 +2272,9 @@ static int __exit pxa2xx_udc_remove(struct platform_device *pdev)
 	if (dev->driver)
 		return -EBUSY;
 
-	udc_disable(dev);
+	dev->pullup = 0;
+	pullup(dev);
+
 	remove_debug_files(dev);
 
 	if (dev->got_irq) {
@@ -2289,9 +2294,7 @@ static int __exit pxa2xx_udc_remove(struct platform_device *pdev)
 	if (dev->mach->gpio_pullup)
 		gpio_free(dev->mach->gpio_pullup);
 
-#ifdef	CONFIG_ARCH_PXA
 	clk_put(dev->clk);
-#endif
 
 	platform_set_drvdata(pdev, NULL);
 	the_controller = NULL;
@@ -2317,10 +2320,15 @@ static int __exit pxa2xx_udc_remove(struct platform_device *pdev)
 static int pxa2xx_udc_suspend(struct platform_device *dev, pm_message_t state)
 {
 	struct pxa2xx_udc	*udc = platform_get_drvdata(dev);
+	unsigned long flags;
 
 	if (!udc->mach->gpio_pullup && !udc->mach->udc_command)
 		WARN("USB host won't detect disconnect!\n");
-	pullup(udc, 0);
+	udc->suspended = 1;
+
+	local_irq_save(flags);
+	pullup(udc);
+	local_irq_restore(flags);
 
 	return 0;
 }
@@ -2328,8 +2336,12 @@ static int pxa2xx_udc_suspend(struct platform_device *dev, pm_message_t state)
 static int pxa2xx_udc_resume(struct platform_device *dev)
 {
 	struct pxa2xx_udc	*udc = platform_get_drvdata(dev);
+	unsigned long flags;
 
-	pullup(udc, 1);
+	udc->suspended = 0;
+	local_irq_save(flags);
+	pullup(udc);
+	local_irq_restore(flags);
 
 	return 0;
 }
@@ -2368,4 +2380,4 @@ module_exit(udc_exit);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_AUTHOR("Frank Becker, Robert Schwebel, David Brownell");
 MODULE_LICENSE("GPL");
-
+MODULE_ALIAS("platform:pxa2xx-udc");

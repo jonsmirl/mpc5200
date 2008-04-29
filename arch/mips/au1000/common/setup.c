@@ -25,21 +25,14 @@
  *  with this program; if not, write  to the Free Software Foundation, Inc.,
  *  675 Mass Ave, Cambridge, MA 02139, USA.
  */
+
 #include <linux/init.h>
-#include <linux/sched.h>
 #include <linux/ioport.h>
-#include <linux/mm.h>
-#include <linux/delay.h>
-#include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/pm.h>
 
-#include <asm/cpu.h>
-#include <asm/bootinfo.h>
-#include <asm/irq.h>
 #include <asm/mipsregs.h>
 #include <asm/reboot.h>
-#include <asm/pgtable.h>
 #include <asm/time.h>
 
 #include <au1000.h>
@@ -49,15 +42,13 @@ extern void __init board_setup(void);
 extern void au1000_restart(char *);
 extern void au1000_halt(void);
 extern void au1000_power_off(void);
-extern void au1x_time_init(void);
-extern void au1x_timer_setup(struct irqaction *irq);
 extern void set_cpuspec(void);
 
 void __init plat_mem_setup(void)
 {
 	struct	cpu_spec *sp;
 	char *argptr;
-	unsigned long prid, cpupll, bclk = 1;
+	unsigned long prid, cpufreq, bclk = 1;
 
 	set_cpuspec();
 	sp = cur_cpu_spec[0];
@@ -65,8 +56,15 @@ void __init plat_mem_setup(void)
 	board_setup();  /* board specific setup */
 
 	prid = read_c0_prid();
-	cpupll = (au_readl(0xB1900060) & 0x3F) * 12;
-	printk("(PRId %08lx) @ %ldMHZ\n", prid, cpupll);
+	if (sp->cpu_pll_wo)
+#ifdef CONFIG_SOC_AU1000_FREQUENCY
+		cpufreq = CONFIG_SOC_AU1000_FREQUENCY / 1000000;
+#else
+		cpufreq = 396;
+#endif
+	else
+		cpufreq = (au_readl(SYS_CPUPLL) & 0x3F) * 12;
+	printk(KERN_INFO "(PRID %08lx) @ %ld MHz\n", prid, cpufreq);
 
 	bclk = sp->cpu_bclk;
 	if (bclk)

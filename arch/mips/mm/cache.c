@@ -30,6 +30,9 @@ void (*flush_cache_page)(struct vm_area_struct *vma, unsigned long page,
 	unsigned long pfn);
 void (*flush_icache_range)(unsigned long start, unsigned long end);
 
+void (*__flush_cache_vmap)(void);
+void (*__flush_cache_vunmap)(void);
+
 /* MIPS specific cache operations */
 void (*flush_cache_sigtramp)(unsigned long addr);
 void (*local_flush_data_cache_page)(void * addr);
@@ -92,12 +95,17 @@ EXPORT_SYMBOL(__flush_dcache_page);
 
 void __flush_anon_page(struct page *page, unsigned long vmaddr)
 {
-	if (pages_do_alias((unsigned long)page_address(page), vmaddr)) {
-		void *kaddr;
+	unsigned long addr = (unsigned long) page_address(page);
 
-		kaddr = kmap_coherent(page, vmaddr);
-		flush_data_cache_page((unsigned long)kaddr);
-		kunmap_coherent();
+	if (pages_do_alias(addr, vmaddr)) {
+		if (page_mapped(page) && !Page_dcache_dirty(page)) {
+			void *kaddr;
+
+			kaddr = kmap_coherent(page, vmaddr);
+			flush_data_cache_page((unsigned long)kaddr);
+			kunmap_coherent();
+		} else
+			flush_data_cache_page(addr);
 	}
 }
 
@@ -122,42 +130,58 @@ void __update_cache(struct vm_area_struct *vma, unsigned long address,
 	}
 }
 
-static char cache_panic[] __initdata = "Yeee, unsupported cache architecture.";
+unsigned long _page_cachable_default;
+EXPORT_SYMBOL_GPL(_page_cachable_default);
 
-void __init cpu_cache_init(void)
+static inline void setup_protection_map(void)
+{
+	protection_map[0] = PAGE_NONE;
+	protection_map[1] = PAGE_READONLY;
+	protection_map[2] = PAGE_COPY;
+	protection_map[3] = PAGE_COPY;
+	protection_map[4] = PAGE_READONLY;
+	protection_map[5] = PAGE_READONLY;
+	protection_map[6] = PAGE_COPY;
+	protection_map[7] = PAGE_COPY;
+	protection_map[8] = PAGE_NONE;
+	protection_map[9] = PAGE_READONLY;
+	protection_map[10] = PAGE_SHARED;
+	protection_map[11] = PAGE_SHARED;
+	protection_map[12] = PAGE_READONLY;
+	protection_map[13] = PAGE_READONLY;
+	protection_map[14] = PAGE_SHARED;
+	protection_map[15] = PAGE_SHARED;
+}
+
+void __devinit cpu_cache_init(void)
 {
 	if (cpu_has_3k_cache) {
 		extern void __weak r3k_cache_init(void);
 
 		r3k_cache_init();
-		return;
 	}
 	if (cpu_has_6k_cache) {
 		extern void __weak r6k_cache_init(void);
 
 		r6k_cache_init();
-		return;
 	}
 	if (cpu_has_4k_cache) {
 		extern void __weak r4k_cache_init(void);
 
 		r4k_cache_init();
-		return;
 	}
 	if (cpu_has_8k_cache) {
 		extern void __weak r8k_cache_init(void);
 
 		r8k_cache_init();
-		return;
 	}
 	if (cpu_has_tx39_cache) {
 		extern void __weak tx39_cache_init(void);
 
 		tx39_cache_init();
-		return;
 	}
 
-	panic(cache_panic);
+	setup_protection_map();
 }
 
 int __weak __uncached_access(struct file *file, unsigned long addr)

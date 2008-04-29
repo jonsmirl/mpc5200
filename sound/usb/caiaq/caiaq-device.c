@@ -42,7 +42,7 @@
 #endif
 
 MODULE_AUTHOR("Daniel Mack <daniel@caiaq.de>");
-MODULE_DESCRIPTION("caiaq USB audio, version 1.3.2");
+MODULE_DESCRIPTION("caiaq USB audio, version 1.3.6");
 MODULE_LICENSE("GPL");
 MODULE_SUPPORTED_DEVICE("{{Native Instruments, RigKontrol2},"
 			 "{Native Instruments, RigKontrol3},"
@@ -245,7 +245,7 @@ int snd_usb_caiaq_set_auto_msg (struct snd_usb_caiaqdev *dev,
 					  tmp, sizeof(tmp));
 }
 
-static void setup_card(struct snd_usb_caiaqdev *dev)
+static void __devinit setup_card(struct snd_usb_caiaqdev *dev)
 {
 	int ret;
 	char val[4];
@@ -359,7 +359,7 @@ static struct snd_card* create_card(struct usb_device* usb_dev)
 	return card;
 }
 
-static int init_card(struct snd_usb_caiaqdev *dev)
+static int __devinit init_card(struct snd_usb_caiaqdev *dev)
 {
 	char *c;
 	struct usb_device *usb_dev = dev->chip.dev;
@@ -428,7 +428,7 @@ static int init_card(struct snd_usb_caiaqdev *dev)
 	return 0;
 }
 
-static int snd_probe(struct usb_interface *intf, 
+static int __devinit snd_probe(struct usb_interface *intf, 
 		     const struct usb_device_id *id)
 {
 	int ret;
@@ -456,7 +456,7 @@ static void snd_disconnect(struct usb_interface *intf)
 	struct snd_usb_caiaqdev *dev;
 	struct snd_card *card = dev_get_drvdata(&intf->dev);
 
-	debug("snd_disconnect(%p)\n", intf);
+	debug("%s(%p)\n", __func__, intf);
 
 	if (!card)
 		return;

@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (C) 2001 MontaVista Software, ppopov@mvista.com
+ * Copyright (C) 2001, 2006, 2008 MontaVista Software, <source@mvista.com>
  * Copied and modified Carsten Langgaard's time.c
  *
  * Carsten Langgaard, carstenl@mips.com
@@ -34,23 +34,13 @@
 
 #include <linux/types.h>
 #include <linux/init.h>
-#include <linux/kernel_stat.h>
-#include <linux/sched.h>
 #include <linux/spinlock.h>
-#include <linux/hardirq.h>
 
-#include <asm/compiler.h>
 #include <asm/mipsregs.h>
 #include <asm/time.h>
-#include <asm/div64.h>
 #include <asm/mach-au1x00/au1000.h>
 
-#include <linux/mc146818rtc.h>
-#include <linux/timex.h>
-
-static unsigned long r4k_offset; /* Amount to increment compare reg each time */
-static unsigned long r4k_cur;    /* What counter should be at next timer irq */
-int	no_au1xxx_32khz;
+static int no_au1xxx_32khz;
 extern int allow_au1k_wait; /* default off for CP0 Counter */
 
 #ifdef CONFIG_PM
@@ -184,7 +174,7 @@ wakeup_counter0_set(int ticks)
  * "wait" is enabled, and we need to detect if the 32KHz isn't present
  * but requested......got it? :-)		-- Dan
  */
-unsigned long cal_r4koff(void)
+unsigned long calc_clock(void)
 {
 	unsigned long cpu_speed;
 	unsigned long flags;
@@ -209,44 +199,39 @@ unsigned long cal_r4koff(void)
 		while (au_readl(SYS_COUNTER_CNTRL) & SYS_CNTRL_C1S);
 		au_writel(0, SYS_TOYWRITE);
 		while (au_readl(SYS_COUNTER_CNTRL) & SYS_CNTRL_C1S);
-
-		cpu_speed = (au_readl(SYS_CPUPLL) & 0x0000003f) *
-			AU1000_SRC_CLK;
-	}
-	else {
-		/* The 32KHz oscillator isn't running, so assume there
-		 * isn't one and grab the processor speed from the PLL.
-		 * NOTE: some old silicon doesn't allow reading the PLL.
-		 */
-		cpu_speed = (au_readl(SYS_CPUPLL) & 0x0000003f) * AU1000_SRC_CLK;
+	} else
 		no_au1xxx_32khz = 1;
-	}
+
+	/*
+	 * On early Au1000, sys_cpupll was write-only. Since these
+	 * silicon versions of Au1000 are not sold by AMD, we don't bend
+	 * over backwards trying to determine the frequency.
+	 */
+	if (cur_cpu_spec[0]->cpu_pll_wo)
+#ifdef CONFIG_SOC_AU1000_FREQUENCY
+		cpu_speed = CONFIG_SOC_AU1000_FREQUENCY;
+#else
+		cpu_speed = 396000000;
+#endif
+	else
+		cpu_speed = (au_readl(SYS_CPUPLL) & 0x0000003f) * AU1000_SRC_CLK;
 	mips_hpt_frequency = cpu_speed;
 	// Equation: Baudrate = CPU / (SD * 2 * CLKDIV * 16)
 	set_au1x00_uart_baud_base(cpu_speed / (2 * ((int)(au_readl(SYS_POWERCTRL)&0x03) + 2) * 16));
 	spin_unlock_irqrestore(&time_lock, flags);
-	return (cpu_speed / HZ);
+	return cpu_speed;
 }
 
 void __init plat_time_init(void)
 {
-	unsigned int est_freq;
+	unsigned int est_freq = calc_clock();
 
-	printk("calculating r4koff... ");
-	r4k_offset = cal_r4koff();
-	printk("%08lx(%d)\n", r4k_offset, (int) r4k_offset);
-
-	//est_freq = 2*r4k_offset*HZ;
-	est_freq = r4k_offset*HZ;
 	est_freq += 5000;    /* round */
 	est_freq -= est_freq%10000;
 	printk("CPU frequency %d.%02d MHz\n", est_freq/1000000,
 	       (est_freq%1000000)*100/1000000);
  	set_au1x00_speed(est_freq);
  	set_au1x00_lcd_clock(); // program the LCD clock
-
-	r4k_cur = (read_c0_count() + r4k_offset);
-	write_c0_compare(r4k_cur);
 
 #ifdef CONFIG_PM
 	/*
@@ -261,12 +246,8 @@ void __init plat_time_init(void)
 	 * Check to ensure we really have a 32KHz oscillator before
 	 * we do this.
 	 */
-	if (no_au1xxx_32khz) {
+	if (no_au1xxx_32khz)
 		printk("WARNING: no 32KHz clock found.\n");
-
-		/* Ensure we get CPO_COUNTER interrupts.  */
-		set_c0_status(IE_IRQ5);
-	}
 	else {
 		while (au_readl(SYS_COUNTER_CNTRL) & SYS_CNTRL_C0S);
 		au_writel(0, SYS_TOYWRITE);

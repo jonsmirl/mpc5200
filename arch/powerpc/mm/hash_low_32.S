@@ -44,6 +44,9 @@ mmu_hash_lock:
 #ifdef CONFIG_SMP
 	.text
 _GLOBAL(hash_page_sync)
+	mfmsr   r10
+	rlwinm  r0,r10,0,17,15          /* clear bit 16 (MSR_EE) */
+	mtmsr   r0
 	lis	r8,mmu_hash_lock@h
 	ori	r8,r8,mmu_hash_lock@l
 	lis	r0,0x0fff
@@ -60,8 +63,9 @@ _GLOBAL(hash_page_sync)
 	eieio
 	li	r0,0
 	stw	r0,0(r8)
-	blr	
-#endif
+	mtmsr	r10
+	blr
+#endif /* CONFIG_SMP */
 
 /*
  * Load a PTE into the hash table, if possible.
@@ -187,7 +191,7 @@ _GLOBAL(add_hash_page)
 	add	r3,r3,r0		/* note create_hpte trims to 24 bits */
 
 #ifdef CONFIG_SMP
-	rlwinm	r8,r1,0,0,18		/* use cpu number to make tag */
+	rlwinm	r8,r1,0,0,(31-THREAD_SHIFT) /* use cpu number to make tag */
 	lwz	r8,TI_CPU(r8)		/* to go in mmu_hash_lock */
 	oris	r8,r8,12
 #endif /* CONFIG_SMP */
@@ -522,7 +526,7 @@ _GLOBAL(flush_hash_pages)
 #ifdef CONFIG_SMP
 	addis	r9,r7,mmu_hash_lock@ha
 	addi	r9,r9,mmu_hash_lock@l
-	rlwinm	r8,r1,0,0,18
+	rlwinm	r8,r1,0,0,(31-THREAD_SHIFT)
 	add	r8,r8,r7
 	lwz	r8,TI_CPU(r8)
 	oris	r8,r8,9

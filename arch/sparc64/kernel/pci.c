@@ -23,7 +23,6 @@
 #include <asm/pgtable.h>
 #include <asm/irq.h>
 #include <asm/ebus.h>
-#include <asm/isa.h>
 #include <asm/prom.h>
 #include <asm/apb.h>
 
@@ -225,20 +224,6 @@ static int __init pci_controller_init(const char *model_name, int namelen, struc
 	return 0;
 }
 
-static int __init pci_is_controller(const char *model_name, int namelen, struct device_node *dp)
-{
-	int i;
-
-	for (i = 0; i < PCI_NUM_CONTROLLER_TYPES; i++) {
-		if (!strncmp(model_name,
-			     pci_controller_table[i].model_name,
-			     namelen)) {
-			return 1;
-		}
-	}
-	return 0;
-}
-
 static int __init pci_controller_scan(int (*handler)(const char *, int, struct device_node *))
 {
 	struct device_node *dp;
@@ -271,13 +256,6 @@ static int __init pci_controller_scan(int (*handler)(const char *, int, struct d
 	}
 
 	return count;
-}
-
-
-/* Is there some PCI controller in the system?  */
-int __init pcic_present(void)
-{
-	return pci_controller_scan(pci_is_controller);
 }
 
 /* Find each controller in the system, attach and initialize
@@ -390,10 +368,12 @@ struct pci_dev *of_create_pci_dev(struct pci_pbm_info *pbm,
 	sd->host_controller = pbm;
 	sd->prom_node = node;
 	sd->op = of_find_device_by_node(node);
+	sd->numa_node = pbm->numa_node;
 
 	sd = &sd->op->dev.archdata;
 	sd->iommu = pbm->iommu;
 	sd->stc = &pbm->stc;
+	sd->numa_node = pbm->numa_node;
 
 	type = of_get_property(node, "device_type", NULL);
 	if (type == NULL)
@@ -904,7 +884,6 @@ static int __init pcibios_init(void)
 
 	pci_scan_each_controller_bus();
 
-	isa_init();
 	ebus_init();
 	power_init();
 
@@ -1179,6 +1158,16 @@ int pci_mmap_page_range(struct pci_dev *dev, struct vm_area_struct *vma,
 
 	return 0;
 }
+
+#ifdef CONFIG_NUMA
+int pcibus_to_node(struct pci_bus *pbus)
+{
+	struct pci_pbm_info *pbm = pbus->sysdata;
+
+	return pbm->numa_node;
+}
+EXPORT_SYMBOL(pcibus_to_node);
+#endif
 
 /* Return the domain nuber for this pci bus */
 

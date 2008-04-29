@@ -46,7 +46,7 @@ MODULE_LICENSE("GPL");
 #include <media/v4l2-common.h>
 #include <linux/video_decoder.h>
 
-static int debug = 0;
+static int debug;
 module_param(debug, int, 0);
 MODULE_PARM_DESC(debug, "Debug level (0-1)");
 
@@ -488,7 +488,7 @@ saa7110_detect_client (struct i2c_adapter *adapter,
 		return 0;
 
 	client = kzalloc(sizeof(struct i2c_client), GFP_KERNEL);
-	if (client == 0)
+	if (!client)
 		return -ENOMEM;
 	client->addr = address;
 	client->adapter = adapter;
@@ -496,7 +496,7 @@ saa7110_detect_client (struct i2c_adapter *adapter,
 	strlcpy(I2C_NAME(client), "saa7110", sizeof(I2C_NAME(client)));
 
 	decoder = kzalloc(sizeof(struct saa7110), GFP_KERNEL);
-	if (decoder == 0) {
+	if (!decoder) {
 		kfree(client);
 		return -ENOMEM;
 	}

@@ -299,6 +299,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
 				else
 					inode->i_op = &nfs_mountpoint_inode_operations;
 				inode->i_fop = NULL;
+				set_bit(NFS_INO_MOUNTPOINT, &nfsi->flags);
 			}
 		} else if (S_ISLNK(inode->i_mode))
 			inode->i_op = &nfs_symlink_inode_operations;
@@ -505,6 +506,7 @@ static struct nfs_open_context *alloc_nfs_open_context(struct vfsmount *mnt, str
 		ctx->cred = get_rpccred(cred);
 		ctx->state = NULL;
 		ctx->lockowner = current->files;
+		ctx->flags = 0;
 		ctx->error = 0;
 		ctx->dir_cookie = 0;
 		atomic_set(&ctx->count, 1);
@@ -521,8 +523,12 @@ struct nfs_open_context *get_nfs_open_context(struct nfs_open_context *ctx)
 
 static void __put_nfs_open_context(struct nfs_open_context *ctx, int wait)
 {
-	struct inode *inode = ctx->path.dentry->d_inode;
+	struct inode *inode;
 
+	if (ctx == NULL)
+		return;
+
+	inode = ctx->path.dentry->d_inode;
 	if (!atomic_dec_and_lock(&ctx->count, &inode->i_lock))
 		return;
 	list_del(&ctx->list);
@@ -608,7 +614,7 @@ int nfs_open(struct inode *inode, struct file *filp)
 	struct nfs_open_context *ctx;
 	struct rpc_cred *cred;
 
-	cred = rpcauth_lookupcred(NFS_CLIENT(inode)->cl_auth, 0);
+	cred = rpc_lookup_cred();
 	if (IS_ERR(cred))
 		return PTR_ERR(cred);
 	ctx = alloc_nfs_open_context(filp->f_path.mnt, filp->f_path.dentry, cred);
@@ -1003,8 +1009,9 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
 
 	server = NFS_SERVER(inode);
 	/* Update the fsid? */
-	if (S_ISDIR(inode->i_mode)
-			&& !nfs_fsid_equal(&server->fsid, &fattr->fsid))
+	if (S_ISDIR(inode->i_mode) &&
+			!nfs_fsid_equal(&server->fsid, &fattr->fsid) &&
+			!test_bit(NFS_INO_MOUNTPOINT, &nfsi->flags))
 		server->fsid = fattr->fsid;
 
 	/*
@@ -1215,12 +1222,46 @@ static void nfs_destroy_inodecache(void)
 	kmem_cache_destroy(nfs_inode_cachep);
 }
 
+struct workqueue_struct *nfsiod_workqueue;
+
+/*
+ * start up the nfsiod workqueue
+ */
+static int nfsiod_start(void)
+{
+	struct workqueue_struct *wq;
+	dprintk("RPC:       creating workqueue nfsiod\n");
+	wq = create_singlethread_workqueue("nfsiod");
+	if (wq == NULL)
+		return -ENOMEM;
+	nfsiod_workqueue = wq;
+	return 0;
+}
+
+/*
+ * Destroy the nfsiod workqueue
+ */
+static void nfsiod_stop(void)
+{
+	struct workqueue_struct *wq;
+
+	wq = nfsiod_workqueue;
+	if (wq == NULL)
+		return;
+	nfsiod_workqueue = NULL;
+	destroy_workqueue(wq);
+}
+
 /*
  * Initialize NFS
  */
 static int __init init_nfs_fs(void)
 {
 	int err;
+
+	err = nfsiod_start();
+	if (err)
+		goto out6;
 
 	err = nfs_fs_proc_init();
 	if (err)
@@ -1268,6 +1309,8 @@ out3:
 out4:
 	nfs_fs_proc_exit();
 out5:
+	nfsiod_stop();
+out6:
 	return err;
 }
 
@@ -1283,6 +1326,7 @@ static void __exit exit_nfs_fs(void)
 #endif
 	unregister_nfs_fs();
 	nfs_fs_proc_exit();
+	nfsiod_stop();
 }
 
 /* Not quite true; I just maintain it */

@@ -55,7 +55,6 @@
 #include <asm/types.h>
 #include <asm/uaccess.h>
 #include <asm/fpumacro.h>
-#include <asm/semaphore.h>
 #include <asm/mmu_context.h>
 #include <asm/compat_signal.h>
 
@@ -555,10 +554,8 @@ asmlinkage long compat_sys_sigaction(int sig, struct old_sigaction32 __user *act
         struct k_sigaction new_ka, old_ka;
         int ret;
 
-	if (sig < 0) {
-		set_thread_flag(TIF_NEWSIGNALS);
-		sig = -sig;
-	}
+	WARN_ON_ONCE(sig >= 0);
+	sig = -sig;
 
         if (act) {
 		compat_old_sigset_t mask;
@@ -601,11 +598,6 @@ asmlinkage long compat_sys_rt_sigaction(int sig,
         /* XXX: Don't preclude handling different sized sigset_t's.  */
         if (sigsetsize != sizeof(compat_sigset_t))
                 return -EINVAL;
-
-	/* All tasks which use RT signals (effectively) use
-	 * new style signals.
-	 */
-	set_thread_flag(TIF_NEWSIGNALS);
 
         if (act) {
 		u32 u_handler, u_restorer;
@@ -678,9 +670,6 @@ asmlinkage long sparc32_execve(struct pt_regs *regs)
 		current_thread_info()->xfsr[0] = 0;
 		current_thread_info()->fpsaved[0] = 0;
 		regs->tstate &= ~TSTATE_PEF;
-		task_lock(current);
-		current->ptrace &= ~PT_DTRACE;
-		task_unlock(current);
 	}
 out:
 	return error;

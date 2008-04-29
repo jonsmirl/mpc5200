@@ -27,6 +27,7 @@
 #include <sound/core.h>
 #include "hda_codec.h"
 #include "hda_local.h"
+#include "hda_patch.h"
 
 #define CXT_PIN_DIR_IN              0x00
 #define CXT_PIN_DIR_OUT             0x01
@@ -98,7 +99,8 @@ static int conexant_playback_pcm_open(struct hda_pcm_stream *hinfo,
 				      struct snd_pcm_substream *substream)
 {
 	struct conexant_spec *spec = codec->spec;
-	return snd_hda_multi_out_analog_open(codec, &spec->multiout, substream);
+	return snd_hda_multi_out_analog_open(codec, &spec->multiout, substream,
+					     hinfo);
 }
 
 static int conexant_playback_pcm_prepare(struct hda_pcm_stream *hinfo,
@@ -172,8 +174,7 @@ static int conexant_capture_pcm_cleanup(struct hda_pcm_stream *hinfo,
 				      struct snd_pcm_substream *substream)
 {
 	struct conexant_spec *spec = codec->spec;
-	snd_hda_codec_setup_stream(codec, spec->adc_nids[substream->number],
-				   0, 0, 0);
+	snd_hda_codec_cleanup_stream(codec, spec->adc_nids[substream->number]);
 	return 0;
 }
 
@@ -241,7 +242,7 @@ static int cx5051_capture_pcm_cleanup(struct hda_pcm_stream *hinfo,
 				      struct snd_pcm_substream *substream)
 {
 	struct conexant_spec *spec = codec->spec;
-	snd_hda_codec_setup_stream(codec, spec->cur_adc, 0, 0, 0);
+	snd_hda_codec_cleanup_stream(codec, spec->cur_adc);
 	spec->cur_adc = 0;
 	return 0;
 }
@@ -284,6 +285,7 @@ static int conexant_build_pcms(struct hda_codec *codec)
 		info++;
 		codec->num_pcms++;
 		info->name = "Conexant Digital";
+		info->pcm_type = HDA_PCM_TYPE_SPDIF;
 		info->stream[SNDRV_PCM_STREAM_PLAYBACK] =
 			conexant_pcm_digital_playback;
 		info->stream[SNDRV_PCM_STREAM_PLAYBACK].nid =
@@ -371,6 +373,11 @@ static int conexant_build_controls(struct hda_codec *codec)
 						    spec->multiout.dig_out_nid);
 		if (err < 0)
 			return err;
+		err = snd_hda_create_spdif_share_sw(codec,
+						    &spec->multiout);
+		if (err < 0)
+			return err;
+		spec->multiout.share_spdif = 1;
 	} 
 	if (spec->dig_in_nid) {
 		err = snd_hda_create_spdif_in_ctls(codec,spec->dig_in_nid);
@@ -488,7 +495,7 @@ static int conexant_ch_mode_put(struct snd_kcontrol *kcontrol,
 static hda_nid_t cxt5045_dac_nids[1] = { 0x19 };
 static hda_nid_t cxt5045_adc_nids[1] = { 0x1a };
 static hda_nid_t cxt5045_capsrc_nids[1] = { 0x1a };
-#define CXT5045_SPDIF_OUT	0x13
+#define CXT5045_SPDIF_OUT	0x18
 
 static struct hda_channel_mode cxt5045_modes[1] = {
 	{ 2, NULL },
@@ -508,6 +515,14 @@ static struct hda_input_mux cxt5045_capture_source_benq = {
 		{ "IntMic", 0x1 },
 		{ "ExtMic", 0x2 },
 		{ "LineIn", 0x3 },
+	}
+};
+
+static struct hda_input_mux cxt5045_capture_source_hp530 = {
+	.num_items = 2,
+	.items = {
+		{ "ExtMic", 0x1 },
+		{ "IntMic", 0x2 },
 	}
 };
 
@@ -639,6 +654,37 @@ static struct snd_kcontrol_new cxt5045_benq_mixers[] = {
 	{}
 };
 
+static struct snd_kcontrol_new cxt5045_mixers_hp530[] = {
+	{
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+		.name = "Capture Source",
+		.info = conexant_mux_enum_info,
+		.get = conexant_mux_enum_get,
+		.put = conexant_mux_enum_put
+	},
+	HDA_CODEC_VOLUME("Int Mic Capture Volume", 0x1a, 0x02, HDA_INPUT),
+	HDA_CODEC_MUTE("Int Mic Capture Switch", 0x1a, 0x02, HDA_INPUT),
+	HDA_CODEC_VOLUME("Ext Mic Capture Volume", 0x1a, 0x01, HDA_INPUT),
+	HDA_CODEC_MUTE("Ext Mic Capture Switch", 0x1a, 0x01, HDA_INPUT),
+	HDA_CODEC_VOLUME("PCM Playback Volume", 0x17, 0x0, HDA_INPUT),
+	HDA_CODEC_MUTE("PCM Playback Switch", 0x17, 0x0, HDA_INPUT),
+	HDA_CODEC_VOLUME("Int Mic Playback Volume", 0x17, 0x2, HDA_INPUT),
+	HDA_CODEC_MUTE("Int Mic Playback Switch", 0x17, 0x2, HDA_INPUT),
+	HDA_CODEC_VOLUME("Ext Mic Playback Volume", 0x17, 0x1, HDA_INPUT),
+	HDA_CODEC_MUTE("Ext Mic Playback Switch", 0x17, 0x1, HDA_INPUT),
+	HDA_BIND_VOL("Master Playback Volume", &cxt5045_hp_bind_master_vol),
+	{
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+		.name = "Master Playback Switch",
+		.info = cxt_eapd_info,
+		.get = cxt_eapd_get,
+		.put = cxt5045_hp_master_sw_put,
+		.private_value = 0x10,
+	},
+
+	{}
+};
+
 static struct hda_verb cxt5045_init_verbs[] = {
 	/* Line in, Mic */
 	{0x12, AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_IN },
@@ -658,6 +704,7 @@ static struct hda_verb cxt5045_init_verbs[] = {
 	{0x1a, AC_VERB_SET_AMP_GAIN_MUTE,
 	 AC_AMP_SET_INPUT|AC_AMP_SET_RIGHT|AC_AMP_SET_LEFT|0x17},
 	/* SPDIF route: PCM */
+	{0x13, AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_OUT},
 	{ 0x13, AC_VERB_SET_CONNECT_SEL, 0x0 },
 	/* EAPD */
 	{0x10, AC_VERB_SET_EAPD_BTLENABLE, 0x2 }, /* default on */ 
@@ -683,6 +730,7 @@ static struct hda_verb cxt5045_benq_init_verbs[] = {
 	{0x1a, AC_VERB_SET_AMP_GAIN_MUTE,
 	 AC_AMP_SET_INPUT|AC_AMP_SET_RIGHT|AC_AMP_SET_LEFT|0x17},
 	/* SPDIF route: PCM */
+	{0x13, AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_OUT},
 	{0x13, AC_VERB_SET_CONNECT_SEL, 0x0},
 	/* EAPD */
 	{0x10, AC_VERB_SET_EAPD_BTLENABLE, 0x2}, /* default on */
@@ -781,7 +829,8 @@ static struct hda_verb cxt5045_test_init_verbs[] = {
 	 * PCM format, copyright asserted, no pre-emphasis and no validity
 	 * control.
 	 */
-	{0x13, AC_VERB_SET_DIGI_CONVERT_1, 0},
+	{0x13, AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_OUT},
+	{0x18, AC_VERB_SET_DIGI_CONVERT_1, 0},
 
 	/* Start with output sum widgets muted and their output gains at min */
 	{0x17, AC_VERB_SET_AMP_GAIN_MUTE, AMP_IN_MUTE(0)},
@@ -830,6 +879,7 @@ enum {
 	CXT5045_LAPTOP_MICSENSE,
 	CXT5045_LAPTOP_HPMICSENSE,
 	CXT5045_BENQ,
+	CXT5045_LAPTOP_HP530,
 #ifdef CONFIG_SND_DEBUG
 	CXT5045_TEST,
 #endif
@@ -841,6 +891,7 @@ static const char *cxt5045_models[CXT5045_MODELS] = {
 	[CXT5045_LAPTOP_MICSENSE]	= "laptop-micsense",
 	[CXT5045_LAPTOP_HPMICSENSE]	= "laptop-hpmicsense",
 	[CXT5045_BENQ]			= "benq",
+	[CXT5045_LAPTOP_HP530]		= "laptop-hp530",
 #ifdef CONFIG_SND_DEBUG
 	[CXT5045_TEST]		= "test",
 #endif
@@ -854,7 +905,7 @@ static struct snd_pci_quirk cxt5045_cfg_tbl[] = {
 	SND_PCI_QUIRK(0x103c, 0x30bb, "HP DV8000", CXT5045_LAPTOP_HPSENSE),
 	SND_PCI_QUIRK(0x103c, 0x30cd, "HP DV Series", CXT5045_LAPTOP_HPSENSE),
 	SND_PCI_QUIRK(0x103c, 0x30cf, "HP DV9533EG", CXT5045_LAPTOP_HPSENSE),
-	SND_PCI_QUIRK(0x103c, 0x30d5, "HP 530", CXT5045_LAPTOP_HPSENSE),
+	SND_PCI_QUIRK(0x103c, 0x30d5, "HP 530", CXT5045_LAPTOP_HP530),
 	SND_PCI_QUIRK(0x103c, 0x30d9, "HP Spartan", CXT5045_LAPTOP_HPSENSE),
 	SND_PCI_QUIRK(0x152d, 0x0753, "Benq R55E", CXT5045_BENQ),
 	SND_PCI_QUIRK(0x1734, 0x10ad, "Fujitsu Si1520", CXT5045_LAPTOP_MICSENSE),
@@ -936,6 +987,14 @@ static int patch_cxt5045(struct hda_codec *codec)
 		spec->mixers[0] = cxt5045_mixers;
 		spec->mixers[1] = cxt5045_benq_mixers;
 		spec->num_mixers = 2;
+		codec->patch_ops.init = cxt5045_init;
+		break;
+	case CXT5045_LAPTOP_HP530:
+		codec->patch_ops.unsol_event = cxt5045_hp_unsol_event;
+		spec->input_mux = &cxt5045_capture_source_hp530;
+		spec->num_init_verbs = 2;
+		spec->init_verbs[1] = cxt5045_hp_sense_init_verbs;
+		spec->mixers[0] = cxt5045_mixers_hp530;
 		codec->patch_ops.init = cxt5045_init;
 		break;
 #ifdef CONFIG_SND_DEBUG
@@ -1227,6 +1286,11 @@ static struct hda_verb cxt5047_toshiba_init_verbs[] = {
 static struct hda_verb cxt5047_hp_init_verbs[] = {
 	/* pin sensing on HP jack */
 	{0x13, AC_VERB_SET_UNSOLICITED_ENABLE, AC_USRSP_EN | CONEXANT_HP_EVENT},
+	/* 0x13 is actually shared by both HP and speaker;
+	 * setting the connection to 0 (=0x19) makes the master volume control
+	 * working mysteriouslly...
+	 */
+	{0x13, AC_VERB_SET_CONNECT_SEL, 0x0},
 	/* Record selector: Ext Mic */
 	{0x12, AC_VERB_SET_CONNECT_SEL,0x03},
 	{0x19, AC_VERB_SET_AMP_GAIN_MUTE,
@@ -1529,7 +1593,7 @@ static void cxt5051_portc_automic(struct hda_codec *codec)
 	new_adc = spec->adc_nids[spec->cur_adc_idx];
 	if (spec->cur_adc && spec->cur_adc != new_adc) {
 		/* stream is running, let's swap the current ADC */
-		snd_hda_codec_setup_stream(codec, spec->cur_adc, 0, 0, 0);
+		snd_hda_codec_cleanup_stream(codec, spec->cur_adc);
 		spec->cur_adc = new_adc;
 		snd_hda_codec_setup_stream(codec, new_adc,
 					   spec->cur_adc_stream_tag, 0,

@@ -314,9 +314,12 @@ static int proc_pid_schedstat(struct task_struct *task, char *buffer)
 static int lstats_show_proc(struct seq_file *m, void *v)
 {
 	int i;
-	struct task_struct *task = m->private;
-	seq_puts(m, "Latency Top version : v0.1\n");
+	struct inode *inode = m->private;
+	struct task_struct *task = get_proc_task(inode);
 
+	if (!task)
+		return -ESRCH;
+	seq_puts(m, "Latency Top version : v0.1\n");
 	for (i = 0; i < 32; i++) {
 		if (task->latency_record[i].backtrace[0]) {
 			int q;
@@ -341,32 +344,24 @@ static int lstats_show_proc(struct seq_file *m, void *v)
 		}
 
 	}
+	put_task_struct(task);
 	return 0;
 }
 
 static int lstats_open(struct inode *inode, struct file *file)
 {
-	int ret;
-	struct seq_file *m;
-	struct task_struct *task = get_proc_task(inode);
-
-	ret = single_open(file, lstats_show_proc, NULL);
-	if (!ret) {
-		m = file->private_data;
-		m->private = task;
-	}
-	return ret;
+	return single_open(file, lstats_show_proc, inode);
 }
 
 static ssize_t lstats_write(struct file *file, const char __user *buf,
 			    size_t count, loff_t *offs)
 {
-	struct seq_file *m;
-	struct task_struct *task;
+	struct task_struct *task = get_proc_task(file->f_dentry->d_inode);
 
-	m = file->private_data;
-	task = m->private;
+	if (!task)
+		return -ESRCH;
 	clear_all_latency_tracing(task);
+	put_task_struct(task);
 
 	return count;
 }
@@ -416,6 +411,7 @@ static const struct limit_names lnames[RLIM_NLIMITS] = {
 	[RLIMIT_MSGQUEUE] = {"Max msgqueue size", "bytes"},
 	[RLIMIT_NICE] = {"Max nice priority", NULL},
 	[RLIMIT_RTPRIO] = {"Max realtime priority", NULL},
+	[RLIMIT_RTTIME] = {"Max realtime timeout", "us"},
 };
 
 /* Display limits for a process */
@@ -506,17 +502,14 @@ static const struct inode_operations proc_def_inode_operations = {
 	.setattr	= proc_setattr,
 };
 
-extern const struct seq_operations mounts_op;
-struct proc_mounts {
-	struct seq_file m;
-	int event;
-};
-
-static int mounts_open(struct inode *inode, struct file *file)
+static int mounts_open_common(struct inode *inode, struct file *file,
+			      const struct seq_operations *op)
 {
 	struct task_struct *task = get_proc_task(inode);
 	struct nsproxy *nsp;
 	struct mnt_namespace *ns = NULL;
+	struct fs_struct *fs = NULL;
+	struct path root;
 	struct proc_mounts *p;
 	int ret = -EINVAL;
 
@@ -529,40 +522,61 @@ static int mounts_open(struct inode *inode, struct file *file)
 				get_mnt_ns(ns);
 		}
 		rcu_read_unlock();
-
+		if (ns)
+			fs = get_fs_struct(task);
 		put_task_struct(task);
 	}
 
-	if (ns) {
-		ret = -ENOMEM;
-		p = kmalloc(sizeof(struct proc_mounts), GFP_KERNEL);
-		if (p) {
-			file->private_data = &p->m;
-			ret = seq_open(file, &mounts_op);
-			if (!ret) {
-				p->m.private = ns;
-				p->event = ns->event;
-				return 0;
-			}
-			kfree(p);
-		}
-		put_mnt_ns(ns);
-	}
+	if (!ns)
+		goto err;
+	if (!fs)
+		goto err_put_ns;
+
+	read_lock(&fs->lock);
+	root = fs->root;
+	path_get(&root);
+	read_unlock(&fs->lock);
+	put_fs_struct(fs);
+
+	ret = -ENOMEM;
+	p = kmalloc(sizeof(struct proc_mounts), GFP_KERNEL);
+	if (!p)
+		goto err_put_path;
+
+	file->private_data = &p->m;
+	ret = seq_open(file, op);
+	if (ret)
+		goto err_free;
+
+	p->m.private = p;
+	p->ns = ns;
+	p->root = root;
+	p->event = ns->event;
+
+	return 0;
+
+ err_free:
+	kfree(p);
+ err_put_path:
+	path_put(&root);
+ err_put_ns:
+	put_mnt_ns(ns);
+ err:
 	return ret;
 }
 
 static int mounts_release(struct inode *inode, struct file *file)
 {
-	struct seq_file *m = file->private_data;
-	struct mnt_namespace *ns = m->private;
-	put_mnt_ns(ns);
+	struct proc_mounts *p = file->private_data;
+	path_put(&p->root);
+	put_mnt_ns(p->ns);
 	return seq_release(inode, file);
 }
 
 static unsigned mounts_poll(struct file *file, poll_table *wait)
 {
 	struct proc_mounts *p = file->private_data;
-	struct mnt_namespace *ns = p->m.private;
+	struct mnt_namespace *ns = p->ns;
 	unsigned res = 0;
 
 	poll_wait(file, &ns->poll, wait);
@@ -577,6 +591,11 @@ static unsigned mounts_poll(struct file *file, poll_table *wait)
 	return res;
 }
 
+static int mounts_open(struct inode *inode, struct file *file)
+{
+	return mounts_open_common(inode, file, &mounts_op);
+}
+
 static const struct file_operations proc_mounts_operations = {
 	.open		= mounts_open,
 	.read		= seq_read,
@@ -585,38 +604,22 @@ static const struct file_operations proc_mounts_operations = {
 	.poll		= mounts_poll,
 };
 
-extern const struct seq_operations mountstats_op;
+static int mountinfo_open(struct inode *inode, struct file *file)
+{
+	return mounts_open_common(inode, file, &mountinfo_op);
+}
+
+static const struct file_operations proc_mountinfo_operations = {
+	.open		= mountinfo_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= mounts_release,
+	.poll		= mounts_poll,
+};
+
 static int mountstats_open(struct inode *inode, struct file *file)
 {
-	int ret = seq_open(file, &mountstats_op);
-
-	if (!ret) {
-		struct seq_file *m = file->private_data;
-		struct nsproxy *nsp;
-		struct mnt_namespace *mnt_ns = NULL;
-		struct task_struct *task = get_proc_task(inode);
-
-		if (task) {
-			rcu_read_lock();
-			nsp = task_nsproxy(task);
-			if (nsp) {
-				mnt_ns = nsp->mnt_ns;
-				if (mnt_ns)
-					get_mnt_ns(mnt_ns);
-			}
-			rcu_read_unlock();
-
-			put_task_struct(task);
-		}
-
-		if (mnt_ns)
-			m->private = mnt_ns;
-		else {
-			seq_release(inode, file);
-			ret = -EINVAL;
-		}
-	}
-	return ret;
+	return mounts_open_common(inode, file, &mountstats_op);
 }
 
 static const struct file_operations proc_mountstats_operations = {
@@ -1039,6 +1042,26 @@ out_free_page:
 static const struct file_operations proc_loginuid_operations = {
 	.read		= proc_loginuid_read,
 	.write		= proc_loginuid_write,
+};
+
+static ssize_t proc_sessionid_read(struct file * file, char __user * buf,
+				  size_t count, loff_t *ppos)
+{
+	struct inode * inode = file->f_path.dentry->d_inode;
+	struct task_struct *task = get_proc_task(inode);
+	ssize_t length;
+	char tmpbuf[TMPBUFLEN];
+
+	if (!task)
+		return -ESRCH;
+	length = scnprintf(tmpbuf, TMPBUFLEN, "%u",
+				audit_get_sessionid(task));
+	put_task_struct(task);
+	return simple_read_from_buffer(buf, count, ppos, tmpbuf, length);
+}
+
+static const struct file_operations proc_sessionid_operations = {
+	.read		= proc_sessionid_read,
 };
 #endif
 
@@ -1610,7 +1633,6 @@ static int proc_readfd_common(struct file * filp, void * dirent,
 	unsigned int fd, ino;
 	int retval;
 	struct files_struct * files;
-	struct fdtable *fdt;
 
 	retval = -ENOENT;
 	if (!p)
@@ -1633,9 +1655,8 @@ static int proc_readfd_common(struct file * filp, void * dirent,
 			if (!files)
 				goto out;
 			rcu_read_lock();
-			fdt = files_fdtable(files);
 			for (fd = filp->f_pos-2;
-			     fd < fdt->max_fds;
+			     fd < files_fdtable(files)->max_fds;
 			     fd++, filp->f_pos++) {
 				char name[PROC_NUMBUF];
 				int len;
@@ -2273,6 +2294,9 @@ static const struct pid_entry tgid_base_stuff[] = {
 	DIR("task",       S_IRUGO|S_IXUGO, task),
 	DIR("fd",         S_IRUSR|S_IXUSR, fd),
 	DIR("fdinfo",     S_IRUSR|S_IXUSR, fdinfo),
+#ifdef CONFIG_NET
+	DIR("net",        S_IRUGO|S_IXUGO, net),
+#endif
 	REG("environ",    S_IRUSR, environ),
 	INF("auxv",       S_IRUSR, pid_auxv),
 	ONE("status",     S_IRUGO, pid_status),
@@ -2292,6 +2316,7 @@ static const struct pid_entry tgid_base_stuff[] = {
 	LNK("root",       root),
 	LNK("exe",        exe),
 	REG("mounts",     S_IRUGO, mounts),
+	REG("mountinfo",  S_IRUGO, mountinfo),
 	REG("mountstats", S_IRUSR, mountstats),
 #ifdef CONFIG_PROC_PAGE_MONITOR
 	REG("clear_refs", S_IWUSR, clear_refs),
@@ -2320,6 +2345,7 @@ static const struct pid_entry tgid_base_stuff[] = {
 	REG("oom_adj",    S_IRUGO|S_IWUSR, oom_adjust),
 #ifdef CONFIG_AUDITSYSCALL
 	REG("loginuid",   S_IWUSR|S_IRUGO, loginuid),
+	REG("sessionid",  S_IRUSR, sessionid),
 #endif
 #ifdef CONFIG_FAULT_INJECTION
 	REG("make-it-fail", S_IRUGO|S_IWUSR, fault_inject),
@@ -2623,6 +2649,7 @@ static const struct pid_entry tid_base_stuff[] = {
 	LNK("root",      root),
 	LNK("exe",       exe),
 	REG("mounts",    S_IRUGO, mounts),
+	REG("mountinfo",  S_IRUGO, mountinfo),
 #ifdef CONFIG_PROC_PAGE_MONITOR
 	REG("clear_refs", S_IWUSR, clear_refs),
 	REG("smaps",     S_IRUGO, smaps),
@@ -2650,6 +2677,7 @@ static const struct pid_entry tid_base_stuff[] = {
 	REG("oom_adj",   S_IRUGO|S_IWUSR, oom_adjust),
 #ifdef CONFIG_AUDITSYSCALL
 	REG("loginuid",  S_IWUSR|S_IRUGO, loginuid),
+	REG("sessionid",  S_IRUSR, sessionid),
 #endif
 #ifdef CONFIG_FAULT_INJECTION
 	REG("make-it-fail", S_IRUGO|S_IWUSR, fault_inject),

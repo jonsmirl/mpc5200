@@ -504,7 +504,7 @@ static struct inode *hugetlbfs_get_inode(struct super_block *sb, uid_t uid,
 		inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
 		INIT_LIST_HEAD(&inode->i_mapping->private_list);
 		info = HUGETLBFS_I(inode);
-		mpol_shared_policy_init(&info->policy, MPOL_DEFAULT, NULL);
+		mpol_shared_policy_init(&info->policy, NULL);
 		switch (mode & S_IFMT) {
 		default:
 			init_special_inode(inode, mode, dev);
@@ -954,7 +954,7 @@ struct file *hugetlb_file_setup(const char *name, size_t size)
 			FMODE_WRITE | FMODE_READ,
 			&hugetlbfs_file_operations);
 	if (!file)
-		goto out_inode;
+		goto out_dentry; /* inode is already attached */
 
 	return file;
 

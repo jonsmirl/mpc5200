@@ -133,13 +133,16 @@ static void hpet_reserve_platform_timers(unsigned long id)
 #ifdef CONFIG_HPET_EMULATE_RTC
 	hpet_reserve_timer(&hd, 1);
 #endif
+
 	hd.hd_irq[0] = HPET_LEGACY_8254;
 	hd.hd_irq[1] = HPET_LEGACY_RTC;
 
-       for (i = 2; i < nrtimers; timer++, i++)
-	       hd.hd_irq[i] = (timer->hpet_config & Tn_INT_ROUTE_CNF_MASK) >>
-		       Tn_INT_ROUTE_CNF_SHIFT;
+	for (i = 2; i < nrtimers; timer++, i++)
+		hd.hd_irq[i] = (timer->hpet_config & Tn_INT_ROUTE_CNF_MASK) >>
+			Tn_INT_ROUTE_CNF_SHIFT;
+
 	hpet_alloc(&hd);
+
 }
 #else
 static void hpet_reserve_platform_timers(unsigned long id) { }
@@ -215,7 +218,7 @@ static void hpet_legacy_clockevent_register(void)
 	hpet_freq = 1000000000000000ULL;
 	do_div(hpet_freq, hpet_period);
 	hpet_clockevent.mult = div_sc((unsigned long) hpet_freq,
-				      NSEC_PER_SEC, 32);
+				      NSEC_PER_SEC, hpet_clockevent.shift);
 	/* Calculate the min / max delta */
 	hpet_clockevent.max_delta_ns = clockevent_delta2ns(0x7FFFFFFF,
 							   &hpet_clockevent);
@@ -368,8 +371,8 @@ static int hpet_clocksource_register(void)
 	return 0;
 }
 
-/*
- * Try to setup the HPET timer
+/**
+ * hpet_enable - Try to setup the HPET timer. Returns 1 on success.
  */
 int __init hpet_enable(void)
 {

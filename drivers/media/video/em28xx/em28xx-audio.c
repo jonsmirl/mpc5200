@@ -35,7 +35,6 @@
 #include <linux/vmalloc.h>
 #include <linux/proc_fs.h>
 #include <linux/module.h>
-#include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -52,7 +51,7 @@ MODULE_PARM_DESC(debug, "activates debug info");
 #define dprintk(fmt, arg...) do {					\
 	    if (debug)							\
 		printk(KERN_INFO "em28xx-audio %s: " fmt,		\
-				  __FUNCTION__, ##arg); 		\
+				  __func__, ##arg); 		\
 	} while (0)
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;
@@ -270,8 +269,11 @@ static int snd_em28xx_capture_open(struct snd_pcm_substream *substream)
 	dprintk("opening device and trying to acquire exclusive lock\n");
 
 	/* Sets volume, mute, etc */
+
 	dev->mute = 0;
+	mutex_lock(&dev->lock);
 	ret = em28xx_audio_analog_set(dev);
+	mutex_unlock(&dev->lock);
 	if (ret < 0)
 		goto err;
 
@@ -303,7 +305,9 @@ static int snd_em28xx_pcm_close(struct snd_pcm_substream *substream)
 	dprintk("closing device\n");
 
 	dev->mute = 1;
+	mutex_lock(&dev->lock);
 	em28xx_audio_analog_set(dev);
+	mutex_unlock(&dev->lock);
 
 	if (dev->adev->users == 0 && dev->adev->shutdown == 1) {
 		dprintk("audio users: %d\n", dev->adev->users);

@@ -381,11 +381,15 @@ EXPORT_SYMBOL_GPL(gnttab_cancel_free_callback);
 static int grow_gnttab_list(unsigned int more_frames)
 {
 	unsigned int new_nr_grant_frames, extra_entries, i;
+	unsigned int nr_glist_frames, new_nr_glist_frames;
 
 	new_nr_grant_frames = nr_grant_frames + more_frames;
 	extra_entries       = more_frames * GREFS_PER_GRANT_FRAME;
 
-	for (i = nr_grant_frames; i < new_nr_grant_frames; i++) {
+	nr_glist_frames = (nr_grant_frames * GREFS_PER_GRANT_FRAME + RPP - 1) / RPP;
+	new_nr_glist_frames =
+		(new_nr_grant_frames * GREFS_PER_GRANT_FRAME + RPP - 1) / RPP;
+	for (i = nr_glist_frames; i < new_nr_glist_frames; i++) {
 		gnttab_list[i] = (grant_ref_t *)__get_free_page(GFP_ATOMIC);
 		if (!gnttab_list[i])
 			goto grow_nomem;
@@ -407,7 +411,7 @@ static int grow_gnttab_list(unsigned int more_frames)
 	return 0;
 
 grow_nomem:
-	for ( ; i >= nr_grant_frames; i--)
+	for ( ; i >= nr_glist_frames; i--)
 		free_page((unsigned long) gnttab_list[i]);
 	return -ENOMEM;
 }
@@ -435,24 +439,6 @@ static inline unsigned int max_nr_grant_frames(void)
 	return xen_max;
 }
 
-static int map_pte_fn(pte_t *pte, struct page *pmd_page,
-		      unsigned long addr, void *data)
-{
-	unsigned long **frames = (unsigned long **)data;
-
-	set_pte_at(&init_mm, addr, pte, mfn_pte((*frames)[0], PAGE_KERNEL));
-	(*frames)++;
-	return 0;
-}
-
-static int unmap_pte_fn(pte_t *pte, struct page *pmd_page,
-			unsigned long addr, void *data)
-{
-
-	set_pte_at(&init_mm, addr, pte, __pte(0));
-	return 0;
-}
-
 static int gnttab_map(unsigned int start_idx, unsigned int end_idx)
 {
 	struct gnttab_setup_table setup;
@@ -466,7 +452,7 @@ static int gnttab_map(unsigned int start_idx, unsigned int end_idx)
 
 	setup.dom        = DOMID_SELF;
 	setup.nr_frames  = nr_gframes;
-	setup.frame_list = frames;
+	set_xen_guest_handle(setup.frame_list, frames);
 
 	rc = HYPERVISOR_grant_table_op(GNTTABOP_setup_table, &setup, 1);
 	if (rc == -ENOSYS) {
@@ -476,17 +462,9 @@ static int gnttab_map(unsigned int start_idx, unsigned int end_idx)
 
 	BUG_ON(rc || setup.status);
 
-	if (shared == NULL) {
-		struct vm_struct *area;
-		area = alloc_vm_area(PAGE_SIZE * max_nr_grant_frames());
-		BUG_ON(area == NULL);
-		shared = area->addr;
-	}
-	rc = apply_to_page_range(&init_mm, (unsigned long)shared,
-				 PAGE_SIZE * nr_gframes,
-				 map_pte_fn, &frames);
+	rc = arch_gnttab_map_shared(frames, nr_gframes, max_nr_grant_frames(),
+				    &shared);
 	BUG_ON(rc);
-	frames -= nr_gframes; /* adjust after map_pte_fn() */
 
 	kfree(frames);
 
@@ -502,10 +480,7 @@ static int gnttab_resume(void)
 
 static int gnttab_suspend(void)
 {
-	apply_to_page_range(&init_mm, (unsigned long)shared,
-			    PAGE_SIZE * nr_grant_frames,
-			    unmap_pte_fn, NULL);
-
+	arch_gnttab_unmap_shared(shared, nr_grant_frames);
 	return 0;
 }
 
@@ -530,7 +505,7 @@ static int gnttab_expand(unsigned int req_entries)
 static int __devinit gnttab_init(void)
 {
 	int i;
-	unsigned int max_nr_glist_frames;
+	unsigned int max_nr_glist_frames, nr_glist_frames;
 	unsigned int nr_init_grefs;
 
 	if (!is_running_on_xen())
@@ -543,15 +518,15 @@ static int __devinit gnttab_init(void)
 	 * grant reference free list on the current hypervisor.
 	 */
 	max_nr_glist_frames = (boot_max_nr_grant_frames *
-			       GREFS_PER_GRANT_FRAME /
-			       (PAGE_SIZE / sizeof(grant_ref_t)));
+			       GREFS_PER_GRANT_FRAME / RPP);
 
 	gnttab_list = kmalloc(max_nr_glist_frames * sizeof(grant_ref_t *),
 			      GFP_KERNEL);
 	if (gnttab_list == NULL)
 		return -ENOMEM;
 
-	for (i = 0; i < nr_grant_frames; i++) {
+	nr_glist_frames = (nr_grant_frames * GREFS_PER_GRANT_FRAME + RPP - 1) / RPP;
+	for (i = 0; i < nr_glist_frames; i++) {
 		gnttab_list[i] = (grant_ref_t *)__get_free_page(GFP_KERNEL);
 		if (gnttab_list[i] == NULL)
 			goto ini_nomem;

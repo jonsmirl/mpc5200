@@ -28,6 +28,7 @@
  */
 
 #include <linux/linkage.h>
+#include <linux/init.h>
 #include <asm/blackfin.h>
 #include <asm/trace.h>
 #if CONFIG_BFIN_KERNEL_CLOCK
@@ -35,19 +36,15 @@
 #include <asm/mach/mem_init.h>
 #endif
 
-.global __rambase
-.global __ramstart
-.global __ramend
 .extern ___bss_stop
 .extern ___bss_start
 .extern _bf53x_relocate_l1_mem
 
 #define INITIAL_STACK   0xFFB01000
 
-.text
+__INIT
 
 ENTRY(__start)
-ENTRY(__stext)
 	/* R0: argument of command line string, passed from uboot, save it */
 	R7 = R0;
 	/* Enable Cycle Counter and Nesting Of Interrupts */
@@ -213,6 +210,7 @@ ENTRY(__stext)
 
 .LWAIT_HERE:
 	jump .LWAIT_HERE;
+ENDPROC(__start)
 
 ENTRY(_real_start)
 	[ -- sp ] = reti;
@@ -285,6 +283,9 @@ ENTRY(_real_start)
 	call _start_kernel;
 .L_exit:
 	jump.s	.L_exit;
+ENDPROC(_real_start)
+
+__FINIT
 
 .section .l1.text
 #if CONFIG_BFIN_KERNEL_CLOCK
@@ -450,19 +451,5 @@ ENTRY(_start_dma_code)
 	SSYNC;
 
 	RTS;
+ENDPROC(_start_dma_code)
 #endif /* CONFIG_BFIN_KERNEL_CLOCK */
-
-.data
-
-/*
- * Set up the usable of RAM stuff. Size of RAM is determined then
- * an initial stack set up at the end.
- */
-
-.align 4
-__rambase:
-.long   0
-__ramstart:
-.long   0
-__ramend:
-.long   0
