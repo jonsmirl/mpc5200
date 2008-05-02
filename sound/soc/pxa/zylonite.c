@@ -99,7 +99,7 @@ static int zylonite_init(struct snd_soc_card *card)
 		return -ENODEV;
 	}
 
-	dai = snd_soc_card_get_dai(card, pxa_ac97_hifi_dai_id);
+	dai = snd_soc_card_get_dai(card, wm9713_codec_hifi_dai_id);
 	if (dai == NULL) {
 		printk(KERN_ERR "Unable to obtain WM9713 HiFi DAI\n");
 		return -ENODEV;
