@@ -659,7 +659,7 @@ struct pll_ {
 	unsigned int k;
 };
 
-struct pll_ pll[] = {
+static struct pll_ pll[] = {
 	{13000000, 0, 1, 0, 0, 7, 0x23f488},
 	{2048000,  1, 0, 0, 0, 12, 0x0},
 	{4096000,  1, 0, 0, 0, 6, 0x0},
@@ -667,9 +667,10 @@ struct pll_ pll[] = {
 	/* liam - add more entries */
 };
 
-static int wm9713_set_pll(struct snd_soc_codec *codec,
+static int wm9713_set_pll(struct snd_soc_dai *codec_dai,
 	int pll_id, unsigned int freq_in, unsigned int freq_out)
 {
+	struct snd_soc_codec *codec = codec_dai->codec;
 	struct wm9713_data *wm9713 = codec->private_data;
 	int i;
 	u16 reg, reg2;
@@ -1052,11 +1053,13 @@ static struct snd_soc_dai_caps wm9713_voice_playback = {
 static struct snd_soc_dai_ops wm9713_hifi_dai_ops = {
 	/* alsa ops */
 	.prepare = ac97_hifi_prepare,
+	.set_pll = wm9713_set_pll,
 };
 
 static struct snd_soc_dai_ops wm9713_aux_dai_ops = {
 	/* alsa ops */
 	.prepare = ac97_aux_prepare,
+	.set_pll = wm9713_set_pll,
 };
 
 static struct snd_soc_dai_ops wm9713_voice_dai_ops = {
@@ -1068,6 +1071,7 @@ static struct snd_soc_dai_ops wm9713_voice_dai_ops = {
 	.set_clkdiv = wm9713_set_dai_clkdiv,
 	.set_fmt = wm9713_set_dai_fmt,
 	.set_tristate = wm9713_set_dai_tristate,
+	.set_pll = wm9713_set_pll,
 };
 
 /* for modprobe */
