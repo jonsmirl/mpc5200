@@ -1003,8 +1003,12 @@ int snd_soc_dapm_add_routes(struct snd_soc_card *soc_card,
 	for (i = 0; i < num; i++) {
 		ret = soc_dapm_add_route(soc_card, route->sink, route->control,
 					 route->source);
-		if (ret < 0)
+		if (ret < 0) {
+			printk(KERN_ERR "Failed to add route %s->%s\n",
+				route->source,
+				route->sink);
 			return ret;
+		}
 		route++;
 	}
 	return 0;
