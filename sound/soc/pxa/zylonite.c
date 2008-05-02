@@ -47,7 +47,7 @@ static const struct snd_soc_dapm_route audio_map[] = {
         /* Audio jack has both microphone and headphones */
 	{"Audio Jack Headphones", NULL, "HPL"},
 	{"Audio Jack Headphones", NULL, "HPR"},
-	{"Audio Jack Microphone", NULL, "COMP1"}, /* ??? */
+	{"Audio Jack Microphone", NULL, "MIC2A"}, /* ??? */
 	{"Mic Bias", NULL, "Audio Jack Microphone"},
 
 	/* Handset microphone */
