@@ -747,7 +747,7 @@ static int dapm_mixer_update_power(struct snd_soc_dapm_widget *widget,
 	return 0;
 }
 
-struct snd_soc_card *sysfs_soc_card;
+static struct snd_soc_card *sysfs_soc_card;
 
 /* show dapm widget status in sysfs */
 static ssize_t dapm_widget_show(struct device *dev,
