@@ -296,10 +296,12 @@ static int pxa2xx_ac97_suspend(struct platform_device *dev, pm_message_t state)
 
 static int pxa2xx_ac97_resume(struct platform_device *dev)
 {
+#ifndef CONFIG_PXA3xx
 	pxa_gpio_mode(GPIO31_SYNC_AC97_MD);
 	pxa_gpio_mode(GPIO30_SDATA_OUT_AC97_MD);
 	pxa_gpio_mode(GPIO28_BITCLK_AC97_MD);
 	pxa_gpio_mode(GPIO29_SDATA_IN_AC97_MD);
+#endif
 #ifdef CONFIG_PXA27x
 	/* Use GPIO 113 as AC97 Reset on Bulverde */
 	pxa_gpio_mode(113 | GPIO_ALT_FN_2_OUT);
