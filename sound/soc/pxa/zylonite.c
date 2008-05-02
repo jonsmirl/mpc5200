@@ -215,31 +215,9 @@ static int __exit zylonite_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_PM
-
-static int zylonite_suspend(struct platform_device *pdev,
-	pm_message_t state)
-{
-	struct snd_soc_card *card = platform_get_drvdata(pdev);
-	return snd_soc_suspend(card, state);
-}
-
-static int zylonite_resume(struct platform_device *pdev)
-{
-	struct snd_soc_card *card = platform_get_drvdata(pdev);
-	return snd_soc_resume(card);
-}
-
-#else
-#define zylonite_suspend NULL
-#define zylonite_resume  NULL
-#endif
-
 static struct platform_driver zylonite_driver = {
 	.probe		= zylonite_probe,
 	.remove		= __devexit_p(zylonite_remove),
-	.suspend	= zylonite_suspend,
-	.resume		= zylonite_resume,
 	.driver		= {
 		.name		= "zylonite-audio",
 		.owner		= THIS_MODULE,
