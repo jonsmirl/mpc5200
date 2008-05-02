@@ -1087,20 +1087,20 @@ EXPORT_SYMBOL_GPL(wm9713_codec_aux_dai_id);
 const char wm9713_codec_voice_dai_id[] = "wm9713-codec-voice-dai";
 EXPORT_SYMBOL_GPL(wm9713_codec_voice_dai_id);
 
-struct snd_soc_dai_new wm9713_hifi_dai = {
+static struct snd_soc_dai_new wm9713_hifi_dai = {
 	.name		= wm9713_codec_hifi_dai_id,
 	.playback	= &wm9713_hifi_playback,
 	.capture	= &wm9713_capture,
 	.ops		= &wm9713_hifi_dai_ops,
 };
 
-struct snd_soc_dai_new wm9713_voice_dai = {
+static struct snd_soc_dai_new wm9713_voice_dai = {
 	.name		= wm9713_codec_voice_dai_id,
 	.playback	= &wm9713_voice_playback,
 	.ops		= &wm9713_voice_dai_ops,
 };
 
-struct snd_soc_dai_new wm9713_aux_dai = {
+static struct snd_soc_dai_new wm9713_aux_dai = {
 	.name		= wm9713_codec_aux_dai_id,
 	.playback	= &wm9713_aux_playback,
 	.ops		= &wm9713_aux_dai_ops,
