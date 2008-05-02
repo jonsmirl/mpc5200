@@ -251,7 +251,7 @@ static int wm8753_set_dai(struct snd_kcontrol *kcontrol,
 	struct wm8753_codec_priv *wm8753 = codec->private_data;
 	int mode = wm8753_read_reg_cache(codec, WM8753_IOCTL);
 
-	if (((mode &0xc) >> 2) == ucontrol->value.integer.value[0])
+	if (((mode & 0xc) >> 2) == ucontrol->value.integer.value[0])
 		return 0;
 
 	mode &= 0xfff3;
@@ -709,7 +709,7 @@ static void pll_factors(struct _pll_div *pll_div, unsigned int target,
 
 	if ((Ndiv < 6) || (Ndiv > 12))
 		printk(KERN_WARNING
-			"WM8753 N value outwith recommended range! N = %d\n",Ndiv);
+			"wm8753: unsupported N = %d\n", Ndiv);
 
 	pll_div->n = Ndiv;
 	Nmod = target % source;

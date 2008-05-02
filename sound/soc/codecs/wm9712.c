@@ -43,23 +43,23 @@ static int wm9712_ac97_write(struct snd_soc_codec *codec,
  * WM9712 register cache
  */
 static const u16 wm9712_reg[] = {
-	0x6174, 0x8000, 0x8000, 0x8000, // 6
-	0x0f0f, 0xaaa0, 0xc008, 0x6808, // e
-	0xe808, 0xaaa0, 0xad00, 0x8000, // 16
-	0xe808, 0x3000, 0x8000, 0x0000, // 1e
-	0x0000, 0x0000, 0x0000, 0x000f, // 26
-	0x0405, 0x0410, 0xbb80, 0xbb80, // 2e
-	0x0000, 0xbb80, 0x0000, 0x0000, // 36
-	0x0000, 0x2000, 0x0000, 0x0000, // 3e
-	0x0000, 0x0000, 0x0000, 0x0000, // 46
-	0x0000, 0x0000, 0xf83e, 0xffff, // 4e
-	0x0000, 0x0000, 0x0000, 0xf83e, // 56
-	0x0008, 0x0000, 0x0000, 0x0000, // 5e
-	0xb032, 0x3e00, 0x0000, 0x0000, // 66
-	0x0000, 0x0000, 0x0000, 0x0000, // 6e
-	0x0000, 0x0000, 0x0000, 0x0006, // 76
-	0x0001, 0x0000, 0x574d, 0x4c12, // 7e
-	0x0000, 0x0000 // virtual hp mixers
+	0x6174, 0x8000, 0x8000, 0x8000, /*  6 */
+	0x0f0f, 0xaaa0, 0xc008, 0x6808, /*  e */
+	0xe808, 0xaaa0, 0xad00, 0x8000, /* 16 */
+	0xe808, 0x3000, 0x8000, 0x0000, /* 1e */
+	0x0000, 0x0000, 0x0000, 0x000f, /* 26 */
+	0x0405, 0x0410, 0xbb80, 0xbb80, /* 2e */
+	0x0000, 0xbb80, 0x0000, 0x0000, /* 36 */
+	0x0000, 0x2000, 0x0000, 0x0000, /* 3e */
+	0x0000, 0x0000, 0x0000, 0x0000, /* 46 */
+	0x0000, 0x0000, 0xf83e, 0xffff, /* 4e */
+	0x0000, 0x0000, 0x0000, 0xf83e, /* 56 */
+	0x0008, 0x0000, 0x0000, 0x0000, /* 5e */
+	0xb032, 0x3e00, 0x0000, 0x0000, /* 66 */
+	0x0000, 0x0000, 0x0000, 0x0000, /* 6e */
+	0x0000, 0x0000, 0x0000, 0x0006, /* 76 */
+	0x0001, 0x0000, 0x574d, 0x4c12, /* 7e */
+	0x0000, 0x0000 /* virtual hp mixers */
 };
 
 /* virtual HP mixers regs */
@@ -100,7 +100,7 @@ static const struct snd_kcontrol_new wm9712_snd_ac97_controls[] = {
 SOC_DOUBLE("Speaker Playback Volume", AC97_MASTER, 8, 0, 31, 1),
 SOC_SINGLE("Speaker Playback Switch", AC97_MASTER, 15, 1, 1),
 SOC_DOUBLE("Headphone Playback Volume", AC97_HEADPHONE, 8, 0, 31, 1),
-SOC_SINGLE("Headphone Playback Switch", AC97_HEADPHONE,15, 1, 1),
+SOC_SINGLE("Headphone Playback Switch", AC97_HEADPHONE, 15, 1, 1),
 SOC_DOUBLE("PCM Playback Volume", AC97_PCM, 8, 0, 31, 1),
 
 SOC_SINGLE("Speaker Playback ZC Switch", AC97_MASTER, 7, 1, 0),
@@ -355,7 +355,6 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"Left HP Mixer", "PCM Playback Switch",  "Left DAC"},
 	{"Left HP Mixer", "Mic Sidetone Switch",  "Mic PGA"},
 	{"Left HP Mixer", NULL,  "ALC Sidetone Mux"},
-	//{"Right HP Mixer", NULL, "HP Mixer"},
 
 	/* Right HP mixer */
 	{"Right HP Mixer", "PCBeep Bypass Switch", "PCBEEP"},
@@ -544,14 +543,10 @@ static int wm9712_set_bias_level(struct snd_soc_codec *codec,
 		break;
 	case SND_SOC_BIAS_STANDBY: /* Off, with power */
 		/* enable master bias and vmid */
-		reg = wm9712_ac97_read(codec, AC97_EXTENDED_MID) & 0xbbff;
-		wm9712_ac97_write(codec, AC97_EXTENDED_MID, reg);
 		wm9712_ac97_write(codec, AC97_POWERDOWN, 0x0000);
 		break;
 	case SND_SOC_BIAS_OFF: /* Off, without power */
 		/* disable everything including AC link */
-		wm9712_ac97_write(codec, AC97_EXTENDED_MID, 0xffff);
-		wm9712_ac97_write(codec, AC97_EXTENDED_MSTATUS, 0xffff);
 		wm9712_ac97_write(codec, AC97_POWERDOWN, 0xffff);
 		break;
 	}
