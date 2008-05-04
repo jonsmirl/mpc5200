@@ -25,9 +25,9 @@
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <linux/err.h>
-#include <linux/regulator/regulator.h>
-#include <linux/regulator/wm8350/audio.h>
-#include <linux/regulator/wm8350/bus.h>
+#include <linux/regulator/consumer.h>
+#include <linux/mfd/wm8350/audio.h>
+#include <linux/mfd/wm8350/bus.h>
 #include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -43,13 +43,14 @@
 #include "../sound/soc/imx/imx-ssi.h"
 #include "../sound/soc/imx/imx31-pcm.h"
 
-
 /* SSI BCLK and LRC master */
 #define WM8350_SSI_MASTER	1
 /* clock select - either MCLK 0 or 32K 1 */
 #define WM8350_USE_FLL_32K	1
 
-#define IMX31ADS_AUDIO_VERSION "0.3"
+#define IMX31ADS_AUDIO_VERSION "0.4"
+
+#define WM8350_AVDD 3300000
 
 struct imx31ads_pcm_state {
 	int lr_clk_active;
@@ -76,37 +77,37 @@ struct _wm8350_audio {
 static const struct _wm8350_audio wm8350_audio[] = {
 	/* 16bit mono modes */
 	{1, SNDRV_PCM_FORMAT_S16_LE, 8000, 12288000 >> 1,
-		WM8350_BCLK_DIV_48, WM8350_DACDIV_3, 16,},
+	 WM8350_BCLK_DIV_48, WM8350_DACDIV_3, 16,},
 
 	/* 16 bit stereo modes */
 	{2, SNDRV_PCM_FORMAT_S16_LE, 8000, 12288000,
-		WM8350_BCLK_DIV_48, WM8350_DACDIV_6, 32,},
+	 WM8350_BCLK_DIV_48, WM8350_DACDIV_6, 32,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 16000, 12288000,
-		WM8350_BCLK_DIV_24, WM8350_DACDIV_3, 32,},
+	 WM8350_BCLK_DIV_24, WM8350_DACDIV_3, 32,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 32000, 12288000,
-		WM8350_BCLK_DIV_12, WM8350_DACDIV_1_5, 32,},
+	 WM8350_BCLK_DIV_12, WM8350_DACDIV_1_5, 32,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 48000, 12288000,
-		WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32,},
+	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 96000, 24576000,
-		WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32,},
+	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 11025, 11289600,
-		WM8350_BCLK_DIV_32, WM8350_DACDIV_4, 32,},
+	 WM8350_BCLK_DIV_32, WM8350_DACDIV_4, 32,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 22050, 11289600,
-		WM8350_BCLK_DIV_16, WM8350_DACDIV_2, 32,},
+	 WM8350_BCLK_DIV_16, WM8350_DACDIV_2, 32,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 44100, 11289600,
-		WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32,},
+	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32,},
 	{2, SNDRV_PCM_FORMAT_S16_LE, 88200, 22579200,
-		WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32,},
+	 WM8350_BCLK_DIV_8, WM8350_DACDIV_1, 32,},
 
 	/* 24bit stereo modes */
 	{2, SNDRV_PCM_FORMAT_S24_LE, 48000, 12288000,
-		WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64,},
+	 WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64,},
 	{2, SNDRV_PCM_FORMAT_S24_LE, 96000, 24576000,
-		WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64,},
+	 WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64,},
 	{2, SNDRV_PCM_FORMAT_S24_LE, 44100, 11289600,
-		WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64,},
+	 WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64,},
 	{2, SNDRV_PCM_FORMAT_S24_LE, 88200, 22579200,
-		WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64,},
+	 WM8350_BCLK_DIV_4, WM8350_DACDIV_1, 64,},
 };
 
 #if WM8350_SSI_MASTER
@@ -114,7 +115,7 @@ static int imx32ads_startup(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
 	struct snd_soc_codec *codec = pcm_runtime->codec;
-	struct wm8350* wm8350 = codec->control_data;
+	struct wm8350 *wm8350 = codec->control_data;
 	struct imx31ads_pcm_state *state = pcm_runtime->private_data;
 
 	/* In master mode the LR clock can come from either the DAC or ADC.
@@ -123,10 +124,10 @@ static int imx32ads_startup(struct snd_pcm_substream *substream)
 	if (!state->lr_clk_active) {
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 			wm8350_clear_bits(wm8350, WM8350_CLOCK_CONTROL_2,
-				WM8350_LRC_ADC_SEL);
+					  WM8350_LRC_ADC_SEL);
 		else
 			wm8350_set_bits(wm8350, WM8350_CLOCK_CONTROL_2,
-				WM8350_LRC_ADC_SEL);
+					WM8350_LRC_ADC_SEL);
 	}
 	state->lr_clk_active++;
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
@@ -140,7 +141,7 @@ static int imx32ads_startup(struct snd_pcm_substream *substream)
 #endif
 
 static int imx32ads_hifi_hw_params(struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params)
+				   struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *pcm_runtime = substream->private_data;
 	struct snd_soc_dai *cpu_dai = pcm_runtime->cpu_dai;
@@ -159,8 +160,8 @@ static int imx32ads_hifi_hw_params(struct snd_pcm_substream *substream,
 	/* find the correct audio parameters */
 	for (i = 0; i < ARRAY_SIZE(wm8350_audio); i++) {
 		if (rate == wm8350_audio[i].rate &&
-			format == wm8350_audio[i].format &&
-			channels == wm8350_audio[i].channels) {
+		    format == wm8350_audio[i].format &&
+		    channels == wm8350_audio[i].channels) {
 			found = 1;
 			break;
 		}
@@ -170,7 +171,7 @@ static int imx32ads_hifi_hw_params(struct snd_pcm_substream *substream,
 
 #if WM8350_SSI_MASTER
 	dai_format = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
-		SND_SOC_DAIFMT_CBM_CFM | SND_SOC_DAIFMT_SYNC;
+	    SND_SOC_DAIFMT_CBM_CFM | SND_SOC_DAIFMT_SYNC;
 	if (channels == 2)
 		dai_format |= SND_SOC_DAIFMT_TDM;
 
@@ -183,17 +184,17 @@ static int imx32ads_hifi_hw_params(struct snd_pcm_substream *substream,
 #if WM8350_USE_FLL_32K
 	/* set 32K clock as the codec system clock for DAC and ADC */
 	snd_soc_dai_set_sysclk(codec_dai, WM8350_MCLK_SEL_PLL_32K,
-		wm8350_audio[i].sysclk, SND_SOC_CLOCK_IN);
+			       wm8350_audio[i].sysclk, SND_SOC_CLOCK_IN);
 #else
 	/* set MCLK as the codec system clock for DAC and ADC */
 	snd_soc_dai_set_sysclk(codec_dai, WM8350_MCLK_SEL_PLL_MCLK,
-		wm8350_audio[i].sysclk, SND_SOC_CLOCK_IN);
+			       wm8350_audio[i].sysclk, SND_SOC_CLOCK_IN);
 #endif
 
 #else
 
 	dai_format = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
-		SND_SOC_DAIFMT_CBS_CFS | SND_SOC_DAIFMT_SYNC;
+	    SND_SOC_DAIFMT_CBS_CFS | SND_SOC_DAIFMT_SYNC;
 	if (channels == 2)
 		format |= SND_SOC_DAIFMT_TDM;
 
@@ -205,48 +206,45 @@ static int imx32ads_hifi_hw_params(struct snd_pcm_substream *substream,
 
 	/* set DAC LRC as the codec system clock for DAC and ADC */
 	snd_soc_dai_set_sysclk(codec_dai, WM8350_MCLK_SEL_PLL_DAC,
-		wm8350_audio[i].sysclk, SND_SOC_CLOCK_IN);
+			       wm8350_audio[i].sysclk, SND_SOC_CLOCK_IN);
 #endif
 
 	/* set i.MX active slot mask */
 	snd_soc_dai_set_tdm_slot(cpu_dai,
-		channels == 1 ? 0xfffffffe : 0xfffffffc, channels);
+				 channels == 1 ? 0xfffffffe : 0xfffffffc,
+				 channels);
 
 	/* set the SSI system clock as input (unused) */
-	snd_soc_dai_set_sysclk(cpu_dai, IMX_SSP_SYS_CLK, 0,
-		SND_SOC_CLOCK_IN);
+	snd_soc_dai_set_sysclk(cpu_dai, IMX_SSP_SYS_CLK, 0, SND_SOC_CLOCK_IN);
 
 	/* set codec BCLK division for sample rate */
 	snd_soc_dai_set_clkdiv(codec_dai, WM8350_BCLK_CLKDIV,
-		wm8350_audio[i].bclkdiv);
+			       wm8350_audio[i].bclkdiv);
 
-	/* DAI is synchronous and clocked with DAC LRCLK & ADC LRC*/
+	/* DAI is synchronous and clocked with DAC LRCLK & ADC LRC */
 	snd_soc_dai_set_clkdiv(codec_dai,
-			WM8350_DACLR_CLKDIV, wm8350_audio[i].lr_rate);
+			       WM8350_DACLR_CLKDIV, wm8350_audio[i].lr_rate);
 	snd_soc_dai_set_clkdiv(codec_dai,
-			WM8350_ADCLR_CLKDIV, wm8350_audio[i].lr_rate);
+			       WM8350_ADCLR_CLKDIV, wm8350_audio[i].lr_rate);
 
 	/* now configure DAC and ADC clocks */
 	snd_soc_dai_set_clkdiv(codec_dai,
-		WM8350_DAC_CLKDIV, wm8350_audio[i].clkdiv);
+			       WM8350_DAC_CLKDIV, wm8350_audio[i].clkdiv);
 
 	snd_soc_dai_set_clkdiv(codec_dai,
-		WM8350_ADC_CLKDIV, wm8350_audio[i].clkdiv);
+			       WM8350_ADC_CLKDIV, wm8350_audio[i].clkdiv);
 
 #if WM8350_SSI_MASTER
 #if WM8350_USE_FLL_32K
 	/* codec FLL input is 32 kHz from WM8350 */
-	snd_soc_dai_set_pll(codec_dai, 0, 32000,
-		wm8350_audio[i].sysclk);
+	snd_soc_dai_set_pll(codec_dai, 0, 32000, wm8350_audio[i].sysclk);
 #else
 	/* codec FLL input is 14.75 MHz from MCLK */
-	snd_soc_dai_set_pll(codec_dai, 0, 14750000,
-		wm8350_audio[i].sysclk);
+	snd_soc_dai_set_pll(codec_dai, 0, 14750000, wm8350_audio[i].sysclk);
 #endif
 #else
 	/* codec FLL input is rate from DAC LRC */
-	snd_soc_dai_set_pll(codec_dai, 0, rate,
-		wm8350_audio[i].sysclk);
+	snd_soc_dai_set_pll(codec_dai, 0, rate, wm8350_audio[i].sysclk);
 #endif
 
 	return 0;
@@ -258,7 +256,7 @@ static void imx32ads_shutdown(struct snd_pcm_substream *substream)
 	struct snd_soc_dai *codec_dai = pcm_runtime->codec_dai;
 	struct snd_soc_codec *codec = pcm_runtime->codec;
 	struct imx31ads_pcm_state *state = pcm_runtime->private_data;
-	struct wm8350* wm8350 = codec->control_data;
+	struct wm8350 *wm8350 = codec->control_data;
 
 	/* disable the PLL if there are no active Tx or Rx channels */
 	if (!codec->active)
@@ -268,7 +266,7 @@ static void imx32ads_shutdown(struct snd_pcm_substream *substream)
 	/*
 	 * We need to keep track of active streams in master mode and
 	 * switch LRC source if necessary.
-	 */ 
+	 */
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 		state->capture_active = 0;
@@ -280,7 +278,7 @@ static void imx32ads_shutdown(struct snd_pcm_substream *substream)
 				WM8350_LRC_ADC_SEL);
 	else if (state->playback_active)
 		wm8350_clear_bits(wm8350, WM8350_CLOCK_CONTROL_2,
-				WM8350_LRC_ADC_SEL);
+				  WM8350_LRC_ADC_SEL);
 }
 
 /*
@@ -355,7 +353,7 @@ static const struct snd_soc_dapm_route audio_map[] = {
 
 #ifdef CONFIG_PM
 static int imx32ads_wm8350_audio_suspend(struct platform_device *pdev,
-	pm_message_t state)
+					 pm_message_t state)
 {
 	struct wm8350 *wm8350 = platform_get_drvdata(pdev);
 	struct snd_soc_card *soc_card = wm8350->audio;
@@ -386,20 +384,20 @@ static void imx32ads_jack_handler(struct wm8350 *wm8350, int irq, void *data)
 	reg = wm8350_reg_read(wm8350, WM8350_JACK_PIN_STATUS);
 
 	if (reg & WM8350_JACK_R_LVL) {
-		snd_soc_dapm_disable_line(soc_card, "Line Out Jack");
-		snd_soc_dapm_enable_headphone(soc_card, "Headphone Jack");
+		snd_soc_dapm_disable_pin(soc_card, "Line Out Jack");
+		snd_soc_dapm_enable_pin(soc_card, "Headphone Jack");
 	} else {
-		snd_soc_dapm_disable_headphone(soc_card, "Headphone Jack");
-		snd_soc_dapm_enable_line(soc_card, "Line Out Jack");
+		snd_soc_dapm_disable_pin(soc_card, "Headphone Jack");
+		snd_soc_dapm_enable_pin(soc_card, "Line Out Jack");
 	}
-	snd_soc_dapm_resync(soc_card);
+	snd_soc_dapm_sync(soc_card);
 }
 
 int imx32_audio_init(struct snd_soc_card *soc_card)
 {
 	struct snd_soc_codec *codec;
 	struct snd_soc_pcm_runtime *pcm_runtime;
-	struct imx31ads_data* audio_data = soc_card->private_data;
+	struct imx31ads_data *audio_data = soc_card->private_data;
 	struct wm8350 *wm8350 = audio_data->wm8350;
 	struct imx31ads_pcm_state *state;
 	int ret;
@@ -458,18 +456,16 @@ int imx32_audio_init(struct snd_soc_card *soc_card)
 	snd_soc_dapm_enable_pin(soc_card, "Mic1 Jack");
 	snd_soc_dapm_enable_pin(soc_card, "Mic2 Jack");
 	snd_soc_dapm_enable_pin(soc_card, "Line In Jack");
-//	snd_soc_dapm_set_policy(soc_card, SND_SOC_DAPM_POLICY_STREAM);
-	snd_soc_dapm_resync(soc_card);
+	snd_soc_dapm_set_policy(soc_card, SND_SOC_DAPM_POLICY_AUTOMATIC);
+	snd_soc_dapm_sync(soc_card);
 
 	/* enable slow clock gen for jack detect */
 	reg = wm8350_reg_read(wm8350, WM8350_POWER_MGMT_4);
-	wm8350_reg_write(wm8350, WM8350_POWER_MGMT_4,
-		reg | WM8350_TOCLK_ENA);
+	wm8350_reg_write(wm8350, WM8350_POWER_MGMT_4, reg | WM8350_TOCLK_ENA);
 
 	/* enable jack detect */
 	reg = wm8350_reg_read(wm8350, WM8350_JACK_DETECT);
-	wm8350_reg_write(wm8350, WM8350_JACK_DETECT,
-		reg | WM8350_JDR_ENA);
+	wm8350_reg_write(wm8350, WM8350_JACK_DETECT, reg | WM8350_JDR_ENA);
 	wm8350_register_irq(wm8350, WM8350_IRQ_CODEC_JCK_DET_R,
 			    imx32ads_jack_handler, soc_card);
 	wm8350_unmask_irq(wm8350, WM8350_IRQ_CODEC_JCK_DET_R);
@@ -487,14 +483,14 @@ static void imx32_audio_exit(struct snd_soc_card *soc_card)
 }
 
 static struct snd_soc_pcm_config hifi_pcm_config = {
-	.name		= "HiFi",
-	.codec		= wm8350_codec_id,
-	.codec_dai	= wm8350_codec_dai_id,
-	.platform	= imx31_platform_id,
-	.cpu_dai	= imx_ssi_id1_0,
-	.ops		= &imx32ads_hifi_ops,
-	.playback	= 1,
-	.capture	= 1,
+	.name = "HiFi",
+	.codec = wm8350_codec_id,
+	.codec_dai = wm8350_codec_dai_id,
+	.platform = imx31_platform_id,
+	.cpu_dai = imx_ssi_id1_0,
+	.ops = &imx32ads_hifi_ops,
+	.playback = 1,
+	.capture = 1,
 };
 
 static int __devinit imx32ads_wm8350_audio_probe(struct platform_device *pdev)
@@ -514,12 +510,13 @@ static int __devinit imx32ads_wm8350_audio_probe(struct platform_device *pdev)
 		printk(KERN_ERR "%s: cant get ssi clock\n", __func__);
 		goto ssi_err;
 	}
-	audio_data->analog_supply = regulator_get(&pdev->dev, "LDO2");
+	audio_data->analog_supply = regulator_get(&pdev->dev, "codec_avdd");
 	if (IS_ERR(audio_data->analog_supply)) {
 		printk(KERN_ERR "%s: cant get regulator\n", __func__);
 		goto ssi_err;
 	}
-	ret = regulator_set_voltage(audio_data->analog_supply, mV_to_uV(3300));
+	ret = regulator_set_voltage(audio_data->analog_supply, WM8350_AVDD,
+		WM8350_AVDD);
 	if (ret < 0) {
 		printk(KERN_ERR "%s: cant set voltage\n", __func__);
 		goto reg_err;
@@ -531,7 +528,8 @@ static int __devinit imx32ads_wm8350_audio_probe(struct platform_device *pdev)
 	}
 
 	soc_card = snd_soc_card_create("imx31ads", &pdev->dev,
-		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
+					 SNDRV_DEFAULT_IDX1,
+					 SNDRV_DEFAULT_STR1);
 	if (soc_card == NULL) {
 		ret = -ENOMEM;
 		goto reg_err;
@@ -617,13 +615,13 @@ static int __devexit imx32ads_wm8350_audio_remove(struct platform_device *pdev)
 }
 
 static struct platform_driver imx32ads_wm8350_audio_driver = {
-	.probe		= imx32ads_wm8350_audio_probe,
-	.remove		= __devexit_p(imx32ads_wm8350_audio_remove),
-	.suspend	= imx32ads_wm8350_audio_suspend,
-	.resume		= imx32ads_wm8350_audio_resume,
-	.driver		= {
-		.name	= "imx31ads-audio",
-	},
+	.probe = imx32ads_wm8350_audio_probe,
+	.remove = __devexit_p(imx32ads_wm8350_audio_remove),
+	.suspend = imx32ads_wm8350_audio_suspend,
+	.resume = imx32ads_wm8350_audio_resume,
+	.driver = {
+		   .name = "imx31ads-audio",
+		   },
 };
 
 static int __init imx32ads_wm8350_audio_init(void)

@@ -5,7 +5,7 @@
  * Author: Liam Girdwood
  *         liam.girdwood@wolfsonmicro.com or linux@wolfsonmicro.com
  *
- * Based on imx31-pcm.c by	Nicolas Pitre, (C) 2004 MontaVista Software, Inc.
+ * Based on pxa2xx-pcm.c by Nicolas Pitre, (C) 2004 MontaVista Software, Inc.
  * and on mxc-alsa-mc13783 (C) 2006 Freescale.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -43,7 +43,7 @@
 /* debug */
 #define IMX_PCM_DEBUG 0
 #if IMX_PCM_DEBUG
-#define dbg(format, arg...) printk(format, ## arg)
+#define dbg(format, arg...) printk(KERN_DEBUG format, ## arg)
 #else
 #define dbg(format, arg...)
 #endif
@@ -56,26 +56,24 @@
 #define IMX31_DMA_BOUNCE 0
 
 static const struct snd_pcm_hardware imx31_pcm_hardware = {
-	.info			= (SNDRV_PCM_INFO_INTERLEAVED |
-				   SNDRV_PCM_INFO_BLOCK_TRANSFER |
-				   SNDRV_PCM_INFO_MMAP |
-				   SNDRV_PCM_INFO_MMAP_VALID |
-				   SNDRV_PCM_INFO_PAUSE |
-				   SNDRV_PCM_INFO_RESUME),
-	.formats		= SNDRV_PCM_FMTBIT_S16_LE |
-					SNDRV_PCM_FMTBIT_S24_LE,
-	.buffer_bytes_max	= 32 * 1024,
-	.period_bytes_min	= 64,
-	.period_bytes_max	= 8 * 1024,
-	.periods_min		= 2,
-	.periods_max		= 255,
-	.fifo_size		= 0,
+	.info = (SNDRV_PCM_INFO_INTERLEAVED |
+		 SNDRV_PCM_INFO_BLOCK_TRANSFER |
+		 SNDRV_PCM_INFO_MMAP |
+		 SNDRV_PCM_INFO_MMAP_VALID |
+		 SNDRV_PCM_INFO_PAUSE | SNDRV_PCM_INFO_RESUME),
+	.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
+	.buffer_bytes_max = 32 * 1024,
+	.period_bytes_min = 64,
+	.period_bytes_max = 8 * 1024,
+	.periods_min = 2,
+	.periods_max = 255,
+	.fifo_size = 0,
 };
 
 struct mxc_runtime_data {
 	int dma_ch;
 	struct imx31_pcm_dma_param *dma_params;
-	spinlock_t dma_lock;
+	spinlock_t dma_lock; /* sdma lock */
 	int active, period, periods;
 	int dma_wchannel;
 	int dma_active;
@@ -106,17 +104,17 @@ static void audio_stop_dma(struct snd_pcm_substream *substream)
 #if IMX31_DMA_BOUNCE
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		dma_unmap_single(NULL, runtime->dma_addr + offset, dma_size,
-					DMA_TO_DEVICE);
+				 DMA_TO_DEVICE);
 	else
 		dma_unmap_single(NULL, runtime->dma_addr + offset, dma_size,
-					DMA_FROM_DEVICE);
+				 DMA_FROM_DEVICE);
 #endif
 	spin_unlock_irqrestore(&prtd->dma_lock, flags);
 }
 
 static int dma_new_period(struct snd_pcm_substream *substream)
 {
-	struct snd_pcm_runtime *runtime =  substream->runtime;
+	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct mxc_runtime_data *prtd = runtime->private_data;
 	unsigned int dma_size = frames_to_bytes(runtime, runtime->period_size);
 	unsigned int offset = dma_size * prtd->period;
@@ -128,30 +126,33 @@ static int dma_new_period(struct snd_pcm_substream *substream)
 
 	memset(&sdma_request, 0, sizeof(dma_request_t));
 
-	dbg("period pos  ALSA %x DMA %x\n",runtime->periods, prtd->period);
+	dbg("period pos  ALSA %x DMA %x\n", runtime->periods, prtd->period);
 	dbg("period size ALSA %x DMA %x Offset %x dmasize %x\n",
-		(unsigned int) runtime->period_size, runtime->dma_bytes,
-			offset, dma_size);
+	    (unsigned int)runtime->period_size, runtime->dma_bytes,
+	    offset, dma_size);
 	dbg("DMA addr %x\n", runtime->dma_addr + offset);
 
 #if IMX31_DMA_BOUNCE
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		sdma_request.sourceAddr = (char*)(dma_map_single(NULL,
-			runtime->dma_area + offset, dma_size, DMA_TO_DEVICE));
+		sdma_request.sourceAddr =
+		    (char *)(dma_map_single(NULL, runtime->dma_area + offset,
+					    dma_size, DMA_TO_DEVICE));
 	else
-		sdma_request.destAddr = (char*)(dma_map_single(NULL,
-			runtime->dma_area + offset, dma_size, DMA_FROM_DEVICE));
+		sdma_request.destAddr =
+		    (char *)(dma_map_single(NULL, runtime->dma_area + offset,
+					    dma_size, DMA_FROM_DEVICE));
 #else
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		sdma_request.sourceAddr = (char*)(runtime->dma_addr + offset);
+		sdma_request.sourceAddr = (char *)(runtime->dma_addr + offset);
 	else
-		sdma_request.destAddr = (char*)(runtime->dma_addr + offset);
+		sdma_request.destAddr = (char *)(runtime->dma_addr + offset);
 #endif
 	sdma_request.count = dma_size;
 
 	ret = mxc_dma_set_config(prtd->dma_wchannel, &sdma_request, 0);
 	if (ret < 0) {
-		printk(KERN_ERR "imx31-pcm: cannot configure audio DMA channel\n");
+		printk(KERN_ERR
+		       "imx31-pcm: cannot configure audio DMA channel\n");
 		goto out;
 	}
 
@@ -169,8 +170,7 @@ out:
 
 static void audio_dma_irq(void *data)
 {
-	struct snd_pcm_substream *substream =
-		(struct snd_pcm_substream *)data;
+	struct snd_pcm_substream *substream = (struct snd_pcm_substream *)data;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct mxc_runtime_data *prtd = runtime->private_data;
 #if IMX31_DMA_BOUNCE
@@ -183,14 +183,14 @@ static void audio_dma_irq(void *data)
 	prtd->periods %= runtime->periods;
 
 	dbg("irq per %d offset %x\n", prtd->periods,
-		frames_to_bytes(runtime, runtime->period_size) * prtd->periods);
+	    frames_to_bytes(runtime, runtime->period_size) * prtd->periods);
 #if IMX31_DMA_BOUNCE
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		dma_unmap_single(NULL, runtime->dma_addr + offset, dma_size,
-							DMA_TO_DEVICE);
+				 DMA_TO_DEVICE);
 	else
 		dma_unmap_single(NULL, runtime->dma_addr + offset, dma_size,
-							DMA_FROM_DEVICE);
+				 DMA_FROM_DEVICE);
 
 #endif
 
@@ -201,7 +201,7 @@ static void audio_dma_irq(void *data)
 
 static int imx31_pcm_prepare(struct snd_pcm_substream *substream)
 {
-	struct snd_pcm_runtime *runtime =  substream->runtime;
+	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct mxc_runtime_data *prtd = runtime->private_data;
 
 	prtd->period = 0;
@@ -210,7 +210,7 @@ static int imx31_pcm_prepare(struct snd_pcm_substream *substream)
 }
 
 static int imx31_pcm_hw_params(struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params)
+			       struct snd_pcm_hw_params *params)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct mxc_runtime_data *prtd = runtime->private_data;
@@ -221,17 +221,21 @@ static int imx31_pcm_hw_params(struct snd_pcm_substream *substream,
 
 	/* only allocate the DMA chn once */
 	if (!prtd->dma_alloc) {
-		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			ret = mxc_request_dma(&channel, "ALSA TX SDMA");
 			if (ret < 0) {
-				printk(KERN_ERR "imx31-pcm: error requesting a write dma channel\n");
+				printk(KERN_ERR
+				       "imx31-pcm: error requesting a write"
+				       " dma channel\n");
 				return ret;
 			}
 
 		} else {
 			ret = mxc_request_dma(&channel, "ALSA RX SDMA");
 			if (ret < 0) {
-				printk(KERN_ERR "imx31-pcm: error requesting a read dma channel\n");
+				printk(KERN_ERR
+				       "imx31-pcm: error requesting a read"
+				       " dma channel\n");
 				return ret;
 			}
 		}
@@ -255,14 +259,13 @@ static int imx31_pcm_hw_params(struct snd_pcm_substream *substream,
 
 	ret = mxc_dma_setup_channel(channel, &dma->params);
 	if (ret < 0) {
-		printk(KERN_ERR "imx31-pcm: failed to setup audio DMA chn %d\n", channel);
+		printk(KERN_ERR "imx31-pcm: failed to setup audio DMA chn %d\n",
+		       channel);
 		mxc_free_dma(channel);
 		return ret;
 	}
-
 #if IMX31_DMA_BOUNCE
-	ret = snd_pcm_lib_malloc_pages(substream,
-		params_buffer_bytes(params));
+	ret = snd_pcm_lib_malloc_pages(substream, params_buffer_bytes(params));
 	if (ret < 0) {
 		printk(KERN_ERR "imx31-pcm: failed to malloc pcm pages\n");
 		if (channel)
@@ -342,9 +345,9 @@ static snd_pcm_uframes_t imx31_pcm_pointer(struct snd_pcm_substream *substream)
 	unsigned int offset = 0;
 
 	/* is a transfer active ? */
-	if (prtd->dma_active){
+	if (prtd->dma_active) {
 		offset = (runtime->period_size * (prtd->periods)) +
-						(runtime->period_size >> 1);
+		    (runtime->period_size >> 1);
 		if (offset >= runtime->buffer_size)
 			offset = runtime->period_size >> 1;
 	} else {
@@ -357,7 +360,6 @@ static snd_pcm_uframes_t imx31_pcm_pointer(struct snd_pcm_substream *substream)
 	return offset;
 }
 
-
 static int imx31_pcm_open(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
@@ -367,7 +369,7 @@ static int imx31_pcm_open(struct snd_pcm_substream *substream)
 	snd_soc_set_runtime_hwparams(substream, &imx31_pcm_hardware);
 
 	ret = snd_pcm_hw_constraint_integer(runtime,
-		SNDRV_PCM_HW_PARAM_PERIODS);
+					    SNDRV_PCM_HW_PARAM_PERIODS);
 	if (ret < 0)
 		return ret;
 
@@ -394,20 +396,19 @@ imx31_pcm_mmap(struct snd_pcm_substream *substream, struct vm_area_struct *vma)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	return dma_mmap_writecombine(substream->pcm->card->dev, vma,
 				     runtime->dma_area,
-				     runtime->dma_addr,
-				     runtime->dma_bytes);
+				     runtime->dma_addr, runtime->dma_bytes);
 }
 
 struct snd_pcm_ops imx31_pcm_ops = {
-	.open		= imx31_pcm_open,
-	.close		= imx31_pcm_close,
-	.ioctl		= snd_pcm_lib_ioctl,
-	.hw_params	= imx31_pcm_hw_params,
-	.hw_free	= imx31_pcm_hw_free,
-	.prepare	= imx31_pcm_prepare,
-	.trigger	= imx31_pcm_trigger,
-	.pointer	= imx31_pcm_pointer,
-	.mmap		= imx31_pcm_mmap,
+	.open = imx31_pcm_open,
+	.close = imx31_pcm_close,
+	.ioctl = snd_pcm_lib_ioctl,
+	.hw_params = imx31_pcm_hw_params,
+	.hw_free = imx31_pcm_hw_free,
+	.prepare = imx31_pcm_prepare,
+	.trigger = imx31_pcm_trigger,
+	.pointer = imx31_pcm_pointer,
+	.mmap = imx31_pcm_mmap,
 };
 
 static int imx31_pcm_preallocate_dma_buffer(struct snd_pcm *pcm, int stream)
@@ -451,8 +452,8 @@ static void imx31_pcm_free_dma_buffers(struct snd_pcm *pcm)
 static u64 imx31_pcm_dmamask = 0xffffffff;
 
 static int imx31_pcm_new(struct snd_soc_platform *platform,
-	struct snd_card *card, int playback, int capture,
-	struct snd_pcm *pcm)
+			 struct snd_card *card, int playback, int capture,
+			 struct snd_pcm *pcm)
 {
 	int ret = 0;
 
@@ -464,29 +465,31 @@ static int imx31_pcm_new(struct snd_soc_platform *platform,
 
 #if IMX31_DMA_BOUNCE
 	ret = snd_pcm_lib_preallocate_pages_for_all(pcm,
-				SNDRV_DMA_TYPE_CONTINUOUS,
-				snd_dma_continuous_data(GFP_KERNEL),
-				imx31_pcm_hardware.buffer_bytes_max * 2,
-				imx31_pcm_hardware.buffer_bytes_max * 2);
+		SNDRV_DMA_TYPE_CONTINUOUS,
+		snd_dma_continuous_data(GFP_KERNEL),
+		imx31_pcm_hardware.buffer_bytes_max * 2,
+		imx31_pcm_hardware.buffer_bytes_max * 2);
 	if (ret < 0) {
 		printk(KERN_ERR "imx31-pcm: failed to preallocate pages\n");
 		goto out;
 	}
 #else
 	if (playback) {
-		ret = imx31_pcm_preallocate_dma_buffer(pcm,
-			SNDRV_PCM_STREAM_PLAYBACK);
+		ret =
+		    imx31_pcm_preallocate_dma_buffer(pcm,
+						     SNDRV_PCM_STREAM_PLAYBACK);
 		if (ret)
 			goto out;
 	}
 	if (capture) {
-		ret = imx31_pcm_preallocate_dma_buffer(pcm,
-			SNDRV_PCM_STREAM_CAPTURE);
+		ret =
+		    imx31_pcm_preallocate_dma_buffer(pcm,
+						     SNDRV_PCM_STREAM_CAPTURE);
 		if (ret)
 			goto out;
 	}
 #endif
- out:
+out:
 	return ret;
 }
 
@@ -534,11 +537,11 @@ static int imx31_pcm_remove(struct platform_device *pdev)
 
 static struct platform_driver imx31_pcm_driver = {
 	.driver = {
-		.name		= imx31_platform_id,
-		.owner		= THIS_MODULE,
-	},
-	.probe		= imx31_pcm_probe,
-	.remove		= __devexit_p(imx31_pcm_remove),
+		   .name = imx31_platform_id,
+		   .owner = THIS_MODULE,
+		   },
+	.probe = imx31_pcm_probe,
+	.remove = __devexit_p(imx31_pcm_remove),
 };
 
 static __init int imx31_pcm_init(void)

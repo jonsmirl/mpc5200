@@ -122,7 +122,7 @@ static int dma_new_period(struct snd_pcm_substream *substream)
 			(unsigned int)runtime->period_size,
 			runtime->dma_bytes);
 
-       	offset = dma_size * prtd->period;
+	offset = dma_size * prtd->period;
 		snd_assert(dma_size <= DMA_BUF_SIZE, );
 		if(substream == SNDRV_PCM_STREAM_PLAYBACK)
 			sdma_request.sourceAddr = (char*)(dma_map_single(NULL,
@@ -135,7 +135,7 @@ static int dma_new_period(struct snd_pcm_substream *substream)
 		dbg("MXC: Start DMA offset (%d) size (%d)\n", offset,
 						 runtime->dma_bytes);
 
-       	mxc_dma_set_config(prtd->dma_wchannel, &sdma_request, 0);
+	mxc_dma_set_config(prtd->dma_wchannel, &sdma_request, 0);
 		if((ret = mxc_dma_start(prtd->dma_wchannel)) < 0) {
 			dbg("audio_process_dma: cannot queue DMA buffer\
 							(%i)\n", ret);
@@ -190,7 +190,7 @@ static void audio_dma_irq(void *data)
 	  * If we are getting a callback for an active stream then we inform
 	  * the PCM middle layer we've finished a period
 	  */
- 	if (prtd->active)
+	if (prtd->active)
 		snd_pcm_period_elapsed(substream);
 
 	/*
@@ -442,7 +442,7 @@ int mxc_pcm_new(struct snd_card *card, struct snd_soc_codec_dai *dai,
 
 struct snd_soc_platform mxc_soc_platform = {
 	.name		= "mxc-audio",
-	.pcm_ops 	= &mxc_pcm_ops,
+	.pcm_ops	= &mxc_pcm_ops,
 	.pcm_new	= mxc_pcm_new,
 	.pcm_free	= mxc_pcm_free_dma_buffers,
 };
