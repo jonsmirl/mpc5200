@@ -574,7 +574,7 @@ static const struct snd_kcontrol_new wm8350_out3_mixer_controls[] = {
 static const struct snd_kcontrol_new wm8350_left_capt_mixer_controls[] = {
 	SOC_DAPM_SINGLE_TLV("L2 Capture Volume",
 			    WM8350_INPUT_MIXER_VOLUME_L, 1, 7, 0, out_mix_tlv),
-	SOC_DAPM_SINGLE_TLV("AUX Capture Volume",
+	SOC_DAPM_SINGLE_TLV("L3 Capture Volume",
 			    WM8350_INPUT_MIXER_VOLUME_L, 9, 7, 0, out_mix_tlv),
 	SOC_DAPM_SINGLE("PGA Capture Switch",
 			WM8350_LEFT_INPUT_VOLUME, 14, 1, 0),
@@ -584,7 +584,7 @@ static const struct snd_kcontrol_new wm8350_left_capt_mixer_controls[] = {
 static const struct snd_kcontrol_new wm8350_right_capt_mixer_controls[] = {
 	SOC_DAPM_SINGLE_TLV("L2 Capture Volume",
 			    WM8350_INPUT_MIXER_VOLUME_R, 5, 7, 0, out_mix_tlv),
-	SOC_DAPM_SINGLE_TLV("AUX Capture Volume",
+	SOC_DAPM_SINGLE_TLV("L3 Capture Volume",
 			    WM8350_INPUT_MIXER_VOLUME_R, 13, 7, 0, out_mix_tlv),
 	SOC_DAPM_SINGLE("PGA Capture Switch",
 			WM8350_RIGHT_INPUT_VOLUME, 14, 1, 0),
@@ -614,8 +614,8 @@ SOC_DAPM_ENUM("Route", wm8350_enum[8]);
 
 static const struct snd_soc_dapm_widget wm8350_dapm_widgets[] = {
 
-	SND_SOC_DAPM_PGA("Right Aux PGA", WM8350_POWER_MGMT_2, 11, 0, NULL, 0),
-	SND_SOC_DAPM_PGA("Left Aux PGA", WM8350_POWER_MGMT_2, 10, 0, NULL, 0),
+	SND_SOC_DAPM_PGA("IN3R PGA", WM8350_POWER_MGMT_2, 11, 0, NULL, 0),
+	SND_SOC_DAPM_PGA("IN3L PGA", WM8350_POWER_MGMT_2, 10, 0, NULL, 0),
 	SND_SOC_DAPM_PGA("Right Input PGA", WM8350_POWER_MGMT_2, 9, 0, NULL, 0),
 	SND_SOC_DAPM_PGA("Left Input PGA", WM8350_POWER_MGMT_2, 8, 0, NULL, 0),
 	SND_SOC_DAPM_PGA_E("Right Out2 PGA", WM8350_POWER_MGMT_3, 3, 0, NULL, 0,
@@ -704,14 +704,14 @@ static const struct snd_soc_dapm_route audio_map[] = {
 
 	/* left playback mixer */
 	{"Left Playback Mixer", "Playback Switch", "Left DAC"},
-	{"Left Playback Mixer", "Left Bypass Switch", "Left Aux PGA"},
+	{"Left Playback Mixer", "Left Bypass Switch", "IN3L PGA"},
 	{"Left Playback Mixer", "Right Playback Switch", "Right DAC"},
 	{"Left Playback Mixer", "Left Sidetone Switch", "Left Input PGA"},
 	{"Left Playback Mixer", "Right Sidetone Switch", "Right Input PGA"},
 
 	/* right playback mixer */
 	{"Right Playback Mixer", "Playback Switch", "Right DAC"},
-	{"Right Playback Mixer", "Right Bypass Switch", "Right Aux PGA"},
+	{"Right Playback Mixer", "Right Bypass Switch", "IN3R PGA"},
 	{"Right Playback Mixer", "Left Playback Switch", "Left DAC"},
 	{"Right Playback Mixer", "Left Sidetone Switch", "Left Input PGA"},
 	{"Right Playback Mixer", "Right Sidetone Switch", "Right Input PGA"},
@@ -750,19 +750,19 @@ static const struct snd_soc_dapm_route audio_map[] = {
 
 	/* Left capture mixer */
 	{"Left Capture Mixer", "L2 Capture Volume", "IN2L"},
-	{"Left Capture Mixer", "AUX Capture Volume", "Left Aux PGA"},
+	{"Left Capture Mixer", "L3 Capture Volume", "IN3L PGA"},
 	{"Left Capture Mixer", "PGA Capture Switch", "Left Mic Mixer"},
 	{"Left Capture Mixer", NULL, "Out4 Capture Channel"},
 
 	/* Right capture mixer */
 	{"Right Capture Mixer", "L2 Capture Volume", "IN2R"},
-	{"Right Capture Mixer", "AUX Capture Volume", "Right Aux PGA"},
+	{"Right Capture Mixer", "L3 Capture Volume", "IN3L PGA"},
 	{"Right Capture Mixer", "PGA Capture Switch", "Right Mic Mixer"},
 	{"Right Capture Mixer", NULL, "Out4 Capture Channel"},
 
-	/* AUX Inputs */
-	{"Left Aux PGA", NULL, "IN3L"},
-	{"Right Aux PGA", NULL, "IN3R"},
+	/* L3 Inputs */
+	{"IN3L PGA", NULL, "IN3L"},
+	{"IN3R PGA", NULL, "IN3R"},
 
 	/* Left Mic mixer */
 	{"Left Mic Mixer", "INN Capture Switch", "IN1LN"},
@@ -778,7 +778,7 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"Out4 Capture Channel", NULL, "Out4 Mixer"},
 
 	/* Beep */
-	{"Beep", NULL, "Right Aux PGA"},
+	{"Beep", NULL, "IN3R PGA"},
 };
 
 static int wm8350_add_widgets(struct snd_soc_codec *codec,
