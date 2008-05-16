@@ -13,6 +13,10 @@
 #include <linux/interrupt.h>
 #include <linux/of_device.h>
 #include <linux/of_platform.h>
+
+#include <sound/core.h>
+#include <sound/initval.h>
+#include <sound/pcm.h>
 #include <sound/soc.h>
 #include <asm/immap_86xx.h>
 
@@ -27,21 +31,12 @@
  * MPC8610 HPCD.  Some of the data is taken from the device tree.
  */
 struct mpc8610_hpcd_data {
-	struct snd_soc_device sound_devdata;
-	struct snd_soc_dai_link dai;
 	struct snd_soc_card soc_card;
 	unsigned int dai_format;
 	unsigned int codec_clk_direction;
 	unsigned int cpu_clk_direction;
 	unsigned int clk_frequency;
 	struct ccsr_guts __iomem *guts;
-	struct ccsr_ssi __iomem *ssi;
-	unsigned int ssi_id;    	/* 0 = SSI1, 1 = SSI2, etc */
-	unsigned int ssi_irq;
-	unsigned int dma_id;    	/* 0 = DMA1, 1 = DMA2, etc */
-	unsigned int dma_irq[2];
-	struct ccsr_dma_channel __iomem *dma[2];
-	unsigned int dma_channel_id[2]; /* 0 = ch 0, 1 = ch 1, etc*/
 };
 
 /**
@@ -55,23 +50,31 @@ struct mpc8610_hpcd_data {
 static int mpc8610_hpcd_audio_init(struct snd_soc_card *soc_card)
 {
 	struct mpc8610_hpcd_data *soc_card_data = soc_card->private_data;
+	struct snd_soc_dai *cpu_dai =
+		snd_soc_card_get_dai(soc_card, "fsl,mpc8610-ssi");
+	struct fsl_ssi_info *ssi_info = cpu_dai->private_data;
 
 	/* Program the signal routing between the SSI and the DMA */
-	guts_set_dmacr(soc_card_data->guts, soc_card_data->dma_id + 1,
-		soc_card_data->dma_channel_id[0], CCSR_GUTS_DMACR_DEV_SSI);
-	guts_set_dmacr(soc_card_data->guts, soc_card_data->dma_id + 1,
-		soc_card_data->dma_channel_id[1], CCSR_GUTS_DMACR_DEV_SSI);
+	guts_set_dmacr(soc_card_data->guts,
+		ssi_info->dma_info[0].controller_id,
+		ssi_info->dma_info[0].channel_id, CCSR_GUTS_DMACR_DEV_SSI);
+	guts_set_dmacr(soc_card_data->guts,
+		ssi_info->dma_info[1].controller_id,
+		ssi_info->dma_info[1].channel_id, CCSR_GUTS_DMACR_DEV_SSI);
 
-	guts_set_pmuxcr_dma(soc_card_data->guts, soc_card_data->dma_id,
-		soc_card_data->dma_channel_id[0], 0);
-	guts_set_pmuxcr_dma(soc_card_data->guts, soc_card_data->dma_id,
-		soc_card_data->dma_channel_id[1], 0);
+	guts_set_pmuxcr_dma(soc_card_data->guts,
+		ssi_info->dma_info[0].controller_id,
+		ssi_info->dma_info[0].channel_id, 0);
+	guts_set_pmuxcr_dma(soc_card_data->guts,
+		ssi_info->dma_info[1].controller_id,
+		ssi_info->dma_info[1].channel_id, 0);
 
+	/* FIXME: Magic numbers? */
 	guts_set_pmuxcr_dma(soc_card_data->guts, 1, 0, 0);
 	guts_set_pmuxcr_dma(soc_card_data->guts, 1, 3, 0);
 	guts_set_pmuxcr_dma(soc_card_data->guts, 0, 3, 0);
 
-	switch (soc_card_data->ssi_id) {
+	switch (ssi_info->id) {
 	case 0:
 		clrsetbits_be32(&soc_card_data->guts->pmuxcr,
 			CCSR_GUTS_PMUXCR_SSI1_MASK, CCSR_GUTS_PMUXCR_SSI1_SSI);
@@ -95,10 +98,9 @@ static int mpc8610_hpcd_audio_init(struct snd_soc_card *soc_card)
 static int mpc8610_hpcd_startup(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *codec_dai = rtd->dai->codec_dai;
-	struct snd_soc_dai *cpu_dai = rtd->dai->cpu_dai;
-	struct mpc8610_hpcd_data *soc_card_data =
-		rtd->socdev->dev->platform_data;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct mpc8610_hpcd_data *soc_card_data = rtd->soc_card->private_data;
 	int ret = 0;
 
 	/* Tell the CPU driver what the serial protocol is. */
@@ -150,18 +152,23 @@ static int mpc8610_hpcd_startup(struct snd_pcm_substream *substream)
  * This function is called to remove the sound device for one SSI.  We
  * de-program the DMACR and PMUXCR register.
  */
-int mpc8610_hpcd_audio_exit(struct snd_soc_card *soc_card)
+void mpc8610_hpcd_audio_exit(struct snd_soc_card *soc_card)
 {
 	struct mpc8610_hpcd_data *soc_card_data = soc_card->private_data;
+	struct snd_soc_dai *cpu_dai =
+		snd_soc_card_get_dai(soc_card, "fsl,mpc8610-ssi");
+	struct fsl_ssi_info *ssi_info = cpu_dai->private_data;
 
 	/* Restore the signal routing */
 
-	guts_set_dmacr(soc_card_data->guts, soc_card_data->dma_id + 1,
-		soc_card_data->dma_channel_id[0], 0);
-	guts_set_dmacr(soc_card_data->guts, soc_card_data->dma_id + 1,
-		soc_card_data->dma_channel_id[1], 0);
+	guts_set_dmacr(soc_card_data->guts,
+		ssi_info->dma_info[0].controller_id,
+		ssi_info->dma_info[0].channel_id, 0);
+	guts_set_dmacr(soc_card_data->guts,
+		ssi_info->dma_info[1].controller_id,
+		ssi_info->dma_info[1].channel_id, 0);
 
-	switch (soc_card_data->ssi_id) {
+	switch (ssi_info->id) {
 	case 0:
 		clrsetbits_be32(&soc_card_data->guts->pmuxcr,
 			CCSR_GUTS_PMUXCR_SSI1_MASK, CCSR_GUTS_PMUXCR_SSI1_LA);
@@ -171,8 +178,6 @@ int mpc8610_hpcd_audio_exit(struct snd_soc_card *soc_card)
 			CCSR_GUTS_PMUXCR_SSI2_MASK, CCSR_GUTS_PMUXCR_SSI1_LA);
 		break;
 	}
-
-	return 0;
 }
 
 /**
@@ -180,6 +185,17 @@ int mpc8610_hpcd_audio_exit(struct snd_soc_card *soc_card)
  */
 static struct snd_soc_ops mpc8610_hpcd_ops = {
 	.startup = mpc8610_hpcd_startup,
+};
+
+static struct snd_soc_pcm_config mpc8610_pcm_config = {
+	.name		= "MPC8610 HPCD",
+	.codec		= "cirrus,cs4270",
+	.codec_dai	= "cirrus,cs4270",
+	.platform	= "fsl_pcm",
+	.cpu_dai	= "fsl,mpc8610-ssi",
+	.ops		= &mpc8610_hpcd_ops,
+	.playback	= 1,
+	.capture	= 1,
 };
 
 /**
@@ -190,171 +206,20 @@ static struct snd_soc_ops mpc8610_hpcd_ops = {
  * Although this is a fabric driver, the SSI node is the "master" node with
  * respect to audio hardware connections.  Therefore, we create a new ASoC
  * device for each new SSI node that has a codec attached.
- *
- * FIXME: Currently, we only support one DMA controller, so if there are
- * multiple SSI nodes with codecs, only the first will be supported.
- *
- * FIXME: Even if we did support multiple DMA controllers, we have no
- * mechanism for assigning DMA controllers and channels to the individual
- * SSI devices.  We also probably aren't compatible with the generic Elo DMA
- * device driver.
  */
 static int mpc8610_hpcd_probe(struct of_device *ofdev,
 	const struct of_device_id *match)
 {
-	struct snd_soc_card *soc_card;
-	struct device_node *np = ofdev->node;
-	struct device_node *codec_np = NULL;
+	struct snd_soc_card *soc_card = NULL;
 	struct device_node *guts_np = NULL;
-	struct device_node *dma_np = NULL;
-	struct device_node *dma_channel_np = NULL;
-	const phandle *codec_ph;
-	const char *sprop;
-	const u32 *iprop;
-	struct resource res;
 	struct mpc8610_hpcd_data *soc_card_data;
-
-/* TODO: ssi_info and dma_info could now be created in the platform driver 
- * during it's probe. A lot of this code could be moved to platform probe() */	
-
-	struct fsl_ssi_info ssi_info;
-	struct fsl_dma_info dma_info;
 	int ret = -ENODEV;
 
 	soc_card_data = kzalloc(sizeof(struct mpc8610_hpcd_data), GFP_KERNEL);
-	if (!soc_card_data)
+	if (!soc_card_data) {
+		dev_err(&ofdev->dev, "could not allocate card structure\n");
 		return -ENOMEM;
-
-	memset(&ssi_info, 0, sizeof(ssi_info));
-	memset(&dma_info, 0, sizeof(dma_info));
-
-	ssi_info.dev = &ofdev->dev;
-
-	/*
-	 * We are only interested in SSIs with a codec phandle in them, so let's
-	 * make sure this SSI has one.
-	 */
-	codec_ph = of_get_property(np, "codec-handle", NULL);
-	if (!codec_ph)
-		goto error;
-
-	codec_np = of_find_node_by_phandle(*codec_ph);
-	if (!codec_np)
-		goto error;
-
-	/* The MPC8610 HPCD only knows about the CS4270 codec, so reject
-	   anything else. */
-	if (!of_device_is_compatible(codec_np, "cirrus,cs4270"))
-		goto error;
-
-	/* Get the device ID */
-	iprop = of_get_property(np, "cell-index", NULL);
-	if (!iprop) {
-		dev_err(&ofdev->dev, "cell-index property not found\n");
-		ret = -EINVAL;
-		goto error;
 	}
-	soc_card_data->ssi_id = *iprop;
-	ssi_info.id = *iprop;
-
-	/* Get the serial format and clock direction. */
-	sprop = of_get_property(np, "fsl,mode", NULL);
-	if (!sprop) {
-		dev_err(&ofdev->dev, "fsl,mode property not found\n");
-		ret = -EINVAL;
-		goto error;
-	}
-
-	if (strcasecmp(sprop, "i2s-slave") == 0) {
-		soc_card_data->dai_format = SND_SOC_DAIFMT_I2S;
-		soc_card_data->codec_clk_direction = SND_SOC_CLOCK_OUT;
-		soc_card_data->cpu_clk_direction = SND_SOC_CLOCK_IN;
-
-		/*
-		 * In i2s-slave mode, the codec has its own clock source, so we
-		 * need to get the frequency from the device tree and pass it to
-		 * the codec driver.
-		 */
-		iprop = of_get_property(codec_np, "clock-frequency", NULL);
-		if (!iprop || !*iprop) {
-			dev_err(&ofdev->dev, "codec bus-frequency property "
-				"is missing or invalid\n");
-			ret = -EINVAL;
-			goto error;
-		}
-		soc_card_data->clk_frequency = *iprop;
-	} else if (strcasecmp(sprop, "i2s-master") == 0) {
-		soc_card_data->dai_format = SND_SOC_DAIFMT_I2S;
-		soc_card_data->codec_clk_direction = SND_SOC_CLOCK_IN;
-		soc_card_data->cpu_clk_direction = SND_SOC_CLOCK_OUT;
-	} else if (strcasecmp(sprop, "lj-slave") == 0) {
-		soc_card_data->dai_format = SND_SOC_DAIFMT_LEFT_J;
-		soc_card_data->codec_clk_direction = SND_SOC_CLOCK_OUT;
-		soc_card_data->cpu_clk_direction = SND_SOC_CLOCK_IN;
-	} else if (strcasecmp(sprop, "lj-master") == 0) {
-		soc_card_data->dai_format = SND_SOC_DAIFMT_LEFT_J;
-		soc_card_data->codec_clk_direction = SND_SOC_CLOCK_IN;
-		soc_card_data->cpu_clk_direction = SND_SOC_CLOCK_OUT;
-	} else if (strcasecmp(sprop, "rj-master") == 0) {
-		soc_card_data->dai_format = SND_SOC_DAIFMT_RIGHT_J;
-		soc_card_data->codec_clk_direction = SND_SOC_CLOCK_OUT;
-		soc_card_data->cpu_clk_direction = SND_SOC_CLOCK_IN;
-	} else if (strcasecmp(sprop, "rj-master") == 0) {
-		soc_card_data->dai_format = SND_SOC_DAIFMT_RIGHT_J;
-		soc_card_data->codec_clk_direction = SND_SOC_CLOCK_IN;
-		soc_card_data->cpu_clk_direction = SND_SOC_CLOCK_OUT;
-	} else if (strcasecmp(sprop, "ac97-slave") == 0) {
-		soc_card_data->dai_format = SND_SOC_DAIFMT_AC97;
-		soc_card_data->codec_clk_direction = SND_SOC_CLOCK_OUT;
-		soc_card_data->cpu_clk_direction = SND_SOC_CLOCK_IN;
-	} else if (strcasecmp(sprop, "ac97-master") == 0) {
-		soc_card_data->dai_format = SND_SOC_DAIFMT_AC97;
-		soc_card_data->codec_clk_direction = SND_SOC_CLOCK_IN;
-		soc_card_data->cpu_clk_direction = SND_SOC_CLOCK_OUT;
-	} else {
-		dev_err(&ofdev->dev,
-			"unrecognized fsl,mode property \"%s\"\n", sprop);
-		ret = -EINVAL;
-		goto error;
-	}
-
-	if (!soc_card_data->clk_frequency) {
-		dev_err(&ofdev->dev, "unknown clock frequency\n");
-		ret = -EINVAL;
-		goto error;
-	}
-
-	/* Read the SSI information from the device tree */
-	ret = of_address_to_resource(np, 0, &res);
-	if (ret) {
-		dev_err(&ofdev->dev, "could not obtain SSI address\n");
-		goto error;
-	}
-	if (!res.start) {
-		dev_err(&ofdev->dev, "invalid SSI address\n");
-		goto error;
-	}
-	ssi_info.ssi_phys = res.start;
-
-	soc_card_data->ssi = ioremap(ssi_info.ssi_phys, sizeof(struct ccsr_ssi));
-	if (!soc_card_data->ssi) {
-		dev_err(&ofdev->dev, "could not map SSI address %x\n",
-			ssi_info.ssi_phys);
-		ret = -EINVAL;
-		goto error;
-	}
-	ssi_info.ssi = soc_card_data->ssi;
-
-
-	/* Get the IRQ of the SSI */
-	soc_card_data->ssi_irq = irq_of_parse_and_map(np, 0);
-	if (!soc_card_data->ssi_irq) {
-		dev_err(&ofdev->dev, "could not get SSI IRQ\n");
-		ret = -EINVAL;
-		goto error;
-	}
-	ssi_info.irq = soc_card_data->ssi_irq;
-
 
 	/* Map the global utilities registers. */
 	guts_np = of_find_compatible_node(NULL, NULL, "fsl,mpc8610-guts");
@@ -371,178 +236,44 @@ static int mpc8610_hpcd_probe(struct of_device *ofdev,
 		goto error;
 	}
 
-	/* Find the DMA channels to use.  For now, we always use the first DMA
-	   controller. */
-	for_each_compatible_node(dma_np, NULL, "fsl,mpc8610-dma") {
-		iprop = of_get_property(dma_np, "cell-index", NULL);
-		if (iprop && (*iprop == 0)) {
-			of_node_put(dma_np);
-			break;
-		}
-	}
-	if (!dma_np) {
-		dev_err(&ofdev->dev, "could not find DMA node\n");
-		ret = -EINVAL;
-		goto error;
-	}
-	soc_card_data->dma_id = *iprop;
-
-	/*
-	 * Find the DMA channels to use.  For now, we always use DMA channel 0
-	 * for playback, and DMA channel 1 for capture.
-	 */
-	while ((dma_channel_np = of_get_next_child(dma_np, dma_channel_np))) {
-		iprop = of_get_property(dma_channel_np, "cell-index", NULL);
-		/* Is it DMA channel 0? */
-		if (iprop && (*iprop == 0)) {
-			/* dma_channel[0] and dma_irq[0] are for playback */
-			dma_info.dma_channel[0] = of_iomap(dma_channel_np, 0);
-			dma_info.dma_irq[0] =
-				irq_of_parse_and_map(dma_channel_np, 0);
-			soc_card_data->dma_channel_id[0] = *iprop;
-			continue;
-		}
-		if (iprop && (*iprop == 1)) {
-			/* dma_channel[1] and dma_irq[1] are for capture */
-			dma_info.dma_channel[1] = of_iomap(dma_channel_np, 0);
-			dma_info.dma_irq[1] =
-				irq_of_parse_and_map(dma_channel_np, 0);
-			soc_card_data->dma_channel_id[1] = *iprop;
-			continue;
-		}
-	}
-	if (!dma_info.dma_channel[0] || !dma_info.dma_channel[1] ||
-	    !dma_info.dma_irq[0] || !dma_info.dma_irq[1]) {
-		dev_err(&ofdev->dev, "could not find DMA channels\n");
-		ret = -EINVAL;
-		goto error;
-	}
-
-	dma_info.ssi_stx_phys = ssi_info.ssi_phys +
-		offsetof(struct ccsr_ssi, stx0);
-	dma_info.ssi_srx_phys = ssi_info.ssi_phys +
-		offsetof(struct ccsr_ssi, srx0);
-
-	/* We have the DMA information, so tell the DMA driver what it is */
-	if (!fsl_dma_configure(&dma_info)) {
-		dev_err(&ofdev->dev, "could not instantiate DMA device\n");
-		ret = -EBUSY;
-		goto error;
-	}
-
-
-#if 0 /* V1 TODO: remove */
-	/*
-	 * Initialize our DAI data structure.  We should probably get this
-	 * information from the device tree.
-	 */
-	soc_card_data->dai.name = "CS4270";
-	soc_card_data->dai.stream_name = "CS4270";
-
-	soc_card_data->dai.cpu_dai = fsl_ssi_create_dai(&ssi_info);
-	soc_card_data->dai.codec_dai = &cs4270_dai; /* The codec_dai we want */
-	soc_card_data->dai.ops = &mpc8610_hpcd_ops;
-
-	mpc8610_hpcd_soc_card.dai_link = &soc_card_data->dai;
-
-	/* Allocate a new audio platform device structure */
-	sound_device = platform_device_alloc("soc-audio", -1);
-	if (!sound_device) {
-		dev_err(&ofdev->dev, "platform device allocation failed\n");
-		ret = -ENOMEM;
-		goto error;
-	}
-
-	soc_card_data->sound_devdata.soc_card = &mpc8610_hpcd_soc_card;
-	soc_card_data->sound_devdata.codec_dev = &soc_codec_device_cs4270;
-	soc_card_data->sound_devdata.platform = &fsl_soc_platform;
-
-	sound_device->dev.platform_data = soc_card_data;
-
-
-	/* Set the platform device and ASoC device to point to each other */
-	platform_set_drvdata(sound_device, &soc_card_data->sound_devdata);
-
-	soc_card_data->sound_devdata.dev = &sound_device->dev;
-
-
-	/* Tell ASoC to probe us.  This will call mpc8610_hpcd_soc_card.probe(),
-	   if it exists. */
-	ret = platform_device_add(sound_device);
-
-	if (ret) {
-		dev_err(&ofdev->dev, "platform device add failed\n");
-		goto error;
-	}
-#else /* V2 */
-	soc_card = snd_soc_card_create("MPC8610", &ofdev->dev, 
+	soc_card = snd_soc_card_create("MPC8610", &ofdev->dev,
 		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
-	if (soc_card == NULL)
-		return -ENOMEM;
+	if (!soc_card) {
+		dev_err(&ofdev->dev, "could not create card\n");
+		goto error;
+	}
 
-	soc_card->longname = "CS4270";
+	soc_card->longname = "MPC8610HPCD";
 	soc_card->init = mpc8610_hpcd_audio_init;
 	soc_card->exit = mpc8610_hpcd_audio_exit;
 	soc_card->private_data = soc_card_data;
+	soc_card->dev = &ofdev->dev;
 
-	/* TODO: the number, ID and config of codecs, platforms,
-	 * pcm's could be found in dev tree */
-	ret = snd_soc_codec_create(soc_card, cs4270_codec_id);
-	if (ret < 0)
-		goto err;
+	ret = snd_soc_card_create_pcms(soc_card, &mpc8610_pcm_config, 1);
+	if (ret) {
+		dev_err(&ofdev->dev, "could not create PCMs\n");
+		goto error;
+	}
 
-	ret = snd_soc_platform_create(soc_card, fsl_platform_id);
-	if (ret < 0)
-		goto err;
-
-	ret = snd_soc_pcm_create(soc_card, "HiFi", &mpc8610_hpcd_ops, 
-		CS4270_HIFI_DAI, FSL_DAI_SSI0, 1, 1);
-	if (ret < 0)
-		goto err;
-		
 	/* every has been added at this point */
 	dev_set_drvdata(&ofdev->dev, soc_card);
 	ret = snd_soc_card_register(soc_card);
-	if (ret < 0)
-		goto err;
-
-#endif
-
-	dev_set_drvdata(&ofdev->dev, sound_device);
+	if (ret) {
+		dev_err(&ofdev->dev, "could not register card\n");
+		goto error;
+	}
 
 	return 0;
 
 error:
-
-	of_node_put(codec_np);
-	of_node_put(guts_np);
-	of_node_put(dma_np);
-	of_node_put(dma_channel_np);
-
-	if (ssi_info.ssi)
-		iounmap(ssi_info.ssi);
-
-	if (ssi_info.irq)
-		irq_dispose_mapping(ssi_info.irq);
-
-	if (dma_info.dma_channel[0])
-		iounmap(dma_info.dma_channel[0]);
-
-	if (dma_info.dma_channel[1])
-		iounmap(dma_info.dma_channel[1]);
-
-	if (dma_info.dma_irq[0])
-		irq_dispose_mapping(dma_info.dma_irq[0]);
-
-	if (dma_info.dma_irq[1])
-		irq_dispose_mapping(dma_info.dma_irq[1]);
-
 	if (soc_card_data->guts)
 		iounmap(soc_card_data->guts);
 
 	kfree(soc_card_data);
 
-	snd_soc_card_free(soc_card);
+	if (soc_card)
+		snd_soc_card_free(soc_card);
+
 	return ret;
 }
 
@@ -556,33 +287,13 @@ static int mpc8610_hpcd_remove(struct of_device *ofdev)
 	struct snd_soc_card *soc_card = dev_get_drvdata(&ofdev->dev);
 	struct mpc8610_hpcd_data *soc_card_data = soc_card->private_data;
 
-/* TODO: some of this will move to platform remove() */
-
-	if (soc_card_data->dai.cpu_dai)
-		fsl_ssi_destroy_dai(soc_card_data->dai.cpu_dai);
-
-	if (soc_card_data->ssi)
-		iounmap(soc_card_data->ssi);
-
-	if (soc_card_data->dma[0])
-		iounmap(soc_card_data->dma[0]);
-
-	if (soc_card_data->dma[1])
-		iounmap(soc_card_data->dma[1]);
-
-	if (soc_card_data->dma_irq[0])
-		irq_dispose_mapping(soc_card_data->dma_irq[0]);
-
-	if (soc_card_data->dma_irq[1])
-		irq_dispose_mapping(soc_card_data->dma_irq[1]);
-
 	if (soc_card_data->guts)
 		iounmap(soc_card_data->guts);
 
 	kfree(soc_card_data);
 
 	snd_soc_card_free(soc_card);
-	
+
 	dev_set_drvdata(&ofdev->dev, NULL);
 
 	return 0;

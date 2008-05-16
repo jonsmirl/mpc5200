@@ -14,8 +14,9 @@
 #include <linux/interrupt.h>
 #include <linux/device.h>
 #include <linux/delay.h>
+#include <linux/of_device.h>
+#include <linux/of_platform.h>
 
-#include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -24,6 +25,7 @@
 
 #include <asm/immap_86xx.h>
 
+#include "fsl_dma.h"
 #include "fsl_ssi.h"
 
 /**
@@ -62,56 +64,6 @@
 #endif
 
 /**
- * fsl_ssi_private: per-SSI private data
- *
- * @name: short name for this device ("SSI0", "SSI1", etc)
- * @ssi: pointer to the SSI's registers
- * @ssi_phys: physical address of the SSI registers
- * @irq: IRQ of this SSI
- * @dev: struct device pointer
- * @playback: the number of playback streams opened
- * @capture: the number of capture streams opened
- * @cpu_dai: the CPU DAI for this device
- * @dev_attr: the sysfs device attribute structure
- * @stats: SSI statistics
- */
-struct fsl_ssi_private {
-	char name[8];
-	struct ccsr_ssi __iomem *ssi;
-	dma_addr_t ssi_phys;
-	unsigned int irq;
-	struct device *dev;
-	unsigned int playback;
-	unsigned int capture;
-	struct snd_soc_cpu_dai cpu_dai;
-	struct device_attribute dev_attr;
-
-	struct {
-		unsigned int rfrc;
-		unsigned int tfrc;
-		unsigned int cmdau;
-		unsigned int cmddu;
-		unsigned int rxt;
-		unsigned int rdr1;
-		unsigned int rdr0;
-		unsigned int tde1;
-		unsigned int tde0;
-		unsigned int roe1;
-		unsigned int roe0;
-		unsigned int tue1;
-		unsigned int tue0;
-		unsigned int tfs;
-		unsigned int rfs;
-		unsigned int tls;
-		unsigned int rls;
-		unsigned int rff1;
-		unsigned int rff0;
-		unsigned int tfe1;
-		unsigned int tfe0;
-	} stats;
-};
-
-/**
  * fsl_ssi_isr: SSI interrupt handler
  *
  * Although it's possible to use the interrupt handler to send and receive
@@ -121,12 +73,12 @@ struct fsl_ssi_private {
  * This interrupt handler is used only to gather statistics.
  *
  * @irq: IRQ of the SSI device
- * @dev_id: pointer to the ssi_private structure for this SSI device
+ * @dev_id: pointer to the ssi_info structure for this SSI device
  */
 static irqreturn_t fsl_ssi_isr(int irq, void *dev_id)
 {
-	struct fsl_ssi_private *ssi_private = dev_id;
-	struct ccsr_ssi __iomem *ssi = ssi_private->ssi;
+	struct fsl_ssi_info *ssi_info = dev_id;
+	struct ccsr_ssi __iomem *ssi = ssi_info->ssi;
 	irqreturn_t ret = IRQ_NONE;
 	__be32 sisr;
 	__be32 sisr2 = 0;
@@ -138,113 +90,113 @@ static irqreturn_t fsl_ssi_isr(int irq, void *dev_id)
 	sisr = in_be32(&ssi->sisr) & in_be32(&ssi->sier);
 
 	if (sisr & CCSR_SSI_SISR_RFRC) {
-		ssi_private->stats.rfrc++;
+		ssi_info->stats.rfrc++;
 		sisr2 |= CCSR_SSI_SISR_RFRC;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_TFRC) {
-		ssi_private->stats.tfrc++;
+		ssi_info->stats.tfrc++;
 		sisr2 |= CCSR_SSI_SISR_TFRC;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_CMDAU) {
-		ssi_private->stats.cmdau++;
+		ssi_info->stats.cmdau++;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_CMDDU) {
-		ssi_private->stats.cmddu++;
+		ssi_info->stats.cmddu++;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_RXT) {
-		ssi_private->stats.rxt++;
+		ssi_info->stats.rxt++;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_RDR1) {
-		ssi_private->stats.rdr1++;
+		ssi_info->stats.rdr1++;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_RDR0) {
-		ssi_private->stats.rdr0++;
+		ssi_info->stats.rdr0++;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_TDE1) {
-		ssi_private->stats.tde1++;
+		ssi_info->stats.tde1++;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_TDE0) {
-		ssi_private->stats.tde0++;
+		ssi_info->stats.tde0++;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_ROE1) {
-		ssi_private->stats.roe1++;
+		ssi_info->stats.roe1++;
 		sisr2 |= CCSR_SSI_SISR_ROE1;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_ROE0) {
-		ssi_private->stats.roe0++;
+		ssi_info->stats.roe0++;
 		sisr2 |= CCSR_SSI_SISR_ROE0;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_TUE1) {
-		ssi_private->stats.tue1++;
+		ssi_info->stats.tue1++;
 		sisr2 |= CCSR_SSI_SISR_TUE1;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_TUE0) {
-		ssi_private->stats.tue0++;
+		ssi_info->stats.tue0++;
 		sisr2 |= CCSR_SSI_SISR_TUE0;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_TFS) {
-		ssi_private->stats.tfs++;
+		ssi_info->stats.tfs++;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_RFS) {
-		ssi_private->stats.rfs++;
+		ssi_info->stats.rfs++;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_TLS) {
-		ssi_private->stats.tls++;
+		ssi_info->stats.tls++;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_RLS) {
-		ssi_private->stats.rls++;
+		ssi_info->stats.rls++;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_RFF1) {
-		ssi_private->stats.rff1++;
+		ssi_info->stats.rff1++;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_RFF0) {
-		ssi_private->stats.rff0++;
+		ssi_info->stats.rff0++;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_TFE1) {
-		ssi_private->stats.tfe1++;
+		ssi_info->stats.tfe1++;
 		ret = IRQ_HANDLED;
 	}
 
 	if (sisr & CCSR_SSI_SISR_TFE0) {
-		ssi_private->stats.tfe0++;
+		ssi_info->stats.tfe0++;
 		ret = IRQ_HANDLED;
 	}
 
@@ -263,24 +215,24 @@ static irqreturn_t fsl_ssi_isr(int irq, void *dev_id)
  * If this is the first stream open, then grab the IRQ and program most of
  * the SSI registers.
  */
-static int fsl_ssi_startup(struct snd_pcm_substream *substream)
+static int fsl_ssi_startup(struct snd_pcm_substream *substream,
+	struct snd_soc_dai *cpu_dai)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct fsl_ssi_private *ssi_private = rtd->dai->cpu_dai->private_data;
+	struct fsl_ssi_info *ssi_info = cpu_dai->private_data;
 
 	/*
 	 * If this is the first stream opened, then request the IRQ
 	 * and initialize the SSI registers.
 	 */
-	if (!ssi_private->playback && !ssi_private->capture) {
-		struct ccsr_ssi __iomem *ssi = ssi_private->ssi;
+	if (!ssi_info->playback && !ssi_info->capture) {
+		struct ccsr_ssi __iomem *ssi = ssi_info->ssi;
 		int ret;
 
-		ret = request_irq(ssi_private->irq, fsl_ssi_isr, 0,
-				  ssi_private->name, ssi_private);
+		ret = request_irq(ssi_info->irq, fsl_ssi_isr, 0,
+				  ssi_info->name, ssi_info);
 		if (ret < 0) {
 			dev_err(substream->pcm->card->dev,
-				"could not claim irq %u\n", ssi_private->irq);
+				"could not claim irq %u\n", ssi_info->irq);
 			return ret;
 		}
 
@@ -344,10 +296,12 @@ static int fsl_ssi_startup(struct snd_pcm_substream *substream)
 	}
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		ssi_private->playback++;
+		ssi_info->playback++;
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
-		ssi_private->capture++;
+		ssi_info->capture++;
+
+	cpu_dai->dma_data = ssi_info->dma_info;
 
 	return 0;
 }
@@ -365,16 +319,18 @@ static int fsl_ssi_startup(struct snd_pcm_substream *substream)
  * Note: The SxCCR.DC and SxCCR.PM bits are only used if the SSI is the
  * clock master.
  */
-static int fsl_ssi_prepare(struct snd_pcm_substream *substream)
+static int fsl_ssi_prepare(struct snd_pcm_substream *substream,
+	struct snd_soc_dai *cpu_dai)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct fsl_ssi_private *ssi_private = rtd->dai->cpu_dai->private_data;
-
-	struct ccsr_ssi __iomem *ssi = ssi_private->ssi;
-	u32 wl;
+	struct fsl_ssi_info *ssi_info = cpu_dai->private_data;
+	struct ccsr_ssi __iomem *ssi = ssi_info->ssi;
+	uint32_t wl;
 
 	wl = CCSR_SSI_SxCCR_WL(snd_pcm_format_width(runtime->format));
+
+	/* FIXME: We should read and write the registers manually so as to
+	   minimize the amount of time the SSI is disabled. */
 
 	clrbits32(&ssi->scr, CCSR_SSI_SCR_SSIEN);
 
@@ -397,11 +353,12 @@ static int fsl_ssi_prepare(struct snd_pcm_substream *substream)
  * The DMA channel is in external master start and pause mode, which
  * means the SSI completely controls the flow of data.
  */
-static int fsl_ssi_trigger(struct snd_pcm_substream *substream, int cmd)
+static int fsl_ssi_trigger(struct snd_pcm_substream *substream, int cmd,
+	struct snd_soc_dai *cpu_dai)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct fsl_ssi_private *ssi_private = rtd->dai->cpu_dai->private_data;
-	struct ccsr_ssi __iomem *ssi = ssi_private->ssi;
+
+	struct fsl_ssi_info *ssi_info = cpu_dai->private_data;
+	struct ccsr_ssi __iomem *ssi = ssi_info->ssi;
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -417,7 +374,7 @@ static int fsl_ssi_trigger(struct snd_pcm_substream *substream, int cmd)
 			 * to put data into its FIFO.  Without it, ALSA starts
 			 * to complain about overruns.
 			 */
-			msleep(1);
+			mdelay(1);
 		}
 		break;
 
@@ -442,27 +399,28 @@ static int fsl_ssi_trigger(struct snd_pcm_substream *substream, int cmd)
  *
  * Shutdown the SSI if there are no other substreams open.
  */
-static void fsl_ssi_shutdown(struct snd_pcm_substream *substream)
+static void fsl_ssi_shutdown(struct snd_pcm_substream *substream,
+	struct snd_soc_dai *cpu_dai)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct fsl_ssi_private *ssi_private = rtd->dai->cpu_dai->private_data;
+
+	struct fsl_ssi_info *ssi_info = cpu_dai->private_data;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		ssi_private->playback--;
+		ssi_info->playback--;
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
-		ssi_private->capture--;
+		ssi_info->capture--;
 
 	/*
 	 * If this is the last active substream, disable the SSI and release
 	 * the IRQ.
 	 */
-	if (!ssi_private->playback && !ssi_private->capture) {
-		struct ccsr_ssi __iomem *ssi = ssi_private->ssi;
+	if (!ssi_info->playback && !ssi_info->capture) {
+		struct ccsr_ssi __iomem *ssi = ssi_info->ssi;
 
 		clrbits32(&ssi->scr, CCSR_SSI_SCR_SSIEN);
 
-		free_irq(ssi_private->irq, ssi_private);
+		free_irq(ssi_info->irq, ssi_info);
 	}
 }
 
@@ -480,8 +438,8 @@ static void fsl_ssi_shutdown(struct snd_pcm_substream *substream)
  * @freq: the frequency of the given clock ID, currently ignored
  * @dir: SND_SOC_CLOCK_IN (clock slave) or SND_SOC_CLOCK_OUT (clock master)
  */
-static int fsl_ssi_set_sysclk(struct snd_soc_cpu_dai *cpu_dai,
-			      int clk_id, unsigned int freq, int dir)
+static int fsl_ssi_set_sysclk(struct snd_soc_dai *dai, int clk_id,
+	unsigned int freq, int dir)
 {
 
 	return (dir == SND_SOC_CLOCK_IN) ? 0 : -EINVAL;
@@ -498,7 +456,7 @@ static int fsl_ssi_set_sysclk(struct snd_soc_cpu_dai *cpu_dai,
  *
  * @format: one of SND_SOC_DAIFMT_xxx
  */
-static int fsl_ssi_set_fmt(struct snd_soc_cpu_dai *cpu_dai, unsigned int format)
+static int fsl_ssi_set_fmt(struct snd_soc_dai *dai, unsigned int format)
 {
 	return (format == SND_SOC_DAIFMT_I2S) ? 0 : -EINVAL;
 }
@@ -511,142 +469,448 @@ static int fsl_ssi_set_fmt(struct snd_soc_cpu_dai *cpu_dai, unsigned int format)
 static ssize_t fsl_sysfs_ssi_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct fsl_ssi_private *ssi_private =
-	container_of(attr, struct fsl_ssi_private, dev_attr);
+	struct fsl_ssi_info *ssi_info =
+	container_of(attr, struct fsl_ssi_info, dev_attr);
 	ssize_t length;
 
-	length = sprintf(buf, "rfrc=%u", ssi_private->stats.rfrc);
-	length += sprintf(buf + length, "\ttfrc=%u", ssi_private->stats.tfrc);
-	length += sprintf(buf + length, "\tcmdau=%u", ssi_private->stats.cmdau);
-	length += sprintf(buf + length, "\tcmddu=%u", ssi_private->stats.cmddu);
-	length += sprintf(buf + length, "\trxt=%u", ssi_private->stats.rxt);
-	length += sprintf(buf + length, "\trdr1=%u", ssi_private->stats.rdr1);
-	length += sprintf(buf + length, "\trdr0=%u", ssi_private->stats.rdr0);
-	length += sprintf(buf + length, "\ttde1=%u", ssi_private->stats.tde1);
-	length += sprintf(buf + length, "\ttde0=%u", ssi_private->stats.tde0);
-	length += sprintf(buf + length, "\troe1=%u", ssi_private->stats.roe1);
-	length += sprintf(buf + length, "\troe0=%u", ssi_private->stats.roe0);
-	length += sprintf(buf + length, "\ttue1=%u", ssi_private->stats.tue1);
-	length += sprintf(buf + length, "\ttue0=%u", ssi_private->stats.tue0);
-	length += sprintf(buf + length, "\ttfs=%u", ssi_private->stats.tfs);
-	length += sprintf(buf + length, "\trfs=%u", ssi_private->stats.rfs);
-	length += sprintf(buf + length, "\ttls=%u", ssi_private->stats.tls);
-	length += sprintf(buf + length, "\trls=%u", ssi_private->stats.rls);
-	length += sprintf(buf + length, "\trff1=%u", ssi_private->stats.rff1);
-	length += sprintf(buf + length, "\trff0=%u", ssi_private->stats.rff0);
-	length += sprintf(buf + length, "\ttfe1=%u", ssi_private->stats.tfe1);
-	length += sprintf(buf + length, "\ttfe0=%u\n", ssi_private->stats.tfe0);
+	length = sprintf(buf, "rfrc=%u", ssi_info->stats.rfrc);
+	length += sprintf(buf + length, "\ttfrc=%u", ssi_info->stats.tfrc);
+	length += sprintf(buf + length, "\tcmdau=%u", ssi_info->stats.cmdau);
+	length += sprintf(buf + length, "\tcmddu=%u", ssi_info->stats.cmddu);
+	length += sprintf(buf + length, "\trxt=%u", ssi_info->stats.rxt);
+	length += sprintf(buf + length, "\trdr1=%u", ssi_info->stats.rdr1);
+	length += sprintf(buf + length, "\trdr0=%u", ssi_info->stats.rdr0);
+	length += sprintf(buf + length, "\ttde1=%u", ssi_info->stats.tde1);
+	length += sprintf(buf + length, "\ttde0=%u", ssi_info->stats.tde0);
+	length += sprintf(buf + length, "\troe1=%u", ssi_info->stats.roe1);
+	length += sprintf(buf + length, "\troe0=%u", ssi_info->stats.roe0);
+	length += sprintf(buf + length, "\ttue1=%u", ssi_info->stats.tue1);
+	length += sprintf(buf + length, "\ttue0=%u", ssi_info->stats.tue0);
+	length += sprintf(buf + length, "\ttfs=%u", ssi_info->stats.tfs);
+	length += sprintf(buf + length, "\trfs=%u", ssi_info->stats.rfs);
+	length += sprintf(buf + length, "\ttls=%u", ssi_info->stats.tls);
+	length += sprintf(buf + length, "\trls=%u", ssi_info->stats.rls);
+	length += sprintf(buf + length, "\trff1=%u", ssi_info->stats.rff1);
+	length += sprintf(buf + length, "\trff0=%u", ssi_info->stats.rff0);
+	length += sprintf(buf + length, "\ttfe1=%u", ssi_info->stats.tfe1);
+	length += sprintf(buf + length, "\ttfe0=%u\n", ssi_info->stats.tfe0);
 
 	return length;
 }
 
-/**
- * fsl_ssi_create_dai: create a snd_soc_cpu_dai structure
- *
- * This function is called by the soc_card driver to create a snd_soc_cpu_dai
- * structure.  The function creates an ssi_private object, which contains
- * the snd_soc_cpu_dai.  It also creates the sysfs statistics device.
- */
-struct snd_soc_cpu_dai *fsl_ssi_create_dai(struct fsl_ssi_info *ssi_info)
+static struct snd_soc_dai_caps playback = {
+	/* The SSI does not support monaural audio. */
+	.channels_min	= 2,
+	.channels_max	= 2,
+	.rates		= FSLSSI_I2S_RATES,
+	.formats	= FSLSSI_I2S_FORMATS,
+};
 
-{
-	struct snd_soc_cpu_dai *fsl_ssi_dai;
-	struct fsl_ssi_private *ssi_private;
-	int ret = 0;
-	struct device_attribute *dev_attr;
+static struct snd_soc_dai_caps capture = {
+	.channels_min	= 2,
+	.channels_max	= 2,
+	.rates		= FSLSSI_I2S_RATES,
+	.formats	= FSLSSI_I2S_FORMATS,
+};
 
-	ssi_private = kzalloc(sizeof(struct fsl_ssi_private), GFP_KERNEL);
-	if (!ssi_private) {
-		dev_err(ssi_info->dev, "could not allocate DAI object\n");
-		return NULL;
-	}
-	memcpy(&ssi_private->cpu_dai, &fsl_ssi_dai_template,
-	       sizeof(struct snd_soc_cpu_dai));
-
-	fsl_ssi_dai = &ssi_private->cpu_dai;
-	dev_attr = &ssi_private->dev_attr;
-
-	sprintf(ssi_private->name, "ssi%u", (u8) ssi_info->id);
-	ssi_private->ssi = ssi_info->ssi;
-	ssi_private->ssi_phys = ssi_info->ssi_phys;
-	ssi_private->irq = ssi_info->irq;
-	ssi_private->dev = ssi_info->dev;
-
-	ssi_private->dev->driver_data = fsl_ssi_dai;
-
-	/* Initialize the the device_attribute structure */
-	dev_attr->attr.name = "ssi-stats";
-	dev_attr->attr.mode = S_IRUGO;
-	dev_attr->show = fsl_sysfs_ssi_show;
-
-	ret = device_create_file(ssi_private->dev, dev_attr);
-	if (ret) {
-		dev_err(ssi_info->dev, "could not create sysfs %s file\n",
-			ssi_private->dev_attr.attr.name);
-		kfree(fsl_ssi_dai);
-		return NULL;
-	}
-
-	fsl_ssi_dai->private_data = ssi_private;
-	fsl_ssi_dai->name = ssi_private->name;
-	fsl_ssi_dai->id = ssi_info->id;
-
-	return fsl_ssi_dai;
-}
-EXPORT_SYMBOL_GPL(fsl_ssi_create_dai);
-
-/**
- * fsl_ssi_destroy_dai: destroy the snd_soc_cpu_dai object
- *
- * This function undoes the operations of fsl_ssi_create_dai()
- */
-void fsl_ssi_destroy_dai(struct snd_soc_cpu_dai *fsl_ssi_dai)
-{
-	struct fsl_ssi_private *ssi_private =
-	container_of(fsl_ssi_dai, struct fsl_ssi_private, cpu_dai);
-
-	device_remove_file(ssi_private->dev, &ssi_private->dev_attr);
-
-	kfree(ssi_private);
-}
-
-/*
- * TODO: we probably want to remove this dai template and dynamically 
- * create our DAI in platform probe() based on device tree parse data.
- */
-struct snd_soc_dai fsl_ssi_template = {
-{
-	.name	= "SSI0-0",
-	.id	= IMX_DAI_SSI0,
-	.new 	= fsl_ssi_create_dai,
-	.free	= fsl_ssi_destroy_dai,
-	
-	.playback = {
-		/* The SSI does not support monaural audio. */
-		.channels_min	= 2,
-		.channels_max	= 2,
-		.rates		= FSLSSI_I2S_RATES,
-		.formats	= FSLSSI_I2S_FORMATS,
-	},
-	.capture = {
-		.channels_min	= 2,
-		.channels_max	= 2,
-		.rates		= FSLSSI_I2S_RATES,
-		.formats	= FSLSSI_I2S_FORMATS,
-	},
-	
-	/* alsa ops */
+static struct snd_soc_dai_ops ops = {
 	.startup	= fsl_ssi_startup,
 	.prepare	= fsl_ssi_prepare,
 	.shutdown	= fsl_ssi_shutdown,
 	.trigger	= fsl_ssi_trigger,
-	
-	/* dai ops */
+
 	.set_sysclk	= fsl_ssi_set_sysclk,
 	.set_fmt	= fsl_ssi_set_fmt,
-},
-EXPORT_SYMBOL_GPL(fsl_ssi_template);
+};
+
+static struct device_node *find_dma_node(unsigned int controller,
+	unsigned int channel)
+{
+	struct device_node *np = NULL;
+	struct device_node *np2 = NULL;
+	const uint32_t *iprop;
+
+	for_each_compatible_node(np, NULL, "fsl,eloplus-dma") {
+		iprop = of_get_property(np, "cell-index", NULL);
+		if (!iprop) {
+			pr_err("fsl-ssi: cell-index property not found\n");
+			return NULL;
+		}
+		if (*iprop == controller)
+			break;
+	}
+
+	if (!np) {
+		pr_err("fsl-ssi: cannot find node for DMA controller %u\n",
+			controller);
+		return NULL;
+	}
+
+	for_each_child_of_node(np, np2) {
+		if (!of_device_is_compatible(np2, "fsl,eloplus-dma-channel"))
+			continue;
+
+		iprop = of_get_property(np2, "cell-index", NULL);
+		if (!iprop) {
+			pr_err("fsl-ssi: cell-index property not found\n");
+			return NULL;
+		}
+		if (*iprop == channel)
+			break;
+	}
+
+	if (!np2) {
+		pr_err("fsl-ssi: cannot find node for DMA channel %u\n",
+			channel);
+		return NULL;
+	}
+
+	of_node_put(np);
+
+	return np2;
+}
+
+/**
+ * Initialize a dma_info structure from a pointer to a DMA node
+ */
+static int get_dma_info(struct device_node *np, struct fsl_dma_info *dma_info)
+{
+	const uint32_t *iprop;
+
+	if (!np)
+		return 0;
+
+	iprop = of_get_property(of_get_parent(np), "cell-index", NULL);
+	if (!iprop)
+		return 0;
+
+	dma_info->controller_id = *iprop;
+
+	iprop = of_get_property(np, "cell-index", NULL);
+	if (!iprop)
+		return 0;
+
+	dma_info->channel_id = *iprop;
+
+	dma_info->channel = of_iomap(np, 0);
+	dma_info->irq = irq_of_parse_and_map(np, 0);
+
+	return 1;
+}
+
+static int fsl_ssi_probe(struct of_device *ofdev,
+	const struct of_device_id *match)
+{
+	struct device_node *np = ofdev->node;
+	struct device_node *codec_np = NULL;
+	struct device_node *dma_np[2] = {NULL, NULL};
+	const phandle *codec_ph;
+	const phandle *dma_ph;
+	const char *sprop;
+	const uint32_t *iprop;
+	struct resource res;
+
+	struct fsl_ssi_info *ssi_info;
+	int ret = -ENODEV;
+
+	struct snd_soc_dai_new dai_template;
+
+	ssi_info = kzalloc(sizeof(struct fsl_ssi_info), GFP_KERNEL);
+	if (!ssi_info) {
+		dev_err(&ofdev->dev, "cannot allocate ssi_info\n");
+		return -ENOMEM;
+	}
+
+	ssi_info->dev = &ofdev->dev;
+
+	/*
+	 * We are only interested in SSIs with a codec phandle in them, so let's
+	 * make sure this SSI has one.
+	 */
+	codec_ph = of_get_property(np, "codec-handle", NULL);
+	if (!codec_ph) {
+		dev_dbg(&ofdev->dev, "no codec handle for this SSI\n");
+		goto error;
+	}
+
+	codec_np = of_find_node_by_phandle(*codec_ph);
+	if (!codec_np) {
+		dev_err(&ofdev->dev, "codec handle does not exist\n");
+		goto error;
+	}
+
+	/* The MPC8610 HPCD only knows about the CS4270 codec, so reject
+	 * anything else.
+	 * FIXME: This should be unnecessary
+	 */
+	if (!of_device_is_compatible(codec_np, "cirrus,cs4270")) {
+		dev_dbg(&ofdev->dev, "unknown codec %s\n",
+			(char *) of_get_property(codec_np, "compatible", NULL));
+		goto error;
+	}
+
+	/* Get the device ID */
+	iprop = of_get_property(np, "cell-index", NULL);
+	if (!iprop) {
+		dev_err(&ofdev->dev, "cell-index property not found\n");
+		ret = -EINVAL;
+		goto error;
+	}
+	ssi_info->id = *iprop;
+
+	strcpy(ssi_info->name, "fsl,mpc8610-ssi");
+
+	/* Get the serial format and clock direction. */
+	sprop = of_get_property(np, "fsl,mode", NULL);
+	if (!sprop) {
+		dev_err(&ofdev->dev, "fsl,mode property not found\n");
+		ret = -EINVAL;
+		goto error;
+	}
+
+	if (strcasecmp(sprop, "i2s-slave") == 0) {
+		ssi_info->dai_format = SND_SOC_DAIFMT_I2S;
+		ssi_info->codec_clk_direction = SND_SOC_CLOCK_OUT;
+		ssi_info->cpu_clk_direction = SND_SOC_CLOCK_IN;
+
+		/*
+		 * In i2s-slave mode, the codec has its own clock source, so we
+		 * need to get the frequency from the device tree and pass it to
+		 * the codec driver.
+		 */
+		iprop = of_get_property(codec_np, "clock-frequency", NULL);
+		if (!iprop || !*iprop) {
+			dev_err(&ofdev->dev, "codec bus-frequency property "
+				"is missing or invalid\n");
+			ret = -EINVAL;
+			goto error;
+		}
+		ssi_info->clk_frequency = *iprop;
+	} else if (strcasecmp(sprop, "i2s-master") == 0) {
+		ssi_info->dai_format = SND_SOC_DAIFMT_I2S;
+		ssi_info->codec_clk_direction = SND_SOC_CLOCK_IN;
+		ssi_info->cpu_clk_direction = SND_SOC_CLOCK_OUT;
+	} else if (strcasecmp(sprop, "lj-slave") == 0) {
+		ssi_info->dai_format = SND_SOC_DAIFMT_LEFT_J;
+		ssi_info->codec_clk_direction = SND_SOC_CLOCK_OUT;
+		ssi_info->cpu_clk_direction = SND_SOC_CLOCK_IN;
+	} else if (strcasecmp(sprop, "lj-master") == 0) {
+		ssi_info->dai_format = SND_SOC_DAIFMT_LEFT_J;
+		ssi_info->codec_clk_direction = SND_SOC_CLOCK_IN;
+		ssi_info->cpu_clk_direction = SND_SOC_CLOCK_OUT;
+	} else if (strcasecmp(sprop, "rj-master") == 0) {
+		ssi_info->dai_format = SND_SOC_DAIFMT_RIGHT_J;
+		ssi_info->codec_clk_direction = SND_SOC_CLOCK_OUT;
+		ssi_info->cpu_clk_direction = SND_SOC_CLOCK_IN;
+	} else if (strcasecmp(sprop, "rj-master") == 0) {
+		ssi_info->dai_format = SND_SOC_DAIFMT_RIGHT_J;
+		ssi_info->codec_clk_direction = SND_SOC_CLOCK_IN;
+		ssi_info->cpu_clk_direction = SND_SOC_CLOCK_OUT;
+	} else if (strcasecmp(sprop, "ac97-slave") == 0) {
+		ssi_info->dai_format = SND_SOC_DAIFMT_AC97;
+		ssi_info->codec_clk_direction = SND_SOC_CLOCK_OUT;
+		ssi_info->cpu_clk_direction = SND_SOC_CLOCK_IN;
+	} else if (strcasecmp(sprop, "ac97-master") == 0) {
+		ssi_info->dai_format = SND_SOC_DAIFMT_AC97;
+		ssi_info->codec_clk_direction = SND_SOC_CLOCK_IN;
+		ssi_info->cpu_clk_direction = SND_SOC_CLOCK_OUT;
+	} else {
+		dev_err(&ofdev->dev,
+			"unrecognized fsl,mode property \"%s\"\n", sprop);
+		ret = -EINVAL;
+		goto error;
+	}
+
+	if (!ssi_info->clk_frequency) {
+		dev_err(&ofdev->dev, "unknown clock frequency\n");
+		ret = -EINVAL;
+		goto error;
+	}
+
+	/* Read the SSI hardware information from the device tree */
+	ret = of_address_to_resource(np, 0, &res);
+	if (ret) {
+		dev_err(&ofdev->dev, "could not obtain SSI address\n");
+		goto error;
+	}
+	if (!res.start) {
+		dev_err(&ofdev->dev, "invalid SSI address\n");
+		goto error;
+	}
+	ssi_info->ssi_phys = res.start;
+
+	ssi_info->ssi = ioremap(ssi_info->ssi_phys, sizeof(struct ccsr_ssi));
+	if (!ssi_info->ssi) {
+		dev_err(&ofdev->dev, "could not map SSI address %x\n",
+			ssi_info->ssi_phys);
+		ret = -EINVAL;
+		goto error;
+	}
+
+	/* Get the IRQ of the SSI */
+	ssi_info->irq = irq_of_parse_and_map(np, 0);
+	if (!ssi_info->irq) {
+		dev_err(&ofdev->dev, "could not get SSI IRQ\n");
+		ret = -EINVAL;
+		goto error;
+	}
+
+	ssi_info->dma_info[0].ssi_sxx_phys = ssi_info->ssi_phys +
+		offsetof(struct ccsr_ssi, stx0);
+	ssi_info->dma_info[1].ssi_sxx_phys = ssi_info->ssi_phys +
+		offsetof(struct ccsr_ssi, srx0);
+
+	/*
+	 * Get the DMA information.  If it's an older device tree (i.e. without
+	 * an "fsl,playback-dma" property), then we assume that SSI1 uses DMA1
+	 * Channels 0 and 1, and SSI2 uses DMA2 Channels 0 and 1.
+	 */
+	dma_ph = of_get_property(np, "fsl,playback-dma", NULL);
+	if (!dma_ph) {
+		dev_warn(&ofdev->dev, "please update your device tree\n");
+		dma_np[0] = find_dma_node(ssi_info->id, 0);
+		dma_np[1] = find_dma_node(ssi_info->id, 1);
+	} else {
+		dma_np[0] = of_find_node_by_phandle(*dma_ph);
+		dma_ph = of_get_property(np, "fsl,capture-dma", NULL);
+		if (dma_ph)
+			dma_np[1] = of_find_node_by_phandle(*dma_ph);
+	}
+
+	if (!get_dma_info(dma_np[0], &ssi_info->dma_info[0])) {
+		dev_err(&ofdev->dev, "could not obtain playback DMA info\n");
+		goto error;
+	}
+
+	if (!get_dma_info(dma_np[1], &ssi_info->dma_info[1])) {
+		dev_err(&ofdev->dev, "could not obtain capture DMA info\n");
+		goto error;
+	}
+
+	memset(&dai_template, 0, sizeof(dai_template));
+	dai_template.name = ssi_info->name;
+	dai_template.id = ssi_info->id;
+	dai_template.playback = &playback;
+	dai_template.capture = &capture;
+	dai_template.ops = &ops;
+
+	ssi_info->dai =
+		snd_soc_register_platform_dai(&dai_template, &ofdev->dev);
+	if (!ssi_info->dai) {
+		dev_err(&ofdev->dev, "could not register platform DAI\n");
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	ssi_info->dai->private_data = ssi_info;
+
+	ssi_info->dev_attr.attr.name = ssi_info->name;
+	ssi_info->dev_attr.attr.mode = S_IRUGO;
+	ssi_info->dev_attr.show = fsl_sysfs_ssi_show;
+
+	ret = device_create_file(&ofdev->dev, &ssi_info->dev_attr);
+	if (ret) {
+		dev_err(&ofdev->dev, "could not create sysfs %s file\n",
+			ssi_info->dev_attr.attr.name);
+		goto error;
+	}
+
+	dev_set_drvdata(&ofdev->dev, ssi_info);
+
+
+
+	return 0;
+
+error:
+
+	if (ssi_info->dai)
+		snd_soc_unregister_platform_dai(ssi_info->dai);
+
+	if (ssi_info->irq)
+		irq_dispose_mapping(ssi_info->irq);
+
+	if (ssi_info->ssi)
+		iounmap(ssi_info->ssi);
+
+	kfree(ssi_info);
+
+	return ret;
+}
+
+/**
+ * fsl_ssi_remove: remove the OF device
+ *
+ * This function is called when the OF device is removed.
+ */
+static int fsl_ssi_remove(struct of_device *ofdev)
+{
+	struct fsl_ssi_info *ssi_info = dev_get_drvdata(&ofdev->dev);
+
+	if (ssi_info->dai)
+		snd_soc_unregister_platform_dai(ssi_info->dai);
+
+	if (ssi_info->irq)
+		irq_dispose_mapping(ssi_info->irq);
+
+	if (ssi_info->ssi)
+		iounmap(ssi_info->ssi);
+
+	kfree(ssi_info);
+
+	dev_set_drvdata(&ofdev->dev, NULL);
+
+	return 0;
+}
+
+static struct of_device_id fsl_ssi_match[] = {
+	{
+		.compatible = "fsl,mpc8610-ssi",
+	},
+	{}
+};
+MODULE_DEVICE_TABLE(of, fsl_ssi_match);
+
+static struct of_platform_driver fsl_ssi_of_driver = {
+	.owner  	= THIS_MODULE,
+	.name   	= "fsl_ssi",
+	.match_table    = fsl_ssi_match,
+	.probe  	= fsl_ssi_probe,
+	.remove 	= fsl_ssi_remove,
+};
+
+/**
+ * fsl_ssi_init: fabric driver initialization.
+ *
+ * This function is called when this module is loaded.
+ */
+static int __init fsl_ssi_init(void)
+{
+	int ret;
+	
+	printk(KERN_INFO "Freescale SSI ASoC driver\n");
+	
+	ret = of_register_platform_driver(&fsl_ssi_of_driver);
+
+	if (ret)
+		printk(KERN_ERR
+			"fsl-ssi: failed to register SSI driver\n");
+
+	return ret;
+}
+
+/**
+ * fsl_ssi_exit: fabric driver exit
+ *
+ * This function is called when this driver is unloaded.
+ */
+static void __exit fsl_ssi_exit(void)
+{
+	of_unregister_platform_driver(&fsl_ssi_of_driver);
+}
+
+module_init(fsl_ssi_init);
+module_exit(fsl_ssi_exit);
 
 MODULE_AUTHOR("Timur Tabi <timur@freescale.com>");
-MODULE_DESCRIPTION("Freescale Synchronous Serial Interface (SSI) ASoC Driver");
+MODULE_DESCRIPTION("Freescale SSI ASoC driver");
 MODULE_LICENSE("GPL");

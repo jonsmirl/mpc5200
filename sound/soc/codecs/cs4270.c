@@ -465,6 +465,29 @@ static const struct snd_kcontrol_new cs4270_snd_controls[] = {
 		CS4270_VOLA, CS4270_VOLB, 0, 0xFF, 1)
 };
 
+static int cs4270_codec_init(struct snd_soc_codec *codec,
+	struct snd_soc_card *soc_card)
+{
+	int ret;
+	unsigned int i;
+
+	/* Add the non-DAPM controls */
+
+	for (i = 0; i < ARRAY_SIZE(cs4270_snd_controls); i++) {
+		struct snd_kcontrol *kctrl;
+
+		kctrl = snd_soc_cnew(&cs4270_snd_controls[i], codec, NULL);
+
+		ret = snd_ctl_add(soc_card->card, kctrl);
+		if (ret < 0) {
+			dev_err(soc_card->card->dev, "could not add control\n");
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
 /*
  * Initialize the I2C interface of the CS4270
  *
@@ -474,11 +497,11 @@ static const struct snd_kcontrol_new cs4270_snd_controls[] = {
  * Note: snd_soc_new_pcms() must be called before this function can be called,
  * because of snd_ctl_add().
  */
-static int cs4270_i2c_probe(struct i2c_client *client)
+static int cs4270_i2c_probe(struct i2c_client *client,
+	const struct i2c_device_id *id)
 {
 	struct cs4270_private *cs4270;
 	struct snd_soc_codec *codec = NULL;
-	int i;
 	int ret = 0;
 	int registered = 0;	/* 1 == the codec has been registered */
 
@@ -499,7 +522,9 @@ static int cs4270_i2c_probe(struct i2c_client *client)
 
 	/*
 	 * Normally, we'd call snd_soc_new_codec, but that function
-	 * allocates a snd_soc_codec struct, and we don't want that.
+	 * allocates a snd_soc_codec struct, and we don't want that.  So we have
+	 * to initialize all the fields ourselves.  This might break in the
+	 * future.
 	 */
 	cs4270 = kzalloc(sizeof(struct cs4270_private), GFP_KERNEL);
 	if (!cs4270) {
@@ -516,7 +541,7 @@ static int cs4270_i2c_probe(struct i2c_client *client)
 		goto error;
 	}
 
-	strcpy(cs4270->name, "CS4270");
+	strcpy(cs4270->name, "cirrus,cs4270");
 
 	cs4270->playback.stream_name = "Playback";
 	cs4270->playback.channels_min = 1;
@@ -541,6 +566,7 @@ static int cs4270_i2c_probe(struct i2c_client *client)
 	codec->name = cs4270->name;
 
 	codec->control_data = client;
+	codec->init = cs4270_codec_init;
 
 	ret = snd_soc_register_codec(codec, &client->dev);
 	if (ret < 0) {
@@ -549,6 +575,7 @@ static int cs4270_i2c_probe(struct i2c_client *client)
 	}
 	registered = 1;
 
+	cs4270->dai_new.name = cs4270->name;
 	cs4270->dai_new.playback = &cs4270->playback;
 	cs4270->dai_new.capture = &cs4270->capture;
 	cs4270->dai_new.ops = &cs4270->dai_ops;
@@ -558,18 +585,6 @@ static int cs4270_i2c_probe(struct i2c_client *client)
 	if (!cs4270->dai) {
 		ret = -EINVAL;
 		goto error;
-	}
-
-	/* Add the non-DAPM controls */
-
-	for (i = 0; i < ARRAY_SIZE(cs4270_snd_controls); i++) {
-		struct snd_kcontrol *kctrl;
-
-		kctrl = snd_soc_cnew(&cs4270_snd_controls[i], codec, NULL);
-
-		ret = snd_ctl_add(codec->soc_card->card, kctrl);
-		if (ret < 0)
-			goto error;
 	}
 
 	i2c_set_clientdata(client, codec);
@@ -604,12 +619,18 @@ static int cs4270_i2c_remove(struct i2c_client *client)
 	return 0;
 }
 
+static const struct i2c_device_id cs4270_id[] = {
+	{"cs4270", 0},
+	{}
+};
+MODULE_DEVICE_TABLE(i2c, cs4270_id);
+
 static struct i2c_driver cs4270_i2c_driver = {
 	.driver = {
 		.name = "cs4270",
 		.owner = THIS_MODULE,
 	},
-	.id = I2C_DRIVERID_CS4270,
+	.id_table = cs4270_id,
 	.probe = cs4270_i2c_probe,
 	.remove = cs4270_i2c_remove,
 };
@@ -623,7 +644,7 @@ static int __init cs4270_init(void)
 {
 	int ret;
 
-	printk(KERN_INFO "Cirrus Logic CS4270 ALSA SoC codec driver\n");
+	printk(KERN_INFO "Cirrus Logic CS4270 ASoC codec driver\n");
 
 	/* i2c_add_driver() will call cs4270_i2c_probe() */
 	ret = i2c_add_driver(&cs4270_i2c_driver);
@@ -648,5 +669,5 @@ module_init(cs4270_init);
 module_exit(cs4270_exit);
 
 MODULE_AUTHOR("Timur Tabi <timur@freescale.com>");
-MODULE_DESCRIPTION("Cirrus Logic CS4270 ALSA SoC Codec Driver");
+MODULE_DESCRIPTION("Cirrus Logic CS4270 ASoC codec driver");
 MODULE_LICENSE("GPL");

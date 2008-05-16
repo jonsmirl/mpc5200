@@ -126,20 +126,18 @@ struct fsl_dma_link_descriptor {
 	u8 res[4];      /* Reserved */
 } __attribute__ ((aligned(32), packed));
 
-/* DMA information needed to create a snd_soc_cpu_dai object
+/* Per-stream DMA information that the SSI driver passes to the DMA driver
  *
- * ssi_stx_phys: bus address of SSI STX register to use
- * ssi_srx_phys: bus address of SSI SRX register to use
- * dma[0]: points to the DMA channel to use for playback
- * dma[1]: points to the DMA channel to use for capture
- * dma_irq[0]: IRQ of the DMA channel to use for playback
- * dma_irq[1]: IRQ of the DMA channel to use for capture
+ * ssi_sxx_phys: bus address of SSI STX or SRX register to use
+ * channel: points to the DMA channel device to use
+ * irq: IRQ of the DMA channel
  */
 struct fsl_dma_info {
-	dma_addr_t ssi_stx_phys;
-	dma_addr_t ssi_srx_phys;
-	struct ccsr_dma_channel __iomem *dma_channel[2];
-	unsigned int dma_irq[2];
+	dma_addr_t ssi_sxx_phys;
+	struct ccsr_dma_channel __iomem *channel;
+	unsigned int irq;
+	unsigned int controller_id;
+	unsigned int channel_id;
 };
 
 extern const char fsl_platform_id[];

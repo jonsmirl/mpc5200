@@ -196,29 +196,63 @@ struct ccsr_ssi {
 #define CCSR_SSI_SOR_WAIT(x) (((x) & 3) << CCSR_SSI_SOR_WAIT_SHIFT)
 #define CCSR_SSI_SOR_SYNRST 		0x00000001
 
-/* Instantiation data for an SSI interface
+/**
+ * fsl_ssi_info: per-SSI private data
  *
- * This structure contains all the information that the the SSI driver needs
- * to instantiate an SSI interface with ALSA.  The soc_card driver should
- * create this structure, fill it in, call fsl_ssi_create_dai(), and then
- * delete the structure.
- *
- * id: which SSI this is (0, 1, etc. )
- * ssi: pointer to the SSI's registers
- * ssi_phys: physical address of the SSI registers
- * irq: IRQ of this SSI
- * dev: struct device, used to create the sysfs statistics file
-*/
+ * @name: short name for this device ("SSI0", "SSI1", etc)
+ * @ssi: pointer to the SSI's registers
+ * @ssi_phys: physical address of the SSI registers
+ * @irq: IRQ of this SSI
+ * @dev: struct device pointer
+ * @playback: the number of playback streams opened
+ * @capture: the number of capture streams opened
+ * @cpu_dai: the CPU DAI for this device
+ * @dev_attr: the sysfs device attribute structure
+ * @stats: SSI statistics
+ */
 struct fsl_ssi_info {
+	char name[16];
 	unsigned int id;
 	struct ccsr_ssi __iomem *ssi;
 	dma_addr_t ssi_phys;
 	unsigned int irq;
 	struct device *dev;
-};
+	unsigned int playback;
+	unsigned int capture;
+	struct snd_soc_dai *dai;
+	struct device_attribute dev_attr;
 
-struct snd_soc_cpu_dai *fsl_ssi_create_dai(struct fsl_ssi_info *ssi_info);
-void fsl_ssi_destroy_dai(struct snd_soc_cpu_dai *fsl_ssi_dai);
+	unsigned int dai_format;
+	unsigned int codec_clk_direction;
+	unsigned int cpu_clk_direction;
+	unsigned long clk_frequency;
+
+	struct fsl_dma_info dma_info[2];
+
+	struct {
+		unsigned int rfrc;
+		unsigned int tfrc;
+		unsigned int cmdau;
+		unsigned int cmddu;
+		unsigned int rxt;
+		unsigned int rdr1;
+		unsigned int rdr0;
+		unsigned int tde1;
+		unsigned int tde0;
+		unsigned int roe1;
+		unsigned int roe0;
+		unsigned int tue1;
+		unsigned int tue0;
+		unsigned int tfs;
+		unsigned int rfs;
+		unsigned int tls;
+		unsigned int rls;
+		unsigned int rff1;
+		unsigned int rff0;
+		unsigned int tfe1;
+		unsigned int tfe0;
+	} stats;
+};
 
 #endif
 
