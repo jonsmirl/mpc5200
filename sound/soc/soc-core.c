@@ -921,8 +921,8 @@ check:
 	}
 
 	pcm->private_free = platform->pcm_free;
-	printk(KERN_INFO "asoc: %s <-> %s mapping ok\n", codec_dai->name,
-		cpu_dai->name);
+	printk(KERN_INFO "asoc: %s <-> %s mapping ok\n",
+		pcm_runtime->codec_dai->name, pcm_runtime->cpu_dai->name);
 	list_add(&pcm_runtime->list, &soc_card->pcm_list);
 	return 1;
 err:
