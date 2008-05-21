@@ -1112,9 +1112,9 @@ static int wm8350_set_fll(struct snd_soc_dai *codec_dai,
 
 	/* set up N.K & dividers */
 	fll_1 = wm8350_codec_read(codec, WM8350_FLL_CONTROL_1) &
-	    ~(WM8350_FLL_OUTDIV_MASK | 0xc000);
+	    ~(WM8350_FLL_OUTDIV_MASK | WM8350_FLL_RSP_RATE_MASK | 0xc000);
 	wm8350_codec_write(codec, WM8350_FLL_CONTROL_1,
-			   fll_1 | (fll_div.div << 8));
+			   fll_1 | (fll_div.div << 8) | 0x50);
 	wm8350_codec_write(codec, WM8350_FLL_CONTROL_2,
 			   (fll_div.ratio << 11) | (fll_div.
 						    n & WM8350_FLL_N_MASK));
