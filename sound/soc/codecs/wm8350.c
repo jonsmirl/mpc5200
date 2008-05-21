@@ -616,8 +616,6 @@ static const struct snd_soc_dapm_widget wm8350_dapm_widgets[] = {
 
 	SND_SOC_DAPM_PGA("IN3R PGA", WM8350_POWER_MGMT_2, 11, 0, NULL, 0),
 	SND_SOC_DAPM_PGA("IN3L PGA", WM8350_POWER_MGMT_2, 10, 0, NULL, 0),
-	SND_SOC_DAPM_PGA("Right Input PGA", WM8350_POWER_MGMT_2, 9, 0, NULL, 0),
-	SND_SOC_DAPM_PGA("Left Input PGA", WM8350_POWER_MGMT_2, 8, 0, NULL, 0),
 	SND_SOC_DAPM_PGA_E("Right Out2 PGA", WM8350_POWER_MGMT_3, 3, 0, NULL, 0,
 			   pga_event,
 			   SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
@@ -706,15 +704,15 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"Left Playback Mixer", "Playback Switch", "Left DAC"},
 	{"Left Playback Mixer", "Left Bypass Switch", "IN3L PGA"},
 	{"Left Playback Mixer", "Right Playback Switch", "Right DAC"},
-	{"Left Playback Mixer", "Left Sidetone Switch", "Left Input PGA"},
-	{"Left Playback Mixer", "Right Sidetone Switch", "Right Input PGA"},
+	{"Left Playback Mixer", "Left Sidetone Switch", "Left Mic Mixer"},
+	{"Left Playback Mixer", "Right Sidetone Switch", "Right Mic Mixer"},
 
 	/* right playback mixer */
 	{"Right Playback Mixer", "Playback Switch", "Right DAC"},
 	{"Right Playback Mixer", "Right Bypass Switch", "IN3R PGA"},
 	{"Right Playback Mixer", "Left Playback Switch", "Left DAC"},
-	{"Right Playback Mixer", "Left Sidetone Switch", "Left Input PGA"},
-	{"Right Playback Mixer", "Right Sidetone Switch", "Right Input PGA"},
+	{"Right Playback Mixer", "Left Sidetone Switch", "Left Mic Mixer"},
+	{"Right Playback Mixer", "Right Sidetone Switch", "Right Mic Mixer"},
 
 	/* out4 playback mixer */
 	{"Out4 Mixer", "Right Playback Switch", "Right DAC"},
