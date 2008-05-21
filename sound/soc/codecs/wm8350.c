@@ -754,7 +754,7 @@ static const struct snd_soc_dapm_route audio_map[] = {
 
 	/* Right capture mixer */
 	{"Right Capture Mixer", "L2 Capture Volume", "IN2R"},
-	{"Right Capture Mixer", "L3 Capture Volume", "IN3L PGA"},
+	{"Right Capture Mixer", "L3 Capture Volume", "IN3R PGA"},
 	{"Right Capture Mixer", "PGA Capture Switch", "Right Mic Mixer"},
 	{"Right Capture Mixer", NULL, "Out4 Capture Channel"},
 
