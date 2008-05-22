@@ -223,7 +223,7 @@ static int cs4270_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 	rates &= ~SNDRV_PCM_RATE_KNOT;
 
 	if (!rates) {
-		printk(KERN_ERR "cs4270: could not find a valid sample rate\n");
+		dev_err(codec_dai->dev, "could not find a valid sample rate\n");
 		return -EINVAL;
 	}
 
@@ -263,7 +263,7 @@ static int cs4270_set_dai_fmt(struct snd_soc_dai *codec_dai,
 		cs4270->mode = format & SND_SOC_DAIFMT_FORMAT_MASK;
 		break;
 	default:
-		printk(KERN_ERR "cs4270: invalid DAI format\n");
+		dev_err(codec_dai->dev, "invalid DAI format\n");
 		ret = -EINVAL;
 	}
 
@@ -315,7 +315,7 @@ static int cs4270_i2c_write(struct snd_soc_codec *codec, unsigned int reg,
 		struct i2c_client *client = codec->control_data;
 
 		if (i2c_smbus_write_byte_data(client, reg, value)) {
-			printk(KERN_ERR "cs4270: I2C write failed\n");
+			dev_err(codec->dev, "I2C write failed\n");
 			return -EIO;
 		}
 
@@ -359,7 +359,7 @@ static int cs4270_hw_params(struct snd_pcm_substream *substream,
 
 	if (i == NUM_MCLK_RATIOS) {
 		/* We did not find a matching ratio */
-		printk(KERN_ERR "cs4270: could not find matching ratio\n");
+		dev_err(codec->dev, "could not find matching ratio\n");
 		return -EINVAL;
 	}
 
@@ -369,7 +369,7 @@ static int cs4270_hw_params(struct snd_pcm_substream *substream,
 		CS4270_PWRCTL_PDN_ADC | CS4270_PWRCTL_PDN_DAC |
 		CS4270_PWRCTL_PDN);
 	if (ret < 0) {
-		printk(KERN_ERR "cs4270: I2C write failed\n");
+		dev_err(codec->dev, "I2C write failed\n");
 		return ret;
 	}
 
@@ -381,7 +381,7 @@ static int cs4270_hw_params(struct snd_pcm_substream *substream,
 
 	ret = cs4270_i2c_write(codec, CS4270_MODE, reg);
 	if (ret < 0) {
-		printk(KERN_ERR "cs4270: I2C write failed\n");
+		dev_err(codec->dev, "I2C write failed\n");
 		return ret;
 	}
 
@@ -398,13 +398,13 @@ static int cs4270_hw_params(struct snd_pcm_substream *substream,
 		reg |= CS4270_FORMAT_DAC_LJ | CS4270_FORMAT_ADC_LJ;
 		break;
 	default:
-		printk(KERN_ERR "cs4270: unknown format\n");
+		dev_err(codec->dev, "unknown format\n");
 		return -EINVAL;
 	}
 
 	ret = cs4270_i2c_write(codec, CS4270_FORMAT, reg);
 	if (ret < 0) {
-		printk(KERN_ERR "cs4270: I2C write failed\n");
+		dev_err(codec->dev, "I2C write failed\n");
 		return ret;
 	}
 
@@ -415,7 +415,7 @@ static int cs4270_hw_params(struct snd_pcm_substream *substream,
 	reg &= ~CS4270_MUTE_AUTO;
 	ret = cs4270_i2c_write(codec, CS4270_MUTE, reg);
 	if (ret < 0) {
-		printk(KERN_ERR "cs4270: I2C write failed\n");
+		dev_err(codec->dev, "I2C write failed\n");
 		return ret;
 	}
 
@@ -423,7 +423,7 @@ static int cs4270_hw_params(struct snd_pcm_substream *substream,
 
 	ret = cs4270_i2c_write(codec, CS4270_PWRCTL, 0);
 	if (ret < 0) {
-		printk(KERN_ERR "cs4270: I2C write failed\n");
+		dev_err(codec->dev, "I2C write failed\n");
 		return ret;
 	}
 
@@ -469,23 +469,16 @@ static int cs4270_codec_init(struct snd_soc_codec *codec,
 	struct snd_soc_card *soc_card)
 {
 	int ret;
-	unsigned int i;
 
 	/* Add the non-DAPM controls */
 
-	for (i = 0; i < ARRAY_SIZE(cs4270_snd_controls); i++) {
-		struct snd_kcontrol *kctrl;
+	ret = snd_soc_add_new_controls(soc_card, cs4270_snd_controls, codec,
+		ARRAY_SIZE(cs4270_snd_controls));
 
-		kctrl = snd_soc_cnew(&cs4270_snd_controls[i], codec, NULL);
+	if (ret < 0)
+		dev_err(soc_card->card->dev, "could not add control\n");
 
-		ret = snd_ctl_add(soc_card->card, kctrl);
-		if (ret < 0) {
-			dev_err(soc_card->card->dev, "could not add control\n");
-			return ret;
-		}
-	}
-
-	return 0;
+	return ret;
 }
 
 /*
@@ -513,9 +506,14 @@ static int cs4270_i2c_probe(struct i2c_client *client,
 		return ret;
 	}
 	/* The top four bits of the chip ID should be 1100. */
-	if ((ret & 0xF0) != 0xC0)
-		/* The device at this address is not a CS4270 codec */
+	if ((ret & 0xF0) != 0xC0) {
+		/* This is a new-style I2C driver, which means we're supposed
+		 * to be given the actual I2C address that the chip is on.  If
+		 * this device is not a CS4270, then that's a bug.
+		 */
+		dev_err(&client->dev, "device is not a CS4270\n");
 		return -ENODEV;
+	}
 
 	dev_info(&client->dev, "found device at address %X\n", client->addr);
 	dev_info(&client->dev, "hardware revision %X\n", ret & 0xF);
@@ -567,10 +565,13 @@ static int cs4270_i2c_probe(struct i2c_client *client,
 
 	codec->control_data = client;
 	codec->init = cs4270_codec_init;
+	codec->reg_cache = cs4270->reg_cache;
+	codec->codec_read = cs4270_read_reg_cache;
+	codec->codec_write = cs4270_i2c_write;
 
 	ret = snd_soc_register_codec(codec, &client->dev);
 	if (ret < 0) {
-		printk(KERN_ERR "cs4270: failed to register card\n");
+		dev_err(&client->dev, "failed to register card\n");
 		goto error;
 	}
 	registered = 1;
@@ -583,6 +584,7 @@ static int cs4270_i2c_probe(struct i2c_client *client,
 	cs4270->dai =
 		snd_soc_register_codec_dai(&cs4270->dai_new, &client->dev);
 	if (!cs4270->dai) {
+		dev_err(&client->dev, "failed to register DAI\n");
 		ret = -EINVAL;
 		goto error;
 	}
@@ -650,7 +652,7 @@ static int __init cs4270_init(void)
 	ret = i2c_add_driver(&cs4270_i2c_driver);
 
 	if (ret)
-		printk(KERN_ERR "cs4270: failed to register I2C driver\n");
+		pr_err("cs4270: failed to register I2C driver\n");
 
 	return ret;
 }

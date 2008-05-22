@@ -245,11 +245,13 @@ static int fsl_ssi_startup(struct snd_pcm_substream *substream,
 
 		/*
 		 * Program the SSI into I2S Slave Non-Network Synchronous mode.
-		 * Also enable the transmit and receive FIFO.
+		 * Also enable the transmit and receive FIFO.  Make sure TE and
+		 * RE are disabled.
 		 *
 		 * FIXME: Little-endian samples require a different shift dir
 		 */
-		clrsetbits_be32(&ssi->scr, CCSR_SSI_SCR_I2S_MODE_MASK,
+		clrsetbits_be32(&ssi->scr, CCSR_SSI_SCR_I2S_MODE_MASK |
+			CCSR_SSI_SCR_TE | CCSR_SSI_SCR_RE,
 			CCSR_SSI_SCR_TFR_CLK_DIS |
 			CCSR_SSI_SCR_I2S_MODE_SLAVE | CCSR_SSI_SCR_SYN);
 
@@ -284,6 +286,8 @@ static int fsl_ssi_startup(struct snd_pcm_substream *substream,
 		out_be32(&ssi->sfcsr,
 			 CCSR_SSI_SFCSR_TFWM0(6) | CCSR_SSI_SFCSR_RFWM0(2));
 
+		spin_unlock(&ssi_info->lock);
+
 		/*
 		 * We keep the SSI disabled because if we enable it, then the
 		 * DMA controller will start.  It's not supposed to start until
@@ -296,10 +300,9 @@ static int fsl_ssi_startup(struct snd_pcm_substream *substream,
 	}
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		ssi_info->playback++;
-
-	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
-		ssi_info->capture++;
+		ssi_info->playback = 1;
+	else
+		ssi_info->capture = 1;
 
 	cpu_dai->dma_data = ssi_info->dma_info;
 
@@ -326,20 +329,33 @@ static int fsl_ssi_prepare(struct snd_pcm_substream *substream,
 	struct fsl_ssi_info *ssi_info = cpu_dai->private_data;
 	struct ccsr_ssi __iomem *ssi = ssi_info->ssi;
 	uint32_t wl;
+	u32 scr;
+	u32 sxccr;
 
 	wl = CCSR_SSI_SxCCR_WL(snd_pcm_format_width(runtime->format));
 
-	/* FIXME: We should read and write the registers manually so as to
-	   minimize the amount of time the SSI is disabled. */
+	spin_lock(&ssi_info->lock);
 
-	clrbits32(&ssi->scr, CCSR_SSI_SCR_SSIEN);
+	scr = in_be32(&ssi->scr);
 
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		clrsetbits_be32(&ssi->stccr, CCSR_SSI_SxCCR_WL_MASK, wl);
-	else
-		clrsetbits_be32(&ssi->srccr, CCSR_SSI_SxCCR_WL_MASK, wl);
+	/* If the SSI is currently enabled, then we want to keep it disabled for
+	 * as short as time as possible, so we pre-calculate all the values for
+	 * the appropriate registers, and then program them rapidly.
+	 */
 
-	setbits32(&ssi->scr, CCSR_SSI_SCR_SSIEN);
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		sxccr = (in_be32(&ssi->stccr) & ~CCSR_SSI_SxCCR_WL_MASK) | wl;
+		out_be32(&ssi->scr, scr & ~CCSR_SSI_SCR_SSIEN);
+		out_be32(&ssi->stccr, sxccr);
+		out_be32(&ssi->scr, scr);
+	} else {
+		sxccr = (in_be32(&ssi->srccr) & ~CCSR_SSI_SxCCR_WL_MASK) | wl;
+		out_be32(&ssi->scr, scr & ~CCSR_SSI_SCR_SSIEN);
+		out_be32(&ssi->srccr, sxccr);
+		out_be32(&ssi->scr, scr);
+	}
+
+	spin_unlock(&ssi_info->lock);
 
 	return 0;
 }
@@ -364,10 +380,14 @@ static int fsl_ssi_trigger(struct snd_pcm_substream *substream, int cmd,
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-			setbits32(&ssi->scr, CCSR_SSI_SCR_TE);
-		} else {
-			setbits32(&ssi->scr, CCSR_SSI_SCR_RE);
+		spin_lock(&ssi_info->lock);
+
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+			setbits32(&ssi->scr,
+				CCSR_SSI_SCR_SSIEN | CCSR_SSI_SCR_TE);
+		else {
+			setbits32(&ssi->scr,
+				CCSR_SSI_SCR_SSIEN | CCSR_SSI_SCR_RE);
 
 			/*
 			 * I think we need this delay to allow time for the SSI
@@ -376,6 +396,8 @@ static int fsl_ssi_trigger(struct snd_pcm_substream *substream, int cmd,
 			 */
 			mdelay(1);
 		}
+
+		spin_unlock(&ssi_info->lock);
 		break;
 
 	case SNDRV_PCM_TRIGGER_STOP:
@@ -406,10 +428,9 @@ static void fsl_ssi_shutdown(struct snd_pcm_substream *substream,
 	struct fsl_ssi_info *ssi_info = cpu_dai->private_data;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		ssi_info->playback--;
-
-	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
-		ssi_info->capture--;
+		ssi_info->playback = 0;
+	else
+		ssi_info->capture = 0;
 
 	/*
 	 * If this is the last active substream, disable the SSI and release
@@ -427,7 +448,7 @@ static void fsl_ssi_shutdown(struct snd_pcm_substream *substream,
 /**
  * fsl_ssi_set_sysclk: set the clock frequency and direction
  *
- * This function is called by the soc_card driver to tell us what the clock
+ * This function is called by the fabric driver to tell us what the clock
  * frequency and direction are.
  *
  * Currently, we only support operating as a clock slave (SND_SOC_CLOCK_IN),
@@ -523,6 +544,16 @@ static struct snd_soc_dai_ops ops = {
 	.set_fmt	= fsl_ssi_set_fmt,
 };
 
+/**
+ * find_dma_node: find the DMA node to use in a legacy device tree
+ *
+ * This function returns a device node matching a given DMA channel on a
+ * given DMA controller.
+ *
+ * The original device tree for the MPC8610 HPCD did not include phandles
+ * from the SSI nodes to the DMA nodes.  To support these device trees, we
+ * declare that SSIx will use DMA channels 0 and 1 of DMA controller DMAx.
+ */
 static struct device_node *find_dma_node(unsigned int controller,
 	unsigned int channel)
 {
@@ -698,7 +729,7 @@ static int fsl_ssi_probe(struct of_device *ofdev,
 		ssi_info->dai_format = SND_SOC_DAIFMT_LEFT_J;
 		ssi_info->codec_clk_direction = SND_SOC_CLOCK_IN;
 		ssi_info->cpu_clk_direction = SND_SOC_CLOCK_OUT;
-	} else if (strcasecmp(sprop, "rj-master") == 0) {
+	} else if (strcasecmp(sprop, "rj-slave") == 0) {
 		ssi_info->dai_format = SND_SOC_DAIFMT_RIGHT_J;
 		ssi_info->codec_clk_direction = SND_SOC_CLOCK_OUT;
 		ssi_info->cpu_clk_direction = SND_SOC_CLOCK_IN;
