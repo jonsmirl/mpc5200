@@ -104,18 +104,28 @@
 #define CS4270_MUTE_DAC_A	0x01
 #define CS4270_MUTE_DAC_B	0x02
 
-/* Private data for the CS4270 */
+/**
+ * struct cs4270_private: per-codec private data for the CS4270
+ * @codec: codec structure
+ * @name: name of this codec
+ * @mclk: input frequency of the MCLK pin
+ * @mode: mode (I2S or left-justified)
+ * @reg_cache: register cache
+ *
+ * The register cache is NUMREGS+1 because the hardware registers are
+ * indexed from 1, not 0.  The ASoC function that reads the registers
+ * assumes it's indexed from 0, so to maintain compatibility we pretend
+ * there is a register 0.
+ */
 struct cs4270_private {
 	struct snd_soc_codec codec;
 	char name[16];
-	unsigned int mclk; /* Input frequency of the MCLK pin */
-	unsigned int mode; /* The mode (I2S or left-justified) */
-	struct snd_soc_dai_ops dai_ops;
+	unsigned int mclk;
+	unsigned int mode;
 	struct snd_soc_dai *dai;
-	struct snd_soc_dai_new dai_new;
 	struct snd_soc_dai_caps playback;
 	struct snd_soc_dai_caps capture;
-	u8 reg_cache[CS4270_NUMREGS];
+	u8 reg_cache[CS4270_NUMREGS + 1];
 };
 
 /*
@@ -169,8 +179,8 @@ static struct {
 /* The number of MCLK/LRCK ratios supported by the CS4270 */
 #define NUM_MCLK_RATIOS		ARRAY_SIZE(cs4270_mode_ratios)
 
-/*
- * Determine the CS4270 samples rates.
+/**
+ * cs4270_set_dai_sysclk: determine the CS4270 samples rates.
  *
  * 'freq' is the input frequency to MCLK.  The other parameters are ignored.
  *
@@ -284,10 +294,10 @@ static unsigned int cs4270_read_reg_cache(struct snd_soc_codec *codec,
 		container_of(codec, struct cs4270_private, codec);
 	u8 *cache = cs4270->reg_cache;
 
-	if ((reg < CS4270_FIRSTREG) || (reg > CS4270_LASTREG))
+	if (reg > CS4270_LASTREG)
 		return -EIO;
 
-	return cache[reg - CS4270_FIRSTREG];
+	return cache[reg];
 }
 
 /*
@@ -311,7 +321,7 @@ static int cs4270_i2c_write(struct snd_soc_codec *codec, unsigned int reg,
 		return -EIO;
 
 	/* Only perform an I2C operation if the new value is different */
-	if (cache[reg - CS4270_FIRSTREG] != value) {
+	if (cache[reg] != value) {
 		struct i2c_client *client = codec->control_data;
 
 		if (i2c_smbus_write_byte_data(client, reg, value)) {
@@ -320,7 +330,7 @@ static int cs4270_i2c_write(struct snd_soc_codec *codec, unsigned int reg,
 		}
 
 		/* We've written to the hardware, so update the cache */
-		cache[reg - CS4270_FIRSTREG] = value;
+		cache[reg] = value;
 	}
 
 	return 0;
@@ -481,6 +491,13 @@ static int cs4270_codec_init(struct snd_soc_codec *codec,
 	return ret;
 }
 
+static struct snd_soc_dai_ops dai_ops = {
+	.hw_params = cs4270_hw_params,
+	.set_sysclk = cs4270_set_dai_sysclk,
+	.set_fmt = cs4270_set_dai_fmt,
+	.digital_mute = cs4270_mute,
+};
+
 /*
  * Initialize the I2C interface of the CS4270
  *
@@ -495,8 +512,8 @@ static int cs4270_i2c_probe(struct i2c_client *client,
 {
 	struct cs4270_private *cs4270;
 	struct snd_soc_codec *codec = NULL;
+	struct snd_soc_dai_new dai_new;
 	int ret = 0;
-	int registered = 0;	/* 1 == the codec has been registered */
 
 	/* Verify that we have a CS4270 */
 
@@ -515,8 +532,9 @@ static int cs4270_i2c_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 
-	dev_info(&client->dev, "found device at address %X\n", client->addr);
-	dev_info(&client->dev, "hardware revision %X\n", ret & 0xF);
+	dev_info(&client->dev,
+		"found device at address %X, hardware revision %u\n",
+		client->addr, ret & 0xF);
 
 	/*
 	 * Normally, we'd call snd_soc_new_codec, but that function
@@ -532,15 +550,20 @@ static int cs4270_i2c_probe(struct i2c_client *client,
 
 	/* The I2C interface is set up, so pre-fill our register cache */
 	ret = i2c_smbus_read_i2c_block_data(client, CS4270_FIRSTREG | 0x80,
-		CS4270_NUMREGS, cs4270->reg_cache);
+		CS4270_NUMREGS, cs4270->reg_cache + 1);
 	if (ret != CS4270_NUMREGS) {
 		dev_err(&client->dev, "failed to fill register cache\n");
 		ret = -EIO;
 		goto error;
 	}
 
-	strcpy(cs4270->name, "cirrus,cs4270");
+	sprintf(cs4270->name, "%s@%s", dev_driver_string(&client->dev),
+		dev_name(&client->dev));
 
+	/* Initialize the playback and capture stream data.  The sample rate
+	 * fields are initialized later when the fabric driver calls
+	 * cs4270_set_dai_sysclk().  Hopefully, this won't cause any problems.
+	 */
 	cs4270->playback.stream_name = "Playback";
 	cs4270->playback.channels_min = 1;
 	cs4270->playback.channels_max = 2;
@@ -551,11 +574,6 @@ static int cs4270_i2c_probe(struct i2c_client *client,
 	cs4270->capture.channels_max = 2;
 	cs4270->capture.formats = CS4270_FORMATS;
 
-	cs4270->dai_ops.hw_params = cs4270_hw_params;
-	cs4270->dai_ops.set_sysclk = cs4270_set_dai_sysclk;
-	cs4270->dai_ops.set_fmt = cs4270_set_dai_fmt;
-	cs4270->dai_ops.digital_mute = cs4270_mute;
-
 	codec = &cs4270->codec;
 
 	mutex_init(&codec->mutex);
@@ -563,29 +581,29 @@ static int cs4270_i2c_probe(struct i2c_client *client,
 	INIT_LIST_HEAD(&codec->dai_list);
 	codec->name = cs4270->name;
 
-	codec->control_data = client;
+	snd_soc_card_config_codec(codec, NULL, NULL, client);
 	codec->init = cs4270_codec_init;
 	codec->reg_cache = cs4270->reg_cache;
 	codec->codec_read = cs4270_read_reg_cache;
 	codec->codec_write = cs4270_i2c_write;
+	codec->reg_cache_size = sizeof(cs4270->reg_cache);
 
 	ret = snd_soc_register_codec(codec, &client->dev);
 	if (ret < 0) {
 		dev_err(&client->dev, "failed to register card\n");
 		goto error;
 	}
-	registered = 1;
+	memset(&dai_new, 0, sizeof(dai_new));
+	dai_new.name = cs4270->name;
+	dai_new.playback = &cs4270->playback;
+	dai_new.capture = &cs4270->capture;
+	dai_new.ops = &dai_ops;
 
-	cs4270->dai_new.name = cs4270->name;
-	cs4270->dai_new.playback = &cs4270->playback;
-	cs4270->dai_new.capture = &cs4270->capture;
-	cs4270->dai_new.ops = &cs4270->dai_ops;
-
-	cs4270->dai =
-		snd_soc_register_codec_dai(&cs4270->dai_new, &client->dev);
+	cs4270->dai = snd_soc_register_codec_dai(&dai_new, &client->dev);
 	if (!cs4270->dai) {
 		dev_err(&client->dev, "failed to register DAI\n");
 		ret = -EINVAL;
+		snd_soc_unregister_codec(codec);
 		goto error;
 	}
 
@@ -596,9 +614,6 @@ static int cs4270_i2c_probe(struct i2c_client *client,
 error:
 	if (cs4270->dai)
 		snd_soc_unregister_codec_dai(cs4270->dai);
-
-	if (registered)
-		snd_soc_unregister_codec(codec);
 
 	kfree(cs4270);
 
@@ -646,7 +661,7 @@ static int __init cs4270_init(void)
 {
 	int ret;
 
-	printk(KERN_INFO "Cirrus Logic CS4270 ASoC codec driver\n");
+	pr_info("Cirrus Logic CS4270 ASoC codec driver\n");
 
 	/* i2c_add_driver() will call cs4270_i2c_probe() */
 	ret = i2c_add_driver(&cs4270_i2c_driver);

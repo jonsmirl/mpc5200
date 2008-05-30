@@ -1,5 +1,5 @@
 /**
- * Freescale MPC8610HPCD ALSA SoC Fabric driver
+ * Freescale MPC8610 HPCD ASoC fabric driver
  *
  * Author: Timur Tabi <timur@freescale.com>
  *
@@ -8,6 +8,8 @@
  * program is licensed "as is" without any warranty of any kind, whether
  * express or implied.
  */
+
+#define DEBUG
 
 #include <linux/module.h>
 #include <linux/interrupt.h>
@@ -24,6 +26,11 @@
 #include "fsl_dma.h"
 #include "fsl_ssi.h"
 
+/* To keep memory allocations simple, we define a limit to the number of
+ * SSIs we support.
+ */
+#define MAX_SSI		2
+
 /**
  * mpc8610_hpcd_data: fabric-specific ASoC device data
  *
@@ -31,13 +38,48 @@
  * MPC8610 HPCD.  Some of the data is taken from the device tree.
  */
 struct mpc8610_hpcd_data {
+	char codec_name[32];
 	struct snd_soc_card soc_card;
-	unsigned int dai_format;
-	unsigned int codec_clk_direction;
-	unsigned int cpu_clk_direction;
-	unsigned int clk_frequency;
 	struct ccsr_guts __iomem *guts;
+	unsigned int num_configs;
+	struct snd_soc_pcm_config pcm_configs[MAX_SSI];
+	struct mpc8610_hpcd_names {
+		char pcm_name[32];
+		char ssi_name[32];
+		char codec_name[32];
+		char platform_name[32];
+		char cpu_dai_name[32];
+	} names[MAX_SSI];
 };
+
+/**
+ * guts_dmacr_mask: return the DMACR bitmask for a given DMA channel
+ * @co: The DMA controller (0 or 1)
+ * @ch: The channel on the DMA controller (0, 1, 2, or 3)
+ */
+static inline u32 guts_dmacr_mask(unsigned int co, unsigned int ch)
+{
+	unsigned int shift = 16 + (8 * (1 - co) + 2 * (3 - ch));
+
+	return 3 << shift;
+}
+
+/**
+ * guts_pmuxcr_dma_mask: return the mask for the DMA bits in the PMXUCR
+ * @co: The DMA controller (0 or 1)
+ * @ch: The channel on the DMA controller (0, 1, 2, or 3)
+ *
+ * If ch is not 0 or 3, then a value of 0 is returned.
+ */
+static inline u32 guts_pmuxcr_dma_mask(unsigned int co, unsigned int ch)
+{
+	if ((ch == 0) || (ch == 3)) {
+		unsigned int shift = 2 * (co + 1) - (ch & 1) - 1;
+
+		return 1 << shift;
+	} else
+		return 0;
+}
 
 /**
  * mpc8610_hpcd_audio_init: initalize the board
@@ -45,61 +87,33 @@ struct mpc8610_hpcd_data {
  * This function is called when platform_device_add() is called.  It is used
  * to initialize the board-specific hardware.
  *
- * Here we program the DMACR and PMUXCR registers.
+ * If the platform (SSI) driver is loaded last, then cpu_dai->private_data
+ * is not yet initialized, so therefore we cannot get ssi_info.
  */
 static int mpc8610_hpcd_audio_init(struct snd_soc_card *soc_card)
 {
+	struct snd_soc_codec *codec;
 	struct mpc8610_hpcd_data *soc_card_data = soc_card->private_data;
-	struct snd_soc_dai *cpu_dai =
-		snd_soc_card_get_dai(soc_card, "fsl,mpc8610-ssi");
-	struct snd_soc_codec *codec =
-		snd_soc_card_get_codec(soc_card, "cirrus,cs4270");
-	struct fsl_ssi_info *ssi_info = cpu_dai->private_data;
-	int ret;
+	unsigned int i;
+	int ret = 0;
 
-	/* This is stupid. snd_soc_card_config_codec() initializes the
-	 * codec->control_data structure, which is supposed to be a pointer to
-	 * the i2c_client structure.  But I already assigned that variable in
-	 * the codec driver.  After all, the codec driver is the one that
-	 * supposed to get probed by the I2C bus.  So in order to avoid
-	 * overwriting codec->control_data, I pass it as the 4th parameter.
-	 */
-	snd_soc_card_config_codec(codec, NULL, NULL, codec->control_data);
-	ret = snd_soc_card_init_codec(codec, soc_card);
-	if (ret < 0) {
-		dev_err(soc_card->dev, "could not initialize codec\n");
-		return ret;
-	}
+	for (i = 0; i < soc_card_data->num_configs; i++) {
+		codec = snd_soc_card_get_codec(soc_card,
+			soc_card_data->names[i].codec_name);
 
-	/* Program the signal routing between the SSI and the DMA */
-	guts_set_dmacr(soc_card_data->guts,
-		ssi_info->dma_info[0].controller_id,
-		ssi_info->dma_info[0].channel_id, CCSR_GUTS_DMACR_DEV_SSI);
-	guts_set_dmacr(soc_card_data->guts,
-		ssi_info->dma_info[1].controller_id,
-		ssi_info->dma_info[1].channel_id, CCSR_GUTS_DMACR_DEV_SSI);
+		if (!codec) {
+			dev_err(soc_card->dev, "could not find codec\n");
+			return -ENODEV;
+		}
 
-	guts_set_pmuxcr_dma(soc_card_data->guts,
-		ssi_info->dma_info[0].controller_id,
-		ssi_info->dma_info[0].channel_id, 0);
-	guts_set_pmuxcr_dma(soc_card_data->guts,
-		ssi_info->dma_info[1].controller_id,
-		ssi_info->dma_info[1].channel_id, 0);
-
-	/* FIXME: Magic numbers? */
-	guts_set_pmuxcr_dma(soc_card_data->guts, 1, 0, 0);
-	guts_set_pmuxcr_dma(soc_card_data->guts, 1, 3, 0);
-	guts_set_pmuxcr_dma(soc_card_data->guts, 0, 3, 0);
-
-	switch (ssi_info->id) {
-	case 0:
-		clrsetbits_be32(&soc_card_data->guts->pmuxcr,
-			CCSR_GUTS_PMUXCR_SSI1_MASK, CCSR_GUTS_PMUXCR_SSI1_SSI);
-		break;
-	case 1:
-		clrsetbits_be32(&soc_card_data->guts->pmuxcr,
-			CCSR_GUTS_PMUXCR_SSI2_MASK, CCSR_GUTS_PMUXCR_SSI2_SSI);
-		break;
+		/* The codec driver should have called
+		 * snd_soc_card_config_codec() by now.
+		 */
+		ret = snd_soc_card_init_codec(codec, soc_card);
+		if (ret < 0) {
+			dev_err(soc_card->dev, "could not initialize codec\n");
+			continue;
+		}
 	}
 
 	return 0;
@@ -138,7 +152,41 @@ static int mpc8610_hpcd_startup(struct snd_pcm_substream *substream)
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct fsl_ssi_info *ssi_info = cpu_dai->private_data;
+	struct snd_soc_card *soc_card = rtd->soc_card;
+	struct mpc8610_hpcd_data *soc_card_data = soc_card->private_data;
 	int ret = 0;
+
+	/* Save the PMUXCR and DMACR registers so that we can restore them
+	 * properly later.
+	 */
+	ssi_info->dmacr = in_be32(&soc_card_data->guts->dmacr);
+	ssi_info->pmuxcr = in_be32(&soc_card_data->guts->pmuxcr);
+
+	/* Program the signal routing between the SSI and the DMA */
+	guts_set_dmacr(soc_card_data->guts,
+		ssi_info->dma_info[0].controller_id,
+		ssi_info->dma_info[0].channel_id, CCSR_GUTS_DMACR_DEV_SSI);
+	guts_set_dmacr(soc_card_data->guts,
+		ssi_info->dma_info[1].controller_id,
+		ssi_info->dma_info[1].channel_id, CCSR_GUTS_DMACR_DEV_SSI);
+
+	guts_set_pmuxcr_dma(soc_card_data->guts,
+		ssi_info->dma_info[0].controller_id,
+		ssi_info->dma_info[0].channel_id, 0);
+	guts_set_pmuxcr_dma(soc_card_data->guts,
+		ssi_info->dma_info[1].controller_id,
+		ssi_info->dma_info[1].channel_id, 0);
+
+	switch (ssi_info->id) {
+	case 0:
+		clrsetbits_be32(&soc_card_data->guts->pmuxcr,
+			CCSR_GUTS_PMUXCR_SSI1_MASK, CCSR_GUTS_PMUXCR_SSI1_SSI);
+		break;
+	case 1:
+		clrsetbits_be32(&soc_card_data->guts->pmuxcr,
+			CCSR_GUTS_PMUXCR_SSI2_MASK, CCSR_GUTS_PMUXCR_SSI2_SSI);
+		break;
+	}
 
 	/* Tell the CPU driver what the serial protocol is. */
 	ret = snd_soc_dai_set_fmt(cpu_dai, ssi_info->dai_format);
@@ -183,38 +231,106 @@ static int mpc8610_hpcd_startup(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-/**
- * mpc8610_hpcd_audio_exit: Remove the sound device
- *
- * This function is called to remove the sound device for one SSI.  We
- * de-program the DMACR and PMUXCR register.
- */
-void mpc8610_hpcd_audio_exit(struct snd_soc_card *soc_card)
+static void mpc8610_hpcd_shutdown(struct snd_pcm_substream *substream)
 {
-	struct mpc8610_hpcd_data *soc_card_data = soc_card->private_data;
-	struct snd_soc_dai *cpu_dai =
-		snd_soc_card_get_dai(soc_card, "fsl,mpc8610-ssi");
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct fsl_ssi_info *ssi_info = cpu_dai->private_data;
+	struct snd_soc_card *soc_card = rtd->soc_card;
+	struct mpc8610_hpcd_data *soc_card_data = soc_card->private_data;
+	u32 mask;
 
-	/* Restore the signal routing */
+	soc_card_data = soc_card->private_data;
+	ssi_info = cpu_dai->private_data;
 
-	guts_set_dmacr(soc_card_data->guts,
-		ssi_info->dma_info[0].controller_id,
-		ssi_info->dma_info[0].channel_id, 0);
-	guts_set_dmacr(soc_card_data->guts,
-		ssi_info->dma_info[1].controller_id,
-		ssi_info->dma_info[1].channel_id, 0);
+	/* Restore the DMACR register */
+	mask = guts_dmacr_mask(ssi_info->dma_info[0].controller_id,
+		ssi_info->dma_info[0].channel_id) |
+		guts_dmacr_mask(ssi_info->dma_info[1].controller_id,
+		ssi_info->dma_info[1].channel_id);
 
-	switch (ssi_info->id) {
-	case 0:
-		clrsetbits_be32(&soc_card_data->guts->pmuxcr,
-			CCSR_GUTS_PMUXCR_SSI1_MASK, CCSR_GUTS_PMUXCR_SSI1_LA);
-		break;
-	case 1:
-		clrsetbits_be32(&soc_card_data->guts->pmuxcr,
-			CCSR_GUTS_PMUXCR_SSI2_MASK, CCSR_GUTS_PMUXCR_SSI1_LA);
-		break;
+	clrsetbits_be32(&soc_card_data->guts->dmacr, mask,
+		ssi_info->dmacr & mask);
+
+	/* Restore the PMUXCR register */
+	mask = guts_pmuxcr_dma_mask(ssi_info->dma_info[0].controller_id,
+		ssi_info->dma_info[0].channel_id) |
+		guts_pmuxcr_dma_mask(ssi_info->dma_info[1].controller_id,
+		ssi_info->dma_info[1].channel_id) |
+		(ssi_info->id ? CCSR_GUTS_PMUXCR_SSI2_MASK :
+		CCSR_GUTS_PMUXCR_SSI1_MASK);
+
+	clrsetbits_be32(&soc_card_data->guts->pmuxcr, mask,
+			ssi_info->pmuxcr & mask);
+}
+
+/**
+ * get_codec_name: get the name of the codec that a given SSI is using
+ * @ssi_np: pointer to the SSI node
+ * @name: returned name of the codec driver
+ *
+ * This function returns the name of the codec device that matches a given
+ * SSI.
+ *
+ * The purpose behind this function is to make the device tree the sole
+ * source of information concerning the linkage between devices in the ASoC
+ * device chain.  Unfortunately, it's not really as elegant as it should be.
+ *
+ * With this function, we should be able to mix-and-match codecs just by
+ * loading the right codec driver.
+ */
+static int get_codec_name(struct device_node *ssi_np, char *name)
+{
+	const phandle *codec_ph;
+	struct device_node *codec_np;
+	struct device_node *i2c_np;
+	unsigned int bus;
+	unsigned int addr;
+	const unsigned int *iprop;
+	const char *compat;
+
+	codec_ph = of_get_property(ssi_np, "codec-handle", NULL);
+	if (!codec_ph) {
+		pr_debug("%s: no codec handle\n", ssi_np->full_name);
+		return 0;
 	}
+
+	codec_np = of_find_node_by_phandle(*codec_ph);
+	if (!codec_np) {
+		pr_debug("%s: codec node does not exist\n", ssi_np->full_name);
+		return -1;
+	}
+
+	/* We assume that the first (or only) string in the compatible field is
+	 * the one that counts.
+	 */
+	compat = of_get_property(codec_np, "compatible", NULL);
+
+	/* We only care about the part after the comma */
+	compat = strchr(compat, ',') + 1;
+
+	/* Now determine the I2C bus and address it's on */
+	i2c_np = of_get_parent(codec_np);
+	iprop = of_get_property(i2c_np, "cell-index", NULL);
+	if (!iprop) {
+		pr_debug("%s: cannot determine I2C bus number\n",
+			codec_np->full_name);
+		return -1;
+	}
+	bus = *iprop;
+
+	iprop = of_get_property(codec_np, "reg", NULL);
+	if (!iprop) {
+		pr_debug("%s: cannot determine I2C address\n",
+			codec_np->full_name);
+		return -1;
+	}
+	addr = *iprop;
+
+	/* Now build the string */
+	sprintf(name, "%s@%d-%04x", compat, bus, addr);
+
+	return 1;
 }
 
 /**
@@ -222,17 +338,7 @@ void mpc8610_hpcd_audio_exit(struct snd_soc_card *soc_card)
  */
 static struct snd_soc_ops mpc8610_hpcd_ops = {
 	.startup = mpc8610_hpcd_startup,
-};
-
-static struct snd_soc_pcm_config mpc8610_pcm_config = {
-	.name		= "MPC8610 HPCD",
-	.codec		= "cirrus,cs4270",
-	.codec_dai	= "cirrus,cs4270",
-	.platform	= "fsl_pcm",
-	.cpu_dai	= "fsl,mpc8610-ssi",
-	.ops		= &mpc8610_hpcd_ops,
-	.playback	= 1,
-	.capture	= 1,
+	.shutdown = mpc8610_hpcd_shutdown,
 };
 
 /**
@@ -249,6 +355,8 @@ static int mpc8610_hpcd_probe(struct platform_device *pdev)
 	struct snd_soc_card *soc_card = NULL;
 	struct mpc8610_hpcd_data *soc_card_data;
 	struct device_node *guts_np = NULL;
+	struct device_node *ssi_np;
+	unsigned int i = 0;
 	int ret = -ENODEV;
 
 	soc_card_data = kzalloc(sizeof(struct mpc8610_hpcd_data), GFP_KERNEL);
@@ -281,15 +389,62 @@ static int mpc8610_hpcd_probe(struct platform_device *pdev)
 
 	soc_card->longname = "MPC8610HPCD";
 	soc_card->init = mpc8610_hpcd_audio_init;
-	soc_card->exit = mpc8610_hpcd_audio_exit;
 	soc_card->private_data = soc_card_data;
 	soc_card->dev = &pdev->dev;
 
-	ret = snd_soc_card_create_pcms(soc_card, &mpc8610_pcm_config, 1);
-	if (ret) {
-		dev_err(&pdev->dev, "could not create PCMs\n");
-		goto error;
+	/* Scan the device tree for SSI nodes.  Each one we find that has a
+	 * codec is registered.  Remember, we only support MAX_SSI of these.
+	 */
+	for_each_compatible_node(ssi_np, NULL, "fsl,mpc8610-ssi") {
+		const unsigned int *iprop;
+		struct snd_soc_pcm_config *pcm_config;
+		struct mpc8610_hpcd_names *name;
+
+		name = &soc_card_data->names[i];
+		pcm_config = &soc_card_data->pcm_configs[i];
+
+		pcm_config->name = name->pcm_name;
+		pcm_config->codec = name->codec_name;
+		pcm_config->codec_dai = name->codec_name;
+		pcm_config->platform = "fsl-elo";
+		pcm_config->cpu_dai = name->ssi_name;
+		pcm_config->ops = &mpc8610_hpcd_ops;
+		pcm_config->playback = 1;
+		pcm_config->capture = 1;
+
+		sprintf(name->pcm_name, "MPC8610HPCD.%u", i);
+
+		/* Get the SSI name */
+		iprop = of_get_property(ssi_np, "cell-index", NULL);
+		if (!iprop) {
+			dev_err(soc_card->dev, "no cell-index for %s\n",
+				ssi_np->full_name);
+			continue;
+		}
+		sprintf(name->ssi_name, "ssi%u", *iprop);
+
+		/* Get the codec name  */
+		ret = get_codec_name(ssi_np, name->codec_name);
+		if (ret < 0)
+			dev_err(soc_card->dev, "could not get codec for %s\n",
+				ssi_np->full_name);
+		if (ret < 1)
+			continue;
+
+		dev_dbg(soc_card->dev, "registering cpu %s with codec %s\n",
+			pcm_config->cpu_dai, pcm_config->codec);
+
+		if (++i == MAX_SSI)
+			break;
 	}
+
+	ret = snd_soc_card_create_pcms(soc_card, soc_card_data->pcm_configs, i);
+	if (ret) {
+		dev_err(soc_card->dev, "could not create PCMs\n");
+		return ret;
+	}
+
+	soc_card_data->num_configs = i;
 
 	platform_set_drvdata(pdev, soc_card);
 
@@ -330,7 +485,7 @@ static int mpc8610_hpcd_remove(struct platform_device *pdev)
 
 static struct platform_driver mpc8610_hpcd_driver = {
 	.driver = {
-		.name   	= "mpc8610_hpcd",
+		.name   	= "MPC8610HPCD",
 		.owner		= THIS_MODULE,
 	},
 	.probe  	= mpc8610_hpcd_probe,
@@ -348,7 +503,7 @@ static int __init mpc8610_hpcd_init(void)
 {
 	int ret;
 
-	printk(KERN_INFO "Freescale MPC8610 HPCD ASoC fabric driver\n");
+	pr_info("Freescale MPC8610 HPCD ASoC fabric driver\n");
 
 	ret = platform_driver_register(&mpc8610_hpcd_driver);
 	if (ret < 0) {
@@ -356,7 +511,8 @@ static int __init mpc8610_hpcd_init(void)
 		return ret;
 	}
 
-	pdev = platform_device_register_simple("mpc8610_hpcd", 0, NULL, 0);
+	pdev = platform_device_register_simple(mpc8610_hpcd_driver.driver.name,
+		0, NULL, 0);
 	if (!pdev) {
 		pr_err("mpc8610-hpcd: could not register device\n");
 		platform_driver_unregister(&mpc8610_hpcd_driver);

@@ -424,7 +424,6 @@ static int fsl_ssi_trigger(struct snd_pcm_substream *substream, int cmd,
 static void fsl_ssi_shutdown(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *cpu_dai)
 {
-
 	struct fsl_ssi_info *ssi_info = cpu_dai->private_data;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
@@ -652,8 +651,6 @@ static int fsl_ssi_probe(struct of_device *ofdev,
 		return -ENOMEM;
 	}
 
-	ssi_info->dev = &ofdev->dev;
-
 	/*
 	 * We are only interested in SSIs with a codec phandle in them, so let's
 	 * make sure this SSI has one.
@@ -689,7 +686,7 @@ static int fsl_ssi_probe(struct of_device *ofdev,
 	}
 	ssi_info->id = *iprop;
 
-	strcpy(ssi_info->name, "fsl,mpc8610-ssi");
+	sprintf(ssi_info->name, "ssi%u", ssi_info->id);
 
 	/* Get the serial format and clock direction. */
 	sprop = of_get_property(np, "fsl,mode", NULL);
@@ -703,20 +700,6 @@ static int fsl_ssi_probe(struct of_device *ofdev,
 		ssi_info->dai_format = SND_SOC_DAIFMT_I2S;
 		ssi_info->codec_clk_direction = SND_SOC_CLOCK_OUT;
 		ssi_info->cpu_clk_direction = SND_SOC_CLOCK_IN;
-
-		/*
-		 * In i2s-slave mode, the codec has its own clock source, so we
-		 * need to get the frequency from the device tree and pass it to
-		 * the codec driver.
-		 */
-		iprop = of_get_property(codec_np, "clock-frequency", NULL);
-		if (!iprop || !*iprop) {
-			dev_err(&ofdev->dev, "codec bus-frequency property "
-				"is missing or invalid\n");
-			ret = -EINVAL;
-			goto error;
-		}
-		ssi_info->clk_frequency = *iprop;
 	} else if (strcasecmp(sprop, "i2s-master") == 0) {
 		ssi_info->dai_format = SND_SOC_DAIFMT_I2S;
 		ssi_info->codec_clk_direction = SND_SOC_CLOCK_IN;
@@ -750,6 +733,19 @@ static int fsl_ssi_probe(struct of_device *ofdev,
 			"unrecognized fsl,mode property \"%s\"\n", sprop);
 		ret = -EINVAL;
 		goto error;
+	}
+
+	/* If the codec is the clock source, then the codec node should
+	   contain the clock frequency. */
+	if (ssi_info->codec_clk_direction == SND_SOC_CLOCK_OUT) {
+		iprop = of_get_property(codec_np, "clock-frequency", NULL);
+		if (!iprop || !*iprop) {
+			dev_err(&ofdev->dev, "codec clock-frequency property "
+				"is missing or invalid\n");
+			ret = -EINVAL;
+			goto error;
+		}
+		ssi_info->clk_frequency = *iprop;
 	}
 
 	if (!ssi_info->clk_frequency) {
@@ -825,6 +821,8 @@ static int fsl_ssi_probe(struct of_device *ofdev,
 	dai_template.capture = &capture;
 	dai_template.ops = &ops;
 
+	/* If the other three drivers have loaded, then the call to
+	   snd_soc_register_platform_dai() will initialize the system. */
 	ssi_info->dai =
 		snd_soc_register_platform_dai(&dai_template, &ofdev->dev);
 	if (!ssi_info->dai) {
@@ -835,7 +833,7 @@ static int fsl_ssi_probe(struct of_device *ofdev,
 
 	ssi_info->dai->private_data = ssi_info;
 
-	ssi_info->dev_attr.attr.name = ssi_info->name;
+	ssi_info->dev_attr.attr.name = "stats";
 	ssi_info->dev_attr.attr.mode = S_IRUGO;
 	ssi_info->dev_attr.show = fsl_sysfs_ssi_show;
 
@@ -848,12 +846,9 @@ static int fsl_ssi_probe(struct of_device *ofdev,
 
 	dev_set_drvdata(&ofdev->dev, ssi_info);
 
-
-
 	return 0;
 
 error:
-
 	if (ssi_info->dai)
 		snd_soc_unregister_platform_dai(ssi_info->dai);
 
@@ -877,18 +872,14 @@ static int fsl_ssi_remove(struct of_device *ofdev)
 {
 	struct fsl_ssi_info *ssi_info = dev_get_drvdata(&ofdev->dev);
 
-	if (ssi_info->dai)
+	if (ssi_info) {
+		device_remove_file(&ofdev->dev, &ssi_info->dev_attr);
 		snd_soc_unregister_platform_dai(ssi_info->dai);
-
-	if (ssi_info->irq)
 		irq_dispose_mapping(ssi_info->irq);
-
-	if (ssi_info->ssi)
 		iounmap(ssi_info->ssi);
-
-	kfree(ssi_info);
-
-	dev_set_drvdata(&ofdev->dev, NULL);
+		kfree(ssi_info);
+		dev_set_drvdata(&ofdev->dev, NULL);
+	}
 
 	return 0;
 }
@@ -918,7 +909,7 @@ static int __init fsl_ssi_init(void)
 {
 	int ret;
 	
-	printk(KERN_INFO "Freescale SSI ASoC driver\n");
+	pr_info("Freescale SSI ASoC CPU driver\n");
 	
 	ret = of_register_platform_driver(&fsl_ssi_of_driver);
 
@@ -943,5 +934,5 @@ module_init(fsl_ssi_init);
 module_exit(fsl_ssi_exit);
 
 MODULE_AUTHOR("Timur Tabi <timur@freescale.com>");
-MODULE_DESCRIPTION("Freescale SSI ASoC driver");
+MODULE_DESCRIPTION("Freescale SSI ASoC CPU driver");
 MODULE_LICENSE("GPL");

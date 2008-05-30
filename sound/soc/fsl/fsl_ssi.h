@@ -200,14 +200,22 @@ struct ccsr_ssi {
  * fsl_ssi_info: per-SSI private data
  *
  * @name: short name for this device ("SSI0", "SSI1", etc)
+ * @id: 0=SS1, 1=SSI2, etc
  * @ssi: pointer to the SSI's registers
  * @ssi_phys: physical address of the SSI registers
  * @irq: IRQ of this SSI
- * @dev: struct device pointer
- * @playback: the number of playback streams opened
- * @capture: the number of capture streams opened
- * @cpu_dai: the CPU DAI for this device
+ * @playback: 1=playback stream open, 0 otherwise
+ * @capture: 1=capture stream open, 0 otherwise
+ * @lock: spinlock for enabling/disabling the SSI
+ * @dai: the CPU DAI for this device
  * @dev_attr: the sysfs device attribute structure
+ * @pmuxcr: saved value of the PMUXCR register
+ * @dmcr: saved value of the DMACR register
+ * @dai_format: the serial protocol format (I2S, left-justified, etc)
+ * @codec_clk_direction: whether the codec is the clock master or slave
+ * @cpu_clk_direction: whether the SSI is the clock master or slave
+ * @clk_frequency: the base frequency of the clock
+ * @dma_info: information on the two DMA channels used by this SSI
  * @stats: SSI statistics
  */
 struct fsl_ssi_info {
@@ -216,12 +224,13 @@ struct fsl_ssi_info {
 	struct ccsr_ssi __iomem *ssi;
 	dma_addr_t ssi_phys;
 	unsigned int irq;
-	struct device *dev;
 	unsigned int playback;
 	unsigned int capture;
 	spinlock_t lock;
 	struct snd_soc_dai *dai;
 	struct device_attribute dev_attr;
+	u32 pmuxcr;
+	u32 dmacr;
 
 	unsigned int dai_format;
 	unsigned int codec_clk_direction;

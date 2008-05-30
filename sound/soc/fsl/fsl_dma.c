@@ -794,8 +794,7 @@ static struct snd_pcm_ops fsl_dma_ops = {
 	.pointer	= fsl_dma_pointer,
 };
 
-const char fsl_platform_id[] = "fsl_pcm";
-EXPORT_SYMBOL_GPL(fsl_platform_id);
+static const char fsl_platform_id[] = "fsl-elo";
 
 static struct snd_soc_platform_new fsl_dma_platform = {
 	.name		= fsl_platform_id,
@@ -852,7 +851,7 @@ static __init int fsl_dma_init(void)
 {
 	int ret;
 
-	printk(KERN_INFO "Freescale Elo DMA ASoC PCM driver\n");
+	pr_info("Freescale Elo DMA ASoC platform driver\n");
 
 	ret = platform_driver_register(&fsl_dma_driver);
 	if (ret < 0) {
@@ -880,6 +879,6 @@ module_init(fsl_dma_init);
 module_exit(fsl_dma_exit);
 
 MODULE_AUTHOR("Timur Tabi <timur@freescale.com>");
-MODULE_DESCRIPTION("Freescale Elo DMA ASoC PCM driver");
+MODULE_DESCRIPTION("Freescale Elo DMA ASoC platform driver");
 MODULE_LICENSE("GPL");
 
