@@ -42,7 +42,7 @@ struct mpc8610_hpcd_data {
 	struct snd_soc_card soc_card;
 	struct ccsr_guts __iomem *guts;
 	unsigned int num_configs;
-	struct snd_soc_pcm_config pcm_configs[MAX_SSI];
+	struct snd_soc_pcm_config configs[MAX_SSI];
 	struct mpc8610_hpcd_names {
 		char pcm_name[32];
 		char ssi_name[32];
@@ -265,72 +265,33 @@ static void mpc8610_hpcd_shutdown(struct snd_pcm_substream *substream)
 }
 
 /**
- * get_codec_name: get the name of the codec that a given SSI is using
- * @ssi_np: pointer to the SSI node
- * @name: returned name of the codec driver
- *
- * This function returns the name of the codec device that matches a given
- * SSI.
- *
- * The purpose behind this function is to make the device tree the sole
- * source of information concerning the linkage between devices in the ASoC
- * device chain.  Unfortunately, it's not really as elegant as it should be.
- *
- * With this function, we should be able to mix-and-match codecs just by
- * loading the right codec driver.
+ * find_codec: return the node for the codec of a given SSI
+ * @ssi_np: the device node for the SSI to look up
  */
-static int get_codec_name(struct device_node *ssi_np, char *name)
+static struct device_node *find_codec(struct device_node *ssi_np)
 {
 	const phandle *codec_ph;
-	struct device_node *codec_np;
-	struct device_node *i2c_np;
-	unsigned int bus;
-	unsigned int addr;
-	const unsigned int *iprop;
-	const char *compat;
 
 	codec_ph = of_get_property(ssi_np, "codec-handle", NULL);
-	if (!codec_ph) {
-		pr_debug("%s: no codec handle\n", ssi_np->full_name);
-		return 0;
-	}
+	if (!codec_ph)
+		return NULL;
 
-	codec_np = of_find_node_by_phandle(*codec_ph);
-	if (!codec_np) {
-		pr_debug("%s: codec node does not exist\n", ssi_np->full_name);
+	return of_find_node_by_phandle(*codec_ph);
+}
+
+static int of_get_integer(struct device_node *np, const char *string)
+{
+	const u32 *iprop;
+	int len;
+
+	iprop = of_get_property(np, string, &len);
+	if (!iprop)
 		return -1;
-	}
 
-	/* We assume that the first (or only) string in the compatible field is
-	 * the one that counts.
-	 */
-	compat = of_get_property(codec_np, "compatible", NULL);
-
-	/* We only care about the part after the comma */
-	compat = strchr(compat, ',') + 1;
-
-	/* Now determine the I2C bus and address it's on */
-	i2c_np = of_get_parent(codec_np);
-	iprop = of_get_property(i2c_np, "cell-index", NULL);
-	if (!iprop) {
-		pr_debug("%s: cannot determine I2C bus number\n",
-			codec_np->full_name);
+	if (len != sizeof(u32))
 		return -1;
-	}
-	bus = *iprop;
 
-	iprop = of_get_property(codec_np, "reg", NULL);
-	if (!iprop) {
-		pr_debug("%s: cannot determine I2C address\n",
-			codec_np->full_name);
-		return -1;
-	}
-	addr = *iprop;
-
-	/* Now build the string */
-	sprintf(name, "%s@%d-%04x", compat, bus, addr);
-
-	return 1;
+	return *iprop;
 }
 
 /**
@@ -356,7 +317,7 @@ static int mpc8610_hpcd_probe(struct platform_device *pdev)
 	struct mpc8610_hpcd_data *soc_card_data;
 	struct device_node *guts_np = NULL;
 	struct device_node *ssi_np;
-	unsigned int i = 0;
+	unsigned int ssi = 0;
 	int ret = -ENODEV;
 
 	soc_card_data = kzalloc(sizeof(struct mpc8610_hpcd_data), GFP_KERNEL);
@@ -396,12 +357,17 @@ static int mpc8610_hpcd_probe(struct platform_device *pdev)
 	 * codec is registered.  Remember, we only support MAX_SSI of these.
 	 */
 	for_each_compatible_node(ssi_np, NULL, "fsl,mpc8610-ssi") {
-		const unsigned int *iprop;
 		struct snd_soc_pcm_config *pcm_config;
 		struct mpc8610_hpcd_names *name;
+		struct device_node *codec_np;
+		const char *compat;
+		const char *p;
+		unsigned int bus;
+		unsigned int address;
+		int i;
 
-		name = &soc_card_data->names[i];
-		pcm_config = &soc_card_data->pcm_configs[i];
+		name = &soc_card_data->names[ssi];
+		pcm_config = &soc_card_data->configs[ssi];
 
 		pcm_config->name = name->pcm_name;
 		pcm_config->codec = name->codec_name;
@@ -412,39 +378,74 @@ static int mpc8610_hpcd_probe(struct platform_device *pdev)
 		pcm_config->playback = 1;
 		pcm_config->capture = 1;
 
-		sprintf(name->pcm_name, "MPC8610HPCD.%u", i);
+		sprintf(name->pcm_name, "MPC8610HPCD.%u", ssi);
 
 		/* Get the SSI name */
-		iprop = of_get_property(ssi_np, "cell-index", NULL);
-		if (!iprop) {
+		i = of_get_integer(ssi_np, "cell-index");
+		if (i < 0) {
 			dev_err(soc_card->dev, "no cell-index for %s\n",
 				ssi_np->full_name);
 			continue;
 		}
-		sprintf(name->ssi_name, "ssi%u", *iprop);
+		sprintf(name->ssi_name, "ssi%u", i);
 
-		/* Get the codec name  */
-		ret = get_codec_name(ssi_np, name->codec_name);
-		if (ret < 0)
-			dev_err(soc_card->dev, "could not get codec for %s\n",
+		/* Get the codec name and ID */
+		codec_np = find_codec(ssi_np);
+		if (!codec_np) {
+			dev_err(soc_card->dev, "missing codec node for %s\n",
 				ssi_np->full_name);
-		if (ret < 1)
 			continue;
+		}
 
-		dev_dbg(soc_card->dev, "registering cpu %s with codec %s\n",
-			pcm_config->cpu_dai, pcm_config->codec);
+		/* We assume that the first (or only) string in the compatible
+		 * field is the one that counts.
+		 */
+		compat = of_get_property(codec_np, "compatible", NULL);
+		if (!compat) {
+			dev_err(soc_card->dev,
+				"missing compatible property for %s\n",
+				ssi_np->full_name);
+			continue;
+		}
 
-		if (++i == MAX_SSI)
+		/* We only care about the part after the comma */
+		p = strchr(compat, ',');
+		strcpy(name->codec_name, p ? p + 1 : compat);
+
+		/* Now determine the I2C bus and address of the codec */
+		bus = of_get_integer(of_get_parent(codec_np), "cell-index");
+		if (bus < 0) {
+			dev_err(soc_card->dev,
+				"cannot determine I2C bus number for %s\n",
+				codec_np->full_name);
+			continue;
+		}
+
+		address = of_get_integer(codec_np, "reg");
+		if (address < 0) {
+			dev_err(soc_card->dev,
+				"cannot determine I2C address for %s\n",
+				codec_np->full_name);
+			continue;
+		}
+
+		pcm_config->codec_num = bus << 16 | address;
+
+		dev_dbg(soc_card->dev, "registering cpu %s with codec %s-%x\n",
+			pcm_config->cpu_dai, pcm_config->codec,
+			pcm_config->codec_num);
+
+		if (++ssi == MAX_SSI)
 			break;
 	}
 
-	ret = snd_soc_card_create_pcms(soc_card, soc_card_data->pcm_configs, i);
+	ret = snd_soc_card_create_pcms(soc_card, soc_card_data->configs, ssi);
 	if (ret) {
 		dev_err(soc_card->dev, "could not create PCMs\n");
 		return ret;
 	}
 
-	soc_card_data->num_configs = i;
+	soc_card_data->num_configs = ssi;
 
 	platform_set_drvdata(pdev, soc_card);
 

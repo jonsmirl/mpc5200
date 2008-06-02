@@ -23,6 +23,8 @@
  * 7) The only supported control is volume and hardware mute (if enabled)
  */
 
+#define DEBUG
+
 #include <linux/module.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -119,7 +121,6 @@
  */
 struct cs4270_private {
 	struct snd_soc_codec codec;
-	char name[16];
 	unsigned int mclk;
 	unsigned int mode;
 	struct snd_soc_dai *dai;
@@ -557,9 +558,6 @@ static int cs4270_i2c_probe(struct i2c_client *client,
 		goto error;
 	}
 
-	sprintf(cs4270->name, "%s@%s", dev_driver_string(&client->dev),
-		dev_name(&client->dev));
-
 	/* Initialize the playback and capture stream data.  The sample rate
 	 * fields are initialized later when the fabric driver calls
 	 * cs4270_set_dai_sysclk().  Hopefully, this won't cause any problems.
@@ -574,14 +572,19 @@ static int cs4270_i2c_probe(struct i2c_client *client,
 	cs4270->capture.channels_max = 2;
 	cs4270->capture.formats = CS4270_FORMATS;
 
+	/* Register the codec */
+
 	codec = &cs4270->codec;
 
 	mutex_init(&codec->mutex);
 	INIT_LIST_HEAD(&codec->list);
 	INIT_LIST_HEAD(&codec->dai_list);
-	codec->name = cs4270->name;
+
+	codec->name = "cs4270";
+	codec->num = client->adapter->nr << 16 | client->addr;
 
 	snd_soc_card_config_codec(codec, NULL, NULL, client);
+
 	codec->init = cs4270_codec_init;
 	codec->reg_cache = cs4270->reg_cache;
 	codec->codec_read = cs4270_read_reg_cache;
@@ -593,8 +596,12 @@ static int cs4270_i2c_probe(struct i2c_client *client,
 		dev_err(&client->dev, "failed to register card\n");
 		goto error;
 	}
-	memset(&dai_new, 0, sizeof(dai_new));
-	dai_new.name = cs4270->name;
+
+	/* Register the codec DAI */
+
+        memset(&dai_new, 0, sizeof(dai_new));
+	dai_new.name = codec->name;
+	dai_new.id = codec->num;
 	dai_new.playback = &cs4270->playback;
 	dai_new.capture = &cs4270->capture;
 	dai_new.ops = &dai_ops;
