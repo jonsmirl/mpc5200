@@ -790,13 +790,13 @@ static int fsl_ssi_probe(struct of_device *ofdev,
 	/*
 	 * Get the DMA information.  If it's an older device tree (i.e. without
 	 * an "fsl,playback-dma" property), then we assume that SSI1 uses DMA1
-	 * Channels 0 and 1, and SSI2 uses DMA2 Channels 0 and 1.
+	 * Channels 0 and 1, and SSI2 uses DMA1 Channels 2 and 3.
 	 */
 	dma_ph = of_get_property(np, "fsl,playback-dma", NULL);
 	if (!dma_ph) {
 		dev_warn(&ofdev->dev, "please update your device tree\n");
-		dma_np[0] = find_dma_node(ssi_info->id, 0);
-		dma_np[1] = find_dma_node(ssi_info->id, 1);
+		dma_np[0] = find_dma_node(0, ssi_info->id ? 2 : 0);
+		dma_np[1] = find_dma_node(0, ssi_info->id ? 3 : 1);
 	} else {
 		dma_np[0] = of_find_node_by_phandle(*dma_ph);
 		dma_ph = of_get_property(np, "fsl,capture-dma", NULL);
