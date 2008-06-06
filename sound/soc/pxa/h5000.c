@@ -272,7 +272,7 @@ static int h5000_ak4535_init (struct snd_soc_card *soc_card)
 	struct snd_soc_codec *codec;
 	int ret;
 
-	codec = snd_soc_card_get_codec(soc_card, ak4535_codec_id);
+	codec = snd_soc_card_get_codec(soc_card, ak4535_codec_id, 0);
 	if (codec == NULL)
 		return -ENODEV;
 

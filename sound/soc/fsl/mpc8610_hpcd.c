@@ -38,7 +38,6 @@
  * MPC8610 HPCD.  Some of the data is taken from the device tree.
  */
 struct mpc8610_hpcd_data {
-	char codec_name[32];
 	struct snd_soc_card soc_card;
 	struct ccsr_guts __iomem *guts;
 	unsigned int num_configs;
@@ -47,8 +46,6 @@ struct mpc8610_hpcd_data {
 		char pcm_name[32];
 		char ssi_name[32];
 		char codec_name[32];
-		char platform_name[32];
-		char cpu_dai_name[32];
 	} names[MAX_SSI];
 };
 
@@ -99,7 +96,8 @@ static int mpc8610_hpcd_audio_init(struct snd_soc_card *soc_card)
 
 	for (i = 0; i < soc_card_data->num_configs; i++) {
 		codec = snd_soc_card_get_codec(soc_card,
-			soc_card_data->names[i].codec_name);
+			soc_card_data->names[i].codec_name,
+			soc_card_data->configs[i].codec_num);
 
 		if (!codec) {
 			dev_err(soc_card->dev, "could not find codec\n");
@@ -111,7 +109,9 @@ static int mpc8610_hpcd_audio_init(struct snd_soc_card *soc_card)
 		 */
 		ret = snd_soc_card_init_codec(codec, soc_card);
 		if (ret < 0) {
-			dev_err(soc_card->dev, "could not initialize codec\n");
+			dev_err(soc_card->dev,
+				"could not initialize codec %s-%u\n",
+				codec->name, codec->num);
 			continue;
 		}
 	}

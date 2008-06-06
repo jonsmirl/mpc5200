@@ -407,7 +407,7 @@ int imx32_audio_init(struct snd_soc_card *soc_card)
 	if (pcm_runtime == NULL)
 		return -ENODEV;
 
-	codec = snd_soc_card_get_codec(soc_card, wm8350_codec_id);
+	codec = snd_soc_card_get_codec(soc_card, wm8350_codec_id, 0);
 	if (codec == NULL)
 		return -ENODEV;
 

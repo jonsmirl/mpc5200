@@ -2172,12 +2172,13 @@ EXPORT_SYMBOL_GPL(snd_soc_card_free);
  * Get a codec from a codec ID.
  */
 struct snd_soc_codec *snd_soc_card_get_codec(struct snd_soc_card *soc_card,
-	const char *codec_id)
+	const char *codec_name, int codec_num)
 {
 	struct soc_pcm_config *config;
 
 	list_for_each_entry(config, &soc_card->config_list, list) {
-		if (config->codec && !strcmp(config->codec->name, codec_id))
+		if (config->codec && !strcmp(config->codec->name, codec_name)
+		    && config->codec->num == codec_num)
 			return config->codec;
 	}
 	return NULL;

@@ -50,7 +50,7 @@ static int e800_init(struct snd_soc_card *soc_card)
 	struct snd_ac97_bus_ops *ac97_ops;
 	int ret;
 
-	codec = snd_soc_card_get_codec(soc_card, wm9712_codec_id);
+	codec = snd_soc_card_get_codec(soc_card, wm9712_codec_id, 0);
 	if (codec == NULL)
 		return -ENODEV;
 

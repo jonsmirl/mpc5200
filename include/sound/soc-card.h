@@ -44,7 +44,7 @@ struct snd_ac97_bus_ops *snd_soc_card_get_ac97_ops(
 	struct snd_soc_card *soc_card, const char *dai_id);
 
 struct snd_soc_codec *snd_soc_card_get_codec(struct snd_soc_card *soc_card,
-	const char *codec_id);
+	const char *codec_name, int codec_num);
 
 struct snd_soc_platform * snd_soc_card_get_platform(
 	struct snd_soc_card *soc_card, const char *platform_id);

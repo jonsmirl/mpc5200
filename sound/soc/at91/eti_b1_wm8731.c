@@ -242,7 +242,7 @@ static int eti_b1_init(struct snd_soc_card *soc_card)
 	struct at91_ssc_periph *ssc;
 	int ret;
 
-	codec = snd_soc_card_get_codec(soc_card, wm8731_codec_id);
+	codec = snd_soc_card_get_codec(soc_card, wm8731_codec_id, 0);
 	if (codec == NULL)
 		return -ENODEV;
 

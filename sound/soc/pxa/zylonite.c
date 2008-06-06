@@ -93,7 +93,7 @@ static int zylonite_init(struct snd_soc_card *card)
 	struct snd_ac97_bus_ops *ac97_ops;
 	int ret;
 
-	codec = snd_soc_card_get_codec(card, wm9713_codec_id);
+	codec = snd_soc_card_get_codec(card, wm9713_codec_id, 0);
 	if (codec == NULL) {
 		printk(KERN_ERR "Unable to obtain WM9713 codec\n");
 		return -ENODEV;
