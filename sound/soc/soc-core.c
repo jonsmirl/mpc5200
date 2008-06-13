@@ -801,6 +801,7 @@ codec_dai:
 	/* yes, then check the codec_dai list */
 	list_for_each_entry(codec_dai, &codec_dai_list, list) {
 		if (!strcmp(config->codec_dai, codec_dai->name) &&
+		    (codec_dai->id == config->codec_num) &&
 		    try_module_get(codec_dai->dev->driver->owner)) {
 			dbg("ASoC %s %s: Match for %s %s\n",
 			    soc_card->name, config->name,
@@ -1767,6 +1768,7 @@ struct snd_soc_dai *snd_soc_register_codec_dai(
 	dai->playback = template->playback;
 	dai->capture = template->capture;
 	dai->name = template->name;
+	dai->id = template->id;
 	dai->ac97_control = template->ac97_control;
 	mutex_lock(&client_mutex);
 	list_add(&dai->list, &codec_dai_list);
