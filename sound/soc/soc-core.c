@@ -961,7 +961,7 @@ static ssize_t codec_reg_show(struct device *dev,
 {
 	struct snd_soc_device *devdata = dev_get_drvdata(dev);
 	struct snd_soc_codec *codec = devdata->codec;
-	int i, step = 1, count = 0;
+	int i, step = 1, count;
 
 	if (!codec->reg_cache_size)
 		return 0;
@@ -969,23 +969,23 @@ static ssize_t codec_reg_show(struct device *dev,
 	if (codec->reg_cache_step)
 		step = codec->reg_cache_step;
 
-	count += sprintf(buf, "%s registers\n", codec->name);
+	count = sprintf(buf, "%s registers\n", codec->name);
 	for (i = 0; i < codec->reg_cache_size; i += step) {
-		count += sprintf(buf + count, "%2x: ", i);
-		if (count >= PAGE_SIZE - 1)
-			break;
-
 		if (codec->display_register)
 			count += codec->display_register(codec, buf + count,
 							 PAGE_SIZE - count, i);
-		else
+		else {
+			count += sprintf(buf + count, "%2x: ", i);
+			if (count >= PAGE_SIZE - 1)
+				break;
+
 			count += snprintf(buf + count, PAGE_SIZE - count,
 					  "%4x", codec->read(codec, i));
+			if (count >= PAGE_SIZE - 1)
+				break;
 
-		if (count >= PAGE_SIZE - 1)
-			break;
-
-		count += snprintf(buf + count, PAGE_SIZE - count, "\n");
+			count += snprintf(buf + count, PAGE_SIZE - count, "\n");
+		}
 		if (count >= PAGE_SIZE - 1)
 			break;
 	}
