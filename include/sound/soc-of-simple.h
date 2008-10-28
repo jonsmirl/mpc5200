@@ -22,4 +22,6 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform,
 
 #endif
 
+void of_snd_soc_register_machine(char *name, struct snd_soc_ops *ops);
+
 #endif /* _INCLUDE_SOC_OF_H_ */
