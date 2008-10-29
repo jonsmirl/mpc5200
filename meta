@@ -1,0 +1,26 @@
+Version: 1
+Previous: None
+Head: e81c2a9e9c51e8752687b4aa621a8b36c646765d
+Applied:
+  Makefile: 4dcf12287cc8076a52378bd68a7b660e640161ed
+  anton_1: 467d87fd9f4c4539484163497a42b72749fa2881
+  anton_3: 15397d98144bf9d878f0ca20e997c67bcda1df18
+  add-of_find_i2c_device_by_node: 86a78bc052c1d2c47beeeb768d740ea1a1055fa4
+  jds-psc-i2s-flags: 907d984fe0a49f1f806dda38ee1510cd03f1d100
+  jds_platform: 98b8c38210a4ec2735229b3300ff4ed1225b7163
+  max9485: 2324769eb33c13f18117ab01fde0ac89386794ba
+  jds-soc-machine: da2a1cce36721944c0b50ffe812731cfe28e5b02
+  jds-psc-c: df0b79c52c2ff2e9f7e18b3b8df6dc3bfe8fb21e
+  soc-u32-cleanup: 1f580f9792909b064f2409841c4caa953869123e
+  jds-audio: ffe1197d9d51649cba4606ca69eaa67619842d13
+  g_spi_4: 730fd658289a7c5845ddd8eb7c3a8344a5fe6075
+  m_1: 420ffce8cabf48acfef44c4f32e113353792dce7
+  spi-mmc: 40d2688b75e1595c27cd52b614e935abaa061103
+  mpc5200-rtc: 6bf4d4e6bbaf643435b0eff4034338e3cf562f67
+  lirc: fe24fcf2c2b6f7d569ab5dd2ddb4a0615e1c8da3
+  jds-lirc: 637be2f417ebf46d0e52102dead616358d34f5fe
+  jds-lirc-gpt: 9df0a68254860d19535a58a5689acb83412059c1
+  jds-lirc-device-tree: aec824f0905973f9672bddcf1364a79fb4f75bcb
+  jds-lirc-mce2: e81c2a9e9c51e8752687b4aa621a8b36c646765d
+Unapplied:
+Hidden:

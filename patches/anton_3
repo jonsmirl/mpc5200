@@ -1,0 +1,54 @@
+Bottom: 253ecb733dfbc93e368da30bce7071efc0d9a5b1
+Top:    4a8d769b917e79c09e317afcf61cd6c6156e9acc
+Author: Anton Vorontsov <avorontsov@ru.mvista.com>
+Date:   2008-10-28 17:19:17 -0400
+
+of: fill the archdata for I2C devices
+
+For I2C devices we just setting the the node pointer in the archdata.
+This is needed so that the other code would know device's node.
+
+Signed-off-by: Anton Vorontsov <avorontsov@ru.mvista.com>
+
+
+
+
+
+---
+
+diff --git a/drivers/of/of_i2c.c b/drivers/of/of_i2c.c
+index 24bbef7..e1b0ad6 100644
+--- a/drivers/of/of_i2c.c
++++ b/drivers/of/of_i2c.c
+@@ -24,6 +24,7 @@ void of_register_i2c_devices(struct i2c_adapter *adap,
+ 
+ 	for_each_child_of_node(adap_node, node) {
+ 		struct i2c_board_info info = {};
++		struct dev_archdata dev_ad = {};
+ 		const u32 *addr;
+ 		int len;
+ 
+@@ -41,6 +42,9 @@ void of_register_i2c_devices(struct i2c_adapter *adap,
+ 
+ 		info.addr = *addr;
+ 
++		dev_archdata_set_node(&dev_ad, node);
++		info.archdata = &dev_ad;
++
+ 		request_module("%s", info.type);
+ 
+ 		result = i2c_new_device(adap, &info);
+@@ -51,6 +55,13 @@ void of_register_i2c_devices(struct i2c_adapter *adap,
+ 			irq_dispose_mapping(info.irq);
+ 			continue;
+ 		}
++
++		/*
++		 * Get the node to not lose the dev_archdata->of_node.
++		 * Currently there is no way to put it back, as well as no
++		 * of_unregister_i2c_devices() call.
++		 */
++		of_node_get(node);
+ 	}
+ }
+ EXPORT_SYMBOL(of_register_i2c_devices);
