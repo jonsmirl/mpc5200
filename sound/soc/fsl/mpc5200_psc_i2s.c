@@ -23,7 +23,11 @@
 
 #include <sysdev/bestcomm/bestcomm.h>
 #include <sysdev/bestcomm/gen_bd.h>
+#include <asm/time.h>
+#include <asm/mpc52xx.h>
 #include <asm/mpc52xx_psc.h>
+
+#include "mpc5200_psc_i2s.h"
 
 MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
 MODULE_DESCRIPTION("Freescale MPC5200 PSC in I2S mode ASoC Driver");
@@ -93,6 +97,7 @@ struct psc_i2s {
 	struct snd_soc_dai dai;
 	spinlock_t lock;
 	u32 sicr;
+	uint sysclk;
 
 	/* per-stream data */
 	struct psc_i2s_stream playback;
@@ -224,6 +229,7 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct psc_i2s *psc_i2s = rtd->dai->cpu_dai->private_data;
+	uint bits, framesync, bitclk, value;
 	u32 mode;
 
 	dev_dbg(psc_i2s->dev, "%s(substream=%p) p_size=%i p_bytes=%i"
@@ -235,15 +241,19 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S8:
 		mode = MPC52xx_PSC_SICR_SIM_CODEC_8;
+		bits = 8;
 		break;
 	case SNDRV_PCM_FORMAT_S16_BE:
 		mode = MPC52xx_PSC_SICR_SIM_CODEC_16;
+		bits = 16;
 		break;
 	case SNDRV_PCM_FORMAT_S24_BE:
 		mode = MPC52xx_PSC_SICR_SIM_CODEC_24;
+		bits = 24;
 		break;
 	case SNDRV_PCM_FORMAT_S32_BE:
 		mode = MPC52xx_PSC_SICR_SIM_CODEC_32;
+		bits = 32;
 		break;
 	default:
 		dev_dbg(psc_i2s->dev, "invalid format\n");
@@ -251,7 +261,24 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
 	}
 	out_be32(&psc_i2s->psc_regs->sicr, psc_i2s->sicr | mode);
 
-	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
+	if (psc_i2s->sysclk) {
+		framesync = bits * 2;
+		bitclk = (psc_i2s->sysclk) / (params_rate(params) * framesync);
+		
+		/* bitclk field is byte swapped due to mpc5200/b compatibility */
+		value = ((framesync - 1) << 24) |
+			(((bitclk - 1) & 0xFF) << 16) | ((bitclk - 1) & 0xFF00);
+		
+		dev_dbg(psc_i2s->dev, "%s(substream=%p) rate=%i sysclk=%i"
+			" framesync=%i bitclk=%i reg=%X\n",
+			__FUNCTION__, substream, params_rate(params), psc_i2s->sysclk,
+			framesync, bitclk, value);
+		
+		out_be32(&psc_i2s->psc_regs->ccr, value);
+		out_8(&psc_i2s->psc_regs->ctur, bits - 1);
+	}
+	
+  	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 
 	return 0;
 }
@@ -429,9 +456,29 @@ static int psc_i2s_set_sysclk(struct snd_soc_dai *cpu_dai,
 			      int clk_id, unsigned int freq, int dir)
 {
 	struct psc_i2s *psc_i2s = cpu_dai->private_data;
-	dev_dbg(psc_i2s->dev, "psc_i2s_set_sysclk(cpu_dai=%p, dir=%i)\n",
-				cpu_dai, dir);
-	return (dir == SND_SOC_CLOCK_IN) ? 0 : -EINVAL;
+	int clkdiv, err; 
+	dev_dbg(psc_i2s->dev, "psc_i2s_set_sysclk(cpu_dai=%p, freq=%u, dir=%i)\n",
+				cpu_dai, freq, dir);
+	if (dir == SND_SOC_CLOCK_OUT) {
+		psc_i2s->sysclk = freq;
+		if (clk_id == MPC52xx_CLK_CELLSLAVE) {
+			psc_i2s->sicr |= MPC52xx_PSC_SICR_CELLSLAVE | MPC52xx_PSC_SICR_GENCLK;
+		} else { /* MPC52xx_CLK_INTERNAL */
+			psc_i2s->sicr &= ~MPC52xx_PSC_SICR_CELLSLAVE;
+			psc_i2s->sicr |= MPC52xx_PSC_SICR_GENCLK;
+
+			clkdiv = ppc_proc_freq / freq;
+			err = ppc_proc_freq % freq;
+			if (err > freq / 2)
+				clkdiv++;
+
+			dev_dbg(psc_i2s->dev, "psc_i2s_set_sysclk(clkdiv %d freq error=%ldHz)\n",
+					clkdiv, (ppc_proc_freq / clkdiv - freq));
+				
+			return mpc52xx_set_psc_clkdiv(psc_i2s->dai.id + 1, clkdiv); 
+		}
+	}
+	return 0;
 }
 
 /**
@@ -786,9 +833,6 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	/* Configure the serial interface mode; defaulting to CODEC8 mode */
 	psc_i2s->sicr = MPC52xx_PSC_SICR_DTS1 | MPC52xx_PSC_SICR_I2S |
 			MPC52xx_PSC_SICR_CLKPOL;
-	if (of_get_property(op->node, "fsl,cellslave", NULL))
-		psc_i2s->sicr |= MPC52xx_PSC_SICR_CELLSLAVE |
-				 MPC52xx_PSC_SICR_GENCLK;
 	out_be32(&psc_i2s->psc_regs->sicr,
 		 psc_i2s->sicr | MPC52xx_PSC_SICR_SIM_CODEC_8);
 
