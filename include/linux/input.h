@@ -1440,37 +1440,11 @@ int input_ff_create_memless(struct input_dev *dev, void *data,
 		int (*play_effect)(struct input_dev *, void *, struct ff_effect *));
 
 /**
- * struct ir_device - IR support structures
+ * struct ir_device - IR support functions
  */
-
-struct ir_protocol {
-	unsigned int state, code, good, count, bits, mode;
-};
 
 typedef int (*send_func)(void *private, unsigned int *buffer, unsigned int count,
 		unsigned int frequency, unsigned int xmitters);
-
-struct ir_device {
-	struct ir_protocol sony;
-	struct ir_protocol jvc;
-	struct ir_protocol nec;
-	struct ir_protocol rc5;
-	struct ir_protocol rc6;
-	struct mutex lock;
-	void *private;
-	send_func xmit;
-	struct {
-		unsigned int buffer[200];
-		unsigned int count;
-	} send;
-	struct {
-		int buffer[200];
-		unsigned int head;
-		unsigned int tail;
-		unsigned int carrier;
-		unsigned int xmitter;
-	} raw;
-};
 
 int input_ir_create(struct input_dev *dev, void *private, send_func send);
 void input_ir_destroy(struct input_dev *dev);
