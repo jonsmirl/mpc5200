@@ -1,7 +1,7 @@
-Bottom: 92c8ed29b3ec96649f81304a17decea94e58ffd4
-Top:    1c9ca8901686be20a7b4f919804aedb8312f894a
+Bottom: 7d1c7966a39c78912caddad9193fc4acea8928ee
+Top:    3eec3ac16ac42bbde39280fba1b5660e966be052
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-10-28 17:19:23 -0400
+Date:   2008-10-30 17:28:46 -0400
 
 Changes to core input subsystem to allow send and receive of IR messages. Encode and decode state machines are provided for common IR porotocols such as Sony, JVC, NEC, Philips, etc.
 
@@ -10,6 +10,7 @@ IR messages are sent using an input IOCTL.
 
 Jon Smirl
 <jonsmirl@gmail.com>
+
 
 
 
@@ -1382,10 +1383,10 @@ index b86fb55..edc824b 100644
  #endif
  #endif
 diff --git a/include/linux/mod_devicetable.h b/include/linux/mod_devicetable.h
-index eb71b45..3aefbfe 100644
+index 97b91d1..ea35367 100644
 --- a/include/linux/mod_devicetable.h
 +++ b/include/linux/mod_devicetable.h
-@@ -292,6 +292,7 @@ struct pcmcia_device_id {
+@@ -293,6 +293,7 @@ struct pcmcia_device_id {
  #define INPUT_DEVICE_ID_SND_MAX		0x07
  #define INPUT_DEVICE_ID_FF_MAX		0x7f
  #define INPUT_DEVICE_ID_SW_MAX		0x0f
@@ -1393,7 +1394,7 @@ index eb71b45..3aefbfe 100644
  
  #define INPUT_DEVICE_ID_MATCH_BUS	1
  #define INPUT_DEVICE_ID_MATCH_VENDOR	2
-@@ -307,6 +308,7 @@ struct pcmcia_device_id {
+@@ -308,6 +309,7 @@ struct pcmcia_device_id {
  #define INPUT_DEVICE_ID_MATCH_SNDBIT	0x0400
  #define INPUT_DEVICE_ID_MATCH_FFBIT	0x0800
  #define INPUT_DEVICE_ID_MATCH_SWBIT	0x1000
@@ -1401,7 +1402,7 @@ index eb71b45..3aefbfe 100644
  
  struct input_device_id {
  
-@@ -326,6 +328,7 @@ struct input_device_id {
+@@ -327,6 +329,7 @@ struct input_device_id {
  	kernel_ulong_t sndbit[INPUT_DEVICE_ID_SND_MAX / BITS_PER_LONG + 1];
  	kernel_ulong_t ffbit[INPUT_DEVICE_ID_FF_MAX / BITS_PER_LONG + 1];
  	kernel_ulong_t swbit[INPUT_DEVICE_ID_SW_MAX / BITS_PER_LONG + 1];

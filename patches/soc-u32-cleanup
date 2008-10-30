@@ -1,7 +1,7 @@
-Bottom: b3ae40bdf257f1cfd8893fddd57d841b4701e83a
-Top:    3cb50e17f7ae819a9dacfb7d23ca019d62aebb67
+Bottom: f41488b91df201d228475f6306651b232fb88ef1
+Top:    c21da7cae564d87f508882a3e9f2d2116da84c3d
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-10-28 17:19:21 -0400
+Date:   2008-10-30 17:28:44 -0400
 
 Clean up ASOC functions to support 32b values instead of 16b
 
@@ -23,10 +23,10 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/include/sound/soc.h b/include/sound/soc.h
-index a1e0357..2fb41f3 100644
+index 5e01898..666c167 100644
 --- a/include/sound/soc.h
 +++ b/include/sound/soc.h
-@@ -253,10 +253,10 @@ int snd_soc_set_runtime_hwparams(struct snd_pcm_substream *substream,
+@@ -254,10 +254,10 @@ int snd_soc_set_runtime_hwparams(struct snd_pcm_substream *substream,
  #define snd_soc_write(codec, reg, value) codec->write(codec, reg, value)
  
  /* codec register bit access */
@@ -41,7 +41,7 @@ index a1e0357..2fb41f3 100644
  
  int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
  	struct snd_ac97_bus_ops *ops, int num);
-@@ -421,8 +421,8 @@ struct snd_soc_codec {
+@@ -422,8 +422,8 @@ struct snd_soc_codec {
  	hw_write_t hw_write;
  	hw_read_t hw_read;
  	void *reg_cache;
@@ -52,7 +52,7 @@ index a1e0357..2fb41f3 100644
  
  	/* dapm */
  	struct list_head dapm_widgets;
-@@ -532,11 +532,11 @@ struct soc_mixer_control {
+@@ -533,11 +533,11 @@ struct soc_mixer_control {
  
  /* enumerated kcontrol */
  struct soc_enum {
@@ -70,7 +70,7 @@ index a1e0357..2fb41f3 100644
  	void *dapm;
  };
 diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
-index 462e635..3155b6a 100644
+index a3adbf0..e2c224c 100644
 --- a/sound/soc/soc-core.c
 +++ b/sound/soc/soc-core.c
 @@ -1064,11 +1064,11 @@ EXPORT_SYMBOL_GPL(snd_soc_free_ac97_codec);

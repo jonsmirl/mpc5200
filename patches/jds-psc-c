@@ -1,7 +1,7 @@
-Bottom: ad00da27afd6f9d656e36a316122e9cb40327408
-Top:    b3ae40bdf257f1cfd8893fddd57d841b4701e83a
+Bottom: dcfec3a1589c932c79433934d16e2b9e1131ef03
+Top:    f41488b91df201d228475f6306651b232fb88ef1
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-10-28 17:19:21 -0400
+Date:   2008-10-30 17:28:44 -0400
 
 Support internal I2S clock sources on MPC5200
 
@@ -24,7 +24,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 809c5c4..e120dd1 100644
+index 94a02ea..35a6fb1 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
 @@ -23,8 +23,12 @@
@@ -135,7 +135,7 @@ index 809c5c4..e120dd1 100644
  }
  
  /**
-@@ -784,9 +831,6 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+@@ -786,9 +833,6 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
  	/* Configure the serial interface mode; defaulting to CODEC8 mode */
  	psc_i2s->sicr = MPC52xx_PSC_SICR_DTS1 | MPC52xx_PSC_SICR_I2S |
  			MPC52xx_PSC_SICR_CLKPOL;
