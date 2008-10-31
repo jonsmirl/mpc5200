@@ -1,9 +1,10 @@
-Bottom: 786a15e48da4e0262e2cf470051a2421bfccae69
-Top:    180ef11c427f9a7b30e950ade214c97de6f1d847
+Bottom: a2c34001f934f46ba0ed54eff0ed0a8f5afc12ec
+Top:    09350eec9d9ecd94110925adaa42db1f12e9a543
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-10-30 17:28:45 -0400
+Date:   2008-10-30 23:44:07 -0400
 
 Fix ups to make mmc over spi work
+
 
 
 
