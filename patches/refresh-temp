@@ -1,0 +1,22 @@
+Bottom: 1d63c48f6247b7751477d522d91156e194695414
+Top:    db307b3c1eecd701f4396b079a861400b29fc92f
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2008-10-30 22:50:07 -0400
+
+Refresh of jds-prep-kernel-warning
+
+---
+
+diff --git a/arch/powerpc/boot/main.c b/arch/powerpc/boot/main.c
+index 5afa1d4..a28f021 100644
+--- a/arch/powerpc/boot/main.c
++++ b/arch/powerpc/boot/main.c
+@@ -63,7 +63,7 @@ static struct addr_range prep_kernel(void)
+ 		 */
+ 		if ((unsigned long)_start < ei.loadsize)
+ 			fatal("Insufficient memory for kernel at address 0!"
+-			       " (_start=%p, uncomressed size=%08lx)\n\r",
++			       " (_start=%p, uncompressed size=%08lx)\n\r",
+ 			       _start, ei.loadsize);
+ 
+ 		if ((unsigned long)_end < ei.memsize)
