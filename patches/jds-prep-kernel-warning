@@ -1,5 +1,5 @@
 Bottom: aca265b1338e692413d81b29d0b3c902b0fd3ec8
-Top:    aca265b1338e692413d81b29d0b3c902b0fd3ec8
+Top:    1d63c48f6247b7751477d522d91156e194695414
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-10-30 22:28:21 -0400
 
@@ -17,4 +17,16 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
 ---
 
-
+diff --git a/arch/powerpc/boot/main.c b/arch/powerpc/boot/main.c
+index ae32801..5afa1d4 100644
+--- a/arch/powerpc/boot/main.c
++++ b/arch/powerpc/boot/main.c
+@@ -63,7 +63,7 @@ static struct addr_range prep_kernel(void)
+ 		 */
+ 		if ((unsigned long)_start < ei.loadsize)
+ 			fatal("Insufficient memory for kernel at address 0!"
+-			       " (_start=%p, uncomressed size=%08x)\n\r",
++			       " (_start=%p, uncomressed size=%08lx)\n\r",
+ 			       _start, ei.loadsize);
+ 
+ 		if ((unsigned long)_end < ei.memsize)
