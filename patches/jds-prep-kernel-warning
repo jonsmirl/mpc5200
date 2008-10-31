@@ -3,7 +3,9 @@ Top:    aca265b1338e692413d81b29d0b3c902b0fd3ec8
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-10-30 22:28:21 -0400
 
-Fix the format string to get rid of this warning
+Fix format string warning in arch/powerpc/boot/main.c
+
+Fix format string warning in arch/powerpc/boot/main.c
 
  BOOTCC  arch/powerpc/boot/main.o
 arch/powerpc/boot/main.c: In function 'prep_kernel':
