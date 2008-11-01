@@ -10,40 +10,31 @@
 
 #include "ir.h"
 
-struct mapping {
-	struct config_item item;
-	int protocol;
-	int device;
-	int command;
+/* each 'struct item' represents a file in the configfs directory */
+/* the four files are protocol, device, command, keycode */
+struct item {
+	struct config_item citem;
+	int value;
 };
 
-static inline struct mapping *to_mapping(struct config_item *item)
+static inline struct item *to_item(struct config_item *citem)
 {
-	return item ? container_of(item, struct mapping, item) : NULL;
+	return citem ? container_of(citem, struct item, citem) : NULL;
 }
 
-static void mapping_release(struct config_item *item)
-{
-	kfree(to_mapping(item));
-}
-
-static ssize_t mapping_attr_show(struct config_item *item,
+static ssize_t item_show(struct config_item *citem,
 				      struct configfs_attribute *attr,
 				      char *page)
 {
-	ssize_t count;
-	struct mapping *mapping = to_mapping(item);
-
-	count = sprintf(page, "%d\n", mapping->protocol);
-
-	return count;
+	struct item *item = to_item(citem);
+	return sprintf(page, "%d\n", item->value);
 }
 
-static ssize_t mapping_attr_store(struct config_item *item,
+static ssize_t item_store(struct config_item *citem,
 				       struct configfs_attribute *attr,
 				       const char *page, size_t count)
 {
-	struct mapping *mapping = to_mapping(item);
+	struct item *item = to_item(citem);
 	unsigned long tmp;
 	char *p = (char *) page;
 
@@ -54,65 +45,101 @@ static ssize_t mapping_attr_store(struct config_item *item,
 	if (tmp > INT_MAX)
 		return -ERANGE;
 
-	mapping->protocol = tmp;
-
+	item->value = tmp;
 	return count;
 }
 
-static struct configfs_item_operations mapping_item_ops = {
-	.release		= mapping_release,
-	.show_attribute		= mapping_attr_show,
-	.store_attribute	= mapping_attr_store,
+static struct configfs_item_operations item_ops = {
+	.show_attribute = item_show,
+	.store_attribute = item_store,
 };
 
-static struct configfs_attribute mapping_attr_protocol = {
+static struct configfs_attribute item_protocol = {
 	.ca_owner = THIS_MODULE,
 	.ca_name = "protocol",
 	.ca_mode = S_IRUGO | S_IWUSR,
 };
 
+static struct configfs_attribute item_device = {
+	.ca_owner = THIS_MODULE,
+	.ca_name = "device",
+	.ca_mode = S_IRUGO | S_IWUSR,
+};
+
+static struct configfs_attribute item_command = {
+	.ca_owner = THIS_MODULE,
+	.ca_name = "command",
+	.ca_mode = S_IRUGO | S_IWUSR,
+};
+
+static struct configfs_attribute item_keycode = {
+	.ca_owner = THIS_MODULE,
+	.ca_name = "keycode",
+	.ca_mode = S_IRUGO | S_IWUSR,
+};
+
+
+/* Start the definition of the all of the attributes
+ * in a single mapping directory
+ */
 static struct configfs_attribute *mapping_attrs[] = {
-	&mapping_attr_protocol,
+	&item_protocol,
+	&item_device,
+	&item_command,
+	&item_keycode,
 	NULL,
 };
 
 static struct config_item_type mapping_type = {
-	.ct_item_ops	= &mapping_item_ops,
+	.ct_item_ops = &item_ops,
 	.ct_attrs	= mapping_attrs,
 	.ct_owner	= THIS_MODULE,
 };
 
-struct remote_map {
+/* named directory containing the four attribute files that constitute a mapping */
+struct mapping_dir {
 	struct config_group group;
+	struct item protocol;
+	struct item device;
+	struct item command;
+	struct item keycode;
 };
 
-static inline struct remote_map *to_remote_map(struct config_item *item)
+static inline struct mapping_dir *to_mapping_dir(struct config_group *group)
 {
-	return item ? container_of(to_config_group(item), struct remote_map, group) : NULL;
+	return group ? container_of(group, struct mapping_dir, group) : NULL;
 }
 
-static struct config_item *remote_map_make_item(struct config_group *group, const char *name)
+static struct config_item *mapping_make_item(struct config_group *group, const char *name)
 {
-	struct mapping *mapping;
+	struct mapping_dir *mapping = to_mapping_dir(group);
+	struct item *item;
 
-	mapping = kzalloc(sizeof(struct mapping), GFP_KERNEL);
-	if (!mapping)
-		return ERR_PTR(-ENOMEM);
+	if (strcmp(name, item_protocol.ca_name) == 0)
+		item = &mapping->protocol;
+	else if (strcmp(name, item_device.ca_name) == 0)
+		item = &mapping->device;
+	else if (strcmp(name, item_command.ca_name) == 0)
+		item = &mapping->command;
+	else if (strcmp(name, item_keycode.ca_name) == 0)
+		item = &mapping->keycode;
+	else {
+		printk("No match %s\n", name);
+		return ERR_PTR(-EINVAL);
+	}
 
-	config_item_init_type_name(&mapping->item, name,
-				   &mapping_type);
+	config_item_init_type_name(&item->citem, name, &mapping_type);
+	item->value = 0;
 
-	mapping->protocol = 0;
-
-	return &mapping->item;
+	return &item->citem;
 }
 
-static void remote_map_release(struct config_item *item)
+static void mapping_release(struct config_item *item)
 {
-	kfree(to_remote_map(item));
+	kfree(to_mapping_dir(to_config_group(item)));
 }
 
-static ssize_t remote_map_attr_show(struct config_item *item,
+static ssize_t mapping_description_show(struct config_item *item,
 					 struct configfs_attribute *attr,
 					 char *page)
 {
@@ -123,48 +150,48 @@ static ssize_t remote_map_attr_show(struct config_item *item,
 "Remote signals matching this map will be translated into keyboard/mouse events\n");
 }
 
-static struct configfs_item_operations remote_map_item_ops = {
-	.release	= remote_map_release,
-	.show_attribute	= remote_map_attr_show,
+static struct configfs_item_operations remote_item_ops = {
+	.release	= mapping_release,
+	.show_attribute	= mapping_description_show,
 };
 
 /*
  * Note that, since no extra work is required on ->drop_item(),
  * no ->drop_item() is provided.
  */
-static struct configfs_group_operations remote_map_group_ops = {
-	.make_item	= remote_map_make_item,
+static struct configfs_group_operations remote_group_ops = {
+	.make_item	= mapping_make_item,
 };
 
-static struct configfs_attribute remote_map_attr_description = {
+static struct configfs_attribute remote_attr_description = {
 	.ca_owner = THIS_MODULE,
 	.ca_name = "description",
 	.ca_mode = S_IRUGO,
 };
 
-static struct configfs_attribute *remote_map_attrs[] = {
-	&remote_map_attr_description,
+static struct configfs_attribute *remote_attrs[] = {
+	&remote_attr_description,
 	NULL,
 };
 
-static struct config_item_type remote_map_type = {
-	.ct_item_ops	= &remote_map_item_ops,
-	.ct_group_ops	= &remote_map_group_ops,
-	.ct_attrs	= remote_map_attrs,
+static struct config_item_type remote_type = {
+	.ct_item_ops	= &remote_item_ops,
+	.ct_group_ops	= &remote_group_ops,
+	.ct_attrs	= remote_attrs,
 	.ct_owner	= THIS_MODULE,
 };
 
 static struct config_group *remotes_make_group(struct config_group *group, const char *name)
 {
-	struct remote_map *remote_map;
+	struct mapping_dir *mapping;
 
-	remote_map = kzalloc(sizeof(*remote_map), GFP_KERNEL);
-	if (!remote_map)
+	mapping = kzalloc(sizeof(*mapping), GFP_KERNEL);
+	if (!mapping)
 		return ERR_PTR(-ENOMEM);
 
-	config_group_init_type_name(&remote_map->group, name, &remote_map_type);
+	config_group_init_type_name(&mapping->group, name, &remote_type);
 
-	return &remote_map->group;
+	return &mapping->group;
 }
 
 static struct configfs_attribute remotes_attr_description = {
@@ -211,7 +238,7 @@ static struct config_item_type remotes_type = {
 struct configfs_subsystem remotes = {
 	.su_group = {
 		.cg_item = {
-			.ci_namebuf = "IR-remotes",
+			.ci_namebuf = "remotes",
 			.ci_type = &remotes_type,
 		},
 	},
