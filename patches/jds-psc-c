@@ -1,7 +1,7 @@
-Bottom: 30b6c7fc6def8f70202ce45480d97dc7adfd6852
-Top:    16bee6fd2fe66413de868c1aef6248731fd10f87
+Bottom: 3f4e6b83cc9e8b3bb3213c980918ab52f827e907
+Top:    1271512941bf5e7277796d2d4777a1a9312bf139
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-10-30 23:44:06 -0400
+Date:   2008-11-01 00:45:25 -0400
 
 Support internal I2S clock sources on MPC5200
 

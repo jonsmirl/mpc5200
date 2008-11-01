@@ -1,7 +1,7 @@
-Bottom: c9fdf1127d5f94660a2169aed571f2ee8be6a50f
-Top:    7357d841e94554055dc7ec220c51f5e04686d825
+Bottom: b1ce5aefec0b802bfb86e6ca2c3025cf668c0ddf
+Top:    b1ce5aefec0b802bfb86e6ca2c3025cf668c0ddf
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-10-30 23:44:09 -0400
+Date:   2008-11-01 00:45:27 -0400
 
 Fix format string warning in arch/powerpc/boot/main.c
 
@@ -16,18 +16,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
 
 
+
 ---
 
-diff --git a/arch/powerpc/boot/main.c b/arch/powerpc/boot/main.c
-index ae32801..a28f021 100644
---- a/arch/powerpc/boot/main.c
-+++ b/arch/powerpc/boot/main.c
-@@ -63,7 +63,7 @@ static struct addr_range prep_kernel(void)
- 		 */
- 		if ((unsigned long)_start < ei.loadsize)
- 			fatal("Insufficient memory for kernel at address 0!"
--			       " (_start=%p, uncomressed size=%08x)\n\r",
-+			       " (_start=%p, uncompressed size=%08lx)\n\r",
- 			       _start, ei.loadsize);
- 
- 		if ((unsigned long)_end < ei.memsize)
+
