@@ -1410,7 +1410,7 @@ static int __devexit mmc_spi_remove(struct spi_device *spi)
 
 static struct spi_driver mmc_spi_driver = {
 	.driver = {
-		.name =		"mmc_spi",
+		.name =		"mmc-spi",
 		.bus =		&spi_bus_type,
 		.owner =	THIS_MODULE,
 	},
