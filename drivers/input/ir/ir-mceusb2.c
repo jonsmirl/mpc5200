@@ -681,6 +681,8 @@ static void usb_remote_disconnect(struct usb_interface *intf)
 		return;
 
 	ir->usbdev = NULL;
+	input_ir_destroy(ir->input);
+	input_free_device(ir->input);
 
 	usb_kill_urb(ir->urb_in);
 	usb_free_urb(ir->urb_in);
