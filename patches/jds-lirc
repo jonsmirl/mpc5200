@@ -1,5 +1,5 @@
 Bottom: 8b7e9273e4fba2971f420cfb34309745d5293beb
-Top:    8ce5cd9a0fcb756fef44f6b22a8522039aa797e6
+Top:    0c026fbb7fd7f328ac9b9acac9a41098c5681bbf
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-01 20:19:42 -0400
 
@@ -243,10 +243,10 @@ index c13ced3..18f36d7 100644
  		dev->name ? dev->name : "Unspecified device", path ? path : "N/A");
 diff --git a/drivers/input/ir-configfs.c b/drivers/input/ir-configfs.c
 new file mode 100644
-index 0000000..9b7f784
+index 0000000..4b32f2b
 --- /dev/null
 +++ b/drivers/input/ir-configfs.c
-@@ -0,0 +1,257 @@
+@@ -0,0 +1,289 @@
 +/*
 + * Configfs routines for IR support
 + *
@@ -434,26 +434,58 @@ index 0000000..9b7f784
 +	.ct_owner	= THIS_MODULE,
 +};
 +
++struct remote {
++	struct config_group group;
++	struct input_dev *input;
++};
++
++static inline struct remote *to_remote(struct config_group *group)
++{
++	return group ? container_of(group, struct remote, group) : NULL;
++}
 +
 +/* Top level remotes directory for all remotes */
 +
 +/* Create a new remote group */
-+static struct config_group *remote_make(struct config_group *parent, const char *name)
++static struct config_group *make_remote(struct config_group *parent, const char *name)
 +{
-+	struct config_group *remote;
++	struct remote *remote;
++	int ret;
 +
 +	remote = kzalloc(sizeof(*remote), GFP_KERNEL);
 +	if (!remote)
 +		return ERR_PTR(-ENOMEM);
 +
-+	config_group_init_type_name(remote, name, &remote_type);
++	remote->input = input_allocate_device();
++	if (!remote->input) {
++		ret = -ENOMEM;
++		goto free_mem;
++	}
++	remote->input->id.bustype = BUS_VIRTUAL;
++	remote->input->name = name;
++	remote->input->phys = "remotes";
 +
-+	return remote;
++	ret = input_register_device(remote->input);
++	if (ret)
++		goto free_input;
++
++	config_group_init_type_name(&remote->group, name, &remote_type);
++	return &remote->group;
++
++ free_input:
++	input_free_device(remote->input);
++ free_mem:
++	kfree(remote);
++	return ERR_PTR(ret);
 +}
 +
-+static void remote_release(struct config_item *remote)
++static void remote_release(struct config_item *item)
 +{
-+	kfree(to_config_group(remote));
++	struct config_group *group = to_config_group(item);
++	struct remote *remote  = to_remote(group);
++
++	input_free_device(remote->input);
++	kfree(remote);
 +}
 +
 +static ssize_t remotes_show_description(struct config_item *item,
@@ -486,7 +518,7 @@ index 0000000..9b7f784
 + * no ->drop_item() is provided.
 + */
 +static struct configfs_group_operations remotes_group_ops = {
-+	.make_group	= remote_make,
++	.make_group	= make_remote,
 +};
 +
 +static struct config_item_type remotes_type = {
