@@ -60,6 +60,7 @@ static int decode_sony(struct input_dev *dev, struct ir_protocol *sony, unsigned
 	/* http://www.sbprojects.com/knowledge/ir/sirc.htm */
 	/* based on a 600us cadence */
 	int ret = 0, delta = d;
+	int protocol, device, command;
 
 	delta = (delta + 300) / 600;
 
@@ -68,18 +69,17 @@ static int decode_sony(struct input_dev *dev, struct ir_protocol *sony, unsigned
 		if ((sony->state == 26) || (sony->state == 32) || (sony->state == 42)) {
 			if (sony->good && (sony->good == sony->code)) {
 
-				input_report_ir(dev, IR_PROTOCOL, (sony->state == 26) ? IR_PROTOCOL_SONY_12 :
-						(sony->state == 32) ? IR_PROTOCOL_SONY_15 : IR_PROTOCOL_SONY_20);
+				protocol = (sony->state == 26) ? IR_PROTOCOL_SONY_12 :
+					(sony->state == 32) ? IR_PROTOCOL_SONY_15 : IR_PROTOCOL_SONY_20;
 
 				if (sony->state == 26) {
-					input_report_ir(dev, IR_DEVICE, sony->code & 0x1F);
-					input_report_ir(dev, IR_COMMAND, sony->code >> 5);
+					device = sony->code & 0x1F;
+					command = sony->code >> 5;
 				} else {
-					input_report_ir(dev, IR_DEVICE, sony->code & 0xFF);
-					input_report_ir(dev, IR_COMMAND, sony->code >> 8);
+					device = sony->code & 0xFF;
+					command = sony->code >> 8;
 				}
-				input_sync(dev);
-
+				ir_translate(dev, protocol, device, command);
 				sony->good = 0;
 				ret = 1;
 			} else {
@@ -188,10 +188,7 @@ static int decode_jvc(struct input_dev *dev, struct ir_protocol *jvc, unsigned i
 		if (jvc->state == 34) {
 			jvc->state = 3;
 			if (jvc->good && (jvc->good == jvc->code)) {
-				input_report_ir(dev, IR_PROTOCOL, IR_PROTOCOL_JVC);
-				input_report_ir(dev, IR_DEVICE, jvc->code >> 8);
-				input_report_ir(dev, IR_COMMAND, jvc->code & 0xFF);
-				input_sync(dev);
+				ir_translate(dev, IR_PROTOCOL_JVC, jvc->code >> 8, jvc->code & 0xFF);
 				jvc->good = 0;
 				ret = 1;
 			} else {
@@ -269,10 +266,7 @@ static int decode_nec(struct input_dev *dev, struct ir_protocol *nec, unsigned i
 		nec->state++;
 		PDEBUG("nec state %d\n", nec-> state);
 		if (nec->state == 68) {
-			input_report_ir(dev, IR_PROTOCOL, IR_PROTOCOL_NEC);
-			input_report_ir(dev, IR_DEVICE, nec->code >> 16);
-			input_report_ir(dev, IR_COMMAND, nec->code & 0xFFFF);
-			input_sync(dev);
+			ir_translate(dev, IR_PROTOCOL_NEC, nec->code >> 16, nec->code & 0xFFFF);
 			return 1;
 		}
 		return 0;
@@ -372,10 +366,7 @@ static void decode_rc6_bit(struct input_dev *dev, struct ir_protocol *rc6, unsig
 		}
 		rc6->count = 0;
 		if (rc6->state == 23) {
-			input_report_ir(dev, IR_PROTOCOL, IR_PROTOCOL_PHILIPS_RC6);
-			input_report_ir(dev, IR_DEVICE, rc6->code >> 8);
-			input_report_ir(dev, IR_COMMAND, rc6->code & 0xFF);
-			input_sync(dev);
+			ir_translate(dev, IR_PROTOCOL_PHILIPS_RC6, rc6->code >> 8, rc6->code & 0xFF);
 			rc6->state = 0;
 		} else
 			rc6->state++;
@@ -545,14 +536,6 @@ static ssize_t ir_debug_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
 	struct ir_device *ir = to_input_dev(dev)->ir;
-	struct config_item *i;
-
-    mutex_lock(&remotes.su_mutex);
-
-    list_for_each_entry(i, &remotes.su_group.cg_children, ci_entry) {
-    	printk("item %s\n", i->ci_name);
-    }
-    mutex_unlock(&remotes.su_mutex);
 
 	return sprintf(buf, "%i\n", ir->raw.xmitter);
 }

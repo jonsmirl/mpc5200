@@ -966,6 +966,7 @@ struct ff_effect {
  * IR Support
  */
 
+#define IR_PROTOCOL_RESERVED 0
 #define IR_PROTOCOL_JVC 1
 #define IR_PROTOCOL_NEC 2
 #define IR_PROTOCOL_NOKIA 3

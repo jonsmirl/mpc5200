@@ -287,3 +287,20 @@ struct configfs_subsystem remotes = {
 		},
 	},
 };
+
+void ir_translate(struct input_dev *dev, int protocol, int device, int command)
+{
+	struct config_item *i;
+
+	input_report_ir(dev, IR_PROTOCOL, protocol);
+	input_report_ir(dev, IR_DEVICE, device);
+	input_report_ir(dev, IR_COMMAND, command);
+	input_sync(dev);
+
+    mutex_lock(&remotes.su_mutex);
+
+    list_for_each_entry(i, &remotes.su_group.cg_children, ci_entry) {
+    	printk("item %s\n", i->ci_name);
+    }
+    mutex_unlock(&remotes.su_mutex);
+}
