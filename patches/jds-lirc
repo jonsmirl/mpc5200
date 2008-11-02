@@ -1,5 +1,5 @@
 Bottom: 8b7e9273e4fba2971f420cfb34309745d5293beb
-Top:    11a91c0a874654d25bfdfc2dad62b07b838fecc5
+Top:    e7c4c00a49c80eb71a02dd073260776778fc88d4
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-01 20:19:42 -0400
 
@@ -243,10 +243,10 @@ index c13ced3..18f36d7 100644
  		dev->name ? dev->name : "Unspecified device", path ? path : "N/A");
 diff --git a/drivers/input/ir-configfs.c b/drivers/input/ir-configfs.c
 new file mode 100644
-index 0000000..efbbfa3
+index 0000000..ac0326d
 --- /dev/null
 +++ b/drivers/input/ir-configfs.c
-@@ -0,0 +1,306 @@
+@@ -0,0 +1,332 @@
 +/*
 + * Configfs routines for IR support
 + *
@@ -287,6 +287,17 @@ index 0000000..efbbfa3
 +{
 +	return item ? container_of(item, struct keymap, item) : NULL;
 +}
++
++struct remote {
++	struct config_group group;
++	struct input_dev *input;
++};
++
++static inline struct remote *to_remote(struct config_group *group)
++{
++	return group ? container_of(group, struct remote, group) : NULL;
++}
++
 +
 +static struct configfs_attribute item_protocol = {
 +	.ca_owner = THIS_MODULE,
@@ -332,6 +343,7 @@ index 0000000..efbbfa3
 +				       const char *page, size_t count)
 +{
 +	struct keymap *keymap = to_keymap(item);
++	struct remote *remote;
 +	unsigned long tmp;
 +	char *p = (char *) page;
 +
@@ -348,15 +360,22 @@ index 0000000..efbbfa3
 +		keymap->device = tmp;
 +	else if (attr == &item_command)
 +		keymap->command = tmp;
-+	else
-+		keymap->keycode = tmp;
-+
++	else {
++		if (tmp < KEY_MAX) {
++			remote = to_remote(to_config_group(item->ci_parent));
++			set_bit(tmp, remote->input->keybit);
++			keymap->keycode = tmp;
++		}
++	}
 +	return count;
 +}
 +
 +static void keymap_release(struct config_item *item)
 +{
-+	kfree(to_keymap(item));
++	struct keymap *keymap = to_keymap(item);
++	struct remote *remote = to_remote(to_config_group(item->ci_parent));
++	clear_bit(keymap->keycode, remote->input->keybit);
++	kfree(keymap);
 +}
 +
 +static struct configfs_item_operations keymap_ops = {
@@ -434,16 +453,6 @@ index 0000000..efbbfa3
 +	.ct_owner	= THIS_MODULE,
 +};
 +
-+struct remote {
-+	struct config_group group;
-+	struct input_dev *input;
-+};
-+
-+static inline struct remote *to_remote(struct config_group *group)
-+{
-+	return group ? container_of(group, struct remote, group) : NULL;
-+}
-+
 +/* Top level remotes directory for all remotes */
 +
 +/* Create a new remote group */
@@ -464,6 +473,8 @@ index 0000000..efbbfa3
 +	remote->input->id.bustype = BUS_VIRTUAL;
 +	remote->input->name = name;
 +	remote->input->phys = "remotes";
++
++	remote->input->evbit[0] = BIT_MASK(EV_KEY);
 +
 +	ret = input_register_device(remote->input);
 +	if (ret)
@@ -537,10 +548,15 @@ index 0000000..efbbfa3
 +	},
 +};
 +
-+void ir_translate(struct input_dev *dev, int protocol, int device, int command)
++void ir_report(struct input_dev *dev, int protocol, int device, int command)
 +{
-+	struct config_item *i;
++	struct config_item *i, *j;
++	struct config_group *g;
++	struct remote *remote;
++	struct keymap *keymap;
 +
++	printk("ir_report\n");
++	/* generate the IR format event */
 +	input_report_ir(dev, IR_PROTOCOL, protocol);
 +	input_report_ir(dev, IR_DEVICE, device);
 +	input_report_ir(dev, IR_COMMAND, command);
@@ -548,14 +564,24 @@ index 0000000..efbbfa3
 +
 +    mutex_lock(&remotes.su_mutex);
 +
++    /* search the translation maps to translate into key stroke */
 +    list_for_each_entry(i, &remotes.su_group.cg_children, ci_entry) {
-+    	printk("item %s\n", i->ci_name);
++    	g = to_config_group(i);
++        list_for_each_entry(j, &g->cg_children, ci_entry) {
++        	keymap = to_keymap(j);
++        	if ((keymap->protocol == protocol) && (keymap->device == device)
++        			&& (keymap->command == command)) {
++				remote = to_remote(g);
++				input_report_key(remote->input, keymap->keycode, 1);
++				input_sync(remote->input);
++        	}
++        }
 +    }
 +    mutex_unlock(&remotes.su_mutex);
 +}
 diff --git a/drivers/input/ir-core.c b/drivers/input/ir-core.c
 new file mode 100644
-index 0000000..b8c60ad
+index 0000000..21f18c4
 --- /dev/null
 +++ b/drivers/input/ir-core.c
 @@ -0,0 +1,680 @@
@@ -640,7 +666,7 @@ index 0000000..b8c60ad
 +					device = sony->code & 0xFF;
 +					command = sony->code >> 8;
 +				}
-+				ir_translate(dev, protocol, device, command);
++				ir_report(dev, protocol, device, command);
 +				sony->good = 0;
 +				ret = 1;
 +			} else {
@@ -749,7 +775,7 @@ index 0000000..b8c60ad
 +		if (jvc->state == 34) {
 +			jvc->state = 3;
 +			if (jvc->good && (jvc->good == jvc->code)) {
-+				ir_translate(dev, IR_PROTOCOL_JVC, jvc->code >> 8, jvc->code & 0xFF);
++				ir_report(dev, IR_PROTOCOL_JVC, jvc->code >> 8, jvc->code & 0xFF);
 +				jvc->good = 0;
 +				ret = 1;
 +			} else {
@@ -827,7 +853,7 @@ index 0000000..b8c60ad
 +		nec->state++;
 +		PDEBUG("nec state %d\n", nec-> state);
 +		if (nec->state == 68) {
-+			ir_translate(dev, IR_PROTOCOL_NEC, nec->code >> 16, nec->code & 0xFFFF);
++			ir_report(dev, IR_PROTOCOL_NEC, nec->code >> 16, nec->code & 0xFFFF);
 +			return 1;
 +		}
 +		return 0;
@@ -927,7 +953,7 @@ index 0000000..b8c60ad
 +		}
 +		rc6->count = 0;
 +		if (rc6->state == 23) {
-+			ir_translate(dev, IR_PROTOCOL_PHILIPS_RC6, rc6->code >> 8, rc6->code & 0xFF);
++			ir_report(dev, IR_PROTOCOL_PHILIPS_RC6, rc6->code >> 8, rc6->code & 0xFF);
 +			rc6->state = 0;
 +		} else
 +			rc6->state++;
@@ -1241,7 +1267,7 @@ index 0000000..b8c60ad
 +
 diff --git a/drivers/input/ir.h b/drivers/input/ir.h
 new file mode 100644
-index 0000000..8122366
+index 0000000..24a3abb
 --- /dev/null
 +++ b/drivers/input/ir.h
 @@ -0,0 +1,47 @@
@@ -1289,7 +1315,7 @@ index 0000000..8122366
 +};
 +
 +extern struct configfs_subsystem remotes;
-+extern void ir_translate(struct input_dev *dev, int protocol, int device, int command);
++extern void ir_report(struct input_dev *dev, int protocol, int device, int command);
 +
 +
 diff --git a/drivers/input/ir/Kconfig b/drivers/input/ir/Kconfig
