@@ -42,6 +42,6 @@ struct ir_device {
 };
 
 extern struct configfs_subsystem remotes;
-extern void ir_translate(struct input_dev *dev, int protocol, int device, int command);
+extern void ir_report(struct input_dev *dev, int protocol, int device, int command);
 
 

@@ -79,7 +79,7 @@ static int decode_sony(struct input_dev *dev, struct ir_protocol *sony, unsigned
 					device = sony->code & 0xFF;
 					command = sony->code >> 8;
 				}
-				ir_translate(dev, protocol, device, command);
+				ir_report(dev, protocol, device, command);
 				sony->good = 0;
 				ret = 1;
 			} else {
@@ -188,7 +188,7 @@ static int decode_jvc(struct input_dev *dev, struct ir_protocol *jvc, unsigned i
 		if (jvc->state == 34) {
 			jvc->state = 3;
 			if (jvc->good && (jvc->good == jvc->code)) {
-				ir_translate(dev, IR_PROTOCOL_JVC, jvc->code >> 8, jvc->code & 0xFF);
+				ir_report(dev, IR_PROTOCOL_JVC, jvc->code >> 8, jvc->code & 0xFF);
 				jvc->good = 0;
 				ret = 1;
 			} else {
@@ -266,7 +266,7 @@ static int decode_nec(struct input_dev *dev, struct ir_protocol *nec, unsigned i
 		nec->state++;
 		PDEBUG("nec state %d\n", nec-> state);
 		if (nec->state == 68) {
-			ir_translate(dev, IR_PROTOCOL_NEC, nec->code >> 16, nec->code & 0xFFFF);
+			ir_report(dev, IR_PROTOCOL_NEC, nec->code >> 16, nec->code & 0xFFFF);
 			return 1;
 		}
 		return 0;
@@ -366,7 +366,7 @@ static void decode_rc6_bit(struct input_dev *dev, struct ir_protocol *rc6, unsig
 		}
 		rc6->count = 0;
 		if (rc6->state == 23) {
-			ir_translate(dev, IR_PROTOCOL_PHILIPS_RC6, rc6->code >> 8, rc6->code & 0xFF);
+			ir_report(dev, IR_PROTOCOL_PHILIPS_RC6, rc6->code >> 8, rc6->code & 0xFF);
 			rc6->state = 0;
 		} else
 			rc6->state++;

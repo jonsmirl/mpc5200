@@ -39,6 +39,17 @@ static inline struct keymap *to_keymap(struct config_item *item)
 	return item ? container_of(item, struct keymap, item) : NULL;
 }
 
+struct remote {
+	struct config_group group;
+	struct input_dev *input;
+};
+
+static inline struct remote *to_remote(struct config_group *group)
+{
+	return group ? container_of(group, struct remote, group) : NULL;
+}
+
+
 static struct configfs_attribute item_protocol = {
 	.ca_owner = THIS_MODULE,
 	.ca_name = "protocol",
@@ -83,6 +94,7 @@ static ssize_t item_store(struct config_item *item,
 				       const char *page, size_t count)
 {
 	struct keymap *keymap = to_keymap(item);
+	struct remote *remote;
 	unsigned long tmp;
 	char *p = (char *) page;
 
@@ -99,15 +111,22 @@ static ssize_t item_store(struct config_item *item,
 		keymap->device = tmp;
 	else if (attr == &item_command)
 		keymap->command = tmp;
-	else
-		keymap->keycode = tmp;
-
+	else {
+		if (tmp < KEY_MAX) {
+			remote = to_remote(to_config_group(item->ci_parent));
+			set_bit(tmp, remote->input->keybit);
+			keymap->keycode = tmp;
+		}
+	}
 	return count;
 }
 
 static void keymap_release(struct config_item *item)
 {
-	kfree(to_keymap(item));
+	struct keymap *keymap = to_keymap(item);
+	struct remote *remote = to_remote(to_config_group(item->ci_parent));
+	clear_bit(keymap->keycode, remote->input->keybit);
+	kfree(keymap);
 }
 
 static struct configfs_item_operations keymap_ops = {
@@ -185,16 +204,6 @@ static struct config_item_type remote_type = {
 	.ct_owner	= THIS_MODULE,
 };
 
-struct remote {
-	struct config_group group;
-	struct input_dev *input;
-};
-
-static inline struct remote *to_remote(struct config_group *group)
-{
-	return group ? container_of(group, struct remote, group) : NULL;
-}
-
 /* Top level remotes directory for all remotes */
 
 /* Create a new remote group */
@@ -215,6 +224,8 @@ static struct config_group *make_remote(struct config_group *parent, const char 
 	remote->input->id.bustype = BUS_VIRTUAL;
 	remote->input->name = name;
 	remote->input->phys = "remotes";
+
+	remote->input->evbit[0] = BIT_MASK(EV_KEY);
 
 	ret = input_register_device(remote->input);
 	if (ret)
@@ -288,10 +299,15 @@ struct configfs_subsystem remotes = {
 	},
 };
 
-void ir_translate(struct input_dev *dev, int protocol, int device, int command)
+void ir_report(struct input_dev *dev, int protocol, int device, int command)
 {
-	struct config_item *i;
+	struct config_item *i, *j;
+	struct config_group *g;
+	struct remote *remote;
+	struct keymap *keymap;
 
+	printk("ir_report\n");
+	/* generate the IR format event */
 	input_report_ir(dev, IR_PROTOCOL, protocol);
 	input_report_ir(dev, IR_DEVICE, device);
 	input_report_ir(dev, IR_COMMAND, command);
@@ -299,8 +315,18 @@ void ir_translate(struct input_dev *dev, int protocol, int device, int command)
 
     mutex_lock(&remotes.su_mutex);
 
+    /* search the translation maps to translate into key stroke */
     list_for_each_entry(i, &remotes.su_group.cg_children, ci_entry) {
-    	printk("item %s\n", i->ci_name);
+    	g = to_config_group(i);
+        list_for_each_entry(j, &g->cg_children, ci_entry) {
+        	keymap = to_keymap(j);
+        	if ((keymap->protocol == protocol) && (keymap->device == device)
+        			&& (keymap->command == command)) {
+				remote = to_remote(g);
+				input_report_key(remote->input, keymap->keycode, 1);
+				input_sync(remote->input);
+        	}
+        }
     }
     mutex_unlock(&remotes.su_mutex);
 }
