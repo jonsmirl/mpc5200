@@ -1,5 +1,5 @@
 Bottom: 8b7e9273e4fba2971f420cfb34309745d5293beb
-Top:    0c026fbb7fd7f328ac9b9acac9a41098c5681bbf
+Top:    11a91c0a874654d25bfdfc2dad62b07b838fecc5
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-01 20:19:42 -0400
 
@@ -243,10 +243,10 @@ index c13ced3..18f36d7 100644
  		dev->name ? dev->name : "Unspecified device", path ? path : "N/A");
 diff --git a/drivers/input/ir-configfs.c b/drivers/input/ir-configfs.c
 new file mode 100644
-index 0000000..4b32f2b
+index 0000000..efbbfa3
 --- /dev/null
 +++ b/drivers/input/ir-configfs.c
-@@ -0,0 +1,289 @@
+@@ -0,0 +1,306 @@
 +/*
 + * Configfs routines for IR support
 + *
@@ -536,12 +536,29 @@ index 0000000..4b32f2b
 +		},
 +	},
 +};
++
++void ir_translate(struct input_dev *dev, int protocol, int device, int command)
++{
++	struct config_item *i;
++
++	input_report_ir(dev, IR_PROTOCOL, protocol);
++	input_report_ir(dev, IR_DEVICE, device);
++	input_report_ir(dev, IR_COMMAND, command);
++	input_sync(dev);
++
++    mutex_lock(&remotes.su_mutex);
++
++    list_for_each_entry(i, &remotes.su_group.cg_children, ci_entry) {
++    	printk("item %s\n", i->ci_name);
++    }
++    mutex_unlock(&remotes.su_mutex);
++}
 diff --git a/drivers/input/ir-core.c b/drivers/input/ir-core.c
 new file mode 100644
-index 0000000..3c8f412
+index 0000000..b8c60ad
 --- /dev/null
 +++ b/drivers/input/ir-core.c
-@@ -0,0 +1,697 @@
+@@ -0,0 +1,680 @@
 +/*
 + * Core routines for IR support
 + *
@@ -604,6 +621,7 @@ index 0000000..3c8f412
 +	/* http://www.sbprojects.com/knowledge/ir/sirc.htm */
 +	/* based on a 600us cadence */
 +	int ret = 0, delta = d;
++	int protocol, device, command;
 +
 +	delta = (delta + 300) / 600;
 +
@@ -612,18 +630,17 @@ index 0000000..3c8f412
 +		if ((sony->state == 26) || (sony->state == 32) || (sony->state == 42)) {
 +			if (sony->good && (sony->good == sony->code)) {
 +
-+				input_report_ir(dev, IR_PROTOCOL, (sony->state == 26) ? IR_PROTOCOL_SONY_12 :
-+						(sony->state == 32) ? IR_PROTOCOL_SONY_15 : IR_PROTOCOL_SONY_20);
++				protocol = (sony->state == 26) ? IR_PROTOCOL_SONY_12 :
++					(sony->state == 32) ? IR_PROTOCOL_SONY_15 : IR_PROTOCOL_SONY_20;
 +
 +				if (sony->state == 26) {
-+					input_report_ir(dev, IR_DEVICE, sony->code & 0x1F);
-+					input_report_ir(dev, IR_COMMAND, sony->code >> 5);
++					device = sony->code & 0x1F;
++					command = sony->code >> 5;
 +				} else {
-+					input_report_ir(dev, IR_DEVICE, sony->code & 0xFF);
-+					input_report_ir(dev, IR_COMMAND, sony->code >> 8);
++					device = sony->code & 0xFF;
++					command = sony->code >> 8;
 +				}
-+				input_sync(dev);
-+
++				ir_translate(dev, protocol, device, command);
 +				sony->good = 0;
 +				ret = 1;
 +			} else {
@@ -732,10 +749,7 @@ index 0000000..3c8f412
 +		if (jvc->state == 34) {
 +			jvc->state = 3;
 +			if (jvc->good && (jvc->good == jvc->code)) {
-+				input_report_ir(dev, IR_PROTOCOL, IR_PROTOCOL_JVC);
-+				input_report_ir(dev, IR_DEVICE, jvc->code >> 8);
-+				input_report_ir(dev, IR_COMMAND, jvc->code & 0xFF);
-+				input_sync(dev);
++				ir_translate(dev, IR_PROTOCOL_JVC, jvc->code >> 8, jvc->code & 0xFF);
 +				jvc->good = 0;
 +				ret = 1;
 +			} else {
@@ -813,10 +827,7 @@ index 0000000..3c8f412
 +		nec->state++;
 +		PDEBUG("nec state %d\n", nec-> state);
 +		if (nec->state == 68) {
-+			input_report_ir(dev, IR_PROTOCOL, IR_PROTOCOL_NEC);
-+			input_report_ir(dev, IR_DEVICE, nec->code >> 16);
-+			input_report_ir(dev, IR_COMMAND, nec->code & 0xFFFF);
-+			input_sync(dev);
++			ir_translate(dev, IR_PROTOCOL_NEC, nec->code >> 16, nec->code & 0xFFFF);
 +			return 1;
 +		}
 +		return 0;
@@ -916,10 +927,7 @@ index 0000000..3c8f412
 +		}
 +		rc6->count = 0;
 +		if (rc6->state == 23) {
-+			input_report_ir(dev, IR_PROTOCOL, IR_PROTOCOL_PHILIPS_RC6);
-+			input_report_ir(dev, IR_DEVICE, rc6->code >> 8);
-+			input_report_ir(dev, IR_COMMAND, rc6->code & 0xFF);
-+			input_sync(dev);
++			ir_translate(dev, IR_PROTOCOL_PHILIPS_RC6, rc6->code >> 8, rc6->code & 0xFF);
 +			rc6->state = 0;
 +		} else
 +			rc6->state++;
@@ -1089,14 +1097,6 @@ index 0000000..3c8f412
 +				 struct device_attribute *attr, char *buf)
 +{
 +	struct ir_device *ir = to_input_dev(dev)->ir;
-+	struct config_item *i;
-+
-+    mutex_lock(&remotes.su_mutex);
-+
-+    list_for_each_entry(i, &remotes.su_group.cg_children, ci_entry) {
-+    	printk("item %s\n", i->ci_name);
-+    }
-+    mutex_unlock(&remotes.su_mutex);
 +
 +	return sprintf(buf, "%i\n", ir->raw.xmitter);
 +}
@@ -1241,10 +1241,10 @@ index 0000000..3c8f412
 +
 diff --git a/drivers/input/ir.h b/drivers/input/ir.h
 new file mode 100644
-index 0000000..26f48ba
+index 0000000..8122366
 --- /dev/null
 +++ b/drivers/input/ir.h
-@@ -0,0 +1,46 @@
+@@ -0,0 +1,47 @@
 +/*
 + * Private defines for IR support
 + *
@@ -1289,6 +1289,7 @@ index 0000000..26f48ba
 +};
 +
 +extern struct configfs_subsystem remotes;
++extern void ir_translate(struct input_dev *dev, int protocol, int device, int command);
 +
 +
 diff --git a/drivers/input/ir/Kconfig b/drivers/input/ir/Kconfig
@@ -1323,7 +1324,7 @@ index 0000000..08e6954
 +# Each configuration option enables a list of files.
 +
 diff --git a/include/linux/input.h b/include/linux/input.h
-index b86fb55..edc824b 100644
+index b86fb55..b6b5357 100644
 --- a/include/linux/input.h
 +++ b/include/linux/input.h
 @@ -79,6 +79,8 @@ struct input_absinfo {
@@ -1343,7 +1344,7 @@ index b86fb55..edc824b 100644
  #define EV_MAX			0x1f
  #define EV_CNT			(EV_MAX+1)
  
-@@ -959,6 +962,55 @@ struct ff_effect {
+@@ -959,6 +962,56 @@ struct ff_effect {
  #define FF_MAX		0x7f
  #define FF_CNT		(FF_MAX+1)
  
@@ -1351,6 +1352,7 @@ index b86fb55..edc824b 100644
 + * IR Support
 + */
 +
++#define IR_PROTOCOL_RESERVED 0
 +#define IR_PROTOCOL_JVC 1
 +#define IR_PROTOCOL_NEC 2
 +#define IR_PROTOCOL_NOKIA 3
@@ -1399,7 +1401,7 @@ index b86fb55..edc824b 100644
  #ifdef __KERNEL__
  
  /*
-@@ -986,6 +1038,7 @@ struct ff_effect {
+@@ -986,6 +1039,7 @@ struct ff_effect {
   * @sndbit: bitmap of sound effects supported by the device
   * @ffbit: bitmap of force feedback effects supported by the device
   * @swbit: bitmap of switches present on the device
@@ -1407,7 +1409,7 @@ index b86fb55..edc824b 100644
   * @keycodemax: size of keycode table
   * @keycodesize: size of elements in keycode table
   * @keycode: map of scancodes to keycodes for this device
-@@ -1058,6 +1111,7 @@ struct input_dev {
+@@ -1058,6 +1112,7 @@ struct input_dev {
  	unsigned long sndbit[BITS_TO_LONGS(SND_CNT)];
  	unsigned long ffbit[BITS_TO_LONGS(FF_CNT)];
  	unsigned long swbit[BITS_TO_LONGS(SW_CNT)];
@@ -1415,7 +1417,7 @@ index b86fb55..edc824b 100644
  
  	unsigned int keycodemax;
  	unsigned int keycodesize;
-@@ -1066,6 +1120,7 @@ struct input_dev {
+@@ -1066,6 +1121,7 @@ struct input_dev {
  	int (*getkeycode)(struct input_dev *dev, int scancode, int *keycode);
  
  	struct ff_device *ff;
@@ -1423,7 +1425,7 @@ index b86fb55..edc824b 100644
  
  	unsigned int repeat_key;
  	struct timer_list timer;
-@@ -1301,6 +1356,11 @@ static inline void input_report_switch(struct input_dev *dev, unsigned int code,
+@@ -1301,6 +1357,11 @@ static inline void input_report_switch(struct input_dev *dev, unsigned int code,
  	input_event(dev, EV_SW, code, !!value);
  }
  
@@ -1435,7 +1437,7 @@ index b86fb55..edc824b 100644
  static inline void input_sync(struct input_dev *dev)
  {
  	input_event(dev, EV_SYN, SYN_REPORT, 0);
-@@ -1379,5 +1439,20 @@ int input_ff_erase(struct input_dev *dev, int effect_id, struct file *file);
+@@ -1379,5 +1440,20 @@ int input_ff_erase(struct input_dev *dev, int effect_id, struct file *file);
  int input_ff_create_memless(struct input_dev *dev, void *data,
  		int (*play_effect)(struct input_dev *, void *, struct ff_effect *));
  
