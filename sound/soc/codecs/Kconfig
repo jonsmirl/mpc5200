@@ -84,6 +84,10 @@ config SND_SOC_WM8510
 config SND_SOC_WM8580
 	tristate
 
+config SND_SOC_TAS5504
+	tristate
+	depends on SND_SOC
+
 config SND_SOC_WM8731
 	tristate
 
