@@ -1,6 +1,20 @@
 /*
  * Configfs routines for IR support
  *
+ *   configfs root
+ *   --remotes
+ *   ----specific remote
+ *   ------keymap
+ *   --------protocol
+ *   --------device
+ *   --------command
+ *   --------keycode
+ *   ------repeat keymaps
+ *   --------....
+ *   ----another remote
+ *   ------more keymaps
+ *   --------....
+ *
  * Copyright (C) 2008 Jon Smirl <jonsmirl@gmail.com>
  */
 
@@ -10,49 +24,20 @@
 
 #include "ir.h"
 
-/* each 'struct item' represents a file in the configfs directory */
-/* the four files are protocol, device, command, keycode */
-struct item {
-	struct config_item citem;
-	int value;
+static void remote_release(struct config_item *remote);
+
+struct keymap {
+	struct config_item item;
+	int protocol;
+	int device;
+	int command;
+	int keycode;
 };
 
-static inline struct item *to_item(struct config_item *citem)
+static inline struct keymap *to_keymap(struct config_item *item)
 {
-	return citem ? container_of(citem, struct item, citem) : NULL;
+	return item ? container_of(item, struct keymap, item) : NULL;
 }
-
-static ssize_t item_show(struct config_item *citem,
-				      struct configfs_attribute *attr,
-				      char *page)
-{
-	struct item *item = to_item(citem);
-	return sprintf(page, "%d\n", item->value);
-}
-
-static ssize_t item_store(struct config_item *citem,
-				       struct configfs_attribute *attr,
-				       const char *page, size_t count)
-{
-	struct item *item = to_item(citem);
-	unsigned long tmp;
-	char *p = (char *) page;
-
-	tmp = simple_strtoul(p, &p, 10);
-	if (!p || (*p && (*p != '\n')))
-		return -EINVAL;
-
-	if (tmp > INT_MAX)
-		return -ERANGE;
-
-	item->value = tmp;
-	return count;
-}
-
-static struct configfs_item_operations item_ops = {
-	.show_attribute = item_show,
-	.store_attribute = item_store,
-};
 
 static struct configfs_attribute item_protocol = {
 	.ca_owner = THIS_MODULE,
@@ -78,11 +63,63 @@ static struct configfs_attribute item_keycode = {
 	.ca_mode = S_IRUGO | S_IWUSR,
 };
 
+static ssize_t item_show(struct config_item *item,
+				      struct configfs_attribute *attr,
+				      char *page)
+{
+	struct keymap *keymap = to_keymap(item);
+
+	if (attr == &item_protocol)
+		return sprintf(page, "%d\n", keymap->protocol);
+	if (attr == &item_device)
+		return sprintf(page, "%d\n", keymap->device);
+	if (attr == &item_command)
+		return sprintf(page, "%d\n", keymap->command);
+	return sprintf(page, "%d\n", keymap->keycode);
+}
+
+static ssize_t item_store(struct config_item *item,
+				       struct configfs_attribute *attr,
+				       const char *page, size_t count)
+{
+	struct keymap *keymap = to_keymap(item);
+	unsigned long tmp;
+	char *p = (char *) page;
+
+	tmp = simple_strtoul(p, &p, 10);
+	if (!p || (*p && (*p != '\n')))
+		return -EINVAL;
+
+	if (tmp > INT_MAX)
+		return -ERANGE;
+
+	if (attr == &item_protocol)
+		keymap->protocol = tmp;
+	else if (attr == &item_device)
+		keymap->device = tmp;
+	else if (attr == &item_command)
+		keymap->command = tmp;
+	else
+		keymap->keycode = tmp;
+
+	return count;
+}
+
+static void keymap_release(struct config_item *item)
+{
+	kfree(to_keymap(item));
+}
+
+static struct configfs_item_operations keymap_ops = {
+	.release = keymap_release,
+	.show_attribute = item_show,
+	.store_attribute = item_store,
+};
 
 /* Start the definition of the all of the attributes
- * in a single mapping directory
+ * in a single keymap directory
  */
-static struct configfs_attribute *mapping_attrs[] = {
+static struct configfs_attribute *keymap_attrs[] = {
 	&item_protocol,
 	&item_device,
 	&item_command,
@@ -90,77 +127,44 @@ static struct configfs_attribute *mapping_attrs[] = {
 	NULL,
 };
 
-static struct config_item_type mapping_type = {
-	.ct_item_ops = &item_ops,
-	.ct_attrs	= mapping_attrs,
+static struct config_item_type keymap_type = {
+	.ct_item_ops = &keymap_ops,
+	.ct_attrs	= keymap_attrs,
 	.ct_owner	= THIS_MODULE,
 };
 
-/* named directory containing the four attribute files that constitute a mapping */
-struct mapping_dir {
-	struct config_group group;
-	struct item protocol;
-	struct item device;
-	struct item command;
-	struct item keycode;
-};
-
-static inline struct mapping_dir *to_mapping_dir(struct config_group *group)
+static struct config_item *make_keymap(struct config_group *group, const char *name)
 {
-	return group ? container_of(group, struct mapping_dir, group) : NULL;
+	struct keymap *keymap;
+
+	keymap = kzalloc(sizeof(*keymap), GFP_KERNEL);
+	if (!keymap)
+		return ERR_PTR(-ENOMEM);
+
+	config_item_init_type_name(&keymap->item, name, &keymap_type);
+	return &keymap->item;
 }
-
-static struct config_item *mapping_make_item(struct config_group *group, const char *name)
-{
-	struct mapping_dir *mapping = to_mapping_dir(group);
-	struct item *item;
-
-	if (strcmp(name, item_protocol.ca_name) == 0)
-		item = &mapping->protocol;
-	else if (strcmp(name, item_device.ca_name) == 0)
-		item = &mapping->device;
-	else if (strcmp(name, item_command.ca_name) == 0)
-		item = &mapping->command;
-	else if (strcmp(name, item_keycode.ca_name) == 0)
-		item = &mapping->keycode;
-	else {
-		printk("No match %s\n", name);
-		return ERR_PTR(-EINVAL);
-	}
-
-	config_item_init_type_name(&item->citem, name, &mapping_type);
-	item->value = 0;
-
-	return &item->citem;
-}
-
-static void mapping_release(struct config_item *item)
-{
-	kfree(to_mapping_dir(to_config_group(item)));
-}
-
-static ssize_t mapping_description_show(struct config_item *item,
-					 struct configfs_attribute *attr,
-					 char *page)
-{
-	return sprintf(page,
-"Remote map\n"
-"\n"
-"Map for a specific application\n"
-"Remote signals matching this map will be translated into keyboard/mouse events\n");
-}
-
-static struct configfs_item_operations remote_item_ops = {
-	.release	= mapping_release,
-	.show_attribute	= mapping_description_show,
-};
 
 /*
  * Note that, since no extra work is required on ->drop_item(),
  * no ->drop_item() is provided.
  */
 static struct configfs_group_operations remote_group_ops = {
-	.make_item	= mapping_make_item,
+	.make_item = make_keymap,
+};
+
+static ssize_t remote_show_description(struct config_item *item,
+					 struct configfs_attribute *attr,
+					 char *page)
+{
+	return sprintf(page,
+"Map for a specific remote\n"
+"Remote signals matching this map will be translated into keyboard/mouse events\n");
+}
+
+static struct configfs_item_operations remote_item_ops = {
+	.release	= remote_release,
+	.show_attribute	= remote_show_description,
 };
 
 static struct configfs_attribute remote_attr_description = {
@@ -181,18 +185,41 @@ static struct config_item_type remote_type = {
 	.ct_owner	= THIS_MODULE,
 };
 
-static struct config_group *remotes_make_group(struct config_group *group, const char *name)
-{
-	struct mapping_dir *mapping;
 
-	mapping = kzalloc(sizeof(*mapping), GFP_KERNEL);
-	if (!mapping)
+/* Top level remotes directory for all remotes */
+
+/* Create a new remote group */
+static struct config_group *remote_make(struct config_group *parent, const char *name)
+{
+	struct config_group *remote;
+
+	remote = kzalloc(sizeof(*remote), GFP_KERNEL);
+	if (!remote)
 		return ERR_PTR(-ENOMEM);
 
-	config_group_init_type_name(&mapping->group, name, &remote_type);
+	config_group_init_type_name(remote, name, &remote_type);
 
-	return &mapping->group;
+	return remote;
 }
+
+static void remote_release(struct config_item *remote)
+{
+	kfree(to_config_group(remote));
+}
+
+static ssize_t remotes_show_description(struct config_item *item,
+					struct configfs_attribute *attr,
+					char *page)
+{
+	return sprintf(page,
+"This subsystem allows the creation of IR remote control maps.\n"
+"Maps allow IR signals to be mapped into key strokes or mouse events.\n");
+}
+
+static struct configfs_item_operations remotes_item_ops = {
+	.show_attribute	= remotes_show_description,
+	.release = remote_release,
+};
 
 static struct configfs_attribute remotes_attr_description = {
 	.ca_owner = THIS_MODULE,
@@ -205,27 +232,12 @@ static struct configfs_attribute *remotes_attrs[] = {
 	NULL,
 };
 
-static ssize_t remotes_attr_show(struct config_item *item,
-					struct configfs_attribute *attr,
-					char *page)
-{
-	return sprintf(page,
-"IR Remotes\n"
-"\n"
-"This subsystem allows the creation of IR remote control maps.\n"
-"Maps allow IR signals to be mapped into key strokes or mouse events.\n");
-}
-
-static struct configfs_item_operations remotes_item_ops = {
-	.show_attribute	= remotes_attr_show,
-};
-
 /*
  * Note that, since no extra work is required on ->drop_item(),
  * no ->drop_item() is provided.
  */
 static struct configfs_group_operations remotes_group_ops = {
-	.make_group	= remotes_make_group,
+	.make_group	= remote_make,
 };
 
 static struct config_item_type remotes_type = {
