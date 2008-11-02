@@ -1,7 +1,7 @@
-Bottom: 592485d0fcb103606d4e6365d74f750dbb9bafd4
-Top:    05ad6d9b25522aefa8c12b1dbef2977e64a4bbb4
+Bottom: 8b7e9273e4fba2971f420cfb34309745d5293beb
+Top:    8ce5cd9a0fcb756fef44f6b22a8522039aa797e6
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-11-01 00:45:26 -0400
+Date:   2008-11-01 20:19:42 -0400
 
 Changes to core input subsystem to allow send and receive of IR messages. Encode and decode state machines are provided for common IR porotocols such as Sony, JVC, NEC, Philips, etc.
 
@@ -10,6 +10,7 @@ IR messages are sent using an input IOCTL.
 
 Jon Smirl
 <jonsmirl@gmail.com>
+
 
 
 
@@ -59,10 +60,10 @@ index 6a1049b..00b3039 100644
  obj-$(CONFIG_INPUT_APMPOWER)	+= apm-power.o
  
 diff --git a/drivers/input/evdev.c b/drivers/input/evdev.c
-index 3524bef..7a3f935 100644
+index 1070db3..33a01dc 100644
 --- a/drivers/input/evdev.c
 +++ b/drivers/input/evdev.c
-@@ -329,6 +329,14 @@ struct ff_effect_compat {
+@@ -328,6 +328,14 @@ struct ff_effect_compat {
  	} u;
  };
  
@@ -77,7 +78,7 @@ index 3524bef..7a3f935 100644
  /* Note to the author of this code: did it ever occur to
     you why the ifdefs are needed? Think about it again. -AK */
  #ifdef CONFIG_X86_64
-@@ -433,6 +441,32 @@ static int evdev_ff_effect_from_user(const char __user *buffer, size_t size,
+@@ -432,6 +440,32 @@ static int evdev_ff_effect_from_user(const char __user *buffer, size_t size,
  	return 0;
  }
  
@@ -110,7 +111,7 @@ index 3524bef..7a3f935 100644
  #else
  
  static inline size_t evdev_event_size(void)
-@@ -470,6 +504,18 @@ static int evdev_ff_effect_from_user(const char __user *buffer, size_t size,
+@@ -469,6 +503,18 @@ static int evdev_ff_effect_from_user(const char __user *buffer, size_t size,
  	return 0;
  }
  
@@ -129,7 +130,7 @@ index 3524bef..7a3f935 100644
  #endif /* CONFIG_COMPAT */
  
  static ssize_t evdev_write(struct file *file, const char __user *buffer,
-@@ -696,6 +742,7 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
+@@ -695,6 +741,7 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
  	struct input_dev *dev = evdev->handle.dev;
  	struct input_absinfo abs;
  	struct ff_effect effect;
@@ -137,7 +138,7 @@ index 3524bef..7a3f935 100644
  	int __user *ip = (int __user *)p;
  	int i, t, u, v;
  	int error;
-@@ -860,6 +907,14 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
+@@ -859,6 +906,14 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
  
  				return 0;
  			}
