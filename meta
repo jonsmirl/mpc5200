@@ -1,25 +1,25 @@
 Version: 1
-Previous: a11ceb66335585a5f85300ebe20e539df9e97c94
-Head: 8222bbc20399e12eb81a28bd47624abd2ecf14e8
+Previous: 36abe43a288e8e56005d2cdec0e929b613b21d93
+Head: 0d4d56ad45f19518dbbb40f844ead5a20de0eb60
 Applied:
-  Makefile: f48b8f1d5fdb1ba202bfb8c7e70554eecd1b4d28
-  anton_1: 7c276f5e3f8dec77db4c0875064801df538c640a
-  anton_3: 74928e77678381ac2356f3265adad406ba37e5e4
-  add-of_find_i2c_device_by_node: 622e69f8764f00f47014ad47e7f7f1543c3d5c9f
-  jds_platform: 0db8ec06b5e91d957ece9a511aa72325edf6c7fe
-  max9485: 645343828ef69b4fb43704e160c5fe8e66f96b28
-  jds-soc-machine: 01a6cc925b386e2db9bfbf00c9c5d78155b233e4
-  jds-psc-c: 7279bcff7fa1c372740dfc81ed985b60d2a13ed1
-  soc-u32-cleanup: 1cd276b509a6f33d2669574104719323bcc12f21
-  jds-audio: c8ad194ae105e4bf3e17576641f9b8e5b99b384e
-  g_spi_4: 4d541bc84d4b2679e5a1a970ead1e2b71b318363
-  m_1: 08d71983a4528ab5c763e1a44e568a361e5852b1
-  spi-mmc: 65ecebb7e19bd801126dcc95e2cee9cd671878f3
-  mpc5200-rtc: 4640697e504e612d4e311915f936bd551f73d425
-  lirc: d856b7a172cea5d1dfbce201de8d4c099a74361f
-  jds-lirc: 5c7e1f5d307e826cc00b9e038831559cbafde1de
-  jds-lirc-gpt: b99fc4b7d7f3d744ff2c9cc93e2d557ba6241147
-  jds-lirc-device-tree: 4f56ceb21dc34d060d212c826dc943e0e59e5274
-  jds-lirc-mce2: 8222bbc20399e12eb81a28bd47624abd2ecf14e8
+  Makefile: 72bfe0cd95cae70555d56ca80f3fc787dede439c
+  anton_1: 8da14138a1f399f402d491bd342d6382a442bae5
+  anton_3: e2a5e9021b3bc324e019697f0f4f1b5ec42d6f8b
+  add-of_find_i2c_device_by_node: d4148e2a82c71f190398a37f185df3ff44fc9ceb
+  jds_platform: cf3e35619112ae9d8c06b8e30972b287e8e1ae66
+  max9485: cc738c05fae9c992697bbc632d95f9abeb4233fa
+  jds-soc-machine: e685540495491fe0ea18d915480ac18f01e647da
+  jds-psc-c: fc146bcfc01a083783613bcd857bd309d232f1f7
+  soc-u32-cleanup: 998f781373f26c36260f11a202895feece5bbff2
+  jds-audio: b046acc690f35da514663ca83a693b5b8864400c
+  g_spi_4: bc02d5656cf16531ec9766914be77cd68259ad02
+  m_1: dc2f2e9f8b1d357adba414d8ee6a80dd5084be63
+  spi-mmc: 54115f9c2d12d8dcc0371f81e6a9b6912ccd1f80
+  mpc5200-rtc: 3afa4b1dc175e7050081847e4e09f337a03b38f1
+  lirc: b4ddd2a9ce1faadc3bb70250b6b364c2051e812b
+  jds-lirc: 50dd3e295599528ae537b1b9320c5ca54b7d0dc6
+  jds-lirc-gpt: dc2ade8ce4a9ca9e8f3e0c2dc196d084084f45d7
+  jds-lirc-device-tree: f62f044c9e62542bcf1b067c8adce1f001851e29
+  jds-lirc-mce2: 0d4d56ad45f19518dbbb40f844ead5a20de0eb60
 Unapplied:
 Hidden:

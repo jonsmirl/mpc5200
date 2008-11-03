@@ -1,7 +1,7 @@
-Bottom: 10bf3a41ccaa26b58dbdd2cdb000331d2d1efd0b
-Top:    9f34db4001e56bf3ac5db45fa57ba492fc7591c8
+Bottom: 864c00170358569cc4185f6d43c5e6b08c0296b4
+Top:    9563ab7ad55e43e9e3c50ddc9f901c1414aea62f
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-11-03 14:21:11 -0500
+Date:   2008-11-03 18:45:01 -0500
 
 Add the of_find_i2c_device_by_node function.
 
