@@ -1,5 +1,5 @@
 Bottom: d8e0e9a147209a97982afa5bf2f1b621b97b71c6
-Top:    100e71d2bdacc5dc67bafc7edea019e02056fe0f
+Top:    1674597d4116b109349c04ea47ed1f7b192f2cf7
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-02 15:13:20 -0500
 
@@ -244,10 +244,10 @@ index c13ced3..18f36d7 100644
  		dev->name ? dev->name : "Unspecified device", path ? path : "N/A");
 diff --git a/drivers/input/ir-configfs.c b/drivers/input/ir-configfs.c
 new file mode 100644
-index 0000000..ac0326d
+index 0000000..90fd806
 --- /dev/null
 +++ b/drivers/input/ir-configfs.c
-@@ -0,0 +1,332 @@
+@@ -0,0 +1,334 @@
 +/*
 + * Configfs routines for IR support
 + *
@@ -375,6 +375,8 @@ index 0000000..ac0326d
 +{
 +	struct keymap *keymap = to_keymap(item);
 +	struct remote *remote = to_remote(to_config_group(item->ci_parent));
++
++	printk("keymap release\n");
 +	clear_bit(keymap->keycode, remote->input->keybit);
 +	kfree(keymap);
 +}
