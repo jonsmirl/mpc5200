@@ -125,6 +125,8 @@ static void keymap_release(struct config_item *item)
 {
 	struct keymap *keymap = to_keymap(item);
 	struct remote *remote = to_remote(to_config_group(item->ci_parent));
+
+	printk("keymap release\n");
 	clear_bit(keymap->keycode, remote->input->keybit);
 	kfree(keymap);
 }
