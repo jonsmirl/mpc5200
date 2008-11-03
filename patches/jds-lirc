@@ -1,7 +1,7 @@
-Bottom: fd8f65ecc78c4263fc4e4a97e579d0a22ef009ca
-Top:    4aea99e8ffa4160830595fa2803fa4fb82d5023c
+Bottom: f38405505714eab7f4fc10429435d25753ef5580
+Top:    70118e3a09b803c33af64e0aa68dd4cc49e596bb
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-11-02 19:49:17 -0500
+Date:   2008-11-03 14:21:14 -0500
 
 Changes to core input subsystem to allow send and receive of IR messages. Encode and decode state machines are provided for common IR porotocols such as Sony, JVC, NEC, Philips, etc.
 

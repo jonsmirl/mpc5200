@@ -1,7 +1,7 @@
-Bottom: de344a816f133cc9f6d2eb1fcd285f46acaa0083
-Top:    6bbf783886e8a0b5322c23fdcdd3bc096d159a21
+Bottom: 991674a49df677887d6f56f2463fdaa3415abe81
+Top:    e5a78a85f5401607f71e3e0e90f693791f631901
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-11-02 19:49:16 -0500
+Date:   2008-11-03 14:21:12 -0500
 
 Clean up ASOC functions to support 32b values instead of 16b
 
@@ -71,7 +71,7 @@ index 5e01898..666c167 100644
  	void *dapm;
  };
 diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
-index a3adbf0..e2c224c 100644
+index 16c7453..3cea285 100644
 --- a/sound/soc/soc-core.c
 +++ b/sound/soc/soc-core.c
 @@ -1064,11 +1064,11 @@ EXPORT_SYMBOL_GPL(snd_soc_free_ac97_codec);
