@@ -79,7 +79,7 @@ static int decode_sony(struct input_dev *dev, struct ir_protocol *sony, unsigned
 					device = sony->code & 0xFF;
 					command = sony->code >> 8;
 				}
-				ir_report(dev, protocol, device, command);
+				input_ir_translate(dev, protocol, device, command);
 				sony->good = 0;
 				ret = 1;
 			} else {
@@ -188,7 +188,7 @@ static int decode_jvc(struct input_dev *dev, struct ir_protocol *jvc, unsigned i
 		if (jvc->state == 34) {
 			jvc->state = 3;
 			if (jvc->good && (jvc->good == jvc->code)) {
-				ir_report(dev, IR_PROTOCOL_JVC, jvc->code >> 8, jvc->code & 0xFF);
+				input_ir_translate(dev, IR_PROTOCOL_JVC, jvc->code >> 8, jvc->code & 0xFF);
 				jvc->good = 0;
 				ret = 1;
 			} else {
@@ -266,7 +266,7 @@ static int decode_nec(struct input_dev *dev, struct ir_protocol *nec, unsigned i
 		nec->state++;
 		PDEBUG("nec state %d\n", nec-> state);
 		if (nec->state == 68) {
-			ir_report(dev, IR_PROTOCOL_NEC, nec->code >> 16, nec->code & 0xFFFF);
+			input_ir_translate(dev, IR_PROTOCOL_NEC, nec->code >> 16, nec->code & 0xFFFF);
 			return 1;
 		}
 		return 0;
@@ -366,7 +366,7 @@ static void decode_rc6_bit(struct input_dev *dev, struct ir_protocol *rc6, unsig
 		}
 		rc6->count = 0;
 		if (rc6->state == 23) {
-			ir_report(dev, IR_PROTOCOL_PHILIPS_RC6, rc6->code >> 8, rc6->code & 0xFF);
+			input_ir_translate(dev, IR_PROTOCOL_PHILIPS_RC6, rc6->code >> 8, rc6->code & 0xFF);
 			rc6->state = 0;
 		} else
 			rc6->state++;
@@ -442,6 +442,67 @@ void input_ir_decode(struct input_dev *dev, unsigned int delta, unsigned int bit
 	decode_rc6(dev, &dev->ir->rc6, delta, bit);
 }
 EXPORT_SYMBOL_GPL(input_ir_decode);
+
+int input_ir_send(struct input_dev *dev, struct ir_command *ir_command, struct file *file)
+{
+	unsigned freq, xmit = 0;
+	int ret;
+
+	mutex_lock(&dev->ir->lock);
+
+	switch (ir_command->protocol) {
+	case IR_PROTOCOL_PHILIPS_RC5:
+		freq = 36000;
+		encode_rc5(dev->ir, ir_command);
+		break;
+	case IR_PROTOCOL_PHILIPS_RC6:
+		freq = 36000;
+		encode_rc6(dev->ir, ir_command);
+		break;
+	case IR_PROTOCOL_PHILIPS_RCMM:
+		freq = 36000;
+		encode_rc5(dev->ir, ir_command);
+		break;
+	case IR_PROTOCOL_JVC:
+		freq = 38000;
+		encode_jvc(dev->ir, ir_command);
+		break;
+	case IR_PROTOCOL_NEC:
+		freq = 38000;
+		encode_nec(dev->ir, ir_command);
+		break;
+	case IR_PROTOCOL_NOKIA:
+	case IR_PROTOCOL_SHARP:
+	case IR_PROTOCOL_PHILIPS_RECS80:
+		freq = 38000;
+		break;
+	case IR_PROTOCOL_SONY_12:
+	case IR_PROTOCOL_SONY_15:
+	case IR_PROTOCOL_SONY_20:
+		encode_sony(dev->ir, ir_command);
+		freq = 40000;
+		break;
+	case IR_PROTOCOL_RCA:
+		freq = 56000;
+		break;
+	case IR_PROTOCOL_ITT:
+		freq = 0;
+		break;
+	default:
+		ret = -ENODEV;
+		goto exit;
+	}
+
+	if (dev->ir && dev->ir->xmit)
+		ret = dev->ir->xmit(dev->ir->private, dev->ir->send.buffer, dev->ir->send.count, freq, xmit);
+	else
+		ret = -ENODEV;
+
+exit:
+	mutex_unlock(&dev->ir->lock);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(input_ir_send);
 
 static ssize_t ir_raw_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
@@ -569,6 +630,11 @@ static struct attribute_group input_ir_group = {
 	.attrs	= input_ir_attrs,
 };
 
+/* configfs can only be registered once,
+ * register it when first IR device is created
+ */
+static int configfs_registered;
+
 int input_ir_register(struct input_dev *dev)
 {
 	int ret;
@@ -576,20 +642,22 @@ int input_ir_register(struct input_dev *dev)
 	if (!dev->ir)
 		return 0;
 
-	config_group_init(&remotes.su_group);
-	mutex_init(&remotes.su_mutex);
-	ret = configfs_register_subsystem(&remotes);
-	if (ret) {
-		printk(KERN_ERR "Error %d while registering configfs %s\n",
-			   ret, remotes.su_group.cg_item.ci_namebuf);
-		goto out_unregister;
+	ret = sysfs_create_group(&dev->dev.kobj, &input_ir_group);
+	if (ret)
+		return ret;
+
+	if (!configfs_registered) {
+		config_group_init(&input_ir_remotes.su_group);
+		mutex_init(&input_ir_remotes.su_mutex);
+
+		ret = configfs_register_subsystem(&input_ir_remotes);
+		if (ret) {
+			sysfs_remove_group(&dev->dev.kobj, &input_ir_group);
+			return ret;
+		}
+		configfs_registered = 1;
 	}
-
-	return sysfs_create_group(&dev->dev.kobj, &input_ir_group);
-
-out_unregister:
-	configfs_unregister_subsystem(&remotes);
-	return ret;
+	return 0;
 }
 
 int input_ir_create(struct input_dev *dev, void *private, send_func xmit)
@@ -606,75 +674,19 @@ int input_ir_create(struct input_dev *dev, void *private, send_func xmit)
 }
 EXPORT_SYMBOL_GPL(input_ir_create);
 
-
 void input_ir_destroy(struct input_dev *dev)
 {
 	if (dev->ir) {
 		kfree(dev->ir);
 		dev->ir = NULL;
+		sysfs_remove_group(&dev->dev.kobj, &input_ir_group);
 	}
-	configfs_unregister_subsystem(&remotes);
 }
 EXPORT_SYMBOL_GPL(input_ir_destroy);
 
-int input_ir_send(struct input_dev *dev, struct ir_command *ir_command, struct file *file)
+void input_ir_exit(void)
 {
-	unsigned freq, xmit = 0;
-	int ret;
-
-	mutex_lock(&dev->ir->lock);
-
-	switch (ir_command->protocol) {
-	case IR_PROTOCOL_PHILIPS_RC5:
-		freq = 36000;
-		encode_rc5(dev->ir, ir_command);
-		break;
-	case IR_PROTOCOL_PHILIPS_RC6:
-		freq = 36000;
-		encode_rc6(dev->ir, ir_command);
-		break;
-	case IR_PROTOCOL_PHILIPS_RCMM:
-		freq = 36000;
-		encode_rc5(dev->ir, ir_command);
-		break;
-	case IR_PROTOCOL_JVC:
-		freq = 38000;
-		encode_jvc(dev->ir, ir_command);
-		break;
-	case IR_PROTOCOL_NEC:
-		freq = 38000;
-		encode_nec(dev->ir, ir_command);
-		break;
-	case IR_PROTOCOL_NOKIA:
-	case IR_PROTOCOL_SHARP:
-	case IR_PROTOCOL_PHILIPS_RECS80:
-		freq = 38000;
-		break;
-	case IR_PROTOCOL_SONY_12:
-	case IR_PROTOCOL_SONY_15:
-	case IR_PROTOCOL_SONY_20:
-		encode_sony(dev->ir, ir_command);
-		freq = 40000;
-		break;
-	case IR_PROTOCOL_RCA:
-		freq = 56000;
-		break;
-	case IR_PROTOCOL_ITT:
-		freq = 0;
-		break;
-	default:
-		ret = -ENODEV;
-		goto exit;
-	}
-
-	if (dev->ir && dev->ir->xmit)
-		ret = dev->ir->xmit(dev->ir->private, dev->ir->send.buffer, dev->ir->send.count, freq, xmit);
-	else
-		ret = -ENODEV;
-
-exit:
-	mutex_unlock(&dev->ir->lock);
-	return ret;
+	if (configfs_registered)
+		configfs_unregister_subsystem(&input_ir_remotes);
 }
-EXPORT_SYMBOL_GPL(input_ir_send);
 

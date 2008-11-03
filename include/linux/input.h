@@ -1453,7 +1453,5 @@ void input_ir_destroy(struct input_dev *dev);
 void input_ir_decode(struct input_dev *dev, unsigned int delta, unsigned int bit);
 int input_ir_send(struct input_dev *dev, struct ir_command *ir_command, struct file *file);
 
-int input_ir_register(struct input_dev *dev);
-
 #endif
 #endif

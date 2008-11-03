@@ -292,7 +292,7 @@ static struct config_item_type remotes_type = {
 	.ct_owner	= THIS_MODULE,
 };
 
-struct configfs_subsystem remotes = {
+struct configfs_subsystem input_ir_remotes = {
 	.su_group = {
 		.cg_item = {
 			.ci_namebuf = "remotes",
@@ -301,7 +301,7 @@ struct configfs_subsystem remotes = {
 	},
 };
 
-void ir_report(struct input_dev *dev, int protocol, int device, int command)
+void input_ir_translate(struct input_dev *dev, int protocol, int device, int command)
 {
 	struct config_item *i, *j;
 	struct config_group *g;
@@ -315,10 +315,10 @@ void ir_report(struct input_dev *dev, int protocol, int device, int command)
 	input_report_ir(dev, IR_COMMAND, command);
 	input_sync(dev);
 
-    mutex_lock(&remotes.su_mutex);
+    mutex_lock(&input_ir_remotes.su_mutex);
 
     /* search the translation maps to translate into key stroke */
-    list_for_each_entry(i, &remotes.su_group.cg_children, ci_entry) {
+    list_for_each_entry(i, &input_ir_remotes.su_group.cg_children, ci_entry) {
     	g = to_config_group(i);
         list_for_each_entry(j, &g->cg_children, ci_entry) {
         	keymap = to_keymap(j);
@@ -330,5 +330,5 @@ void ir_report(struct input_dev *dev, int protocol, int device, int command)
         	}
         }
     }
-    mutex_unlock(&remotes.su_mutex);
+    mutex_unlock(&input_ir_remotes.su_mutex);
 }
