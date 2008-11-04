@@ -1,0 +1,81 @@
+Bottom: 4ae2131d29d9b55ba38e7bf7d41f6f0ef854fb21
+Top:    acb3e62c240f344d112f8a0064b6d5be76dda8a1
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2008-11-04 09:41:19 -0500
+
+Refresh of jds-lirc
+
+---
+
+diff --git a/drivers/input/Makefile b/drivers/input/Makefile
+index 00b3039..85f5ef3 100644
+--- a/drivers/input/Makefile
++++ b/drivers/input/Makefile
+@@ -5,7 +5,7 @@
+ # Each configuration option enables a list of files.
+ 
+ obj-$(CONFIG_INPUT)		+= input-core.o
+-input-core-objs := input.o ff-core.o ir-core.o ir-configfs.o
++input-core-objs := input.o ff-core.o
+ 
+ obj-$(CONFIG_INPUT_FF_MEMLESS)	+= ff-memless.o
+ obj-$(CONFIG_INPUT_POLLDEV)	+= input-polldev.o
+diff --git a/drivers/input/input.c b/drivers/input/input.c
+index 4b332a5..0a9b15a 100644
+--- a/drivers/input/input.c
++++ b/drivers/input/input.c
+@@ -23,8 +23,6 @@
+ #include <linux/rcupdate.h>
+ #include <linux/smp_lock.h>
+ 
+-#include "ir.h"
+-
+ MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
+ MODULE_DESCRIPTION("Input core");
+ MODULE_LICENSE("GPL");
+@@ -1415,10 +1413,6 @@ int input_register_device(struct input_dev *dev)
+ 	if (error)
+ 		return error;
+ 
+-	error = input_ir_register(dev);
+-	if (error)
+-		return error;
+-
+ 	path = kobject_get_path(&dev->dev.kobj, GFP_KERNEL);
+ 	printk(KERN_INFO "input: %s as %s\n",
+ 		dev->name ? dev->name : "Unspecified device", path ? path : "N/A");
+@@ -1682,7 +1676,6 @@ static int __init input_init(void)
+ 
+ static void __exit input_exit(void)
+ {
+-	input_ir_exit();
+ 	input_proc_exit();
+ 	unregister_chrdev(INPUT_MAJOR, "input");
+ 	class_unregister(&input_class);
+diff --git a/drivers/input/ir/Makefile b/drivers/input/ir/Makefile
+index 08e6954..0bdafb0 100644
+--- a/drivers/input/ir/Makefile
++++ b/drivers/input/ir/Makefile
+@@ -3,3 +3,10 @@
+ 
+ # Each configuration option enables a list of files.
+ 
++obj-$(CONFIG_INPUT_IR)		+= ir.o
++ir-objs := ir-core.o ir-configfs.o
++
++
++obj-$(CONFIG_IR_GPT)		+= ir-gpt.o
++obj-$(CONFIG_IR_MCEUSB2)	+= ir-mceusb2.o
++
+diff --git a/drivers/input/ir-configfs.c b/drivers/input/ir/ir-configfs.c
+similarity index 100%
+rename from drivers/input/ir-configfs.c
+rename to drivers/input/ir/ir-configfs.c
+diff --git a/drivers/input/ir-core.c b/drivers/input/ir/ir-core.c
+similarity index 100%
+rename from drivers/input/ir-core.c
+rename to drivers/input/ir/ir-core.c
+diff --git a/drivers/input/ir.h b/drivers/input/ir/ir.h
+similarity index 100%
+rename from drivers/input/ir.h
+rename to drivers/input/ir/ir.h
