@@ -1,5 +1,5 @@
 Bottom: 4a5b6388fe44cea817f959139291b3037af21c48
-Top:    6fa75815c9d8e5ffda8575dd1e9be101792af782
+Top:    f2487ec076d042666352c6335cf52549433fa8eb
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-04 17:17:37 -0500
 
@@ -56,7 +56,7 @@ index 2ccdda3..ab0da3f 100644
 +
 diff --git a/drivers/input/ir/ir-gpt.c b/drivers/input/ir/ir-gpt.c
 new file mode 100644
-index 0000000..16e1d5a
+index 0000000..ab83d89
 --- /dev/null
 +++ b/drivers/input/ir/ir-gpt.c
 @@ -0,0 +1,224 @@
@@ -187,7 +187,7 @@ index 0000000..16e1d5a
 +	ret = input_register_device(ir_gpt->input);
 +	if (ret)
 +		goto free_input;
-+	ret = input_ir_register(ir->input);
++	ret = input_ir_register(ir_gpt->input);
 +	if (ret)
 +		goto free_input;
 +
