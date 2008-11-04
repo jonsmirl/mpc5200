@@ -23,8 +23,6 @@
 #include <linux/rcupdate.h>
 #include <linux/smp_lock.h>
 
-#include "ir.h"
-
 MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
 MODULE_DESCRIPTION("Input core");
 MODULE_LICENSE("GPL");
@@ -1415,10 +1413,6 @@ int input_register_device(struct input_dev *dev)
 	if (error)
 		return error;
 
-	error = input_ir_register(dev);
-	if (error)
-		return error;
-
 	path = kobject_get_path(&dev->dev.kobj, GFP_KERNEL);
 	printk(KERN_INFO "input: %s as %s\n",
 		dev->name ? dev->name : "Unspecified device", path ? path : "N/A");
@@ -1682,7 +1676,6 @@ static int __init input_init(void)
 
 static void __exit input_exit(void)
 {
-	input_ir_exit();
 	input_proc_exit();
 	unregister_chrdev(INPUT_MAJOR, "input");
 	class_unregister(&input_class);
