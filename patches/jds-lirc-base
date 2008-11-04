@@ -1,5 +1,5 @@
 Bottom: a27689a4b201f04d2052a47f598cdc95ce870344
-Top:    c2eeb92fb6b1e93e57f30ccede5e0cbf2eed38b6
+Top:    892af22769fae6f35ea60241892c6560699a4125
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-04 15:17:39 -0500
 
@@ -29,31 +29,6 @@ Jon Smirl
 
 ---
 
-diff --git a/drivers/input/Kconfig b/drivers/input/Kconfig
-index 747633c..780d321 100644
---- a/drivers/input/Kconfig
-+++ b/drivers/input/Kconfig
-@@ -172,6 +172,8 @@ source "drivers/input/touchscreen/Kconfig"
- 
- source "drivers/input/misc/Kconfig"
- 
-+source "drivers/input/ir/Kconfig"
-+
- endif
- 
- menu "Hardware I/O ports"
-diff --git a/drivers/input/Makefile b/drivers/input/Makefile
-index 6a1049b..85f5ef3 100644
---- a/drivers/input/Makefile
-+++ b/drivers/input/Makefile
-@@ -21,6 +21,7 @@ obj-$(CONFIG_INPUT_JOYSTICK)	+= joystick/
- obj-$(CONFIG_INPUT_TABLET)	+= tablet/
- obj-$(CONFIG_INPUT_TOUCHSCREEN)	+= touchscreen/
- obj-$(CONFIG_INPUT_MISC)	+= misc/
-+obj-$(CONFIG_INPUT_IR)		+= ir/
- 
- obj-$(CONFIG_INPUT_APMPOWER)	+= apm-power.o
- 
 diff --git a/drivers/input/evdev.c b/drivers/input/evdev.c
 index 1070db3..33a01dc 100644
 --- a/drivers/input/evdev.c
