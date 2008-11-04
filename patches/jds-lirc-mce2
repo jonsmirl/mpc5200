@@ -1,5 +1,5 @@
 Bottom: da1e34dc5923800c27b7ef2ab6fc86628fd5d318
-Top:    2a220ba48ee696047d08a38fab6dd85f8fc7f7d9
+Top:    d8fd916f4c7af59f39bbac80fff5e950dc0b2682
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-04 09:45:59 -0500
 
@@ -43,6 +43,16 @@ index 172c0c6..b854900 100644
 +	  Driver for the Microsoft Media Center Ed. Receiver, v2
  
  endif
+diff --git a/drivers/input/ir/Makefile b/drivers/input/ir/Makefile
+index ab0da3f..0bdafb0 100644
+--- a/drivers/input/ir/Makefile
++++ b/drivers/input/ir/Makefile
+@@ -8,4 +8,5 @@ ir-objs := ir-core.o ir-configfs.o
+ 
+ 
+ obj-$(CONFIG_IR_GPT)		+= ir-gpt.o
++obj-$(CONFIG_IR_MCEUSB2)	+= ir-mceusb2.o
+ 
 diff --git a/drivers/input/ir/ir-mceusb2.c b/drivers/input/ir/ir-mceusb2.c
 new file mode 100644
 index 0000000..cc13e60
