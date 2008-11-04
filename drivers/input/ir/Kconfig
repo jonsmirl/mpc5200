@@ -1,0 +1,15 @@
+#
+# LIRC driver(s) configuration
+#
+menuconfig INPUT_IR
+	select CONFIGFS_FS
+	tristate "Infrared Remote (IR) receiver/transmitter drivers"
+	default n
+	help
+	  Say Y here, and all supported Infrared Remote Control IR
+	  receiver and transmitter drivers will be displayed. The receiver drivers
+	  allow control of your Linux system via remote control.
+
+if INPUT_IR
+
+endif
