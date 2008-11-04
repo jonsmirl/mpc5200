@@ -2,7 +2,8 @@
 # LIRC driver(s) configuration
 #
 menuconfig INPUT_IR
-	bool "Infrared Remote (IR) receiver/transmitter drivers"
+	select CONFIGFS_FS
+	tristate "Infrared Remote (IR) receiver/transmitter drivers"
 	default n
 	help
 	  Say Y here, and all supported Infrared Remote Control IR
