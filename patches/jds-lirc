@@ -1,5 +1,5 @@
 Bottom: a27689a4b201f04d2052a47f598cdc95ce870344
-Top:    0cd06ea0d5566c9436acc010a2d19a700a9da414
+Top:    a77117c089dfe05f2157a309e96d3a0ad845b267
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-04 15:17:39 -0500
 
@@ -602,10 +602,10 @@ index 0000000..7dd7196
 +}
 diff --git a/drivers/input/ir/ir-core.c b/drivers/input/ir/ir-core.c
 new file mode 100644
-index 0000000..0c35f88
+index 0000000..8e08f3f
 --- /dev/null
 +++ b/drivers/input/ir/ir-core.c
-@@ -0,0 +1,692 @@
+@@ -0,0 +1,678 @@
 +/*
 + * Core routines for IR support
 + *
@@ -1238,34 +1238,12 @@ index 0000000..0c35f88
 +	.attrs	= input_ir_attrs,
 +};
 +
-+/* configfs can only be registered once,
-+ * register it when first IR device is created
-+ */
-+static int configfs_registered;
-+
 +int input_ir_register(struct input_dev *dev)
 +{
-+	int ret;
-+
 +	if (!dev->ir)
 +		return 0;
 +
-+	ret = sysfs_create_group(&dev->dev.kobj, &input_ir_group);
-+	if (ret)
-+		return ret;
-+
-+	if (!configfs_registered) {
-+		config_group_init(&input_ir_remotes.su_group);
-+		mutex_init(&input_ir_remotes.su_mutex);
-+
-+		ret = configfs_register_subsystem(&input_ir_remotes);
-+		if (ret) {
-+			sysfs_remove_group(&dev->dev.kobj, &input_ir_group);
-+			return ret;
-+		}
-+		configfs_registered = 1;
-+	}
-+	return 0;
++	return sysfs_create_group(&dev->dev.kobj, &input_ir_group);
 +}
 +
 +int input_ir_create(struct input_dev *dev, void *private, send_func xmit)
@@ -1292,18 +1270,26 @@ index 0000000..0c35f88
 +}
 +EXPORT_SYMBOL_GPL(input_ir_destroy);
 +
-+void input_ir_exit(void)
++static int __init input_ir_init(void)
 +{
-+	if (configfs_registered)
-+		configfs_unregister_subsystem(&input_ir_remotes);
-+}
++	config_group_init(&input_ir_remotes.su_group);
++	mutex_init(&input_ir_remotes.su_mutex);
 +
++	return configfs_register_subsystem(&input_ir_remotes);
++}
++module_init(input_ir_init);
++
++static void __exit input_ir_exit(void)
++{
++	configfs_unregister_subsystem(&input_ir_remotes);
++}
++module_exit(input_ir_exit);
 diff --git a/drivers/input/ir/ir.h b/drivers/input/ir/ir.h
 new file mode 100644
-index 0000000..cbf09a0
+index 0000000..5bc55c3
 --- /dev/null
 +++ b/drivers/input/ir/ir.h
-@@ -0,0 +1,50 @@
+@@ -0,0 +1,49 @@
 +/*
 + * Private defines for IR support
 + *
@@ -1350,7 +1336,6 @@ index 0000000..cbf09a0
 +extern struct configfs_subsystem input_ir_remotes;
 +extern void input_ir_translate(struct input_dev *dev, int protocol, int device, int command);
 +extern int input_ir_register(struct input_dev *dev);
-+extern void input_ir_exit(void);
 +
 +
 +
