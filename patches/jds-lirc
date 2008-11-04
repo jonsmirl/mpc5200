@@ -1,7 +1,7 @@
-Bottom: 3bf3cc43cc91f67c1de3a02b6a1ba07246046ebb
-Top:    f3f0fb6da3f912c338b2ab22d8ec52ff537daced
+Bottom: a27689a4b201f04d2052a47f598cdc95ce870344
+Top:    0cd06ea0d5566c9436acc010a2d19a700a9da414
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-11-03 18:45:04 -0500
+Date:   2008-11-04 15:17:39 -0500
 
 Changes to core input subsystem to allow send and receive of IR messages. Encode and decode state machines are provided for common IR porotocols such as Sony, JVC, NEC, Philips, etc.
 
@@ -10,6 +10,7 @@ IR messages are sent using an input IOCTL.
 
 Jon Smirl
 <jonsmirl@gmail.com>
+
 
 
 
