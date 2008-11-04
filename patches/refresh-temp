@@ -1,5 +1,5 @@
-Bottom: a77117c089dfe05f2157a309e96d3a0ad845b267
-Top:    a77117c089dfe05f2157a309e96d3a0ad845b267
+Bottom: 4173f62983f267dda1b1e3e3739d61d465c391f9
+Top:    d5b0bb3355b59dd818b25eaeb81a1e6e5e55e0b2
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-04 17:11:39 -0500
 
@@ -7,4 +7,51 @@ Refresh of jds-lirc
 
 ---
 
-
+diff --git a/drivers/input/ir/ir-gpt.c b/drivers/input/ir/ir-gpt.c
+index 16e1d5a..ab83d89 100644
+--- a/drivers/input/ir/ir-gpt.c
++++ b/drivers/input/ir/ir-gpt.c
+@@ -125,7 +125,7 @@ static int __devinit ir_gpt_of_probe(struct of_device *op,
+ 	ret = input_register_device(ir_gpt->input);
+ 	if (ret)
+ 		goto free_input;
+-	ret = input_ir_register(ir->input);
++	ret = input_ir_register(ir_gpt->input);
+ 	if (ret)
+ 		goto free_input;
+ 
+diff --git a/drivers/input/ir/ir.h b/drivers/input/ir/ir.h
+index 5bc55c3..fbc1345 100644
+--- a/drivers/input/ir/ir.h
++++ b/drivers/input/ir/ir.h
+@@ -42,8 +42,7 @@ struct ir_device {
+ };
+ 
+ extern struct configfs_subsystem input_ir_remotes;
+-extern void input_ir_translate(struct input_dev *dev, int protocol, int device, int command);
+-extern int input_ir_register(struct input_dev *dev);
++void input_ir_translate(struct input_dev *dev, int protocol, int device, int command);
+ 
+ 
+ 
+diff --git a/include/linux/input.h b/include/linux/input.h
+index b8a45aa..95e385f 100644
+--- a/include/linux/input.h
++++ b/include/linux/input.h
+@@ -1441,7 +1441,7 @@ int input_ff_create_memless(struct input_dev *dev, void *data,
+ 		int (*play_effect)(struct input_dev *, void *, struct ff_effect *));
+ 
+ /**
+- * struct ir_device - IR support functions
++ * IR support functions
+  */
+ 
+ typedef int (*send_func)(void *private, unsigned int *buffer, unsigned int count,
+@@ -1452,6 +1452,7 @@ void input_ir_destroy(struct input_dev *dev);
+ 
+ void input_ir_decode(struct input_dev *dev, unsigned int delta, unsigned int bit);
+ int input_ir_send(struct input_dev *dev, struct ir_command *ir_command, struct file *file);
++int input_ir_register(struct input_dev *dev);
+ 
+ #endif
+ #endif
