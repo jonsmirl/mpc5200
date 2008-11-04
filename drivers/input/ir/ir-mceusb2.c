@@ -653,6 +653,9 @@ static int usb_remote_probe(struct usb_interface *intf,
 	ret = input_register_device(ir->input);
 	if (ret)
 		goto free_input;
+	ret = input_ir_register(ir->input);
+	if (ret)
+		goto free_input;
 
 	return 0;
 
