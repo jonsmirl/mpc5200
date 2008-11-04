@@ -1,5 +1,5 @@
 Bottom: 3bf3cc43cc91f67c1de3a02b6a1ba07246046ebb
-Top:    acb3e62c240f344d112f8a0064b6d5be76dda8a1
+Top:    f3f0fb6da3f912c338b2ab22d8ec52ff537daced
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-03 18:45:04 -0500
 
@@ -247,10 +247,10 @@ index 0000000..a6f3f25
 +endif
 diff --git a/drivers/input/ir/Makefile b/drivers/input/ir/Makefile
 new file mode 100644
-index 0000000..0bdafb0
+index 0000000..2ccdda3
 --- /dev/null
 +++ b/drivers/input/ir/Makefile
-@@ -0,0 +1,12 @@
+@@ -0,0 +1,8 @@
 +# Makefile for the ir drivers.
 +#
 +
@@ -258,10 +258,6 @@ index 0000000..0bdafb0
 +
 +obj-$(CONFIG_INPUT_IR)		+= ir.o
 +ir-objs := ir-core.o ir-configfs.o
-+
-+
-+obj-$(CONFIG_IR_GPT)		+= ir-gpt.o
-+obj-$(CONFIG_IR_MCEUSB2)	+= ir-mceusb2.o
 +
 diff --git a/drivers/input/ir/ir-configfs.c b/drivers/input/ir/ir-configfs.c
 new file mode 100644
