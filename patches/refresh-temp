@@ -1,0 +1,23 @@
+Bottom: 30ad5a2bf3893063fc77f2446a36867fda61c46b
+Top:    4173f62983f267dda1b1e3e3739d61d465c391f9
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2008-11-04 17:09:12 -0500
+
+Refresh of jds-lirc-gpt
+
+---
+
+diff --git a/drivers/input/ir/ir-gpt.c b/drivers/input/ir/ir-gpt.c
+index a26abe9..16e1d5a 100644
+--- a/drivers/input/ir/ir-gpt.c
++++ b/drivers/input/ir/ir-gpt.c
+@@ -125,6 +125,9 @@ static int __devinit ir_gpt_of_probe(struct of_device *op,
+ 	ret = input_register_device(ir_gpt->input);
+ 	if (ret)
+ 		goto free_input;
++	ret = input_ir_register(ir->input);
++	if (ret)
++		goto free_input;
+ 
+ 	spin_lock_init(&ir_gpt->lock);
+ 	INIT_WORK (&ir_gpt->queue, ir_event);
