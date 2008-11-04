@@ -1,5 +1,5 @@
-Bottom: 2bdf8b71c3045506ad8de2bc3eb4cce3d047e200
-Top:    91f74e793030d72df8ee815d8d38d1b52e5df348
+Bottom: 318acecf95973fb16829627f1622eb30bcf29718
+Top:    a2d76ec6bcf98685b7cc16f948fbd57ca25ef2d7
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-03 18:45:04 -0500
 
@@ -26,10 +26,10 @@ Hardware can send and recieve at all common IR frequencies - 36K, 38K, 40K, 56K
 ---
 
 diff --git a/drivers/input/ir/Kconfig b/drivers/input/ir/Kconfig
-index b80ab31..29657d0 100644
+index 172c0c6..b854900 100644
 --- a/drivers/input/ir/Kconfig
 +++ b/drivers/input/ir/Kconfig
-@@ -16,5 +16,11 @@ config IR_GPT
+@@ -17,5 +17,11 @@ config IR_GPT
  	default m
  	help
  	  Driver for GPT-based IR receiver found on Digispeaker

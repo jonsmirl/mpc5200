@@ -1,5 +1,5 @@
-Bottom: dff5f5fe5781df49f39961789aaf9afbfb552de2
-Top:    0796fd0d1c1bba8b41382f6703255f5cddf06839
+Bottom: 4ae2131d29d9b55ba38e7bf7d41f6f0ef854fb21
+Top:    96eb2cd70cfffd96f861228911c8f9a1857a9642
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-03 18:45:04 -0500
 
@@ -25,10 +25,10 @@ GPTs are common on embedded systems
 ---
 
 diff --git a/drivers/input/ir/Kconfig b/drivers/input/ir/Kconfig
-index 8afd2d6..b80ab31 100644
+index a6f3f25..172c0c6 100644
 --- a/drivers/input/ir/Kconfig
 +++ b/drivers/input/ir/Kconfig
-@@ -11,4 +11,10 @@ menuconfig INPUT_IR
+@@ -12,4 +12,10 @@ menuconfig INPUT_IR
  
  if INPUT_IR
  

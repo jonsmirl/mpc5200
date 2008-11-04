@@ -1,5 +1,5 @@
 Bottom: 3bf3cc43cc91f67c1de3a02b6a1ba07246046ebb
-Top:    dff5f5fe5781df49f39961789aaf9afbfb552de2
+Top:    4ae2131d29d9b55ba38e7bf7d41f6f0ef854fb21
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-03 18:45:04 -0500
 
@@ -1357,15 +1357,16 @@ index 0000000..cbf09a0
 +
 diff --git a/drivers/input/ir/Kconfig b/drivers/input/ir/Kconfig
 new file mode 100644
-index 0000000..8afd2d6
+index 0000000..a6f3f25
 --- /dev/null
 +++ b/drivers/input/ir/Kconfig
-@@ -0,0 +1,14 @@
+@@ -0,0 +1,15 @@
 +#
 +# LIRC driver(s) configuration
 +#
 +menuconfig INPUT_IR
-+	bool "Infrared Remote (IR) receiver/transmitter drivers"
++	select CONFIGFS_FS
++	tristate "Infrared Remote (IR) receiver/transmitter drivers"
 +	default n
 +	help
 +	  Say Y here, and all supported Infrared Remote Control IR
