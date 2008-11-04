@@ -125,7 +125,7 @@ static int __devinit ir_gpt_of_probe(struct of_device *op,
 	ret = input_register_device(ir_gpt->input);
 	if (ret)
 		goto free_input;
-	ret = input_ir_register(ir->input);
+	ret = input_ir_register(ir_gpt->input);
 	if (ret)
 		goto free_input;
 
