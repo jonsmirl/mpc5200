@@ -1,0 +1,33 @@
+Bottom: c2eeb92fb6b1e93e57f30ccede5e0cbf2eed38b6
+Top:    892af22769fae6f35ea60241892c6560699a4125
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2008-11-04 18:59:52 -0500
+
+Refresh of jds-lirc-base
+
+---
+
+diff --git a/drivers/input/Kconfig b/drivers/input/Kconfig
+index 780d321..747633c 100644
+--- a/drivers/input/Kconfig
++++ b/drivers/input/Kconfig
+@@ -172,8 +172,6 @@ source "drivers/input/touchscreen/Kconfig"
+ 
+ source "drivers/input/misc/Kconfig"
+ 
+-source "drivers/input/ir/Kconfig"
+-
+ endif
+ 
+ menu "Hardware I/O ports"
+diff --git a/drivers/input/Makefile b/drivers/input/Makefile
+index 85f5ef3..6a1049b 100644
+--- a/drivers/input/Makefile
++++ b/drivers/input/Makefile
+@@ -21,7 +21,6 @@ obj-$(CONFIG_INPUT_JOYSTICK)	+= joystick/
+ obj-$(CONFIG_INPUT_TABLET)	+= tablet/
+ obj-$(CONFIG_INPUT_TOUCHSCREEN)	+= touchscreen/
+ obj-$(CONFIG_INPUT_MISC)	+= misc/
+-obj-$(CONFIG_INPUT_IR)		+= ir/
+ 
+ obj-$(CONFIG_INPUT_APMPOWER)	+= apm-power.o
