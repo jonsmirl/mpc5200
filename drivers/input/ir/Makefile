@@ -8,4 +8,5 @@ ir-objs := ir-core.o ir-configfs.o
 
 
 obj-$(CONFIG_IR_GPT)		+= ir-gpt.o
+obj-$(CONFIG_IR_MCEUSB2)	+= ir-mceusb2.o
 
