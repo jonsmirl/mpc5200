@@ -44,7 +44,6 @@ struct ir_device {
 extern struct configfs_subsystem input_ir_remotes;
 extern void input_ir_translate(struct input_dev *dev, int protocol, int device, int command);
 extern int input_ir_register(struct input_dev *dev);
-extern void input_ir_exit(void);
 
 
 

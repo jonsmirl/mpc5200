@@ -630,34 +630,12 @@ static struct attribute_group input_ir_group = {
 	.attrs	= input_ir_attrs,
 };
 
-/* configfs can only be registered once,
- * register it when first IR device is created
- */
-static int configfs_registered;
-
 int input_ir_register(struct input_dev *dev)
 {
-	int ret;
-
 	if (!dev->ir)
 		return 0;
 
-	ret = sysfs_create_group(&dev->dev.kobj, &input_ir_group);
-	if (ret)
-		return ret;
-
-	if (!configfs_registered) {
-		config_group_init(&input_ir_remotes.su_group);
-		mutex_init(&input_ir_remotes.su_mutex);
-
-		ret = configfs_register_subsystem(&input_ir_remotes);
-		if (ret) {
-			sysfs_remove_group(&dev->dev.kobj, &input_ir_group);
-			return ret;
-		}
-		configfs_registered = 1;
-	}
-	return 0;
+	return sysfs_create_group(&dev->dev.kobj, &input_ir_group);
 }
 
 int input_ir_create(struct input_dev *dev, void *private, send_func xmit)
@@ -684,9 +662,17 @@ void input_ir_destroy(struct input_dev *dev)
 }
 EXPORT_SYMBOL_GPL(input_ir_destroy);
 
-void input_ir_exit(void)
+static int __init input_ir_init(void)
 {
-	if (configfs_registered)
-		configfs_unregister_subsystem(&input_ir_remotes);
-}
+	config_group_init(&input_ir_remotes.su_group);
+	mutex_init(&input_ir_remotes.su_mutex);
 
+	return configfs_register_subsystem(&input_ir_remotes);
+}
+module_init(input_ir_init);
+
+static void __exit input_ir_exit(void)
+{
+	configfs_unregister_subsystem(&input_ir_remotes);
+}
+module_exit(input_ir_exit);
