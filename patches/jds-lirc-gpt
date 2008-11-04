@@ -1,5 +1,5 @@
 Bottom: f3f0fb6da3f912c338b2ab22d8ec52ff537daced
-Top:    a5d6b14aa2c7087d54cd3dd5ee9fc526d9d8a0a3
+Top:    0793b9976f009ffe83e03ef1f72c15b53d50f868
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-04 09:45:35 -0500
 
@@ -41,6 +41,17 @@ index a6f3f25..172c0c6 100644
 +	  Driver for GPT-based IR receiver found on Digispeaker
 +
  endif
+diff --git a/drivers/input/ir/Makefile b/drivers/input/ir/Makefile
+index 2ccdda3..ab0da3f 100644
+--- a/drivers/input/ir/Makefile
++++ b/drivers/input/ir/Makefile
+@@ -6,3 +6,6 @@
+ obj-$(CONFIG_INPUT_IR)		+= ir.o
+ ir-objs := ir-core.o ir-configfs.o
+ 
++
++obj-$(CONFIG_IR_GPT)		+= ir-gpt.o
++
 diff --git a/drivers/input/ir/ir-gpt.c b/drivers/input/ir/ir-gpt.c
 new file mode 100644
 index 0000000..a26abe9
