@@ -1441,7 +1441,7 @@ int input_ff_create_memless(struct input_dev *dev, void *data,
 		int (*play_effect)(struct input_dev *, void *, struct ff_effect *));
 
 /**
- * struct ir_device - IR support functions
+ * IR support functions
  */
 
 typedef int (*send_func)(void *private, unsigned int *buffer, unsigned int count,
@@ -1452,6 +1452,7 @@ void input_ir_destroy(struct input_dev *dev);
 
 void input_ir_decode(struct input_dev *dev, unsigned int delta, unsigned int bit);
 int input_ir_send(struct input_dev *dev, struct ir_command *ir_command, struct file *file);
+int input_ir_register(struct input_dev *dev);
 
 #endif
 #endif
