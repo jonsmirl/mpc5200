@@ -1,5 +1,5 @@
 Bottom: a77117c089dfe05f2157a309e96d3a0ad845b267
-Top:    b477ee88f296db25fa03c3eb9ccf90f84b647c0d
+Top:    5e04dfdf3668ecfee525a91e27a417761ed46b00
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-04 15:17:39 -0500
 
@@ -55,10 +55,10 @@ index 2ccdda3..ab0da3f 100644
 +
 diff --git a/drivers/input/ir/ir-gpt.c b/drivers/input/ir/ir-gpt.c
 new file mode 100644
-index 0000000..a26abe9
+index 0000000..16e1d5a
 --- /dev/null
 +++ b/drivers/input/ir/ir-gpt.c
-@@ -0,0 +1,221 @@
+@@ -0,0 +1,224 @@
 +/*
 + * GPT timer based IR device
 + *
@@ -184,6 +184,9 @@ index 0000000..a26abe9
 +	ir_gpt->input->irbit[0] |= BIT_MASK(IR_CAP_RECEIVE_RAW);
 +
 +	ret = input_register_device(ir_gpt->input);
++	if (ret)
++		goto free_input;
++	ret = input_ir_register(ir->input);
 +	if (ret)
 +		goto free_input;
 +
