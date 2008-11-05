@@ -1,5 +1,5 @@
 Bottom: 668e4efd2c42c95930cf5b6b0a761c744d84751d
-Top:    d7d9d5bf9257e5b33cc82145317e5f5ff92501b1
+Top:    4a5b6388fe44cea817f959139291b3037af21c48
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-04 19:04:35 -0500
 
@@ -9,6 +9,17 @@ Layer on configfs support
 
 ---
 
+diff --git a/drivers/input/ir/Makefile b/drivers/input/ir/Makefile
+index 6acb665..2ccdda3 100644
+--- a/drivers/input/ir/Makefile
++++ b/drivers/input/ir/Makefile
+@@ -4,5 +4,5 @@
+ # Each configuration option enables a list of files.
+ 
+ obj-$(CONFIG_INPUT_IR)		+= ir.o
+-ir-objs := ir-core.o
++ir-objs := ir-core.o ir-configfs.o
+ 
 diff --git a/drivers/input/ir/ir-configfs.c b/drivers/input/ir/ir-configfs.c
 new file mode 100644
 index 0000000..7dd7196
@@ -349,3 +360,37 @@ index 0000000..7dd7196
 +    }
 +    mutex_unlock(&input_ir_remotes.su_mutex);
 +}
+diff --git a/drivers/input/ir/ir-core.c b/drivers/input/ir/ir-core.c
+index 1eff985..8e08f3f 100644
+--- a/drivers/input/ir/ir-core.c
++++ b/drivers/input/ir/ir-core.c
+@@ -10,12 +10,6 @@
+ 
+ #include "ir.h"
+ 
+-void input_ir_translate(struct input_dev *dev, int protocol, int device, int command)
+-{
+-
+-}
+-
+-
+ static int encode_sony(struct ir_device *ir, struct ir_command *command)
+ {
+ 	/* Sony SIRC IR code */
+@@ -670,11 +664,15 @@ EXPORT_SYMBOL_GPL(input_ir_destroy);
+ 
+ static int __init input_ir_init(void)
+ {
+-	return 0;
++	config_group_init(&input_ir_remotes.su_group);
++	mutex_init(&input_ir_remotes.su_mutex);
++
++	return configfs_register_subsystem(&input_ir_remotes);
+ }
+ module_init(input_ir_init);
+ 
+ static void __exit input_ir_exit(void)
+ {
++	configfs_unregister_subsystem(&input_ir_remotes);
+ }
+ module_exit(input_ir_exit);
