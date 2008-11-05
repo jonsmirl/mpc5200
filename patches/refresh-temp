@@ -1,0 +1,21 @@
+Bottom: 4a5b6388fe44cea817f959139291b3037af21c48
+Top:    6ebad235c9fa6ba87efb26414a70fd0513eaa447
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2008-11-04 19:06:06 -0500
+
+Refresh of jds-lirc-configfs
+
+---
+
+diff --git a/drivers/input/ir/ir-configfs.c b/drivers/input/ir/ir-configfs.c
+index 7dd7196..0fec855 100644
+--- a/drivers/input/ir/ir-configfs.c
++++ b/drivers/input/ir/ir-configfs.c
+@@ -308,7 +308,6 @@ void input_ir_translate(struct input_dev *dev, int protocol, int device, int com
+ 	struct remote *remote;
+ 	struct keymap *keymap;
+ 
+-	printk("ir_report\n");
+ 	/* generate the IR format event */
+ 	input_report_ir(dev, IR_PROTOCOL, protocol);
+ 	input_report_ir(dev, IR_DEVICE, device);
