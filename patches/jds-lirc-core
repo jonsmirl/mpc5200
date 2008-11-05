@@ -1,5 +1,5 @@
 Bottom: 892af22769fae6f35ea60241892c6560699a4125
-Top:    f68bd253ed1517e8f7094db968b3ea8e3c821e83
+Top:    0b63be38b528c22cca28bfcaf35309a00eee797b
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-04 19:00:15 -0500
 
@@ -9,6 +9,31 @@ Core IR module
 
 ---
 
+diff --git a/drivers/input/Kconfig b/drivers/input/Kconfig
+index 747633c..780d321 100644
+--- a/drivers/input/Kconfig
++++ b/drivers/input/Kconfig
+@@ -172,6 +172,8 @@ source "drivers/input/touchscreen/Kconfig"
+ 
+ source "drivers/input/misc/Kconfig"
+ 
++source "drivers/input/ir/Kconfig"
++
+ endif
+ 
+ menu "Hardware I/O ports"
+diff --git a/drivers/input/Makefile b/drivers/input/Makefile
+index 6a1049b..85f5ef3 100644
+--- a/drivers/input/Makefile
++++ b/drivers/input/Makefile
+@@ -21,6 +21,7 @@ obj-$(CONFIG_INPUT_JOYSTICK)	+= joystick/
+ obj-$(CONFIG_INPUT_TABLET)	+= tablet/
+ obj-$(CONFIG_INPUT_TOUCHSCREEN)	+= touchscreen/
+ obj-$(CONFIG_INPUT_MISC)	+= misc/
++obj-$(CONFIG_INPUT_IR)		+= ir/
+ 
+ obj-$(CONFIG_INPUT_APMPOWER)	+= apm-power.o
+ 
 diff --git a/drivers/input/ir/Kconfig b/drivers/input/ir/Kconfig
 new file mode 100644
 index 0000000..a6f3f25

@@ -1,6 +1,6 @@
 Version: 1
-Previous: 3221e020c88c497867e5ec3fe13a4367f385e100
-Head: d88412622e78a7de62ab87d8cf5db4e903a568f8
+Previous: 328f9bf0c3d5a1f84dc5ad5afeaa28c2e9ac25f6
+Head: 7b9e147351e5ff348ac36ff75ade574e52925adc
 Applied:
   Makefile: ab23f766dc17d0746e0bcb4882c6f1b1cda825ce
   anton_1: 87e6d7341ea766f9c8e057ebe82edddb8db81143
@@ -18,8 +18,7 @@ Applied:
   mpc5200-rtc: 55df0f4ae126553e84277f8ecb2e5e2550a433ce
   lirc: 9030e9e37f29458c7be475d40bddb6b79b3dd5a7
   jds-lirc-base: 3e43d9a9b47a0736ee1ebdba4651c01c74c2700f
-  jds-lirc-core: 9bec6c98ec6bb94d636a5563469dc2caf0733f6d
-  refresh-temp: d88412622e78a7de62ab87d8cf5db4e903a568f8
+  jds-lirc-core: 7b9e147351e5ff348ac36ff75ade574e52925adc
 Unapplied:
   jds-lirc-configfs: 31c1259ba4d4dd6d4155ff0388e82c0df934e297
   jds-lirc-gpt: 905a3f66dba9f8c30e3097eea9323d3baef0c2d7
