@@ -1,5 +1,5 @@
 Bottom: 892af22769fae6f35ea60241892c6560699a4125
-Top:    668e4efd2c42c95930cf5b6b0a761c744d84751d
+Top:    10289c38707fc85b4571c986efcb835301f37584
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-04 19:00:15 -0500
 
@@ -71,10 +71,10 @@ index 0000000..6acb665
 +
 diff --git a/drivers/input/ir/ir-core.c b/drivers/input/ir/ir-core.c
 new file mode 100644
-index 0000000..1eff985
+index 0000000..3a309fa
 --- /dev/null
 +++ b/drivers/input/ir/ir-core.c
-@@ -0,0 +1,680 @@
+@@ -0,0 +1,683 @@
 +/*
 + * Core routines for IR support
 + *
@@ -89,9 +89,12 @@ index 0000000..1eff985
 +
 +void input_ir_translate(struct input_dev *dev, int protocol, int device, int command)
 +{
-+
++	/* generate the IR format event */
++	input_report_ir(dev, IR_PROTOCOL, protocol);
++	input_report_ir(dev, IR_DEVICE, device);
++	input_report_ir(dev, IR_COMMAND, command);
++	input_sync(dev);
 +}
-+
 +
 +static int encode_sony(struct ir_device *ir, struct ir_command *command)
 +{
