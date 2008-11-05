@@ -1,5 +1,5 @@
 Bottom: 668e4efd2c42c95930cf5b6b0a761c744d84751d
-Top:    4a5b6388fe44cea817f959139291b3037af21c48
+Top:    6ebad235c9fa6ba87efb26414a70fd0513eaa447
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-04 19:04:35 -0500
 
@@ -22,10 +22,10 @@ index 6acb665..2ccdda3 100644
  
 diff --git a/drivers/input/ir/ir-configfs.c b/drivers/input/ir/ir-configfs.c
 new file mode 100644
-index 0000000..7dd7196
+index 0000000..0fec855
 --- /dev/null
 +++ b/drivers/input/ir/ir-configfs.c
-@@ -0,0 +1,334 @@
+@@ -0,0 +1,333 @@
 +/*
 + * Configfs routines for IR support
 + *
@@ -336,7 +336,6 @@ index 0000000..7dd7196
 +	struct remote *remote;
 +	struct keymap *keymap;
 +
-+	printk("ir_report\n");
 +	/* generate the IR format event */
 +	input_report_ir(dev, IR_PROTOCOL, protocol);
 +	input_report_ir(dev, IR_DEVICE, device);
