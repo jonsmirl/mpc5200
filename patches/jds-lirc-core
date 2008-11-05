@@ -5,6 +5,10 @@ Date:   2008-11-04 19:00:15 -0500
 
 Core IR module
 
+Changes to core input subsystem to allow send and receive of IR messages. Encode and decode state machines are provided for common IR porotocols such as Sony, JVC, NEC, Philips, etc.
+
+Received IR messages generate event in the input queue.
+IR messages are sent using an input IOCTL.
 
 
 ---
