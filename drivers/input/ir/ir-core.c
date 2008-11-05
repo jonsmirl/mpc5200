@@ -12,9 +12,12 @@
 
 void input_ir_translate(struct input_dev *dev, int protocol, int device, int command)
 {
-
+	/* generate the IR format event */
+	input_report_ir(dev, IR_PROTOCOL, protocol);
+	input_report_ir(dev, IR_DEVICE, device);
+	input_report_ir(dev, IR_COMMAND, command);
+	input_sync(dev);
 }
-
 
 static int encode_sony(struct ir_device *ir, struct ir_command *command)
 {
