@@ -308,7 +308,6 @@ void input_ir_translate(struct input_dev *dev, int protocol, int device, int com
 	struct remote *remote;
 	struct keymap *keymap;
 
-	printk("ir_report\n");
 	/* generate the IR format event */
 	input_report_ir(dev, IR_PROTOCOL, protocol);
 	input_report_ir(dev, IR_DEVICE, device);
