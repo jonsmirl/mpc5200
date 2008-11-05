@@ -10,6 +10,12 @@
 
 #include "ir.h"
 
+void input_ir_translate(struct input_dev *dev, int protocol, int device, int command)
+{
+
+}
+
+
 static int encode_sony(struct ir_device *ir, struct ir_command *command)
 {
 	/* Sony SIRC IR code */
@@ -664,15 +670,11 @@ EXPORT_SYMBOL_GPL(input_ir_destroy);
 
 static int __init input_ir_init(void)
 {
-	config_group_init(&input_ir_remotes.su_group);
-	mutex_init(&input_ir_remotes.su_mutex);
-
-	return configfs_register_subsystem(&input_ir_remotes);
+	return 0;
 }
 module_init(input_ir_init);
 
 static void __exit input_ir_exit(void)
 {
-	configfs_unregister_subsystem(&input_ir_remotes);
 }
 module_exit(input_ir_exit);
