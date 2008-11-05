@@ -3,10 +3,9 @@ Top:    892af22769fae6f35ea60241892c6560699a4125
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-04 15:17:39 -0500
 
-Changes to core input subsystem to allow send and receive of IR messages. Encode and decode state machines are provided for common IR porotocols such as Sony, JVC, NEC, Philips, etc.
+Minimal changes to the core input system
 
-Received IR messages generate event in the input queue.
-IR messages are sent using an input IOCTL.
+Minimal changes to the core input system. The bulk of IR support loads as a module. These changes are passive if the rest of IR isn't loaded.
 
 Jon Smirl
 <jonsmirl@gmail.com>
