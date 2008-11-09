@@ -1,7 +1,7 @@
-Bottom: 3f2d152f0a4b34043788d229f9c2f11110b0b5d0
-Top:    a4052f0d47720ed02ce7885fb63b622e7aeb7cea
+Bottom: 5eb2e95e4ccda6514206b7e1aaf351dc0f868433
+Top:    39605a0dac2050e106cdf6ccf28f6600a5c84a1b
 Author: Anton Vorontsov <avorontsov@ru.mvista.com>
-Date:   2008-11-08 13:54:27 -0500
+Date:   2008-11-09 16:10:30 -0500
 
 powerpc and sparc: introduce dev_archdata node accessors
 
