@@ -1,5 +1,5 @@
 Bottom: 8bb3ce6a7610af24c35d4423abddc5f0c1a9fbf8
-Top:    5055ae349471137cea427674220eac8e8569c085
+Top:    64f94e70aed8bc56563e2d32cfdd3f9f5f4f0c13
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-11-10 15:47:24 -0500
 
@@ -59,7 +59,7 @@ index ab0da3f..0bdafb0 100644
  
 diff --git a/drivers/input/ir/ir-mceusb2.c b/drivers/input/ir/ir-mceusb2.c
 new file mode 100644
-index 0000000..898267a
+index 0000000..fad46cd
 --- /dev/null
 +++ b/drivers/input/ir/ir-mceusb2.c
 @@ -0,0 +1,744 @@
@@ -750,7 +750,7 @@ index 0000000..898267a
 +
 +	ir->usbdev = NULL;
 +	input_ir_destroy(ir->input);
-+	input_free_device(ir->input);
++	input_unregister_device(ir->input);
 +
 +	usb_kill_urb(ir->urb_in);
 +	usb_free_urb(ir->urb_in);
