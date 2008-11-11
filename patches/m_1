@@ -1,7 +1,7 @@
-Bottom: 5792b9a19a4dd442c1b45ca47327f3bf5edfd799
-Top:    a2a3b3b1ae279eb9be64df7428017e13d5d44895
+Bottom: 5fc345a57347977aedeb440b2305e4121ec32e03
+Top:    5767e10232dd236f8ef0b196cd749011e67556f8
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-11-10 15:47:22 -0500
+Date:   2008-11-11 16:06:28 -0500
 
 Here is v3. I'm out of ideas if you won't like it. :-)
 
@@ -37,10 +37,10 @@ Signed-off-by: Anton Vorontsov <avorontsov@ru.mvista.com>
 ---
 
 diff --git a/Documentation/powerpc/booting-without-of.txt b/Documentation/powerpc/booting-without-of.txt
-index 02ea9a9..8bd7600 100644
+index 0ab0230..7ae74e7 100644
 --- a/Documentation/powerpc/booting-without-of.txt
 +++ b/Documentation/powerpc/booting-without-of.txt
-@@ -2095,7 +2095,28 @@ prefixed with the string "marvell,", for Marvell Technology Group Ltd.
+@@ -2050,7 +2050,28 @@ prefixed with the string "marvell,", for Marvell Technology Group Ltd.
  	     local-mac-address = [ 00 00 00 00 00 00 ];
       };
  
