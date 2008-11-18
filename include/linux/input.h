@@ -79,6 +79,8 @@ struct input_absinfo {
 #define EVIOCRMFF		_IOW('E', 0x81, int)			/* Erase a force effect */
 #define EVIOCGEFFECTS		_IOR('E', 0x84, int)			/* Report number of effects playable at the same time */
 
+#define EVIOIRSEND		_IOC(_IOC_WRITE, 'E', 0x80, sizeof(struct ir_command))	/* send an IR command */
+
 #define EVIOCGRAB		_IOW('E', 0x90, int)			/* Grab/Release device */
 
 /*
@@ -97,6 +99,7 @@ struct input_absinfo {
 #define EV_FF			0x15
 #define EV_PWR			0x16
 #define EV_FF_STATUS		0x17
+#define EV_IR			0x18
 #define EV_MAX			0x1f
 #define EV_CNT			(EV_MAX+1)
 
@@ -961,6 +964,56 @@ struct ff_effect {
 #define FF_MAX		0x7f
 #define FF_CNT		(FF_MAX+1)
 
+/*
+ * IR Support
+ */
+
+#define IR_PROTOCOL_RESERVED 0
+#define IR_PROTOCOL_JVC 1
+#define IR_PROTOCOL_NEC 2
+#define IR_PROTOCOL_NOKIA 3
+#define IR_PROTOCOL_SHARP 4
+#define IR_PROTOCOL_SONY_12 5
+#define IR_PROTOCOL_SONY_15 6
+#define IR_PROTOCOL_SONY_20 7
+#define IR_PROTOCOL_PHILIPS_RC5 8
+#define IR_PROTOCOL_PHILIPS_RC6 9
+#define IR_PROTOCOL_PHILIPS_RCMM 10
+#define IR_PROTOCOL_PHILIPS_RECS80 11
+#define IR_PROTOCOL_RCA 12
+#define IR_PROTOCOL_ITT 13
+
+#define IR_PROTOCOL 1
+#define IR_DEVICE 2
+#define IR_COMMAND 3
+
+#define IR_CAP_RECEIVE_BASEBAND 0
+#define IR_CAP_RECEIVE_36K 1
+#define IR_CAP_RECEIVE_38K 2
+#define IR_CAP_RECEIVE_40K 3
+#define IR_CAP_RECEIVE_56K 4
+#define IR_CAP_SEND_BASEBAND 5
+#define IR_CAP_SEND_36K 6
+#define IR_CAP_SEND_38K 7
+#define IR_CAP_SEND_40K 8
+#define IR_CAP_SEND_56K 9
+#define IR_CAP_XMITTER_1 10
+#define IR_CAP_XMITTER_2 11
+#define IR_CAP_XMITTER_3 12
+#define IR_CAP_XMITTER_4 13
+#define IR_CAP_RECEIVE_RAW 14
+#define IR_CAP_SEND_RAW 15
+#define IR_MAX 0x0f
+#define IR_CNT IR_MAX + 1
+
+struct ir_command {
+	__u32 protocol;
+	__u32 device;
+	__u32 command;
+	__u32 transmitters;
+};
+
+
 #ifdef __KERNEL__
 
 /*
@@ -988,6 +1041,7 @@ struct ff_effect {
  * @sndbit: bitmap of sound effects supported by the device
  * @ffbit: bitmap of force feedback effects supported by the device
  * @swbit: bitmap of switches present on the device
+ * @irbit: bitmap of capabilies of the IR hardware
  * @keycodemax: size of keycode table
  * @keycodesize: size of elements in keycode table
  * @keycode: map of scancodes to keycodes for this device
@@ -1060,6 +1114,7 @@ struct input_dev {
 	unsigned long sndbit[BITS_TO_LONGS(SND_CNT)];
 	unsigned long ffbit[BITS_TO_LONGS(FF_CNT)];
 	unsigned long swbit[BITS_TO_LONGS(SW_CNT)];
+	unsigned long irbit[BITS_TO_LONGS(IR_CNT)];
 
 	unsigned int keycodemax;
 	unsigned int keycodesize;
@@ -1068,6 +1123,7 @@ struct input_dev {
 	int (*getkeycode)(struct input_dev *dev, int scancode, int *keycode);
 
 	struct ff_device *ff;
+	struct ir_device *ir;
 
 	unsigned int repeat_key;
 	struct timer_list timer;
@@ -1303,6 +1359,11 @@ static inline void input_report_switch(struct input_dev *dev, unsigned int code,
 	input_event(dev, EV_SW, code, !!value);
 }
 
+static inline void input_report_ir(struct input_dev *dev, unsigned int code, int value)
+{
+	input_event(dev, EV_IR, code, value);
+}
+
 static inline void input_sync(struct input_dev *dev)
 {
 	input_event(dev, EV_SYN, SYN_REPORT, 0);
@@ -1380,6 +1441,20 @@ int input_ff_erase(struct input_dev *dev, int effect_id, struct file *file);
 
 int input_ff_create_memless(struct input_dev *dev, void *data,
 		int (*play_effect)(struct input_dev *, void *, struct ff_effect *));
+
+/**
+ * IR support functions
+ */
+
+typedef int (*send_func)(void *private, unsigned int *buffer, unsigned int count,
+		unsigned int frequency, unsigned int xmitters);
+
+int input_ir_create(struct input_dev *dev, void *private, send_func send);
+void input_ir_destroy(struct input_dev *dev);
+
+void input_ir_decode(struct input_dev *dev, unsigned int delta, unsigned int bit);
+int input_ir_send(struct input_dev *dev, struct ir_command *ir_command, struct file *file);
+int input_ir_register(struct input_dev *dev);
 
 #endif
 #endif
