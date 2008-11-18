@@ -413,6 +413,15 @@ config ATMEL_SSC
 
 	  If unsure, say N.
 
+config MAX9485
+	tristate "Maxim MAX9485 Programmable Audio Clock Generator"
+	help
+	  If you say yes here you get support for Maxim MAX9485 
+	  Programmable Audio Clock Generator.
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called max9485.
+
 config INTEL_MENLOW
 	tristate "Thermal Management driver for Intel menlow platform"
 	depends on ACPI_THERMAL
