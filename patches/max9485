@@ -1,7 +1,7 @@
-Bottom: 0dcdb98d4d0b5c7ada5d04a2a4bfa7726ffaafaa
-Top:    c7f636f97062624506952adcba5eef8f64d6389d
+Bottom: f4be93c3a264d61cf28b15b62dfa7ff46805af94
+Top:    c9f2ed534dc48ed78a0891a34223668051916c62
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-11-11 16:06:27 -0500
+Date:   2008-11-18 11:26:36 -0500
 
 i2c driver for Maxim max9485 audio clock generator chip
 
@@ -16,10 +16,10 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/drivers/misc/Kconfig b/drivers/misc/Kconfig
-index 9494400..0d99682 100644
+index fee7304..6ffd693 100644
 --- a/drivers/misc/Kconfig
 +++ b/drivers/misc/Kconfig
-@@ -403,6 +403,15 @@ config ATMEL_SSC
+@@ -413,6 +413,15 @@ config ATMEL_SSC
  
  	  If unsure, say N.
  
@@ -36,10 +36,10 @@ index 9494400..0d99682 100644
  	tristate "Thermal Management driver for Intel menlow platform"
  	depends on ACPI_THERMAL
 diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
-index 909e246..c1be301 100644
+index 817f7f5..1b5a079 100644
 --- a/drivers/misc/Makefile
 +++ b/drivers/misc/Makefile
-@@ -25,6 +25,7 @@ obj-$(CONFIG_THINKPAD_ACPI)	+= thinkpad_acpi.o
+@@ -26,6 +26,7 @@ obj-$(CONFIG_THINKPAD_ACPI)	+= thinkpad_acpi.o
  obj-$(CONFIG_FUJITSU_LAPTOP)	+= fujitsu-laptop.o
  obj-$(CONFIG_PANASONIC_LAPTOP)	+= panasonic-laptop.o
  obj-$(CONFIG_EEPROM_93CX6)	+= eeprom_93cx6.o

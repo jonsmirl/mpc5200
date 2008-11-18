@@ -1,7 +1,7 @@
-Bottom: 54b4a92c5ba377becbbe9d65d6974928ecff4be6
-Top:    64db084b97848457d20971f7f71d51d74a830389
+Bottom: 14bf651e614f54cd90d7b9e31562c846a19e9d17
+Top:    e55b23d6dca509fef8a1ddccc76228e2645acf0b
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-11-11 16:06:28 -0500
+Date:   2008-11-18 11:26:41 -0500
 
 RTC driver for MPC5200
 
@@ -41,10 +41,10 @@ index 81ef10b..590ac2a 100644
  
  
 diff --git a/drivers/rtc/Kconfig b/drivers/rtc/Kconfig
-index 8abbb20..99cdd8e 100644
+index 123092d..187da18 100644
 --- a/drivers/rtc/Kconfig
 +++ b/drivers/rtc/Kconfig
-@@ -650,4 +650,14 @@ config RTC_DRV_STARFIRE
+@@ -679,4 +679,14 @@ config RTC_DRV_STARFIRE
  	  If you say Y here you will get support for the RTC found on
  	  Starfire systems.
  
@@ -60,10 +60,10 @@ index 8abbb20..99cdd8e 100644
 +
  endif # RTC_CLASS
 diff --git a/drivers/rtc/Makefile b/drivers/rtc/Makefile
-index e9e8474..30f5ab3 100644
+index 6e79c91..054a107 100644
 --- a/drivers/rtc/Makefile
 +++ b/drivers/rtc/Makefile
-@@ -46,6 +46,7 @@ obj-$(CONFIG_RTC_DRV_SUN4V)	+= rtc-sun4v.o
+@@ -47,6 +47,7 @@ obj-$(CONFIG_RTC_DRV_SUN4V)	+= rtc-sun4v.o
  obj-$(CONFIG_RTC_DRV_STARFIRE)	+= rtc-starfire.o
  obj-$(CONFIG_RTC_DRV_MAX6900)	+= rtc-max6900.o
  obj-$(CONFIG_RTC_DRV_MAX6902)	+= rtc-max6902.o
