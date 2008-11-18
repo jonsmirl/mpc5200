@@ -35,6 +35,11 @@ config PPC_LITE5200
 	depends on PPC_MPC52xx
 	select DEFAULT_UIMAGE
 
+config PPC_DSPEAK01
+	bool "Digispeaker DSPEAK01 Alpha Model"
+	depends on PPC_MPC52xx
+	select DEFAULT_UIMAGE
+
 config PPC_MPC5200_BUGFIX
 	bool "MPC5200 (L25R) bugfix support"
 	depends on PPC_MPC52xx
