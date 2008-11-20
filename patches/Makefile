@@ -1,7 +1,7 @@
-Bottom: 93c9e6929891c9541060b5933a8f1f73bc8efe7b
-Top:    c8a8794b9c7897af2189615e07fdcaa04329b288
+Bottom: 3cfa25e0f6db737e04889594c38ecb5aab21c1d3
+Top:    bb305084efb9def26c4708c98fa28b7512f31b69
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-11-20 15:29:00 -0500
+Date:   2008-11-20 18:47:59 -0500
 
 Makefile
 
@@ -10,7 +10,7 @@ Makefile
 ---
 
 diff --git a/Makefile b/Makefile
-index a9ae5dc..4e90a9e 100644
+index 7b1f238..5d4e391 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -35,6 +35,9 @@ MAKEFLAGS += -rR --no-print-directory
