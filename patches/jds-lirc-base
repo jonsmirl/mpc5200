@@ -1,7 +1,7 @@
-Bottom: 52505c46f03a601d7dbfa1319875ed4b2d09efb2
-Top:    a92e05db85c36792d1c7acae2e58a2475fd0da5a
+Bottom: 54004bd4d310ce09045da10aca002658c3eea318
+Top:    0d24023cbd2ff270a43b486fffecd93d88175ef7
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-11-20 18:48:02 -0500
+Date:   2008-11-30 09:45:02 -0500
 
 Minimal changes to the core input system
 
