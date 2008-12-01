@@ -1,7 +1,7 @@
-Bottom: 6c3c6905bd4ea099eeec5ab74966a4cd23e2dbd9
-Top:    c6c9d00564f7d977dab956f6eb437a73c4e6fada
+Bottom: a3db19c559432864f31df906db431b1122083bb1
+Top:    a65d528d2fe0deb7b14383555d5a13cc0f2a32a0
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-11-30 09:44:59 -0500
+Date:   2008-12-01 07:55:50 -0500
 
 Clean up ASOC functions to support 32b values instead of 16b
 

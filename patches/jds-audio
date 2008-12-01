@@ -1,7 +1,7 @@
-Bottom: c6c9d00564f7d977dab956f6eb437a73c4e6fada
-Top:    2fa271b7bff6c86fdd64b0a3ad4ce509ec887f30
+Bottom: a65d528d2fe0deb7b14383555d5a13cc0f2a32a0
+Top:    0eb977d7eb68c117b64addc3fcabd2ee44a705ac
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-11-30 09:44:59 -0500
+Date:   2008-12-01 07:55:51 -0500
 
 jds audio driver
 
@@ -1106,7 +1106,7 @@ index 0000000..58c378c
 +#define TAS5504_FORMATS SNDRV_PCM_FMTBIT_S32
 +
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index bba9546..277f2c0 100644
+index 8d73edc..8b93d7b 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
 @@ -1,6 +1,23 @@
@@ -1133,8 +1133,8 @@ index bba9546..277f2c0 100644
  config SND_SOC_MPC8610
  	bool "ALSA SoC support for the MPC8610 SOC"
  	depends on MPC8610_HPCD
-@@ -24,3 +41,21 @@ config SND_SOC_MPC5200_I2S
- 	depends on SND_SOC && PPC_MPC52xx
+@@ -25,3 +42,21 @@ config SND_SOC_MPC5200_I2S
+ 	select PPC_BESTCOMM_GEN_BD
  	help
  	  Say Y here to support the MPC5200 PSCs in I2S mode.
 +
