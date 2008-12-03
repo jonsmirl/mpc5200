@@ -254,10 +254,10 @@ int snd_soc_set_runtime_hwparams(struct snd_pcm_substream *substream,
 #define snd_soc_write(codec, reg, value) codec->write(codec, reg, value)
 
 /* codec register bit access */
-int snd_soc_update_bits(struct snd_soc_codec *codec, unsigned short reg,
-				unsigned short mask, unsigned short value);
-int snd_soc_test_bits(struct snd_soc_codec *codec, unsigned short reg,
-				unsigned short mask, unsigned short value);
+int snd_soc_update_bits(struct snd_soc_codec *codec, uint reg,
+				uint mask, uint value);
+int snd_soc_test_bits(struct snd_soc_codec *codec, uint reg,
+				uint mask, uint value);
 
 int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
 	struct snd_ac97_bus_ops *ops, int num);
@@ -422,8 +422,8 @@ struct snd_soc_codec {
 	hw_write_t hw_write;
 	hw_read_t hw_read;
 	void *reg_cache;
-	short reg_cache_size;
-	short reg_cache_step;
+	uint reg_cache_size;
+	uint reg_cache_step;
 
 	/* dapm */
 	struct list_head dapm_widgets;
@@ -533,11 +533,11 @@ struct soc_mixer_control {
 
 /* enumerated kcontrol */
 struct soc_enum {
-	unsigned short reg;
-	unsigned short reg2;
-	unsigned char shift_l;
-	unsigned char shift_r;
-	unsigned int max;
+	uint reg;
+	uint reg2;
+	uint shift_l;
+	uint shift_r;
+	uint max;
 	const char **texts;
 	void *dapm;
 };
