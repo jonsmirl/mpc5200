@@ -2050,7 +2050,28 @@ prefixed with the string "marvell,", for Marvell Technology Group Ltd.
 	     local-mac-address = [ 00 00 00 00 00 00 ];
      };
 
+    ...) MMC-over-SPI
 
+      Required properties:
+      - compatible : should be "mmc-spi".
+      - reg : should specify SPI address (chip-select number).
+      - max-speed : (optional) maximum frequency for this device (Hz).
+      - voltage-range : two cells are required, first cell specifies minimum
+        slot voltage (mV), second cell specifies maximum slot voltage (mV).
+      - gpios : (optional) may specify GPIOs in this order: Write-Protect GPIO,
+        Card-Detect GPIO.
+
+      Example:
+
+	mmc-slot@0 {
+		compatible = "mmc-spi";
+		reg = <0>;
+		max-speed = <50000000>;
+		/* Unregulated slot. */
+		voltage-range = <3300 3300>;
+		gpios = <&sdcsr_pio 1 0   /*  WP */
+			 &sdcsr_pio 0 1>; /* nCD */
+	};
 
    c) Marvell Discovery PHY nodes
 
