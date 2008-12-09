@@ -1,7 +1,7 @@
-Bottom: c7f18e4c4faa4b62096fbaeac42432018d807ce7
-Top:    dc7c6910d714299dc372047ad01e12942c2e5e71
+Bottom: 3b96c471974075f87f1acbf92cf6eece634e2a13
+Top:    01e31447795355df15633a8b050c4c211ec1ba83
 Author: Anton Vorontsov <avorontsov@ru.mvista.com>
-Date:   2008-12-07 16:14:49 -0500
+Date:   2008-12-09 10:54:04 -0500
 
 of: fill the archdata for I2C devices
 
