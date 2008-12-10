@@ -239,6 +239,19 @@ struct mpc52xx_cdm {
 	u16 mclken_div_psc6;	/* CDM + 0x36  reg13 byte2,3 */
 };
 
+/* RTC */
+struct mpc52xx_rtc {
+	u32 time_set;		/* RTC + 0x00 */
+	u32 date_set;		/* RTC + 0x04 */
+	u32 stopwatch;		/* RTC + 0x08 */
+	u32 alarm;		/* RTC + 0x0c */
+	u32 current_time;	/* RTC + 0x10 read only */
+	u32 current_date;	/* RTC + 0x14 read only */
+	u32 alarm_interrupt;	/* RTC + 0x18 read only */
+	u32 periodic_interrupt;	/* RTC + 0x1c read only */
+	u32 test;		/* RTC + 0x1c */
+};
+
 #endif /* __ASSEMBLY__ */
 
 
