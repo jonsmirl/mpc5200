@@ -328,6 +328,14 @@ struct ff_effect_compat {
 	} u;
 };
 
+struct ir_command_compat {
+	__u32 protocol;
+	__u32 device;
+	__u32 command;
+	__u32 transmitters;
+};
+
+
 /* Note to the author of this code: did it ever occur to
    you why the ifdefs are needed? Think about it again. -AK */
 #ifdef CONFIG_X86_64
@@ -432,6 +440,32 @@ static int evdev_ff_effect_from_user(const char __user *buffer, size_t size,
 	return 0;
 }
 
+static int evdev_ir_send_from_user(const char __user *buffer, size_t size,
+				     struct ir_command *ir_command)
+{
+	if (COMPAT_TEST) {
+		struct ir_command_compat *compat_ir_command;
+
+		if (size != sizeof(struct ir_command_compat))
+			return -EINVAL;
+
+		compat_ir_command = (struct ir_command_compat *)ir_command;
+
+		if (copy_from_user(compat_ir_command, buffer,
+				   sizeof(struct ir_command_compat)))
+			return -EFAULT;
+
+	} else {
+		if (size != sizeof(struct ir_command))
+			return -EINVAL;
+
+		if (copy_from_user(ir_command, buffer, sizeof(struct ir_command)))
+			return -EFAULT;
+	}
+
+	return 0;
+}
+
 #else
 
 static inline size_t evdev_event_size(void)
@@ -464,6 +498,18 @@ static int evdev_ff_effect_from_user(const char __user *buffer, size_t size,
 		return -EINVAL;
 
 	if (copy_from_user(effect, buffer, sizeof(struct ff_effect)))
+		return -EFAULT;
+
+	return 0;
+}
+
+static int evdev_ir_send_from_user(const char __user *buffer, size_t size,
+				     struct ir_command *ir_command)
+{
+	if (size != sizeof(struct ir_command))
+		return -EINVAL;
+
+	if (copy_from_user(ir_command, buffer, sizeof(struct ir_command)))
 		return -EFAULT;
 
 	return 0;
@@ -695,6 +741,7 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
 	struct input_dev *dev = evdev->handle.dev;
 	struct input_absinfo abs;
 	struct ff_effect effect;
+	struct ir_command ir_command;
 	int __user *ip = (int __user *)p;
 	int i, t, u, v;
 	int error;
@@ -858,6 +905,14 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
 				spin_unlock_irq(&dev->event_lock);
 
 				return 0;
+			}
+
+			if (_IOC_NR(cmd) == _IOC_NR(EVIOIRSEND)) {
+
+				if (evdev_ir_send_from_user(p, _IOC_SIZE(cmd), &ir_command))
+					return -EFAULT;
+
+				return input_ir_send(dev, &ir_command, file);
 			}
 		}
 	}
