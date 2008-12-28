@@ -1,7 +1,7 @@
-Bottom: a16e09774ce3b917341ef6f0dc9e6f80140fa8d4
-Top:    4236714655e84d21b7925382d6481fdda0797e19
+Bottom: 0144515c72ab4d5af570d88f4ab9ffc1a6af84e4
+Top:    5c68e0682c69200b10f6ea166fdf2510b554962e
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-12-21 23:29:38 -0500
+Date:   2008-12-28 11:07:28 -0500
 
 Allow a custom ASOC machine driver with soc-of-simple
 
