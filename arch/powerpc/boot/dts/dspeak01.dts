@@ -176,9 +176,9 @@
 			interrupt-parent = <&mpc5200_pic>;
 
 			mmc-slot@0 {
-				compatible = "mmc-spi";
+				compatible = "linux,mmc-spi";
 				reg = <0>;
-				max-speed = <50000000>;
+				spi-max-frequency = <20000000>;
 				/* Unregulated slot. */
 				voltage-range = <3300 3300>;
 				/*gpios = <&sdcsr_pio 1 0   /*  WP */
