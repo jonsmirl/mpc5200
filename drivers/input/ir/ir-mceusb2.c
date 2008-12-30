@@ -346,7 +346,10 @@ static void usb_remote_recv(struct urb *urb, struct pt_regs *regs)
 					ir->last.bit = bit;
 
 					dev_dbg(&ir->usbdev->dev, "bit %d delta %d\n", bit, delta);
-					input_ir_decode(ir->input, delta, bit);
+					if (bit)
+						delta = -delta;
+
+					input_ir_queue(ir->input, delta);
 				}
 			}
 		}
@@ -660,7 +663,6 @@ static int usb_remote_probe(struct usb_interface *intf,
 	return 0;
 
 free_input:
-	input_ir_destroy(ir->input);
 	input_free_device(ir->input);
 free_urb:
 	usb_free_urb(ir->urb_in);
@@ -684,7 +686,6 @@ static void usb_remote_disconnect(struct usb_interface *intf)
 		return;
 
 	ir->usbdev = NULL;
-	input_ir_destroy(ir->input);
 	input_unregister_device(ir->input);
 
 	usb_kill_urb(ir->urb_in);
