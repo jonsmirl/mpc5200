@@ -1,7 +1,7 @@
-Bottom: 975b498c5dfebe898ae81a12fc7ff9ee9ed2d3b5
-Top:    b7ec660f80300a9d058c38f3d340767239c78328
+Bottom: 85beae4f30fa502d7cafe049969515c8d9da09de
+Top:    ac510f64c423751d19f21b248f2a1d168b158c9c
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-12-28 11:07:32 -0500
+Date:   2008-12-30 09:53:35 -0500
 
 Core IR module
 
@@ -9,6 +9,7 @@ Changes to core input subsystem to allow send and receive of IR messages. Encode
 
 Received IR messages generate event in the input queue.
 IR messages are sent using an input IOCTL.
+
 
 
 
@@ -906,10 +907,10 @@ index 0000000..d0cdc9e
 +
 +
 diff --git a/include/linux/input.h b/include/linux/input.h
-index f166339..1aee029 100644
+index 0391a9c..1fb2d66 100644
 --- a/include/linux/input.h
 +++ b/include/linux/input.h
-@@ -1450,9 +1450,10 @@ typedef int (*send_func)(void *private, unsigned int *buffer, unsigned int count
+@@ -1452,9 +1452,10 @@ typedef int (*send_func)(void *private, unsigned int *buffer, unsigned int count
  		unsigned int frequency, unsigned int xmitters);
  
  int input_ir_create(struct input_dev *dev, void *private, send_func send);
