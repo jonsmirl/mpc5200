@@ -1,7 +1,7 @@
-Bottom: 64d26d268460676810423b45dd92352bf90bccfd
-Top:    62395a0d27bc6888331a415cea7bbeb4ffb880b2
+Bottom: b7ec660f80300a9d058c38f3d340767239c78328
+Top:    f0f32c4008084bf71848e701bf12cefbf3f98c3f
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-12-28 11:07:33 -0500
+Date:   2008-12-30 09:40:03 -0500
 
 Configfs support for IR
 
@@ -366,7 +366,7 @@ index 0000000..0fec855
 +    mutex_unlock(&input_ir_remotes.su_mutex);
 +}
 diff --git a/drivers/input/ir/ir-core.c b/drivers/input/ir/ir-core.c
-index 3a309fa..8e08f3f 100644
+index 85adfcb..9c81bac 100644
 --- a/drivers/input/ir/ir-core.c
 +++ b/drivers/input/ir/ir-core.c
 @@ -10,15 +10,6 @@
@@ -385,7 +385,7 @@ index 3a309fa..8e08f3f 100644
  static int encode_sony(struct ir_device *ir, struct ir_command *command)
  {
  	/* Sony SIRC IR code */
-@@ -673,11 +664,15 @@ EXPORT_SYMBOL_GPL(input_ir_destroy);
+@@ -725,11 +716,15 @@ void input_ir_destroy(struct input_dev *dev)
  
  static int __init input_ir_init(void)
  {
