@@ -19,6 +19,8 @@ struct ir_protocol {
 	unsigned int state, code, good, count, bits, mode;
 };
 
+#define MAX_SAMPLES 200
+
 struct ir_device {
 	struct ir_protocol sony;
 	struct ir_protocol jvc;
@@ -28,21 +30,34 @@ struct ir_device {
 	struct mutex lock;
 	void *private;
 	send_func xmit;
+	struct input_dev *input;
 	struct {
-		unsigned int buffer[200];
+		unsigned int buffer[MAX_SAMPLES];
 		unsigned int count;
 	} send;
 	struct {
-		int buffer[200];
+		int buffer[MAX_SAMPLES];
 		unsigned int head;
 		unsigned int tail;
 		unsigned int carrier;
 		unsigned int xmitter;
 	} raw;
+	struct {
+		spinlock_t lock;
+		int head, tail;
+		unsigned int samples[MAX_SAMPLES];
+	} queue;
+	struct work_struct work;
 };
 
 extern struct configfs_subsystem input_ir_remotes;
 void input_ir_translate(struct input_dev *dev, int protocol, int device, int command);
+
+#ifdef CONFIG_INPUT_IR
+void input_ir_destroy(struct input_dev *dev);
+#else
+static inline void input_ir_destroy(struct input_dev *dev) {}
+#endif
 
 
 

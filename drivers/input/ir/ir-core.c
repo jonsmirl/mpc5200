@@ -424,26 +424,35 @@ static int decode_rc6(struct input_dev *dev, struct ir_protocol *rc6, unsigned i
 	return 0;
 }
 
-static void record_raw(struct input_dev *dev, unsigned int delta, unsigned int bit)
+static void record_raw(struct input_dev *dev, int sample)
 {
 	int head = dev->ir->raw.head;
-	if (bit)
-		delta = -delta;
 
 	head += 1;
 	if (head > ARRAY_SIZE(dev->ir->raw.buffer))
 		head = 0;
 
 	if (head != dev->ir->raw.tail) {
-		dev->ir->raw.buffer[dev->ir->raw.head] = delta;
+		dev->ir->raw.buffer[dev->ir->raw.head] = sample;
 		dev->ir->raw.head = head;
 	}
 }
 
-void input_ir_decode(struct input_dev *dev, unsigned int delta, unsigned int bit)
+void input_ir_decode(struct input_dev *dev, int sample)
 {
+	int delta, bit;
+
+	record_raw(dev, sample);
+
+	if (sample < 0) {
+		delta = -sample;
+		bit = 1;
+	} else {
+		delta = sample;
+		bit = 0;
+	}
 	PDEBUG("IR bit %d %d\n", delta, bit);
-	record_raw(dev, delta, bit);
+
 	decode_sony(dev, &dev->ir->sony, delta, bit);
 	decode_jvc(dev, &dev->ir->jvc, delta, bit);
 	decode_nec(dev, &dev->ir->nec, delta, bit);
@@ -451,6 +460,46 @@ void input_ir_decode(struct input_dev *dev, unsigned int delta, unsigned int bit
 	decode_rc6(dev, &dev->ir->rc6, delta, bit);
 }
 EXPORT_SYMBOL_GPL(input_ir_decode);
+
+static void ir_event(struct work_struct *work)
+{
+	unsigned long flags;
+	unsigned int sample;
+	struct ir_device *ir_dev = container_of(work, struct ir_device, work);
+	struct input_dev *dev = ir_dev->input;
+
+	while (1) {
+		spin_lock_irqsave(dev->ir->queue.lock, flags);
+		if (dev->ir->queue.tail == dev->ir->queue.head) {
+			spin_unlock_irqrestore(dev->ir->queue.lock, flags);
+			break;
+		}
+		sample = dev->ir->queue.samples[dev->ir->queue.tail];
+
+		dev->ir->queue.tail++;
+		if (dev->ir->queue.tail >= MAX_SAMPLES)
+			dev->ir->queue.tail = 0;
+
+		spin_unlock_irqrestore(dev->ir->queue.lock, flags);
+
+		input_ir_decode(dev->ir->input, sample);
+	}
+}
+
+void input_ir_queue(struct input_dev *dev, int sample)
+{
+	unsigned int next;
+
+	spin_lock(dev->ir->queue.lock);
+	dev->ir->queue.samples[dev->ir->queue.head] = sample;
+	next = dev->ir->queue.head + 1;
+	dev->ir->queue.head = (next >= MAX_SAMPLES ? 0 : next);
+	spin_unlock(dev->ir->queue.lock);
+
+	schedule_work(&dev->ir->work);
+}
+EXPORT_SYMBOL_GPL(input_ir_queue);
+
 
 int input_ir_send(struct input_dev *dev, struct ir_command *ir_command, struct file *file)
 {
@@ -656,6 +705,10 @@ int input_ir_create(struct input_dev *dev, void *private, send_func xmit)
 	dev->evbit[0] = BIT_MASK(EV_IR);
 	dev->ir->private = private;
 	dev->ir->xmit = xmit;
+	dev->ir->input = dev;
+
+	spin_lock_init(&dev->ir->queue.lock);
+	INIT_WORK(&dev->ir->work, ir_event);
 
 	return 0;
 }
@@ -669,7 +722,6 @@ void input_ir_destroy(struct input_dev *dev)
 		sysfs_remove_group(&dev->dev.kobj, &input_ir_group);
 	}
 }
-EXPORT_SYMBOL_GPL(input_ir_destroy);
 
 static int __init input_ir_init(void)
 {
