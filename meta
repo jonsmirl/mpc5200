@@ -1,6 +1,6 @@
 Version: 1
-Previous: 47446a7b46362f88ec23926057e3201069c10a15
-Head: a6d717b5c9171bd0339161156302a7a4c51fd782
+Previous: 583734aa3c609068925cb15f114513eb3e9203c2
+Head: 15fad3c1b4f681ca3c6e3cdde4bacff403b5d745
 Applied:
   Makefile: 246e89d5cc7a87b85e566d69043135e44897b296
   add-of_find_i2c_device_by_node: c54be7d2faf918ae8568bcfd7897d042c7aba49a
@@ -10,6 +10,7 @@ Applied:
   jds-psc-c: ffebc7141fa5f30b00b80d22849ee764fdc651a7
   soc-u32-cleanup: 9fbd5904f3290395cc9e787e7d5349ca450f1c43
   jds-audio: 15fad3c1b4f681ca3c6e3cdde4bacff403b5d745
+Unapplied:
   g_spi_4: 2ab819e6fba86580d4964d97c2a66340a7918ec8
   m_1: c91ab8072c74cd397fb89d9de8039ddb7cb44662
   spi-mmc: 941119a462595610e57bda383103179b987dba8b
@@ -21,5 +22,4 @@ Applied:
   jds-lirc-gpt: f7ea31d3ad03d67372787d5195b6d3ef2c63a01e
   jds-lirc-device-tree: ca154d99a389fa24474c004eb32b20221a0d9206
   jds-lirc-mce2: a6d717b5c9171bd0339161156302a7a4c51fd782
-Unapplied:
 Hidden:
