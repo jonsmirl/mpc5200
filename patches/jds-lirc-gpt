@@ -1,5 +1,5 @@
 Bottom: f0f32c4008084bf71848e701bf12cefbf3f98c3f
-Top:    c095b67391c8db5a5241af2678ca7cabc6bba2f8
+Top:    6ce4d87c6a4a013723feffec8b3f771ff4691a83
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-12-30 09:40:08 -0500
 
@@ -58,10 +58,10 @@ index 2ccdda3..ab0da3f 100644
 +
 diff --git a/drivers/input/ir/ir-gpt.c b/drivers/input/ir/ir-gpt.c
 new file mode 100644
-index 0000000..ab83d89
+index 0000000..41d2fa6
 --- /dev/null
 +++ b/drivers/input/ir/ir-gpt.c
-@@ -0,0 +1,224 @@
+@@ -0,0 +1,184 @@
 +/*
 + * GPT timer based IR device
 + *
@@ -80,71 +80,36 @@ index 0000000..ab83d89
 +#include <asm/io.h>
 +#include <asm/mpc52xx.h>
 +
-+#define MAX_SAMPLES 200
-+
 +struct ir_gpt {
-+	int irq;
-+	struct mpc52xx_gpt __iomem *regs;
-+	spinlock_t lock;
-+	struct work_struct queue;
-+	int head, tail, previous;
-+	unsigned int samples[MAX_SAMPLES];
 +	struct input_dev *input;
++	int irq, previous;
++	struct mpc52xx_gpt __iomem *regs;
 +};
-+
-+static void ir_event(struct work_struct *work)
-+{
-+	unsigned long flags;
-+	int delta, count;
-+	unsigned int sample, wrap, bit;
-+	struct ir_gpt *ir_gpt = container_of(work, struct ir_gpt, queue);
-+
-+	while (1) {
-+		spin_lock_irqsave(ir_gpt->lock, flags);
-+		if (ir_gpt->tail == ir_gpt->head) {
-+			spin_unlock_irqrestore(ir_gpt->lock, flags);
-+			break;
-+		}
-+		sample = ir_gpt->samples[ir_gpt->tail];
-+
-+		ir_gpt->tail++;
-+		if (ir_gpt->tail >= MAX_SAMPLES)
-+			ir_gpt->tail = 0;
-+
-+		spin_unlock_irqrestore(ir_gpt->lock, flags);
-+
-+		count = sample >> 16;
-+		wrap = (sample >> 12) & 7;
-+		bit = (sample >> 8) & 1;
-+
-+		delta = count - ir_gpt->previous;
-+		delta += wrap * 0x10000;
-+
-+		ir_gpt->previous = count;
-+
-+		input_ir_decode(ir_gpt->input, delta, bit);
-+	}
-+}
 +
 +/*
 + * Interrupt handlers
 + */
 +static irqreturn_t dpeak_ir_irq(int irq, void *_ir)
 +{
-+	unsigned long flags;
-+	unsigned int sample, next;
 +	struct ir_gpt *ir_gpt = _ir;
++	int sample, count, delta, bit, wrap;
 +
 +	sample = in_be32(&ir_gpt->regs->status);
 +	out_be32(&ir_gpt->regs->status, 0xF);
 +
-+	spin_lock_irqsave(ir_gpt->lock, flags);
-+	ir_gpt->samples[ir_gpt->head] = sample;
-+	next = ir_gpt->head + 1;
-+	ir_gpt->head = (next >= MAX_SAMPLES ? 0 : next);
-+	spin_unlock_irqrestore(ir_gpt->lock, flags);
++	count = sample >> 16;
++	wrap = (sample >> 12) & 7;
++	bit = (sample >> 8) & 1;
 +
-+	schedule_work(&ir_gpt->queue);
++	delta = count - ir_gpt->previous;
++	delta += wrap * 0x10000;
++
++	ir_gpt->previous = count;
++
++	if (bit)
++		delta = -delta;
++
++	input_ir_queue(ir_gpt->input, delta);
 +
 +	return IRQ_HANDLED;
 +}
@@ -193,9 +158,6 @@ index 0000000..ab83d89
 +	if (ret)
 +		goto free_input;
 +
-+	spin_lock_init(&ir_gpt->lock);
-+	INIT_WORK (&ir_gpt->queue, ir_event);
-+
 +	/* Fetch the registers and IRQ of the GPT */
 +	if (of_address_to_resource(op->node, 0, &res)) {
 +		dev_err(&op->dev, "Missing reg property\n");
@@ -234,7 +196,6 @@ index 0000000..ab83d89
 +	return 0;
 +
 +free_input:
-+	input_ir_destroy(ir_gpt->input);
 +	input_free_device(ir_gpt->input);
 +free_mem:
 +	kfree(ir_gpt);
@@ -247,8 +208,7 @@ index 0000000..ab83d89
 +
 +	dev_dbg(&op->dev, "ir_gpt_remove()\n");
 +
-+	input_ir_destroy(ir_gpt->input);
-+	input_free_device(ir_gpt->input);
++	input_unregister_device(ir_gpt->input);
 +	kfree(ir_gpt);
 +	dev_set_drvdata(&op->dev, NULL);
 +
