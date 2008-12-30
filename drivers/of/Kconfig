@@ -19,3 +19,12 @@ config OF_SPI
 	depends on OF && PPC_OF && SPI
 	help
 	  OpenFirmware SPI accessors
+
+config OF_MMC_SPI
+	bool "OpenFirmware bindings for MMC/SD over SPI"
+	depends on PPC_OF && SPI
+	default y if MMC_SPI
+	help
+	  Say Y here to enable OpenFirmware bindings for the MMC/SD over SPI
+	  driver.
+
