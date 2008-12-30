@@ -1,12 +1,13 @@
-Bottom: e4c3ab590b61e4f210115bde10f28597865abc85
-Top:    91391f613ee2ea7d1ff12a90468ec31b2e824e50
+Bottom: 7c6ad69ea04c8a9ab97f3997c47ce14e5d81678c
+Top:    1d6a26034e8fc694e76c81bb67cf1e75d3b4d8e5
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-12-30 09:42:01 -0500
+Date:   2008-12-30 09:53:42 -0500
 
 Microsoft mceusb2 driver for in-kernel IR subsystem
 USB device commonly found on Microsoft Media Center boxes.
 
 Hardware can send and recieve at all common IR frequencies - 36K, 38K, 40K, 56K
+
 
 
 
