@@ -10,7 +10,7 @@ a reference in the device tree to an i2c device node and then locate
 the linux device instantiated by the device tree. Example use, an i2s
 codec controlled by i2c.
 
-Anton - this version is based off from your patches
+This was waiting for Anton's i2c patches that were just added.
 
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
