@@ -1,7 +1,7 @@
-Bottom: 0c889833d1130232669a2e5f7765855b2219fec1
-Top:    3d7f7637de37344deca198fa0f5402d152d1e0bd
+Bottom: 6be1b5b6e5e475ed62f5321ba537fa3ddcd46874
+Top:    bc76f13e2af23743f6b747809168c15b412eac3a
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-12-30 10:47:54 -0500
+Date:   2008-12-30 10:50:31 -0500
 
 Example of PowerPC device tree support for GPT based IR
 
