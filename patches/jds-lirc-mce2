@@ -1,5 +1,5 @@
 Bottom: e4c3ab590b61e4f210115bde10f28597865abc85
-Top:    ffc4c2c737101fcc56bf73632441f6f155a2e4b9
+Top:    91391f613ee2ea7d1ff12a90468ec31b2e824e50
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-12-30 09:42:01 -0500
 
@@ -60,10 +60,10 @@ index ab0da3f..0bdafb0 100644
  
 diff --git a/drivers/input/ir/ir-mceusb2.c b/drivers/input/ir/ir-mceusb2.c
 new file mode 100644
-index 0000000..fad46cd
+index 0000000..1bc1155
 --- /dev/null
 +++ b/drivers/input/ir/ir-mceusb2.c
-@@ -0,0 +1,744 @@
+@@ -0,0 +1,745 @@
 +/*
 + * LIRC driver for Philips eHome USB Infrared Transceiver
 + * and the Microsoft MCE 2005 Remote Control
@@ -412,7 +412,10 @@ index 0000000..fad46cd
 +					ir->last.bit = bit;
 +
 +					dev_dbg(&ir->usbdev->dev, "bit %d delta %d\n", bit, delta);
-+					input_ir_decode(ir->input, delta, bit);
++					if (bit)
++						delta = -delta;
++
++					input_ir_queue(ir->input, delta);
 +				}
 +			}
 +		}
@@ -726,7 +729,6 @@ index 0000000..fad46cd
 +	return 0;
 +
 +free_input:
-+	input_ir_destroy(ir->input);
 +	input_free_device(ir->input);
 +free_urb:
 +	usb_free_urb(ir->urb_in);
@@ -750,7 +752,6 @@ index 0000000..fad46cd
 +		return;
 +
 +	ir->usbdev = NULL;
-+	input_ir_destroy(ir->input);
 +	input_unregister_device(ir->input);
 +
 +	usb_kill_urb(ir->urb_in);
