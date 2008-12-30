@@ -1,7 +1,7 @@
-Bottom: 85beae4f30fa502d7cafe049969515c8d9da09de
-Top:    ac510f64c423751d19f21b248f2a1d168b158c9c
+Bottom: d6fc2f09e158d0e05bd11d60f6630589fb1e2810
+Top:    8a4df6229c00b96ffd4d4e97865b490e5eb3f045
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-12-30 09:53:35 -0500
+Date:   2008-12-30 10:47:53 -0500
 
 Core IR module
 
@@ -9,6 +9,7 @@ Changes to core input subsystem to allow send and receive of IR messages. Encode
 
 Received IR messages generate event in the input queue.
 IR messages are sent using an input IOCTL.
+
 
 
 

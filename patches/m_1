@@ -1,7 +1,7 @@
-Bottom: f10f29bcd53be36bf5e43977180fbdfd378e6352
-Top:    afdc6ca2e2907b9fa1f9d148689893abd618653b
+Bottom: bf1c9b618e2b1021b4f7e720407d31e670625111
+Top:    76e7315eb8b065e64a73f34382ebbb77fa3766b8
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-12-30 09:52:35 -0500
+Date:   2008-12-30 10:47:52 -0500
 
 Here is v3. I'm out of ideas if you won't like it. :-)
 
@@ -24,6 +24,7 @@ v1:
 - Bindings were adhered to the OF SPI core. Withdrawn by OF people.
 
 Signed-off-by: Anton Vorontsov <avorontsov@ru.mvista.com>
+
 
 
 

@@ -1,7 +1,7 @@
-Bottom: 95324261c190a146f3f70493539eaab7ffb20095
-Top:    85beae4f30fa502d7cafe049969515c8d9da09de
+Bottom: 1a09ebb5ce13601e394b724f4d6c844ebdb5af1b
+Top:    d6fc2f09e158d0e05bd11d60f6630589fb1e2810
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-12-30 09:53:33 -0500
+Date:   2008-12-30 10:47:53 -0500
 
 Minimal changes to the core input system
 
@@ -9,6 +9,7 @@ Minimal changes to the core input system. The bulk of IR support loads as a modu
 
 Jon Smirl
 <jonsmirl@gmail.com>
+
 
 
 
