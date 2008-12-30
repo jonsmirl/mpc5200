@@ -60,7 +60,7 @@ static int dspeak01_fabric_hw_params(struct snd_pcm_substream *substream, struct
 	}
 	max9485_set(fabric.clock, select | MAX9485_CLK_OUT_2);
 
-	ret = cpu_dai->dai_ops.set_sysclk(cpu_dai, MPC52xx_CLK_CELLSLAVE, rate, SND_SOC_CLOCK_OUT);
+	ret = cpu_dai->ops.set_sysclk(cpu_dai, MPC52xx_CLK_CELLSLAVE, rate, SND_SOC_CLOCK_OUT);
 	if (ret < 0)
 		return ret;
 
