@@ -1,6 +1,6 @@
 Version: 1
-Previous: 14f7e187af9cdecca115c29d351bff0fcd531165
-Head: 1cda69d645ec22db200e389b3894c751639dbb6f
+Previous: a59d07ac7c2a011530ecbce4c02ed1b526928922
+Head: 2d0bce80c705699347770246b0d1ce2c420ebee8
 Applied:
   Makefile: 246e89d5cc7a87b85e566d69043135e44897b296
   anton_1: 2856011d1edfe6952161c5330697b74a6ea3ef0b
@@ -8,8 +8,7 @@ Applied:
   add-of_find_i2c_device_by_node: 173bdb418ea248f79af060edda1de9185726a158
   jds_platform: 1b6de41be8e1c2b3b8496d9053e57f2972950cb8
   max9485: d3fd5c7fb22362f048a8eca1867ae0f3cd63aeb1
-  jds-soc-machine: 4b04917e84a16ec89117710769f6659d47395517
-  refresh-temp: 1cda69d645ec22db200e389b3894c751639dbb6f
+  jds-soc-machine: 2d0bce80c705699347770246b0d1ce2c420ebee8
 Unapplied:
   jds-psc-c: c9f54e33fb08eed466932cea0c69bac386ea5536
   soc-u32-cleanup: e6765914f91b6738116913a1eeeecc29f1ee2ba8
