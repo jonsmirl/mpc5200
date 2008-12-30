@@ -1,7 +1,7 @@
-Bottom: 5c68e0682c69200b10f6ea166fdf2510b554962e
-Top:    9dc543c8ef75fed812f486ce97c3b6ad171e5753
+Bottom: 1b72956cc36e0f283b956a5933c1af659ac00428
+Top:    a44a3da446a2443270cc189452f00d720cd2ec12
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-12-28 11:07:28 -0500
+Date:   2008-12-30 09:50:22 -0500
 
 Support internal I2S clock sources on MPC5200
 
@@ -25,7 +25,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 94a02ea..35a6fb1 100644
+index 9eb1ce1..961e754 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
 @@ -23,8 +23,12 @@
@@ -49,7 +49,7 @@ index 94a02ea..35a6fb1 100644
  
  	/* per-stream data */
  	struct psc_i2s_stream playback;
-@@ -224,6 +229,7 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
+@@ -226,6 +231,7 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
  {
  	struct snd_soc_pcm_runtime *rtd = substream->private_data;
  	struct psc_i2s *psc_i2s = rtd->dai->cpu_dai->private_data;
@@ -57,7 +57,7 @@ index 94a02ea..35a6fb1 100644
  	u32 mode;
  
  	dev_dbg(psc_i2s->dev, "%s(substream=%p) p_size=%i p_bytes=%i"
-@@ -235,15 +241,19 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
+@@ -237,15 +243,19 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
  	switch (params_format(params)) {
  	case SNDRV_PCM_FORMAT_S8:
  		mode = MPC52xx_PSC_SICR_SIM_CODEC_8;
@@ -77,7 +77,7 @@ index 94a02ea..35a6fb1 100644
  		break;
  	default:
  		dev_dbg(psc_i2s->dev, "invalid format\n");
-@@ -251,7 +261,24 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
+@@ -253,7 +263,24 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
  	}
  	out_be32(&psc_i2s->psc_regs->sicr, psc_i2s->sicr | mode);
  
@@ -103,7 +103,7 @@ index 94a02ea..35a6fb1 100644
  
  	return 0;
  }
-@@ -429,9 +456,29 @@ static int psc_i2s_set_sysclk(struct snd_soc_dai *cpu_dai,
+@@ -434,9 +461,29 @@ static int psc_i2s_set_sysclk(struct snd_soc_dai *cpu_dai,
  			      int clk_id, unsigned int freq, int dir)
  {
  	struct psc_i2s *psc_i2s = cpu_dai->private_data;
@@ -136,7 +136,7 @@ index 94a02ea..35a6fb1 100644
  }
  
  /**
-@@ -786,9 +833,6 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+@@ -788,9 +835,6 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
  	/* Configure the serial interface mode; defaulting to CODEC8 mode */
  	psc_i2s->sicr = MPC52xx_PSC_SICR_DTS1 | MPC52xx_PSC_SICR_I2S |
  			MPC52xx_PSC_SICR_CLKPOL;
