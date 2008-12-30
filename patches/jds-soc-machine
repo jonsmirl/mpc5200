@@ -1,5 +1,5 @@
 Bottom: c609943c16c3d7a167d64273c8fcf4faefd4a6ff
-Top:    1b72956cc36e0f283b956a5933c1af659ac00428
+Top:    2106a3b6cb4189335cf36232fd7e4f1b8d71920d
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-12-30 09:48:20 -0500
 
@@ -36,7 +36,7 @@ index a064e19..dc979be 100644
 +
  #endif /* _INCLUDE_SOC_OF_H_ */
 diff --git a/sound/soc/fsl/soc-of-simple.c b/sound/soc/fsl/soc-of-simple.c
-index 8bc5cd9..34a07e9 100644
+index 8bc5cd9..2d0ca0b 100644
 --- a/sound/soc/fsl/soc-of-simple.c
 +++ b/sound/soc/fsl/soc-of-simple.c
 @@ -38,8 +38,8 @@ struct of_snd_soc_device {
@@ -50,17 +50,11 @@ index 8bc5cd9..34a07e9 100644
  
  static struct of_snd_soc_device *
  of_snd_soc_get_device(struct device_node *codec_node)
-@@ -58,10 +58,10 @@ of_snd_soc_get_device(struct device_node *codec_node)
- 	/* Initialize the structure and add it to the global list */
- 	of_soc->codec_node = codec_node;
- 	of_soc->id = of_snd_soc_next_index++;
--	of_soc->card.dai_link = &of_soc->dai_link;
--	of_soc->card.num_links = 1;
--	of_soc->device.card = &of_soc->card;
+@@ -61,7 +61,7 @@ of_snd_soc_get_device(struct device_node *codec_node)
+ 	of_soc->card.dai_link = &of_soc->dai_link;
+ 	of_soc->card.num_links = 1;
+ 	of_soc->device.card = &of_soc->card;
 -	of_soc->dai_link.ops = &of_snd_soc_ops;
-+	of_soc->machine.dai_link = &of_soc->dai_link;
-+	of_soc->machine.num_links = 1;
-+	of_soc->device.machine = &of_soc->machine;
 +	of_soc->dai_link.ops = machine_ops;
  	list_add(&of_soc->list, &of_snd_soc_device_list);
  
@@ -74,14 +68,12 @@ index 8bc5cd9..34a07e9 100644
  		return;
  
  	pr_info("platform<-->codec match achieved; registering machine\n");
-@@ -158,8 +158,8 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform,
- 
+@@ -159,7 +159,7 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform,
  	of_soc->platform_node = node;
  	of_soc->dai_link.cpu_dai = cpu_dai;
--	of_soc->card.platform = platform;
+ 	of_soc->card.platform = platform;
 -	of_soc->card.name = of_soc->dai_link.cpu_dai->name;
-+	of_soc->device.platform = platform;
-+	of_soc->machine.name = machine_name;
++	of_soc->card.name = machine_name;
  
  	/* Now try to register the SoC device */
  	of_snd_soc_register_device(of_soc);
@@ -93,13 +85,13 @@ index 8bc5cd9..34a07e9 100644
 +void of_snd_soc_register_machine(char *name, struct snd_soc_ops *ops)
 +{
 +	struct of_snd_soc_device *of_soc;
-+	
++
 +	machine_name = name;
 +	machine_ops = ops;
-+	
++
 +	list_for_each_entry(of_soc, &of_snd_soc_device_list, list) {
 +		of_soc->dai_link.ops = machine_ops;
-+		of_soc->machine.name = machine_name;
++		of_soc->card.name = machine_name;
 +		of_snd_soc_register_device(of_soc);
 +	}
 +
