@@ -1,6 +1,6 @@
 Version: 1
-Previous: a49dd45eff2e1c50eb8ac5d1ef43c6b5cf1333be
-Head: b0700dcb46c8c27cdae6c954b972fba2c444120a
+Previous: b06b4cc46a1045f25a8c34fff07ef42a959ba625
+Head: 26068e8c87fefbb94050e096468d86da37fc943f
 Applied:
   Makefile: ea5feb1e90f003b0ef9ac36c5b8672e0adffb0ce
   anton_1: 4182067fd3b74f972142497364e563d0b69198e2
@@ -22,6 +22,6 @@ Applied:
   jds-lirc-configfs: 3156e650133dd372a2eaf2973cb0433a428e1502
   jds-lirc-gpt: 9f8a14817cbaee6a49b8804b42651ebb48a74a2c
   jds-lirc-device-tree: b0700dcb46c8c27cdae6c954b972fba2c444120a
+  jds-lirc-mce2: 26068e8c87fefbb94050e096468d86da37fc943f
 Unapplied:
-  jds-lirc-mce2: 04af3e51ce71f922198653ceb917e5c0ee0b03d1
 Hidden:
