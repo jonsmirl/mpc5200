@@ -1,5 +1,5 @@
 Bottom: 2de2d24641939bd4d1a3e575bdfdcc156cb35cc6
-Top:    4f44c6c9a032be77182d8c4277652992e9c1cb09
+Top:    25edbdf6211b3bfab4f437f1836cc0b0e98b06ef
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-12-30 10:47:52 -0500
 
@@ -1184,7 +1184,7 @@ index 035da4a..55549cb 100644
 +obj-$(CONFIG_SND_MPC52xx_SOC_DSPEAK01) += snd_soc_dspeak01_fabric.o
 diff --git a/sound/soc/fsl/dspeak01_fabric.c b/sound/soc/fsl/dspeak01_fabric.c
 new file mode 100644
-index 0000000..eb28b15
+index 0000000..33a2bba
 --- /dev/null
 +++ b/sound/soc/fsl/dspeak01_fabric.c
 @@ -0,0 +1,179 @@
@@ -1250,7 +1250,7 @@ index 0000000..eb28b15
 +	}
 +	max9485_set(fabric.clock, select | MAX9485_CLK_OUT_2);
 +
-+	ret = cpu_dai->dai_ops.set_sysclk(cpu_dai, MPC52xx_CLK_CELLSLAVE, rate, SND_SOC_CLOCK_OUT);
++	ret = cpu_dai->ops.set_sysclk(cpu_dai, MPC52xx_CLK_CELLSLAVE, rate, SND_SOC_CLOCK_OUT);
 +	if (ret < 0)
 +		return ret;
 +
