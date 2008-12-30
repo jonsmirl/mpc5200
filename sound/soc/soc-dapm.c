@@ -100,7 +100,7 @@ static void dapm_set_path_status(struct snd_soc_dapm_widget *w,
 	switch (w->id) {
 	case snd_soc_dapm_switch:
 	case snd_soc_dapm_mixer: {
-		int val;
+		uint val;
 		struct soc_mixer_control *mc = (struct soc_mixer_control *)
 			w->kcontrols[i].private_value;
 		unsigned int reg = mc->reg;
@@ -120,7 +120,7 @@ static void dapm_set_path_status(struct snd_soc_dapm_widget *w,
 	break;
 	case snd_soc_dapm_mux: {
 		struct soc_enum *e = (struct soc_enum *)w->kcontrols[i].private_value;
-		int val, item, bitmask;
+		uint val, item, bitmask;
 
 		for (bitmask = 1; bitmask < e->max; bitmask <<= 1)
 		;
@@ -203,8 +203,8 @@ static int dapm_connect_mixer(struct snd_soc_codec *codec,
 /* update dapm codec register bits */
 static int dapm_update_bits(struct snd_soc_dapm_widget *widget)
 {
-	int change, power;
-	unsigned short old, new;
+	uint change, power;
+	uint old, new;
 	struct snd_soc_codec *codec = widget->codec;
 
 	/* check for valid widgets */
@@ -218,7 +218,7 @@ static int dapm_update_bits(struct snd_soc_dapm_widget *widget)
 
 	power = widget->power;
 	if (widget->invert)
-		power = (power ? 0:1);
+		power = (power ? 0 : 1);
 
 	old = snd_soc_read(codec, widget->reg);
 	new = (old & ~(0x1 << widget->shift)) | (power << widget->shift);
@@ -467,7 +467,7 @@ static int is_connected_input_ep(struct snd_soc_dapm_widget *widget)
 int dapm_reg_event(struct snd_soc_dapm_widget *w,
 		   struct snd_kcontrol *kcontrol, int event)
 {
-	unsigned int val;
+	uint val;
 
 	if (SND_SOC_DAPM_EVENT_ON(event))
 		val = w->on_val;
@@ -730,8 +730,8 @@ static int dapm_mux_update_power(struct snd_soc_dapm_widget *widget,
 
 /* test and update the power status of a mixer or switch widget */
 static int dapm_mixer_update_power(struct snd_soc_dapm_widget *widget,
-				   struct snd_kcontrol *kcontrol, int reg,
-				   int val_mask, int val, int invert)
+				   struct snd_kcontrol *kcontrol, uint reg,
+				   uint val_mask, uint val, uint invert)
 {
 	struct snd_soc_dapm_path *path;
 	int found = 0;
@@ -752,10 +752,10 @@ static int dapm_mixer_update_power(struct snd_soc_dapm_widget *widget,
 		found = 1;
 		if (val)
 			/* new connection */
-			path->connect = invert ? 0:1;
+			path->connect = invert ? 0 : 1;
 		else
 			/* old connection must be powered down */
-			path->connect = invert ? 1:0;
+			path->connect = invert ? 1 : 0;
 		break;
 	}
 
@@ -1204,7 +1204,7 @@ int snd_soc_dapm_get_enum_double(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_dapm_widget *widget = snd_kcontrol_chip(kcontrol);
 	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
-	unsigned short val, bitmask;
+	uint val, bitmask;
 
 	for (bitmask = 1; bitmask < e->max; bitmask <<= 1)
 		;
@@ -1232,8 +1232,8 @@ int snd_soc_dapm_put_enum_double(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_dapm_widget *widget = snd_kcontrol_chip(kcontrol);
 	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
-	unsigned short val, mux;
-	unsigned short mask, bitmask;
+	uint val, mux;
+	uint mask, bitmask;
 	int ret = 0;
 
 	for (bitmask = 1; bitmask < e->max; bitmask <<= 1)
