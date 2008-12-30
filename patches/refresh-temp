@@ -1,0 +1,41 @@
+Bottom: ffc4c2c737101fcc56bf73632441f6f155a2e4b9
+Top:    91391f613ee2ea7d1ff12a90468ec31b2e824e50
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2008-12-30 09:42:08 -0500
+
+Refresh of jds-lirc-mce2
+
+---
+
+diff --git a/drivers/input/ir/ir-mceusb2.c b/drivers/input/ir/ir-mceusb2.c
+index fad46cd..1bc1155 100644
+--- a/drivers/input/ir/ir-mceusb2.c
++++ b/drivers/input/ir/ir-mceusb2.c
+@@ -346,7 +346,10 @@ static void usb_remote_recv(struct urb *urb, struct pt_regs *regs)
+ 					ir->last.bit = bit;
+ 
+ 					dev_dbg(&ir->usbdev->dev, "bit %d delta %d\n", bit, delta);
+-					input_ir_decode(ir->input, delta, bit);
++					if (bit)
++						delta = -delta;
++
++					input_ir_queue(ir->input, delta);
+ 				}
+ 			}
+ 		}
+@@ -660,7 +663,6 @@ static int usb_remote_probe(struct usb_interface *intf,
+ 	return 0;
+ 
+ free_input:
+-	input_ir_destroy(ir->input);
+ 	input_free_device(ir->input);
+ free_urb:
+ 	usb_free_urb(ir->urb_in);
+@@ -684,7 +686,6 @@ static void usb_remote_disconnect(struct usb_interface *intf)
+ 		return;
+ 
+ 	ir->usbdev = NULL;
+-	input_ir_destroy(ir->input);
+ 	input_unregister_device(ir->input);
+ 
+ 	usb_kill_urb(ir->urb_in);
