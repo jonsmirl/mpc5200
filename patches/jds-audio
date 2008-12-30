@@ -1,5 +1,5 @@
 Bottom: 1d86797056a8570f853ecb2c522f5681ea50e569
-Top:    c88ede17b15d9b5b62b15019b223036cd3bb5c5b
+Top:    44169cbc47b9a6f74da012e3d6b4d8f99e53e3d2
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2008-12-30 09:50:31 -0500
 
@@ -68,10 +68,10 @@ index c4ddc9a..b6c674a 100644
  obj-$(CONFIG_SND_SOC_TLV320AIC3X)	+= snd-soc-tlv320aic3x.o
 diff --git a/sound/soc/codecs/tas5504.c b/sound/soc/codecs/tas5504.c
 new file mode 100644
-index 0000000..72d7c12
+index 0000000..929baf8
 --- /dev/null
 +++ b/sound/soc/codecs/tas5504.c
-@@ -0,0 +1,868 @@
+@@ -0,0 +1,867 @@
 +/*
 + * Texas Instruments TAS5504 low power audio CODEC
 + * ALSA SoC CODEC driver
@@ -365,7 +365,8 @@ index 0000000..72d7c12
 + * Digital Audio Interface Operations
 + */
 +static int tas5504_hw_params(struct snd_pcm_substream *substream,
-+			   struct snd_pcm_hw_params *params)
++			   struct snd_pcm_hw_params *params,
++			   struct snd_soc_dai *dai)
 +{
 +	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 +	struct snd_soc_device *socdev = rtd->socdev;
@@ -408,8 +409,6 @@ index 0000000..72d7c12
 +	},
 +	.ops = {
 +		.hw_params = tas5504_hw_params,
-+	},
-+	.dai_ops = {
 +		.digital_mute = tas5504_mute,
 +	},
 +};
@@ -800,7 +799,7 @@ index 0000000..72d7c12
 +
 +	/* CODEC is setup, we can register the card now */
 +	dev_dbg(&pdev->dev, "Registering card\n");
-+	ret = snd_soc_register_card(socdev);
++	ret = snd_soc_init_card(socdev);
 +	if (ret < 0) {
 +		dev_err(&pdev->dev, "tas5504: failed to register card\n");
 +		goto card_err;
