@@ -1,13 +1,14 @@
 Version: 1
-Previous: 31e9f21ff1d1b1af49fd70bafadd21bb27b62b1b
-Head: 5d0bca49fa909f33ce209788c0dee2d188b8b9c3
+Previous: 3fbf84aead8bf904fb39c589cc51ba1eb6ce5a8b
+Head: d3fd5c7fb22362f048a8eca1867ae0f3cd63aeb1
 Applied:
-  Makefile: ea5feb1e90f003b0ef9ac36c5b8672e0adffb0ce
-  anton_1: 4182067fd3b74f972142497364e563d0b69198e2
-  anton_3: 460a298feece34ff27d00e873d7fd42299abbdfc
-  add-of_find_i2c_device_by_node: 2303dc71fb56c6e4f77e7d3a1a7fcc07a1d51962
-  jds_platform: 94d850fe7d3da7a5ed2170feecb4626899b1727d
-  max9485: 4005599caebc3aaa5bfc592c3a21b51c411c4fca
+  Makefile: 246e89d5cc7a87b85e566d69043135e44897b296
+  anton_1: 2856011d1edfe6952161c5330697b74a6ea3ef0b
+  anton_3: 75db2aed733c12c0870b3cea211bd72b63ae61bf
+  add-of_find_i2c_device_by_node: 173bdb418ea248f79af060edda1de9185726a158
+  jds_platform: 1b6de41be8e1c2b3b8496d9053e57f2972950cb8
+  max9485: d3fd5c7fb22362f048a8eca1867ae0f3cd63aeb1
+Unapplied:
   jds-soc-machine: 8802e57da4f8ec69f423658c42065f1d94c0e684
   jds-psc-c: c9f54e33fb08eed466932cea0c69bac386ea5536
   soc-u32-cleanup: e6765914f91b6738116913a1eeeecc29f1ee2ba8
@@ -23,5 +24,4 @@ Applied:
   jds-lirc-gpt: 9f8a14817cbaee6a49b8804b42651ebb48a74a2c
   jds-lirc-device-tree: b0700dcb46c8c27cdae6c954b972fba2c444120a
   jds-lirc-mce2: 5d0bca49fa909f33ce209788c0dee2d188b8b9c3
-Unapplied:
 Hidden:

@@ -1,7 +1,7 @@
-Bottom: b32e0b324c61e9fdc9a29ec9299a648e6d79d00f
-Top:    bfb08c6729bbd5361d473d793d58c3667e31ffea
+Bottom: 3dd891b9ad209eafbf90bdc2225710182e7bf27c
+Top:    3dd891b9ad209eafbf90bdc2225710182e7bf27c
 Author: Anton Vorontsov <avorontsov@ru.mvista.com>
-Date:   2008-12-28 11:07:27 -0500
+Date:   2008-12-30 09:48:17 -0500
 
 powerpc and sparc: introduce dev_archdata node accessors
 
@@ -17,45 +17,4 @@ Signed-off-by: Anton Vorontsov <avorontsov@ru.mvista.com>
 
 ---
 
-diff --git a/arch/powerpc/include/asm/device.h b/arch/powerpc/include/asm/device.h
-index dfd504c..7d2277c 100644
---- a/arch/powerpc/include/asm/device.h
-+++ b/arch/powerpc/include/asm/device.h
-@@ -18,4 +18,16 @@ struct dev_archdata {
- 	void			*dma_data;
- };
- 
-+static inline void dev_archdata_set_node(struct dev_archdata *ad,
-+					 struct device_node *np)
-+{
-+	ad->of_node = np;
-+}
-+
-+static inline struct device_node *
-+dev_archdata_get_node(const struct dev_archdata *ad)
-+{
-+	return ad->of_node;
-+}
-+
- #endif /* _ASM_POWERPC_DEVICE_H */
-diff --git a/arch/sparc/include/asm/device.h b/arch/sparc/include/asm/device.h
-index 19790eb..3702e08 100644
---- a/arch/sparc/include/asm/device.h
-+++ b/arch/sparc/include/asm/device.h
-@@ -20,4 +20,16 @@ struct dev_archdata {
- 	int			numa_node;
- };
- 
-+static inline void dev_archdata_set_node(struct dev_archdata *ad,
-+					 struct device_node *np)
-+{
-+	ad->prom_node = np;
-+}
-+
-+static inline struct device_node *
-+dev_archdata_get_node(const struct dev_archdata *ad)
-+{
-+	return ad->prom_node;
-+}
-+
- #endif /* _ASM_SPARC_DEVICE_H */
+
