@@ -1,0 +1,21 @@
+Bottom: 4f44c6c9a032be77182d8c4277652992e9c1cb09
+Top:    25edbdf6211b3bfab4f437f1836cc0b0e98b06ef
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2008-12-30 10:50:25 -0500
+
+Refresh of jds-audio
+
+---
+
+diff --git a/sound/soc/fsl/dspeak01_fabric.c b/sound/soc/fsl/dspeak01_fabric.c
+index eb28b15..33a2bba 100644
+--- a/sound/soc/fsl/dspeak01_fabric.c
++++ b/sound/soc/fsl/dspeak01_fabric.c
+@@ -60,7 +60,7 @@ static int dspeak01_fabric_hw_params(struct snd_pcm_substream *substream, struct
+ 	}
+ 	max9485_set(fabric.clock, select | MAX9485_CLK_OUT_2);
+ 
+-	ret = cpu_dai->dai_ops.set_sysclk(cpu_dai, MPC52xx_CLK_CELLSLAVE, rate, SND_SOC_CLOCK_OUT);
++	ret = cpu_dai->ops.set_sysclk(cpu_dai, MPC52xx_CLK_CELLSLAVE, rate, SND_SOC_CLOCK_OUT);
+ 	if (ret < 0)
+ 		return ret;
