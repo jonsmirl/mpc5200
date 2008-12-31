@@ -1,7 +1,7 @@
-Bottom: 3dd891b9ad209eafbf90bdc2225710182e7bf27c
-Top:    a7db48428b5922c9182f0d97f06bce1b2a09baf4
+Bottom: 4f990e8c3f8f6e5569c92e0024905ce579844589
+Top:    4efa2e7b166c905464522ff3d94b5e80ffd67008
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-12-30 09:48:18 -0500
+Date:   2008-12-31 10:55:38 -0500
 
 Add the of_find_i2c_device_by_node function.
 
@@ -13,6 +13,7 @@ codec controlled by i2c.
 This was waiting for Anton's i2c patches that were just added.
 
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
+
 
 
 

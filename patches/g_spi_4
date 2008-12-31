@@ -1,7 +1,7 @@
-Bottom: 25edbdf6211b3bfab4f437f1836cc0b0e98b06ef
-Top:    a9b1ed05e7646f8550fb9cf21ff056a1feab151f
+Bottom: 614c8bdc99a65ea3531fc37ad7c3497138fe5fc9
+Top:    7d281c685fe9c5259d4a489c3343b8af8080b48e
 Author: Grant Likely <grant.likely@secretlab.ca>
-Date:   2008-12-30 10:50:29 -0500
+Date:   2008-12-31 10:55:45 -0500
 
 powerpc/mpc5200: Add mpc5200-spi (non-PSC) device driver
 
@@ -9,6 +9,7 @@ Adds support for the dedicated SPI device on the Freescale MPC5200(b)
 SoC.
 
 Signed-off-by: Grant Likely <grant.likely@secretlab.ca>
+
 
 
 
