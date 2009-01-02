@@ -24,8 +24,6 @@
 
 #include "ir.h"
 
-static void remote_release(struct config_item *remote);
-
 struct keymap {
 	struct config_item item;
 	int protocol;
@@ -174,18 +172,38 @@ static struct configfs_group_operations remote_group_ops = {
 	.make_item = make_keymap,
 };
 
-static ssize_t remote_show_description(struct config_item *item,
+static ssize_t remote_show(struct config_item *item,
 					 struct configfs_attribute *attr,
 					 char *page)
 {
+	struct config_group *group = to_config_group(item);
+	struct remote *remote  = to_remote(group);
+	const char *path;
+
+	if (strcmp(attr->ca_name, "path") == 0) {
+		path = kobject_get_path(&remote->input->dev.kobj, GFP_KERNEL);
+		strcpy(page, path);
+		kfree(path);
+		return strlen(page);
+	}
 	return sprintf(page,
 "Map for a specific remote\n"
 "Remote signals matching this map will be translated into keyboard/mouse events\n");
 }
 
+static void remote_release(struct config_item *item)
+{
+	struct config_group *group = to_config_group(item);
+	struct remote *remote  = to_remote(group);
+
+	printk("remote_release\n");
+	input_free_device(remote->input);
+	kfree(remote);
+}
+
 static struct configfs_item_operations remote_item_ops = {
 	.release	= remote_release,
-	.show_attribute	= remote_show_description,
+	.show_attribute	= remote_show,
 };
 
 static struct configfs_attribute remote_attr_description = {
@@ -194,8 +212,15 @@ static struct configfs_attribute remote_attr_description = {
 	.ca_mode = S_IRUGO,
 };
 
+static struct configfs_attribute remote_attr_path = {
+	.ca_owner = THIS_MODULE,
+	.ca_name = "path",
+	.ca_mode = S_IRUGO,
+};
+
 static struct configfs_attribute *remote_attrs[] = {
 	&remote_attr_description,
+	&remote_attr_path,
 	NULL,
 };
 
@@ -243,15 +268,6 @@ static struct config_group *make_remote(struct config_group *parent, const char 
 	return ERR_PTR(ret);
 }
 
-static void remote_release(struct config_item *item)
-{
-	struct config_group *group = to_config_group(item);
-	struct remote *remote  = to_remote(group);
-
-	input_free_device(remote->input);
-	kfree(remote);
-}
-
 static ssize_t remotes_show_description(struct config_item *item,
 					struct configfs_attribute *attr,
 					char *page)
@@ -263,7 +279,6 @@ static ssize_t remotes_show_description(struct config_item *item,
 
 static struct configfs_item_operations remotes_item_ops = {
 	.show_attribute	= remotes_show_description,
-	.release = remote_release,
 };
 
 static struct configfs_attribute remotes_attr_description = {
