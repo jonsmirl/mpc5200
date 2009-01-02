@@ -1,5 +1,5 @@
 Bottom: cd3af60335bbfdd4332398bde762c20c16782edf
-Top:    6edd29fc83895d914338df559fd235f5a71f66f5
+Top:    af2ff164757344112ab99c37f2184d142ea08dd1
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-01-01 00:51:08 -0500
 
@@ -30,10 +30,10 @@ index 6acb665..2ccdda3 100644
  
 diff --git a/drivers/input/ir/ir-configfs.c b/drivers/input/ir/ir-configfs.c
 new file mode 100644
-index 0000000..0fec855
+index 0000000..e0819bb
 --- /dev/null
 +++ b/drivers/input/ir/ir-configfs.c
-@@ -0,0 +1,333 @@
+@@ -0,0 +1,348 @@
 +/*
 + * Configfs routines for IR support
 + *
@@ -59,8 +59,6 @@ index 0000000..0fec855
 +#include <linux/input.h>
 +
 +#include "ir.h"
-+
-+static void remote_release(struct config_item *remote);
 +
 +struct keymap {
 +	struct config_item item;
@@ -210,18 +208,38 @@ index 0000000..0fec855
 +	.make_item = make_keymap,
 +};
 +
-+static ssize_t remote_show_description(struct config_item *item,
++static ssize_t remote_show(struct config_item *item,
 +					 struct configfs_attribute *attr,
 +					 char *page)
 +{
++	struct config_group *group = to_config_group(item);
++	struct remote *remote  = to_remote(group);
++	const char *path;
++
++	if (strcmp(attr->ca_name, "path") == 0) {
++		path = kobject_get_path(&remote->input->dev.kobj, GFP_KERNEL);
++		strcpy(page, path);
++		kfree(path);
++		return strlen(page);
++	}
 +	return sprintf(page,
 +"Map for a specific remote\n"
 +"Remote signals matching this map will be translated into keyboard/mouse events\n");
 +}
 +
++static void remote_release(struct config_item *item)
++{
++	struct config_group *group = to_config_group(item);
++	struct remote *remote  = to_remote(group);
++
++	printk("remote_release\n");
++	input_free_device(remote->input);
++	kfree(remote);
++}
++
 +static struct configfs_item_operations remote_item_ops = {
 +	.release	= remote_release,
-+	.show_attribute	= remote_show_description,
++	.show_attribute	= remote_show,
 +};
 +
 +static struct configfs_attribute remote_attr_description = {
@@ -230,8 +248,15 @@ index 0000000..0fec855
 +	.ca_mode = S_IRUGO,
 +};
 +
++static struct configfs_attribute remote_attr_path = {
++	.ca_owner = THIS_MODULE,
++	.ca_name = "path",
++	.ca_mode = S_IRUGO,
++};
++
 +static struct configfs_attribute *remote_attrs[] = {
 +	&remote_attr_description,
++	&remote_attr_path,
 +	NULL,
 +};
 +
@@ -279,15 +304,6 @@ index 0000000..0fec855
 +	return ERR_PTR(ret);
 +}
 +
-+static void remote_release(struct config_item *item)
-+{
-+	struct config_group *group = to_config_group(item);
-+	struct remote *remote  = to_remote(group);
-+
-+	input_free_device(remote->input);
-+	kfree(remote);
-+}
-+
 +static ssize_t remotes_show_description(struct config_item *item,
 +					struct configfs_attribute *attr,
 +					char *page)
@@ -299,7 +315,6 @@ index 0000000..0fec855
 +
 +static struct configfs_item_operations remotes_item_ops = {
 +	.show_attribute	= remotes_show_description,
-+	.release = remote_release,
 +};
 +
 +static struct configfs_attribute remotes_attr_description = {
