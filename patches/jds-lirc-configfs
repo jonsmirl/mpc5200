@@ -1,7 +1,7 @@
-Bottom: cd3af60335bbfdd4332398bde762c20c16782edf
-Top:    af2ff164757344112ab99c37f2184d142ea08dd1
+Bottom: 769c0ea88d868bc6f83deb8d725fb50b29339829
+Top:    6aa6e2e2c24e602b8e6ee66c1fba3e6364f1268a
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-01-01 00:51:08 -0500
+Date:   2009-01-02 22:06:20 -0500
 
 Configfs support for IR
 
@@ -10,6 +10,7 @@ Now uses configfs to build mappings from remote buttons to key strokes. When ir-
 Now when a key is pressed on a remote, the configfs directories are searched for a match on protocol, device, command. If a matches is found, a key stroke corresponding to keycode is created and sent on the input device that was created when the directory for the remote was made.
 
 The configfs directories are pretty flexible. You can use them to map multiple remotes to the same key stroke, or send a single button push to multiple apps.
+
 
 
 
