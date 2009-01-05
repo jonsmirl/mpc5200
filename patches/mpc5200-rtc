@@ -1,7 +1,7 @@
-Bottom: 16794cbd91bb74a5d1e44c277eaafe314606de5f
-Top:    7fa8995cad35482fa530afe9fd1aac86f1578546
+Bottom: d81374fb3774aff3d15237d266e85b9fc01cc7f6
+Top:    8efd212a581fd59bdfc27a1452a600cc02978250
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-01-02 22:06:16 -0500
+Date:   2009-01-04 20:41:34 -0500
 
 RTC driver for MPC5200
 
@@ -43,10 +43,10 @@ index 81a2393..e417fac 100644
  
  
 diff --git a/drivers/rtc/Kconfig b/drivers/rtc/Kconfig
-index 123092d..187da18 100644
+index 165a818..21eb670 100644
 --- a/drivers/rtc/Kconfig
 +++ b/drivers/rtc/Kconfig
-@@ -679,4 +679,14 @@ config RTC_DRV_STARFIRE
+@@ -683,4 +683,14 @@ config RTC_DRV_STARFIRE
  	  If you say Y here you will get support for the RTC found on
  	  Starfire systems.
  
