@@ -1,7 +1,7 @@
-Bottom: 8efd212a581fd59bdfc27a1452a600cc02978250
-Top:    395abdad6bde65115f3dd3aecb5e1a26527ca5ba
+Bottom: abd2c3aeb1752a4a5d981fd882019bc3f79990da
+Top:    2a724dd3d1f09c0a668b27231da1c894c4dabadb
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-01-04 20:41:34 -0500
+Date:   2009-01-13 09:34:23 -0500
 
 lirc merge branch
 
@@ -32,7 +32,7 @@ index 5f9d860..747633c 100644
  endmenu
  
 diff --git a/drivers/input/Makefile b/drivers/input/Makefile
-index 98c4f9a..6a1049b 100644
+index 4c9c745..99e2b5e 100644
 --- a/drivers/input/Makefile
 +++ b/drivers/input/Makefile
 @@ -25,3 +25,5 @@ obj-$(CONFIG_INPUT_MISC)	+= misc/
