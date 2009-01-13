@@ -1,14 +1,14 @@
 Version: 1
-Previous: aeb0f33dfd9f0ec49df21b345528c5d1ec971959
-Head: eebc9f206683bd24085cf8b53535a1edf9a02a70
+Previous: cb5713863e0ee06ed48dc88c544adca6ad1c9404
+Head: c40e171ce1aef85988b4345601ccaa7e48f2f66f
 Applied:
   Makefile: 44e0e914a1017db92bbb2986320f7ed062668ca0
   add-of_find_i2c_device_by_node: 33908ace3590f0a3d51d08d1a225e4de7191aef0
   jds_platform: 6ebc523521fa278bae75deff68f923f203c0ea12
   max9485: 1fdcd91a9eced7002a75632c6d3e3a6d72e3f5fd
   jds-soc-machine: eebc9f206683bd24085cf8b53535a1edf9a02a70
+  jds-psc-c: c40e171ce1aef85988b4345601ccaa7e48f2f66f
 Unapplied:
-  jds-psc-c: 66086efafaa775481e6f3c91384293ef09efd02c
   soc-u32-cleanup: 471c88ba9a10923baf491d2043a20956a50b4876
   jds-audio: 7d47d2b89386502a5450fa6e768f018c82ab6a33
   g_spi_4: f1cd8ee32a4a887e39443815ab3e9c73244ad2ef
