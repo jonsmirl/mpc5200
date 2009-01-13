@@ -1,11 +1,12 @@
 Version: 1
-Previous: 7d118fb466d64e9c03a3cfc73f6d45f9ad581db6
-Head: 663aaf4dea70003dbde7d26404b05e887656ab42
+Previous: 6d4ebe08e048374d9461f42ef12591f4b2121af7
+Head: 5faf506e50c8148a6adad773e097976134bc038e
 Applied:
   Makefile: 44e0e914a1017db92bbb2986320f7ed062668ca0
   add-of_find_i2c_device_by_node: 33908ace3590f0a3d51d08d1a225e4de7191aef0
   jds_platform: 6ebc523521fa278bae75deff68f923f203c0ea12
   max9485: 663aaf4dea70003dbde7d26404b05e887656ab42
+  refresh-temp: 5faf506e50c8148a6adad773e097976134bc038e
 Unapplied:
   jds-soc-machine: cf23020a6b440e1d7110672a6bb2de1a3eebc9ac
   jds-psc-c: 66086efafaa775481e6f3c91384293ef09efd02c
