@@ -1,7 +1,7 @@
-Bottom: 737744707600b42dea396c9e40894c966a6e4f6e
-Top:    5ce43165360b123e4c9b10c7cd89d4dea869b392
+Bottom: 917b727c40ba6b1caa55f2602c813d85c71146ab
+Top:    2bb4471170e1e2358f06793fd94829779e12de33
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-01-04 20:41:33 -0500
+Date:   2009-01-13 09:32:58 -0500
 
 jds audio driver
 
@@ -27,10 +27,10 @@ jds audio driver
 ---
 
 diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
-index c41289b..c0ca138 100644
+index d0e0d69..b619f3d 100644
 --- a/sound/soc/codecs/Kconfig
 +++ b/sound/soc/codecs/Kconfig
-@@ -7,6 +7,7 @@ config SND_SOC_ALL_CODECS
+@@ -17,6 +17,7 @@ config SND_SOC_ALL_CODECS
  	select SND_SOC_CS4270 if I2C
  	select SND_SOC_PCM3008
  	select SND_SOC_SSM2602 if I2C
@@ -38,7 +38,7 @@ index c41289b..c0ca138 100644
  	select SND_SOC_TLV320AIC23 if I2C
  	select SND_SOC_TLV320AIC26 if SPI_MASTER
  	select SND_SOC_TLV320AIC3X if I2C
-@@ -78,6 +79,9 @@ config SND_SOC_PCM3008
+@@ -88,6 +89,9 @@ config SND_SOC_PCM3008
  config SND_SOC_SSM2602
  	tristate
  
