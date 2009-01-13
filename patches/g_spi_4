@@ -1,7 +1,7 @@
-Bottom: 5ce43165360b123e4c9b10c7cd89d4dea869b392
-Top:    d81374fb3774aff3d15237d266e85b9fc01cc7f6
+Bottom: 2bb4471170e1e2358f06793fd94829779e12de33
+Top:    a422f35af974edce5e36ace7a5a3cbbeec4d2f10
 Author: Grant Likely <grant.likely@secretlab.ca>
-Date:   2009-01-04 20:41:33 -0500
+Date:   2009-01-13 09:33:02 -0500
 
 powerpc/mpc5200: Add mpc5200-spi (non-PSC) device driver
 
@@ -27,10 +27,10 @@ Signed-off-by: Grant Likely <grant.likely@secretlab.ca>
 ---
 
 diff --git a/drivers/spi/Kconfig b/drivers/spi/Kconfig
-index b9d0efb..223ed9f 100644
+index 4a6fe01..b7c9e24 100644
 --- a/drivers/spi/Kconfig
 +++ b/drivers/spi/Kconfig
-@@ -116,6 +116,14 @@ config SPI_LM70_LLP
+@@ -132,6 +132,14 @@ config SPI_LM70_LLP
  	  which interfaces to an LM70 temperature sensor using
  	  a parallel port.
  
@@ -46,10 +46,10 @@ index b9d0efb..223ed9f 100644
  	tristate "Freescale MPC52xx PSC SPI controller"
  	depends on PPC_MPC52xx && EXPERIMENTAL
 diff --git a/drivers/spi/Makefile b/drivers/spi/Makefile
-index ccf18de..113f95f 100644
+index 5e9f521..d24c28a 100644
 --- a/drivers/spi/Makefile
 +++ b/drivers/spi/Makefile
-@@ -23,6 +23,7 @@ obj-$(CONFIG_SPI_OMAP_UWIRE)		+= omap_uwire.o
+@@ -24,6 +24,7 @@ obj-$(CONFIG_SPI_OMAP_UWIRE)		+= omap_uwire.o
  obj-$(CONFIG_SPI_OMAP24XX)		+= omap2_mcspi.o
  obj-$(CONFIG_SPI_ORION)			+= orion_spi.o
  obj-$(CONFIG_SPI_MPC52xx_PSC)		+= mpc52xx_psc_spi.o
