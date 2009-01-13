@@ -1,6 +1,6 @@
 Version: 1
-Previous: 86c3a059a9ae5571bf5a7826f695fcf22bfbec74
-Head: 85a6523d41fc42c81303c230326fa36fd1057e96
+Previous: 1bfe22f152414cb2c9d3aed061683136f4c42d79
+Head: 589fd6ad13591fdd2a6f3ffea4812ba2e36596ca
 Applied:
   Makefile: 44e0e914a1017db92bbb2986320f7ed062668ca0
   add-of_find_i2c_device_by_node: 33908ace3590f0a3d51d08d1a225e4de7191aef0
@@ -14,6 +14,7 @@ Applied:
   mpc5200-rtc: de939c6e60d6c124b538f64fbae87af3c8265f36
   lirc: 8c47c0ea7c96040d1bea3a5a07c29f5f1a20ae47
   jds-lirc-base: 85a6523d41fc42c81303c230326fa36fd1057e96
+  refresh-temp: 589fd6ad13591fdd2a6f3ffea4812ba2e36596ca
 Unapplied:
   jds-lirc-core: 2e810660f7a5472a181dd4cb39623afb221fcaf3
   jds-lirc-configfs: 1ea6432570b13693c6c9fc9c2324699dfc8cb927
