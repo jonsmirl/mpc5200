@@ -1,24 +1,24 @@
 Version: 1
-Previous: 62f473fa6d1d1668d05e42a13af4b40fd3030478
-Head: 3896e47d544098a1ed62c0f8456d93dfd7d96d0b
+Previous: a382ad12532c0d7137f445eae6fc167da36cb9c4
+Head: 6e4afedf1d78e80638fa8ef63fe6f0178b5598e5
 Applied:
-  Makefile: 44e0e914a1017db92bbb2986320f7ed062668ca0
-  add-of_find_i2c_device_by_node: 33908ace3590f0a3d51d08d1a225e4de7191aef0
-  jds_platform: 6ebc523521fa278bae75deff68f923f203c0ea12
-  max9485: 1fdcd91a9eced7002a75632c6d3e3a6d72e3f5fd
-  jds-soc-machine: eebc9f206683bd24085cf8b53535a1edf9a02a70
-  jds-psc-c: c40e171ce1aef85988b4345601ccaa7e48f2f66f
-  soc-u32-cleanup: c6f5cc2c307cf96e2d423afb508f50ee78c9d12a
-  jds-audio: 3b05140b010f011df9324a6a21b0ea1bfcdd8442
-  g_spi_4: e8108fe772fd8b44ebf7abe9f699de0c53ced0d2
-  mpc5200-rtc: de939c6e60d6c124b538f64fbae87af3c8265f36
-  lirc: 8c47c0ea7c96040d1bea3a5a07c29f5f1a20ae47
-  jds-lirc-base: 7195689d62eddb9fbac4c5ce2c84d4c9d00697c7
-  jds-lirc-core: ad43addee6ec7dde8961d75dbf244cd711fc3eef
-  jds-lirc-configfs: 1054f10342ba178cbdd240b848fbab0add8b0793
-  jds-lirc-gpt: 80abd71abc6dd1850079c80204359f42307aa703
-  jds-lirc-device-tree: f8161753ab7c88f9e881a58b8e1517e6b447ef30
-  jds-lirc-mce2: 3896e47d544098a1ed62c0f8456d93dfd7d96d0b
+  Makefile: fff0db149a389351a166a65f3729de4b556a0ddc
+  add-of_find_i2c_device_by_node: a3b54dd8e5634c36218d8708096fc9623289a764
+  jds_platform: 000ba16f36dc0237e4c8951511023ec1f51d05c5
+  max9485: 0cadb4f976a2e434f40d4ab7c4fe702defa2aa19
+  jds-soc-machine: 90a0dd8f17d3c9d80ae56819a4291b54cd0b7d71
+  jds-psc-c: 5eb07500c6f586a3dbebd9b4b288263be4750250
+  soc-u32-cleanup: baeb999483bc5fb6faa965607372b67d28a8272d
+  jds-audio: 6bdc6892aae3bebdabac223afc169d8f2b6ee51f
+  g_spi_4: d30ba3fd7175ed31cabab150502e46994eca5495
+  mpc5200-rtc: 8008901a0a01e2182fc8f97f34429049c16df408
+  lirc: ab123293d1fba626c9237d96d85bc81f5a7e9708
+  jds-lirc-base: 8eb2c2a0e040f345ae5b781a0e17a83cc5d4c251
+  jds-lirc-core: f66fe0892ddb51dcb254603c13bf9f339a8e0d04
+  jds-lirc-configfs: 4323a2965c3646651338b03dd746b9a288d3564c
+  jds-lirc-gpt: a83dd41f91eba417b40a251fa753449de3c7a544
+  jds-lirc-device-tree: f2e2e8c6a03d4779762d730f7fda6d6c29db724f
+  jds-lirc-mce2: 6e4afedf1d78e80638fa8ef63fe6f0178b5598e5
 Unapplied:
   m_1: df7d50cd56cb83e3f7a5a257189cbd47096e7860
   spi-mmc: b030fb6083a6a352c598040ed38aae75a3819da0

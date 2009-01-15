@@ -1,7 +1,7 @@
-Bottom: 1c9c08352d1d632cf44466a02665bf0d445b0da8
-Top:    67e904a73c24111560c029b6284a6a22f662fe32
+Bottom: 3168fc92d27cae943053875b7101836807ad0f0e
+Top:    3168fc92d27cae943053875b7101836807ad0f0e
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-01-13 09:28:12 -0500
+Date:   2009-01-15 18:02:10 -0500
 
 Add the of_find_i2c_device_by_node function.
 
@@ -19,43 +19,4 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
 ---
 
-diff --git a/drivers/of/of_i2c.c b/drivers/of/of_i2c.c
-index e1b0ad6..fa65a2b 100644
---- a/drivers/of/of_i2c.c
-+++ b/drivers/of/of_i2c.c
-@@ -66,4 +66,23 @@ void of_register_i2c_devices(struct i2c_adapter *adap,
- }
- EXPORT_SYMBOL(of_register_i2c_devices);
- 
-+static int of_dev_node_match(struct device *dev, void *data)
-+{
-+        return dev_archdata_get_node(&dev->archdata) == data;
-+}
-+
-+/* must call put_device() when done with returned i2c_client device */
-+struct i2c_client *of_find_i2c_device_by_node(struct device_node *node)
-+{
-+	struct device *dev;
-+
-+	dev = bus_find_device(&i2c_bus_type, NULL, node,
-+					 of_dev_node_match);
-+	if (!dev)
-+		return NULL;
-+
-+	return to_i2c_client(dev);
-+}
-+EXPORT_SYMBOL(of_find_i2c_device_by_node);
-+
- MODULE_LICENSE("GPL");
-diff --git a/include/linux/of_i2c.h b/include/linux/of_i2c.h
-index bd2a870..34974b5 100644
---- a/include/linux/of_i2c.h
-+++ b/include/linux/of_i2c.h
-@@ -17,4 +17,7 @@
- void of_register_i2c_devices(struct i2c_adapter *adap,
- 			     struct device_node *adap_node);
- 
-+/* must call put_device() when done with returned i2c_client device */
-+struct i2c_client *of_find_i2c_device_by_node(struct device_node *node);
-+
- #endif /* __LINUX_OF_I2C_H */
+
