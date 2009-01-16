@@ -514,6 +514,7 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
 	struct input_dev *dev = evdev->handle.dev;
 	struct input_absinfo abs;
 	struct ff_effect effect;
+	struct ir_command ir_command;
 	int __user *ip = (int __user *)p;
 	int i, t, u, v;
 	int error;
@@ -677,6 +678,14 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
 				spin_unlock_irq(&dev->event_lock);
 
 				return 0;
+			}
+
+			if (_IOC_NR(cmd) == _IOC_NR(EVIOIRSEND)) {
+
+				if (evdev_ir_send_from_user(p, _IOC_SIZE(cmd), &ir_command))
+					return -EFAULT;
+
+				return input_ir_send(dev, &ir_command, file);
 			}
 		}
 	}
