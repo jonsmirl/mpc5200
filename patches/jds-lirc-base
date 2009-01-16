@@ -1,7 +1,7 @@
-Bottom: ab231bd4251a1b53af64337a926e2c138c2b1540
-Top:    88898e7ed164afe4b0eacb94e397e647eeed7186
+Bottom: 716f644c80b3db80bdcabc6f967fc1277130ebe6
+Top:    2a202c25916d8c4f60c21ebae78a18bab8b4e398
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-01-15 18:02:15 -0500
+Date:   2009-01-16 10:15:57 -0500
 
 Minimal changes to the core input system
 
@@ -136,7 +136,7 @@ index 1730d73..ffe67c1 100644
  		/* do nothing */
  		break;
 diff --git a/include/linux/input.h b/include/linux/input.h
-index 9a6355f..0391a9c 100644
+index 1249a0c..7baf13c 100644
 --- a/include/linux/input.h
 +++ b/include/linux/input.h
 @@ -79,6 +79,8 @@ struct input_absinfo {

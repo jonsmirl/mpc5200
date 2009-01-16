@@ -1,7 +1,7 @@
-Bottom: 88898e7ed164afe4b0eacb94e397e647eeed7186
-Top:    dce7dd1c7fa8b94899eb84bee948fcf8f669025f
+Bottom: 2a202c25916d8c4f60c21ebae78a18bab8b4e398
+Top:    c3365a9e47a2159bb3fa9ea5f16403b9325de466
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-01-15 18:02:16 -0500
+Date:   2009-01-16 10:15:58 -0500
 
 Core IR module
 
@@ -909,7 +909,7 @@ index 0000000..d0cdc9e
 +
 +
 diff --git a/include/linux/input.h b/include/linux/input.h
-index 0391a9c..1fb2d66 100644
+index 7baf13c..130775f 100644
 --- a/include/linux/input.h
 +++ b/include/linux/input.h
 @@ -1452,9 +1452,10 @@ typedef int (*send_func)(void *private, unsigned int *buffer, unsigned int count
