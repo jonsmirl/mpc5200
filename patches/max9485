@@ -1,7 +1,7 @@
-Bottom: 514314f6f4c8ae4256ebb56bdfad9daa96fbfab3
-Top:    cb9dcf9acc9f109e8a14d43f8a205ef8741155bc
+Bottom: f6618c71c12139a46e6f071d3e58c3cd99fcef03
+Top:    5ba8122fe16d3796e7ff7548aea72b2f5cff27b0
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-01-16 10:15:54 -0500
+Date:   2009-01-17 09:54:49 -0500
 
 i2c driver for Maxim max9485 audio clock generator chip
 
@@ -37,10 +37,10 @@ index 419c378..e1f715a 100644
  	tristate "Enclosure Services"
  	default n
 diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
-index 9cf8ae6..a03ae16 100644
+index d5749a7..ead2182 100644
 --- a/drivers/misc/Makefile
 +++ b/drivers/misc/Makefile
-@@ -15,6 +15,7 @@ obj-$(CONFIG_TIFM_7XX1)       	+= tifm_7xx1.o
+@@ -14,6 +14,7 @@ obj-$(CONFIG_TIFM_7XX1)       	+= tifm_7xx1.o
  obj-$(CONFIG_PHANTOM)		+= phantom.o
  obj-$(CONFIG_SGI_IOC4)		+= ioc4.o
  obj-$(CONFIG_EEPROM_93CX6)	+= eeprom_93cx6.o
