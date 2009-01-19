@@ -12,4 +12,10 @@ menuconfig INPUT_IR
 
 if INPUT_IR
 
+config IR_GPT
+	tristate "GPT Based IR Receiver"
+	default m
+	help
+	  Driver for GPT-based IR receiver found on Digispeaker
+
 endif
