@@ -679,14 +679,6 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
 
 				return 0;
 			}
-
-			if (_IOC_NR(cmd) == _IOC_NR(EVIOIRSEND)) {
-
-				if (evdev_ir_send_from_user(p, _IOC_SIZE(cmd), &ir_command))
-					return -EFAULT;
-
-				return input_ir_send(dev, &ir_command, file);
-			}
 		}
 	}
 	return -EINVAL;
