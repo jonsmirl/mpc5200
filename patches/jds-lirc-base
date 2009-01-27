@@ -1,5 +1,5 @@
 Bottom: 4836d824ab57124049076c0bbebba2a67b431f1c
-Top:    2a52f91e2cf5d3de6d9d46a0ac979c54b55d3d99
+Top:    9771ff8a3d26d35b52c2411516a08b33fefc3432
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-01-19 00:43:33 -0500
 
@@ -32,7 +32,7 @@ Jon Smirl
 ---
 
 diff --git a/drivers/input/evdev.c b/drivers/input/evdev.c
-index ed8baa0..a651856 100644
+index ed8baa0..d601a3a 100644
 --- a/drivers/input/evdev.c
 +++ b/drivers/input/evdev.c
 @@ -514,6 +514,7 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
@@ -43,21 +43,6 @@ index ed8baa0..a651856 100644
  	int __user *ip = (int __user *)p;
  	int i, t, u, v;
  	int error;
-@@ -678,6 +679,14 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
- 
- 				return 0;
- 			}
-+
-+			if (_IOC_NR(cmd) == _IOC_NR(EVIOIRSEND)) {
-+
-+				if (evdev_ir_send_from_user(p, _IOC_SIZE(cmd), &ir_command))
-+					return -EFAULT;
-+
-+				return input_ir_send(dev, &ir_command, file);
-+			}
- 		}
- 	}
- 	return -EINVAL;
 diff --git a/drivers/input/input.c b/drivers/input/input.c
 index 1730d73..ffe67c1 100644
 --- a/drivers/input/input.c
