@@ -1,5 +1,5 @@
 Bottom: 4836d824ab57124049076c0bbebba2a67b431f1c
-Top:    9771ff8a3d26d35b52c2411516a08b33fefc3432
+Top:    42649b9940b2f3a55c4273109c66c5785a500407
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-01-19 00:43:33 -0500
 
@@ -31,18 +31,6 @@ Jon Smirl
 
 ---
 
-diff --git a/drivers/input/evdev.c b/drivers/input/evdev.c
-index ed8baa0..d601a3a 100644
---- a/drivers/input/evdev.c
-+++ b/drivers/input/evdev.c
-@@ -514,6 +514,7 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
- 	struct input_dev *dev = evdev->handle.dev;
- 	struct input_absinfo abs;
- 	struct ff_effect effect;
-+	struct ir_command ir_command;
- 	int __user *ip = (int __user *)p;
- 	int i, t, u, v;
- 	int error;
 diff --git a/drivers/input/input.c b/drivers/input/input.c
 index 1730d73..ffe67c1 100644
 --- a/drivers/input/input.c
