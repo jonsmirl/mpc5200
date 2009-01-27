@@ -514,7 +514,6 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
 	struct input_dev *dev = evdev->handle.dev;
 	struct input_absinfo abs;
 	struct ff_effect effect;
-	struct ir_command ir_command;
 	int __user *ip = (int __user *)p;
 	int i, t, u, v;
 	int error;
