@@ -1,7 +1,7 @@
-Bottom: 4836d824ab57124049076c0bbebba2a67b431f1c
-Top:    42649b9940b2f3a55c4273109c66c5785a500407
+Bottom: 1e6eb3211c4abf538598f9bad537df54e8ef701f
+Top:    4b679739d58cf0e820a007873bca14a6a31e9df8
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-01-19 00:43:33 -0500
+Date:   2009-02-02 17:06:09 -0500
 
 Minimal changes to the core input system
 
@@ -243,7 +243,7 @@ index 1249a0c..7baf13c 100644
  #endif
  #endif
 diff --git a/include/linux/mod_devicetable.h b/include/linux/mod_devicetable.h
-index 97b91d1..ea35367 100644
+index fde8667..d221a37 100644
 --- a/include/linux/mod_devicetable.h
 +++ b/include/linux/mod_devicetable.h
 @@ -293,6 +293,7 @@ struct pcmcia_device_id {

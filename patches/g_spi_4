@@ -1,7 +1,7 @@
-Bottom: dbd838f20ba3ddf21917d6e8d25b537238d9f5f7
-Top:    a430155727a7daa0d2d98dea13b651f872ea0a40
+Bottom: 024d3c1ac5c4b24e802d0e25bd9394c885ed0a12
+Top:    9c216dd09a4c2f7341166fb2aa477ac82159fbe2
 Author: Grant Likely <grant.likely@secretlab.ca>
-Date:   2009-01-19 00:43:32 -0500
+Date:   2009-02-02 17:06:08 -0500
 
 powerpc/mpc5200: Add mpc5200-spi (non-PSC) device driver
 
@@ -27,7 +27,7 @@ Signed-off-by: Grant Likely <grant.likely@secretlab.ca>
 ---
 
 diff --git a/drivers/spi/Kconfig b/drivers/spi/Kconfig
-index 4a6fe01..b7c9e24 100644
+index 83a185d..1994bcd 100644
 --- a/drivers/spi/Kconfig
 +++ b/drivers/spi/Kconfig
 @@ -132,6 +132,14 @@ config SPI_LM70_LLP
@@ -46,7 +46,7 @@ index 4a6fe01..b7c9e24 100644
  	tristate "Freescale MPC52xx PSC SPI controller"
  	depends on PPC_MPC52xx && EXPERIMENTAL
 diff --git a/drivers/spi/Makefile b/drivers/spi/Makefile
-index 5e9f521..d24c28a 100644
+index 5d04519..8de32c7 100644
 --- a/drivers/spi/Makefile
 +++ b/drivers/spi/Makefile
 @@ -24,6 +24,7 @@ obj-$(CONFIG_SPI_OMAP_UWIRE)		+= omap_uwire.o
