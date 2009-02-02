@@ -1,10 +1,11 @@
 Version: 1
-Previous: 15b25339073b4d58538decc3d25ccd0c644e0849
-Head: edcbb683fe6dfe453661dda724d7fc6ff75968db
+Previous: 55644f9682bd46ea18c400fdba8b99f529ee3b1f
+Head: ba8d7206fdc3650275128ef4369bfa1cdc0fccb6
 Applied:
   Makefile: cd5d3294df27adf82ae154f524cd5237d2c5144b
   jds_platform: 3d327bfe30372a36c6497ac9c9da154504e66072
   max9485: edcbb683fe6dfe453661dda724d7fc6ff75968db
+  refresh-temp: ba8d7206fdc3650275128ef4369bfa1cdc0fccb6
 Unapplied:
   jds-soc-machine: 69ee88519f764b053192a4b09331b5ed45049c09
   jds-psc-c: 61541fe816c3a953d486bcf039032a3c105883b8
