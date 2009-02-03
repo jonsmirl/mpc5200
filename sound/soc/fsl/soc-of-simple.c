@@ -38,8 +38,8 @@ struct of_snd_soc_device {
 	struct device_node *codec_node;
 };
 
-static struct snd_soc_ops of_snd_soc_ops = {
-};
+static struct snd_soc_ops *machine_ops = NULL;
+static char *machine_name = NULL;
 
 static struct of_snd_soc_device *
 of_snd_soc_get_device(struct device_node *codec_node)
@@ -61,7 +61,7 @@ of_snd_soc_get_device(struct device_node *codec_node)
 	of_soc->card.dai_link = &of_soc->dai_link;
 	of_soc->card.num_links = 1;
 	of_soc->device.card = &of_soc->card;
-	of_soc->dai_link.ops = &of_snd_soc_ops;
+	of_soc->dai_link.ops = machine_ops;
 	list_add(&of_soc->list, &of_snd_soc_device_list);
 
 	return of_soc;
@@ -74,7 +74,7 @@ static void of_snd_soc_register_device(struct of_snd_soc_device *of_soc)
 
 	/* Only register the device if both the codec and platform have
 	 * been registered */
-	if ((!of_soc->device.codec_data) || (!of_soc->platform_node))
+	if ((!of_soc->device.codec_data) || (!of_soc->platform_node) || !machine_name)
 		return;
 
 	pr_info("platform<-->codec match achieved; registering machine\n");
@@ -159,7 +159,7 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform,
 	of_soc->platform_node = node;
 	of_soc->dai_link.cpu_dai = cpu_dai;
 	of_soc->card.platform = platform;
-	of_soc->card.name = of_soc->dai_link.cpu_dai->name;
+	of_soc->card.name = machine_name;
 
 	/* Now try to register the SoC device */
 	of_snd_soc_register_device(of_soc);
@@ -169,3 +169,19 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform,
 	return rc;
 }
 EXPORT_SYMBOL_GPL(of_snd_soc_register_platform);
+
+void of_snd_soc_register_machine(char *name, struct snd_soc_ops *ops)
+{
+	struct of_snd_soc_device *of_soc;
+
+	machine_name = name;
+	machine_ops = ops;
+
+	list_for_each_entry(of_soc, &of_snd_soc_device_list, list) {
+		of_soc->dai_link.ops = machine_ops;
+		of_soc->card.name = machine_name;
+		of_snd_soc_register_device(of_soc);
+	}
+
+}
+EXPORT_SYMBOL_GPL(of_snd_soc_register_machine);
