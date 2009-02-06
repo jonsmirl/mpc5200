@@ -1,7 +1,7 @@
-Bottom: 0bf77e57574e027daa18013eff6a111581ad3db4
-Top:    e1e53f4e929035c7527a6da49cc8418caacfd5ce
+Bottom: 4bec5890f029fabca7ce8f76743b2f8929382a90
+Top:    bc447df8bee4882ab2c3cadd4296c3d88951e0dc
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-02-05 15:45:50 -0500
+Date:   2009-02-06 14:57:14 -0500
 
 RTC driver for MPC5200
 
@@ -43,10 +43,10 @@ index 81a2393..e417fac 100644
  
  
 diff --git a/drivers/rtc/Kconfig b/drivers/rtc/Kconfig
-index cced4d1..82f0572 100644
+index 81450fb..072dbb3 100644
 --- a/drivers/rtc/Kconfig
 +++ b/drivers/rtc/Kconfig
-@@ -730,4 +730,14 @@ config RTC_DRV_MV
+@@ -736,4 +736,14 @@ config RTC_DRV_MV
  	  This driver can also be built as a module. If so, the module
  	  will be called rtc-mv.
  
@@ -62,10 +62,10 @@ index cced4d1..82f0572 100644
 +
  endif # RTC_CLASS
 diff --git a/drivers/rtc/Makefile b/drivers/rtc/Makefile
-index 6e28021..2ce1dba 100644
+index 0e697aa..3c39116 100644
 --- a/drivers/rtc/Makefile
 +++ b/drivers/rtc/Makefile
-@@ -49,6 +49,7 @@ obj-$(CONFIG_RTC_DRV_STARFIRE)	+= rtc-starfire.o
+@@ -50,6 +50,7 @@ obj-$(CONFIG_RTC_DRV_STARFIRE)	+= rtc-starfire.o
  obj-$(CONFIG_RTC_DRV_MAX6900)	+= rtc-max6900.o
  obj-$(CONFIG_RTC_DRV_MAX6902)	+= rtc-max6902.o
  obj-$(CONFIG_RTC_DRV_MV)	+= rtc-mv.o

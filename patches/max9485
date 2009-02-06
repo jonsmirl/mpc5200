@@ -1,7 +1,7 @@
-Bottom: 2fb84a0dce840d3d4076f5694ca1ba3cbbeb881f
-Top:    403ad6930be8eb0ded97e7a8a883ccb13794b940
+Bottom: 7b0049eb10da5129cdec546ae6e56bfebe2a20e9
+Top:    83a0a889ed735abe3e698c09a5d02ac068e2beb0
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-02-05 15:45:49 -0500
+Date:   2009-02-06 14:57:12 -0500
 
 i2c driver for Maxim max9485 audio clock generator chip
 
@@ -17,7 +17,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/drivers/misc/Kconfig b/drivers/misc/Kconfig
-index 5607319..03ebe73 100644
+index c64e679..320f359 100644
 --- a/drivers/misc/Kconfig
 +++ b/drivers/misc/Kconfig
 @@ -150,6 +150,15 @@ config ATMEL_SSC
