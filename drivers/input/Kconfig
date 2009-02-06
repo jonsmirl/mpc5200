@@ -182,5 +182,7 @@ source "drivers/input/gameport/Kconfig"
 
 endmenu
 
+source "drivers/input/lirc/Kconfig"
+
 endmenu
 
