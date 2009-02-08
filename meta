@@ -1,23 +1,23 @@
 Version: 1
-Previous: e5875dcf914c3492d701d2eaa10d0cff26ca701f
-Head: 7040ff1bad2afc507b2f72eed752ab88d94cdbe5
+Previous: 84b0b49ccd59d940e83fe9bcf857ddf30846b74d
+Head: 71b4f30c463be7fe6be59b4434bb50701dd4eabf
 Applied:
-  Makefile: 53aaf17bd27e159063eb5888a684e6d9448beff4
-  jds_platform: ad5845d02947d10c1ecc594f1b2315d3aa4d6e78
-  max9485: 05ea073aaf7733c492347226903d7c55fd223f2d
-  jds-soc-machine: 3cd00060f7ff2f0e738c12167d27a052a9df38cb
-  jds-psc-c: cc8b24d4007ecc9d4e37c8de4c2fc8bd5468da6d
-  soc-u32-cleanup: ce5cdff95ba649ca6693333e7d3a39356c07b29b
-  jds-audio: a53d7de31c5b16763de5918473ce5e85e6afbe04
-  g_spi_4: ced4916653eabf0247e82b00b3dc4a8fec45d259
-  mpc5200-rtc: cfe6338b1d3335b08537c5e9fc6f0e9c91f2d26f
-  lirc: 66ff36fa39bc68ed851209d3ab308c3bc6e205e7
-  jds-lirc-base: 48afe7804b9f5719a3bf9d3df5983f04f7d4cfd7
-  jds-lirc-core: f9e2bfd1b130b8e151f0dee483d52f3b9c2067c9
-  jds-lirc-configfs: 2f3b06a97c916614a493d23e11907f556cd7483b
-  jds-lirc-gpt: 331b77f903fa5047557256c16892fd845ec2ffee
-  jds-lirc-device-tree: 3a4440ea949567cbb31b3be782f9d58fecc619d8
-  jds-lirc-mce2: 7040ff1bad2afc507b2f72eed752ab88d94cdbe5
+  Makefile: 13db0467a6c511170936c413d92234b43bd4c68b
+  jds_platform: 1ad04ad1e6ca794eeff19bd7ee2558e732395151
+  max9485: fa2f93a0a3569bb8db5450d47b776010623b6dda
+  jds-soc-machine: c2a3a2b62df06233ae6ba0c1cc22380a6ab64a5a
+  jds-psc-c: add376f387736b0948865bc9699b25db17091317
+  soc-u32-cleanup: 097b4a91baf33a2a46acb1023493dd6dc926bb77
+  jds-audio: f6f70c0a0a0e8f5118996c317b3dca5cd1d9f2f5
+  g_spi_4: 43b000f9408a1af94ce6bd52620f00928fb958eb
+  mpc5200-rtc: b0accceab3482d63d7ae60b3393f3ed29d79b0db
+  lirc: 93177cccfd614d8f4614a33839f5db629b75d209
+  jds-lirc-base: 3098e746cf46ba7f4ea735cf17f90e67c73e9b58
+  jds-lirc-core: 6e370dfe940e8e1d6a7a335d1b647e836bc62fab
+  jds-lirc-configfs: 98f9cdfba9a00c0a2476341a021874eb37594cc5
+  jds-lirc-gpt: 6c46ae70e2d66414e2af88e89b31e2a8dada01e0
+  jds-lirc-device-tree: cd46000b11005aa230329988101c9fedc5271d11
+  jds-lirc-mce2: 71b4f30c463be7fe6be59b4434bb50701dd4eabf
 Unapplied:
   m_1: df7d50cd56cb83e3f7a5a257189cbd47096e7860
   spi-mmc: b030fb6083a6a352c598040ed38aae75a3819da0
