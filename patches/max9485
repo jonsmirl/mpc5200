@@ -1,7 +1,7 @@
-Bottom: 48538f64a34f253cc352492b418f9153a759add9
-Top:    9f1093eadb5cfd2a2388d6d18f0c87dec99901b1
+Bottom: 12ead35a8e13b40117e6beb4e4118f80f0333dd0
+Top:    43f932e40387fbe25a2c14c00b295ad47859470a
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-02-08 16:15:35 -0500
+Date:   2009-02-09 21:02:17 -0500
 
 i2c driver for Maxim max9485 audio clock generator chip
 
