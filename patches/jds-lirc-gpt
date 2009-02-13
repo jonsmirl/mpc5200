@@ -1,7 +1,7 @@
-Bottom: 56ef86410f43e74be6023c1c7a17a5e5bc17463c
-Top:    b7886dfecb1a9bf73a26ca19f07f3f0f86fd924f
+Bottom: da0d2ff545a7773a1e8124445e2fb7b3e9c1cda3
+Top:    8565f5ba62f6865899fe313383c34937c464b0fb
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-02-11 17:24:00 -0500
+Date:   2009-02-12 23:23:22 -0500
 
 GPT driver for in-kernel IR support.
 GPT is a GPIO pin that is cable able of measuring the lenght of pulses.
