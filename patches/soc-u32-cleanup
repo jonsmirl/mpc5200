@@ -1,7 +1,7 @@
-Bottom: 276fa49f7fe4c1dbe2787f0d33dcd88b6670dc2a
-Top:    7e8fa965db1277bf55eb72bceb835d15660cf4c2
+Bottom: fd3da3a4e076a29d1d90dc0fdbc45aa1eb6c0669
+Top:    0ebd84609134d6a634a2c67d419ccfba0c5db892
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-02-12 23:23:18 -0500
+Date:   2009-02-14 18:09:34 -0500
 
 Clean up ASOC functions to support 32b values instead of 16b
 
@@ -71,7 +71,7 @@ index 24593ac..7340232 100644
  	unsigned int mask;
  	const char **texts;
 diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
-index 55fdb4a..5677dc3 100644
+index ec3f8bb..0183c89 100644
 --- a/sound/soc/soc-core.c
 +++ b/sound/soc/soc-core.c
 @@ -1251,11 +1251,11 @@ EXPORT_SYMBOL_GPL(snd_soc_free_ac97_codec);
@@ -104,7 +104,7 @@ index 55fdb4a..5677dc3 100644
  
  	mutex_lock(&io_mutex);
  	old = snd_soc_read(codec, reg);
-@@ -1535,7 +1535,7 @@ int snd_soc_get_enum_double(struct snd_kcontrol *kcontrol,
+@@ -1538,7 +1538,7 @@ int snd_soc_get_enum_double(struct snd_kcontrol *kcontrol,
  {
  	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
  	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
@@ -113,7 +113,7 @@ index 55fdb4a..5677dc3 100644
  
  	for (bitmask = 1; bitmask < e->max; bitmask <<= 1)
  		;
-@@ -1564,8 +1564,7 @@ int snd_soc_put_enum_double(struct snd_kcontrol *kcontrol,
+@@ -1567,8 +1567,7 @@ int snd_soc_put_enum_double(struct snd_kcontrol *kcontrol,
  {
  	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
  	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
@@ -123,7 +123,7 @@ index 55fdb4a..5677dc3 100644
  
  	for (bitmask = 1; bitmask < e->max; bitmask <<= 1)
  		;
-@@ -1907,7 +1906,7 @@ int snd_soc_put_volsw_2r(struct snd_kcontrol *kcontrol,
+@@ -1910,7 +1909,7 @@ int snd_soc_put_volsw_2r(struct snd_kcontrol *kcontrol,
  	unsigned int mask = (1 << fls(max)) - 1;
  	unsigned int invert = mc->invert;
  	int err;
@@ -132,7 +132,7 @@ index 55fdb4a..5677dc3 100644
  
  	val_mask = mask << shift;
  	val = (ucontrol->value.integer.value[0] & mask);
-@@ -1972,12 +1971,12 @@ int snd_soc_get_volsw_s8(struct snd_kcontrol *kcontrol,
+@@ -1975,12 +1974,12 @@ int snd_soc_get_volsw_s8(struct snd_kcontrol *kcontrol,
  	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
  	unsigned int reg = mc->reg;
  	int min = mc->min;
@@ -148,7 +148,7 @@ index 55fdb4a..5677dc3 100644
  	return 0;
  }
  EXPORT_SYMBOL_GPL(snd_soc_get_volsw_s8);
-@@ -1999,10 +1998,10 @@ int snd_soc_put_volsw_s8(struct snd_kcontrol *kcontrol,
+@@ -2002,10 +2001,10 @@ int snd_soc_put_volsw_s8(struct snd_kcontrol *kcontrol,
  	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
  	unsigned int reg = mc->reg;
  	int min = mc->min;
