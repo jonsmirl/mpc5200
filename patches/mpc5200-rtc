@@ -1,7 +1,7 @@
-Bottom: f8f346b50a8d07dde7d573e3ce9832630c8cda52
-Top:    abe20901ea4d9a8721e383f5cc9797460f23e863
+Bottom: 75ec0207007f389f9e39ff9603cb27aaf5da8298
+Top:    7b8307fae4a5e0730320d1ff2f01f9ad314a08ad
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-02-22 08:25:53 -0500
+Date:   2009-02-23 11:39:46 -0500
 
 RTC driver for MPC5200
 
