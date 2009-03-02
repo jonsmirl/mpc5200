@@ -95,7 +95,7 @@ static int of_mmc_spi_add(struct device *dev)
 	const u32 *voltage_range;
 	int size;
 
-	if (!np || !of_device_is_compatible(np, "mmc-spi"))
+	if (!np || !of_device_is_compatible(np, "linux,mmc-spi"))
 		return NOTIFY_DONE;
 
 	oms = kzalloc(sizeof(*oms), GFP_KERNEL);
@@ -152,7 +152,7 @@ static int of_mmc_spi_del(struct device *dev)
 	struct device_node *np = dev->archdata.of_node;
 	struct of_mmc_spi *oms;
 
-	if (!np || !of_device_is_compatible(np, "mmc-spi") ||
+	if (!np || !of_device_is_compatible(np, "linux,mmc-spi") ||
 			!dev->platform_data)
 		return NOTIFY_DONE;
 
