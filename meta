@@ -1,6 +1,6 @@
 Version: 1
-Previous: 5f3c1abefb6ff41a33d924eb96f11b602f031526
-Head: a34d87d26c0603b6d5e1108bce9f9e2aff88e4c5
+Previous: f80b677403d236bc24bfe64f17ed2703344aa503
+Head: 6fceebfde72694d2cd4635efe439a095a2a6398f
 Applied:
   Makefile: 4ca59a472c36982f5c705d8a04107255ed62103f
   jds_platform: e6443c5da864f1e148d3168c455a948bc752af9d
@@ -18,7 +18,7 @@ Applied:
   jds-lirc-gpt: 49994c9453f606500e4491c9063f9cb3f9e8375b
   jds-lirc-device-tree: 6aaa471a16c33222e7b97f06bde25026ac38f4da
   jds-lirc-mce2: a34d87d26c0603b6d5e1108bce9f9e2aff88e4c5
+  m_1: 6fceebfde72694d2cd4635efe439a095a2a6398f
 Unapplied:
-  m_1: df7d50cd56cb83e3f7a5a257189cbd47096e7860
   spi-mmc: b030fb6083a6a352c598040ed38aae75a3819da0
 Hidden:
