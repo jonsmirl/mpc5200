@@ -1,9 +1,10 @@
-Bottom: 9be4c8a7a08f3a30b9bc839d66955dc64f298fd6
-Top:    ecd8f513fd1b1b01f81ef21a058564279db50ef2
+Bottom: 7d06e67d943f9d35bb8b53ceadd0251abadcb036
+Top:    137baa0635a0204ea2fb83ae85f7728a0dcfcf63
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2008-12-30 10:50:30 -0500
+Date:   2009-03-01 21:11:52 -0500
 
 Fix ups to make mmc over spi work
+
 
 
 
@@ -18,10 +19,10 @@ Fix ups to make mmc over spi work
 ---
 
 diff --git a/arch/powerpc/boot/dts/dspeak01.dts b/arch/powerpc/boot/dts/dspeak01.dts
-index 35872b3..ec163c0 100644
+index 398a949..c50e9c6 100644
 --- a/arch/powerpc/boot/dts/dspeak01.dts
 +++ b/arch/powerpc/boot/dts/dspeak01.dts
-@@ -176,9 +176,9 @@
+@@ -166,9 +166,9 @@
  			interrupt-parent = <&mpc5200_pic>;
  
  			mmc-slot@0 {
@@ -34,10 +35,10 @@ index 35872b3..ec163c0 100644
  				voltage-range = <3300 3300>;
  				/*gpios = <&sdcsr_pio 1 0   /*  WP */
 diff --git a/drivers/mmc/host/mmc_spi.c b/drivers/mmc/host/mmc_spi.c
-index ad00e16..cf00afb 100644
+index 87e211d..00f6979 100644
 --- a/drivers/mmc/host/mmc_spi.c
 +++ b/drivers/mmc/host/mmc_spi.c
-@@ -1410,7 +1410,7 @@ static int __devexit mmc_spi_remove(struct spi_device *spi)
+@@ -1412,7 +1412,7 @@ static int __devexit mmc_spi_remove(struct spi_device *spi)
  
  static struct spi_driver mmc_spi_driver = {
  	.driver = {
