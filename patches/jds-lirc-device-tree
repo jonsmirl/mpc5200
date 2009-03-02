@@ -1,5 +1,5 @@
-Bottom: caecbaf22983bfec923ae2d597da0e1cb21aa61c
-Top:    8c899256204036d7233f648dc1ffffffd008e31a
+Bottom: 5ae17075187cc321c6906ef1d398a75bb69b6fca
+Top:    3e740f3623ef9563d78597436cb6e50cd17921c1
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-02-25 10:11:44 -0500
 
@@ -31,7 +31,7 @@ Example of PowerPC device tree support for GPT based IR
 ---
 
 diff --git a/arch/powerpc/boot/dts/dspeak01.dts b/arch/powerpc/boot/dts/dspeak01.dts
-index 35872b3..f95663a 100644
+index 7107d45..398a949 100644
 --- a/arch/powerpc/boot/dts/dspeak01.dts
 +++ b/arch/powerpc/boot/dts/dspeak01.dts
 @@ -131,16 +131,6 @@
