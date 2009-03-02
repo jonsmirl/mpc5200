@@ -1,6 +1,23 @@
 config SND_SOC_OF_SIMPLE
 	tristate
 
+config SND_MPC52xx_SOC
+	tristate "SoC Audio for the Freescale MPC5200 chip"
+	depends on PPC_MPC52xx && SND_SOC
+	help
+	  Say Y or M if you want to add support for codecs attached to
+	  the MPC5200 AC97 or I2S interface. You will also need
+	  to select the audio interfaces to support below.
+
+config SND_MPC52xx_AC97
+	tristate
+	select SND_AC97_CODEC
+
+config SND_MPC52xx_SOC_AC97
+	tristate
+	select AC97_BUS
+	select SND_SOC_AC97_BUS
+
 config SND_SOC_MPC8610
 	bool "ALSA SoC support for the MPC8610 SOC"
 	depends on MPC8610_HPCD
@@ -25,3 +42,21 @@ config SND_SOC_MPC5200_I2S
 	select PPC_BESTCOMM_GEN_BD
 	help
 	  Say Y here to support the MPC5200 PSCs in I2S mode.
+
+config SND_MPC52xx_SOC_EFIKA
+	tristate "SoC AC97 Audio support for bbplan Efika and STAC9722"
+	depends on SND_MPC52xx_SOC && PPC_EFIKA
+	select SND_MPC52xx_SOC_AC97
+	select SND_SOC_STAC9766
+	help
+	  Say Y if you want to add support for sound on the Efika.
+
+config SND_MPC52xx_SOC_DSPEAK01
+	tristate "SoC I2S Audio support for Digispeaker DSPEAK01 with TAS5504"
+	depends on SND_MPC52xx_SOC && PPC_DSPEAK01
+	select SND_SOC_MPC5200_I2S
+	select SND_SOC_TAS5504
+	help
+	  Say Y if you want to add support for sound on Digispeaker DSPEAK01.
+
+
