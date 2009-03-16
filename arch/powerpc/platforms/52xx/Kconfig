@@ -23,6 +23,11 @@ config PPC_MPC5200_SIMPLE
 	  Boards that are compatible with this generic platform support
 	  are: 'tqc,tqm5200', 'promess,motionpro', 'schindler,cm5200'.
 
+config PPC_DSPEAK01
+	bool "Digispeaker DSPEAK01 Alpha Model"
+	depends on PPC_MPC52xx
+	select DEFAULT_UIMAGE
+
 config PPC_EFIKA
 	bool "bPlan Efika 5k2. MPC5200B based computer"
 	depends on PPC_MPC52xx

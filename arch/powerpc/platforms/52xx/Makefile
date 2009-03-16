@@ -5,6 +5,7 @@ obj-y				+= mpc52xx_pic.o mpc52xx_common.o
 obj-$(CONFIG_PCI)		+= mpc52xx_pci.o
 
 obj-$(CONFIG_PPC_MPC5200_SIMPLE) += mpc5200_simple.o
+obj-$(CONFIG_PPC_DSPEAK01) += dspeak01.o
 obj-$(CONFIG_PPC_EFIKA)		+= efika.o
 obj-$(CONFIG_PPC_LITE5200)	+= lite5200.o
 
