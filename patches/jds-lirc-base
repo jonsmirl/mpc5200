@@ -1,7 +1,7 @@
-Bottom: 9c3fe6e678f83cedc19ed0b9882fa31f3988182d
-Top:    9026703d0306cb62deaa5f2c3a9b14af2ec29755
+Bottom: 5bfed401af1ce8b4b77260199a86179fb98f7c9c
+Top:    1dfae0fb54a9fac8b5b75223fc82eea4692100cb
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-03-23 10:56:29 -0400
+Date:   2009-03-28 11:50:24 -0400
 
 Minimal changes to the core input system
 
@@ -109,7 +109,7 @@ index 1730d73..ffe67c1 100644
  		/* do nothing */
  		break;
 diff --git a/include/linux/input.h b/include/linux/input.h
-index 1249a0c..7baf13c 100644
+index 6b28048..da4de16 100644
 --- a/include/linux/input.h
 +++ b/include/linux/input.h
 @@ -79,6 +79,8 @@ struct input_absinfo {
@@ -129,7 +129,7 @@ index 1249a0c..7baf13c 100644
  #define EV_MAX			0x1f
  #define EV_CNT			(EV_MAX+1)
  
-@@ -963,6 +966,56 @@ struct ff_effect {
+@@ -964,6 +967,56 @@ struct ff_effect {
  #define FF_MAX		0x7f
  #define FF_CNT		(FF_MAX+1)
  
@@ -186,7 +186,7 @@ index 1249a0c..7baf13c 100644
  #ifdef __KERNEL__
  
  /*
-@@ -990,6 +1043,7 @@ struct ff_effect {
+@@ -991,6 +1044,7 @@ struct ff_effect {
   * @sndbit: bitmap of sound effects supported by the device
   * @ffbit: bitmap of force feedback effects supported by the device
   * @swbit: bitmap of switches present on the device
@@ -194,7 +194,7 @@ index 1249a0c..7baf13c 100644
   * @keycodemax: size of keycode table
   * @keycodesize: size of elements in keycode table
   * @keycode: map of scancodes to keycodes for this device
-@@ -1062,6 +1116,7 @@ struct input_dev {
+@@ -1063,6 +1117,7 @@ struct input_dev {
  	unsigned long sndbit[BITS_TO_LONGS(SND_CNT)];
  	unsigned long ffbit[BITS_TO_LONGS(FF_CNT)];
  	unsigned long swbit[BITS_TO_LONGS(SW_CNT)];
@@ -202,7 +202,7 @@ index 1249a0c..7baf13c 100644
  
  	unsigned int keycodemax;
  	unsigned int keycodesize;
-@@ -1070,6 +1125,7 @@ struct input_dev {
+@@ -1071,6 +1126,7 @@ struct input_dev {
  	int (*getkeycode)(struct input_dev *dev, int scancode, int *keycode);
  
  	struct ff_device *ff;
@@ -210,7 +210,7 @@ index 1249a0c..7baf13c 100644
  
  	unsigned int repeat_key;
  	struct timer_list timer;
-@@ -1305,6 +1361,11 @@ static inline void input_report_switch(struct input_dev *dev, unsigned int code,
+@@ -1306,6 +1362,11 @@ static inline void input_report_switch(struct input_dev *dev, unsigned int code,
  	input_event(dev, EV_SW, code, !!value);
  }
  
@@ -222,7 +222,7 @@ index 1249a0c..7baf13c 100644
  static inline void input_sync(struct input_dev *dev)
  {
  	input_event(dev, EV_SYN, SYN_REPORT, 0);
-@@ -1383,5 +1444,19 @@ int input_ff_erase(struct input_dev *dev, int effect_id, struct file *file);
+@@ -1384,5 +1445,19 @@ int input_ff_erase(struct input_dev *dev, int effect_id, struct file *file);
  int input_ff_create_memless(struct input_dev *dev, void *data,
  		int (*play_effect)(struct input_dev *, void *, struct ff_effect *));
  
@@ -243,7 +243,7 @@ index 1249a0c..7baf13c 100644
  #endif
  #endif
 diff --git a/include/linux/mod_devicetable.h b/include/linux/mod_devicetable.h
-index fde8667..d221a37 100644
+index 1bf5900..2bdf253 100644
 --- a/include/linux/mod_devicetable.h
 +++ b/include/linux/mod_devicetable.h
 @@ -293,6 +293,7 @@ struct pcmcia_device_id {
