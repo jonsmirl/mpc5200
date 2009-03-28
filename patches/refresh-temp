@@ -1,0 +1,31 @@
+Bottom: 820d8fad3777d15438181323faa17fdf713ddafd
+Top:    7b7279dfda56de45b06309cc5c7b3945d484b979
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-03-28 11:58:28 -0400
+
+Refresh of m_1
+
+---
+
+diff --git a/drivers/of/of_mmc_spi.c b/drivers/of/of_mmc_spi.c
+index f189cdb..8911af5 100644
+--- a/drivers/of/of_mmc_spi.c
++++ b/drivers/of/of_mmc_spi.c
+@@ -120,7 +120,7 @@ static int of_mmc_spi_add(struct device *dev)
+ 
+ 	oms->wp_gpio = of_get_gpio(np, 0);
+ 	if (gpio_is_valid(oms->wp_gpio)) {
+-		ret = gpio_request(oms->wp_gpio, dev->bus_id);
++		ret = gpio_request(oms->wp_gpio, dev->init_name);
+ 		if (ret < 0)
+ 			goto err_wp_gpio;
+ 		oms->mmc_pdata.get_ro = &mmc_get_ro;
+@@ -128,7 +128,7 @@ static int of_mmc_spi_add(struct device *dev)
+ 
+ 	oms->cd_gpio = of_get_gpio(np, 1);
+ 	if (gpio_is_valid(oms->cd_gpio)) {
+-		ret = gpio_request(oms->cd_gpio, dev->bus_id);
++		ret = gpio_request(oms->cd_gpio, dev->init_name);
+ 		if (ret < 0)
+ 			goto err_cd_gpio;
+ 		oms->mmc_pdata.get_cd = &mmc_get_cd;
