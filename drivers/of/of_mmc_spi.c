@@ -120,7 +120,7 @@ static int of_mmc_spi_add(struct device *dev)
 
 	oms->wp_gpio = of_get_gpio(np, 0);
 	if (gpio_is_valid(oms->wp_gpio)) {
-		ret = gpio_request(oms->wp_gpio, dev->bus_id);
+		ret = gpio_request(oms->wp_gpio, dev->init_name);
 		if (ret < 0)
 			goto err_wp_gpio;
 		oms->mmc_pdata.get_ro = &mmc_get_ro;
@@ -128,7 +128,7 @@ static int of_mmc_spi_add(struct device *dev)
 
 	oms->cd_gpio = of_get_gpio(np, 1);
 	if (gpio_is_valid(oms->cd_gpio)) {
-		ret = gpio_request(oms->cd_gpio, dev->bus_id);
+		ret = gpio_request(oms->cd_gpio, dev->init_name);
 		if (ret < 0)
 			goto err_cd_gpio;
 		oms->mmc_pdata.get_cd = &mmc_get_cd;
