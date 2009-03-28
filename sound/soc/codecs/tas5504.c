@@ -296,7 +296,7 @@ static int tas5504_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_device *socdev = rtd->socdev;
-	struct snd_soc_codec *codec = socdev->codec;
+	struct snd_soc_codec *codec = socdev->card->codec;
 	struct tas5504_priv *priv = codec->private_data;
 
 	dev_dbg(&priv->client->dev, "tas5504_hw_params(substream=%p, params=%p)\n",
@@ -324,6 +324,13 @@ static int tas5504_mute(struct snd_soc_dai *dai, int mute)
 /* ---------------------------------------------------------------------
  * Digital Audio Interface Definition
  */
+
+static struct snd_soc_dai_ops tas5504_dai_ops = {
+	.hw_params = tas5504_hw_params,
+	.digital_mute = tas5504_mute,
+};
+
+
 struct snd_soc_dai tas5504_dai = {
 	.name = "tas5504",
 	.playback = {
@@ -333,10 +340,7 @@ struct snd_soc_dai tas5504_dai = {
 		.rates = TAS5504_RATES,
 		.formats = TAS5504_FORMATS,
 	},
-	.ops = {
-		.hw_params = tas5504_hw_params,
-		.digital_mute = tas5504_mute,
-	},
+	.ops = &tas5504_dai_ops,
 };
 EXPORT_SYMBOL_GPL(tas5504_dai);
 
@@ -703,7 +707,7 @@ static int tas5504_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 	codec = &priv->codec;
-	socdev->codec = codec;
+	socdev->card->codec = codec;
 
 	dev_dbg(&pdev->dev, "Registering PCMs, dev=%p, socdev->dev=%p\n",
 		&pdev->dev, socdev->dev);
