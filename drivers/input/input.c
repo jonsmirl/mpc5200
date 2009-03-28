@@ -240,6 +240,10 @@ static void input_handle_event(struct input_dev *dev,
 	case EV_PWR:
 		disposition = INPUT_PASS_TO_ALL;
 		break;
+
+	case EV_IR:
+		disposition = INPUT_PASS_TO_ALL;
+		break;
 	}
 
 	if (disposition != INPUT_IGNORE_EVENT && type != EV_SYN)
@@ -693,6 +697,7 @@ static const struct input_device_id *input_match_device(const struct input_devic
 		MATCH_BIT(sndbit, SND_MAX);
 		MATCH_BIT(ffbit,  FF_MAX);
 		MATCH_BIT(swbit,  SW_MAX);
+		MATCH_BIT(irbit,  IR_MAX);
 
 		return id;
 	}
@@ -815,6 +820,8 @@ static int input_devices_seq_show(struct seq_file *seq, void *v)
 		input_seq_print_bitmap(seq, "FF", dev->ffbit, FF_MAX);
 	if (test_bit(EV_SW, dev->evbit))
 		input_seq_print_bitmap(seq, "SW", dev->swbit, SW_MAX);
+	if (test_bit(EV_IR, dev->evbit))
+		input_seq_print_bitmap(seq, "IR", dev->irbit, IR_MAX);
 
 	seq_putc(seq, '\n');
 
@@ -992,6 +999,8 @@ static int input_print_modalias(char *buf, int size, struct input_dev *id,
 				'f', id->ffbit, 0, FF_MAX);
 	len += input_print_modalias_bits(buf + len, size - len,
 				'w', id->swbit, 0, SW_MAX);
+	len += input_print_modalias_bits(buf + len, size - len,
+				'i', id->irbit, 0, IR_MAX);
 
 	if (add_cr)
 		len += snprintf(buf + len, max(size - len, 0), "\n");
@@ -1093,6 +1102,7 @@ INPUT_DEV_CAP_ATTR(LED, led);
 INPUT_DEV_CAP_ATTR(SND, snd);
 INPUT_DEV_CAP_ATTR(FF, ff);
 INPUT_DEV_CAP_ATTR(SW, sw);
+INPUT_DEV_CAP_ATTR(IR, ir);
 
 static struct attribute *input_dev_caps_attrs[] = {
 	&dev_attr_ev.attr,
@@ -1104,6 +1114,7 @@ static struct attribute *input_dev_caps_attrs[] = {
 	&dev_attr_snd.attr,
 	&dev_attr_ff.attr,
 	&dev_attr_sw.attr,
+	&dev_attr_ir.attr,
 	NULL
 };
 
@@ -1221,6 +1232,8 @@ static int input_dev_uevent(struct device *device, struct kobj_uevent_env *env)
 		INPUT_ADD_HOTPLUG_BM_VAR("FF=", dev->ffbit, FF_MAX);
 	if (test_bit(EV_SW, dev->evbit))
 		INPUT_ADD_HOTPLUG_BM_VAR("SW=", dev->swbit, SW_MAX);
+	if (test_bit(EV_IR, dev->evbit))
+		INPUT_ADD_HOTPLUG_BM_VAR("IR=", dev->irbit, IR_MAX);
 
 	INPUT_ADD_HOTPLUG_MODALIAS_VAR(dev);
 
@@ -1331,6 +1344,10 @@ void input_set_capability(struct input_dev *dev, unsigned int type, unsigned int
 
 	case EV_FF:
 		__set_bit(code, dev->ffbit);
+		break;
+
+	case EV_IR:
+		__set_bit(code, dev->irbit);
 		break;
 
 	case EV_PWR:
