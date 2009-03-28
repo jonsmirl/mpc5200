@@ -23,6 +23,8 @@
 #include <linux/rcupdate.h>
 #include <linux/smp_lock.h>
 
+#include "ir/ir.h"
+
 MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
 MODULE_DESCRIPTION("Input core");
 MODULE_LICENSE("GPL");
@@ -1135,6 +1137,7 @@ static void input_dev_release(struct device *device)
 	struct input_dev *dev = to_input_dev(device);
 
 	input_ff_destroy(dev);
+	input_ir_destroy(dev);
 	kfree(dev);
 
 	module_put(THIS_MODULE);
