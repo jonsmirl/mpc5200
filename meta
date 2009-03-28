@@ -1,6 +1,6 @@
 Version: 1
-Previous: 3c587f8ff50cc9b72bc190305a291202b3ece9d5
-Head: 9f901691312bac8ca2fbce9eecd9bb33646a4c36
+Previous: d0af9394b89d755e4096e388b3a01c221af806af
+Head: 69372c9034c9e4ca2ba582df50e9635ce4c29bb7
 Applied:
   Makefile: 9da340ac1bc77ebcfb6fdfe38ebbaad8271fec8f
   jds_platform: a7041ade59b2150de394b0a3452531fa56c1d6fb
@@ -9,8 +9,8 @@ Applied:
   jds-psc-c: 47eeb43b5b989157080cdff20af95f27eafc874c
   soc-u32-cleanup: 51a87ddd4accca7fe0ead4344bb9ce78e45abb26
   jds-audio: 9f901691312bac8ca2fbce9eecd9bb33646a4c36
+  g_spi_4: 69372c9034c9e4ca2ba582df50e9635ce4c29bb7
 Unapplied:
-  g_spi_4: 466fa8f6fa2d1225d782a0ad013232d9644439bc
   mpc5200-rtc: e0025611a2f0fbe3db3d36096d9f977d478136d7
   lirc: 96383b1bb83de7f428ea4123c89097a9cfc5db77
   jds-lirc-base: da39164f54136f1a9e9490e9e36bf1f38c04eaf1
