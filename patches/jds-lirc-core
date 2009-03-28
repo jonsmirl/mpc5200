@@ -1,7 +1,7 @@
-Bottom: 9026703d0306cb62deaa5f2c3a9b14af2ec29755
-Top:    8349ca2fe13086cff189a900b5f713359d7d9308
+Bottom: 1dfae0fb54a9fac8b5b75223fc82eea4692100cb
+Top:    eebf81291850913fac11d5187a3fdd7173a39008
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-03-23 10:56:29 -0400
+Date:   2009-03-28 11:50:27 -0400
 
 Core IR module
 
@@ -909,10 +909,10 @@ index 0000000..d0cdc9e
 +
 +
 diff --git a/include/linux/input.h b/include/linux/input.h
-index 7baf13c..130775f 100644
+index da4de16..6bc7fbb 100644
 --- a/include/linux/input.h
 +++ b/include/linux/input.h
-@@ -1452,9 +1452,10 @@ typedef int (*send_func)(void *private, unsigned int *buffer, unsigned int count
+@@ -1453,9 +1453,10 @@ typedef int (*send_func)(void *private, unsigned int *buffer, unsigned int count
  		unsigned int frequency, unsigned int xmitters);
  
  int input_ir_create(struct input_dev *dev, void *private, send_func send);
