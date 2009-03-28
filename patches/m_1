@@ -1,5 +1,5 @@
 Bottom: 528a50211d744c95b9f7f09aa4a7b214873b7568
-Top:    dae4cc216a0716e49751efb7d1d456e757160612
+Top:    9d272caccd13b6a79dc4496284eac282a54283de
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-03-28 11:50:40 -0400
 
@@ -100,7 +100,7 @@ index 4c3c6f8..0757022 100644
 +
 diff --git a/drivers/of/of_mmc_spi.c b/drivers/of/of_mmc_spi.c
 new file mode 100644
-index 0000000..aa4e017
+index 0000000..f556266
 --- /dev/null
 +++ b/drivers/of/of_mmc_spi.c
 @@ -0,0 +1,210 @@
@@ -226,7 +226,7 @@ index 0000000..aa4e017
 +
 +	oms->wp_gpio = of_get_gpio(np, 0);
 +	if (gpio_is_valid(oms->wp_gpio)) {
-+		ret = gpio_request(oms->wp_gpio, dev->bus_id);
++		ret = gpio_request(oms->wp_gpio, dev->init_name);
 +		if (ret < 0)
 +			goto err_wp_gpio;
 +		oms->mmc_pdata.get_ro = &mmc_get_ro;
@@ -234,7 +234,7 @@ index 0000000..aa4e017
 +
 +	oms->cd_gpio = of_get_gpio(np, 1);
 +	if (gpio_is_valid(oms->cd_gpio)) {
-+		ret = gpio_request(oms->cd_gpio, dev->bus_id);
++		ret = gpio_request(oms->cd_gpio, dev->init_name);
 +		if (ret < 0)
 +			goto err_cd_gpio;
 +		oms->mmc_pdata.get_cd = &mmc_get_cd;

@@ -1,5 +1,5 @@
-Bottom: dae4cc216a0716e49751efb7d1d456e757160612
-Top:    820d8fad3777d15438181323faa17fdf713ddafd
+Bottom: 9d272caccd13b6a79dc4496284eac282a54283de
+Top:    7b7279dfda56de45b06309cc5c7b3945d484b979
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-03-28 11:50:47 -0400
 
@@ -48,7 +48,7 @@ index 87e211d..00f6979 100644
  		.owner =	THIS_MODULE,
  	},
 diff --git a/drivers/of/of_mmc_spi.c b/drivers/of/of_mmc_spi.c
-index aa4e017..f189cdb 100644
+index f556266..8911af5 100644
 --- a/drivers/of/of_mmc_spi.c
 +++ b/drivers/of/of_mmc_spi.c
 @@ -95,7 +95,7 @@ static int of_mmc_spi_add(struct device *dev)
