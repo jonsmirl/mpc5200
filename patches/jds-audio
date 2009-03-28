@@ -1,5 +1,5 @@
 Bottom: d401835e74aec6c1e6ed27d58f926de95ace1e13
-Top:    3b6b632345ba7413937c0454831e0a674392364d
+Top:    9b7cf1dc76c338ab4a69e55d91fdd2ef53c3426a
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-03-28 11:49:26 -0400
 
@@ -70,10 +70,10 @@ index 030d245..f906124 100644
  obj-$(CONFIG_SND_SOC_TLV320AIC3X)	+= snd-soc-tlv320aic3x.o
 diff --git a/sound/soc/codecs/tas5504.c b/sound/soc/codecs/tas5504.c
 new file mode 100644
-index 0000000..929baf8
+index 0000000..6ac3289
 --- /dev/null
 +++ b/sound/soc/codecs/tas5504.c
-@@ -0,0 +1,867 @@
+@@ -0,0 +1,871 @@
 +/*
 + * Texas Instruments TAS5504 low power audio CODEC
 + * ALSA SoC CODEC driver
@@ -372,7 +372,7 @@ index 0000000..929baf8
 +{
 +	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 +	struct snd_soc_device *socdev = rtd->socdev;
-+	struct snd_soc_codec *codec = socdev->codec;
++	struct snd_soc_codec *codec = socdev->card->codec;
 +	struct tas5504_priv *priv = codec->private_data;
 +
 +	dev_dbg(&priv->client->dev, "tas5504_hw_params(substream=%p, params=%p)\n",
@@ -400,6 +400,13 @@ index 0000000..929baf8
 +/* ---------------------------------------------------------------------
 + * Digital Audio Interface Definition
 + */
++
++static struct snd_soc_dai_ops tas5504_dai_ops = {
++	.hw_params = tas5504_hw_params,
++	.digital_mute = tas5504_mute,
++};
++
++
 +struct snd_soc_dai tas5504_dai = {
 +	.name = "tas5504",
 +	.playback = {
@@ -409,10 +416,7 @@ index 0000000..929baf8
 +		.rates = TAS5504_RATES,
 +		.formats = TAS5504_FORMATS,
 +	},
-+	.ops = {
-+		.hw_params = tas5504_hw_params,
-+		.digital_mute = tas5504_mute,
-+	},
++	.ops = &tas5504_dai_ops,
 +};
 +EXPORT_SYMBOL_GPL(tas5504_dai);
 +
@@ -779,7 +783,7 @@ index 0000000..929baf8
 +		return -ENODEV;
 +	}
 +	codec = &priv->codec;
-+	socdev->codec = codec;
++	socdev->card->codec = codec;
 +
 +	dev_dbg(&pdev->dev, "Registering PCMs, dev=%p, socdev->dev=%p\n",
 +		&pdev->dev, socdev->dev);
@@ -1185,7 +1189,7 @@ index f85134c..70f0084 100644
 +obj-$(CONFIG_SND_MPC52xx_SOC_DSPEAK01) += snd_soc_dspeak01_fabric.o
 diff --git a/sound/soc/fsl/dspeak01_fabric.c b/sound/soc/fsl/dspeak01_fabric.c
 new file mode 100644
-index 0000000..33a2bba
+index 0000000..bd35a14
 --- /dev/null
 +++ b/sound/soc/fsl/dspeak01_fabric.c
 @@ -0,0 +1,179 @@
@@ -1251,7 +1255,7 @@ index 0000000..33a2bba
 +	}
 +	max9485_set(fabric.clock, select | MAX9485_CLK_OUT_2);
 +
-+	ret = cpu_dai->ops.set_sysclk(cpu_dai, MPC52xx_CLK_CELLSLAVE, rate, SND_SOC_CLOCK_OUT);
++	ret = snd_soc_dai_set_sysclk(cpu_dai, MPC52xx_CLK_CELLSLAVE, rate, SND_SOC_CLOCK_OUT);
 +	if (ret < 0)
 +		return ret;
 +
