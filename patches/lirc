@@ -1,7 +1,7 @@
-Bottom: eb3d3616a2d8c2361335582bbbb65ee742c3ddb9
-Top:    d8fa3c04d3eb2cda4ce5f224ef90cb908c4ef08a
+Bottom: b94c06c86d7ba48308867965556335921dd3afe3
+Top:    424a2ea9dc76182d3861034fcb7dd1928dadb152
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-03-28 11:50:22 -0400
+Date:   2009-04-05 23:06:44 -0400
 
 lirc merge branch
 
@@ -20,7 +20,7 @@ lirc merge branch
 ---
 
 diff --git a/drivers/input/Kconfig b/drivers/input/Kconfig
-index 5f9d860..747633c 100644
+index cd50c00..816639c 100644
 --- a/drivers/input/Kconfig
 +++ b/drivers/input/Kconfig
 @@ -182,5 +182,7 @@ source "drivers/input/gameport/Kconfig"
