@@ -1,15 +1,16 @@
 Version: 1
-Previous: d4fca77489acc6ffea59967bbcd7f496f1c30202
-Head: 37396fa3d8c320223117e45c9c21c1158d22dd7e
+Previous: e22f29bb94565e9474c4ed795e9058fb3e23cd52
+Head: d450b7c6910d4bc01a1a5b2ad4394303fff52d31
 Applied:
-  Makefile: 9da340ac1bc77ebcfb6fdfe38ebbaad8271fec8f
-  jds_platform: a7041ade59b2150de394b0a3452531fa56c1d6fb
-  max9485: 9a13024f0e988ab301a6099d6c8df119bf7f2860
-  jds-soc-machine: 5295dfa325519ff65a171cf909217eb4a466c126
-  jds-psc-c: 47eeb43b5b989157080cdff20af95f27eafc874c
-  soc-u32-cleanup: 51a87ddd4accca7fe0ead4344bb9ce78e45abb26
-  jds-audio: c9b23ca6527a3d8cc110ef2c74c127970e760e42
-  g_spi_4: 53ec174a3826f491a2b47029673952d48dfc5e45
+  Makefile: 09e8eb863d2361b6e87828640d7938a1bbc5d175
+  jds_platform: 8927974cc9fc4ec97f5fa05a89f406b534a9256e
+  max9485: 9bc870b00877d19de31b546fe3c065e531014517
+  jds-soc-machine: 03a8ebc46df5c7c606ed8744a2a50d16802997b3
+  jds-psc-c: d93d5c07fcb165fb710b43b72b06eefdab93ba1f
+  soc-u32-cleanup: 9fa5d0a73795ccdcc5b554df95be82e109aa3075
+  jds-audio: c7e92aa9c3cec5eb000843d3f3b76b05913d8fca
+  g_spi_4: d450b7c6910d4bc01a1a5b2ad4394303fff52d31
+Unapplied:
   mpc5200-rtc: eb98d416415613c3cf2753effaf99538a8e77925
   lirc: f09c881ada828f4269654504b3db537102424be9
   jds-lirc-base: d8f39edac270f024806033cd62b022c5c20e6a53
@@ -20,5 +21,4 @@ Applied:
   jds-lirc-mce2: 5fe638d0b9a78fc737d04f0c5ef8c08fef6c20fb
   m_1: da596b99e7dedfdaeec20695f4559bd12dbc941c
   spi-mmc: 37396fa3d8c320223117e45c9c21c1158d22dd7e
-Unapplied:
 Hidden:

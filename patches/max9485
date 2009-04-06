@@ -1,7 +1,7 @@
-Bottom: 8a3d0f6f800abc6ff532ef92a55a7501c2640d63
-Top:    47b35d406f9217c59c2990360e190d633afc5c3f
+Bottom: 3861f4547b69e4d8aa3567430cfbcc0bc3718049
+Top:    765ec9e7eeb29d4cefea83d7adb0a45f116de045
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-03-28 11:47:55 -0400
+Date:   2009-04-05 23:05:57 -0400
 
 i2c driver for Maxim max9485 audio clock generator chip
 
@@ -17,7 +17,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/drivers/misc/Kconfig b/drivers/misc/Kconfig
-index c64e679..320f359 100644
+index 6d1ac18..b41256d 100644
 --- a/drivers/misc/Kconfig
 +++ b/drivers/misc/Kconfig
 @@ -150,6 +150,15 @@ config ATMEL_SSC
@@ -37,7 +37,7 @@ index c64e679..320f359 100644
  	tristate "Enclosure Services"
  	default n
 diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
-index bc11998..7161709 100644
+index 7871f05..9b9f52b 100644
 --- a/drivers/misc/Makefile
 +++ b/drivers/misc/Makefile
 @@ -13,6 +13,8 @@ obj-$(CONFIG_TIFM_CORE)       	+= tifm_core.o

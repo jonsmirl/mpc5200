@@ -1,7 +1,7 @@
-Bottom: 04b5360105d457e37584579e135d23bea9dcaa88
-Top:    8a3d0f6f800abc6ff532ef92a55a7501c2640d63
+Bottom: f8f0937d8c115b0195cfb371195e4963c2427d63
+Top:    3861f4547b69e4d8aa3567430cfbcc0bc3718049
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-03-28 11:47:55 -0400
+Date:   2009-04-05 23:05:56 -0400
 
 The Digispeaker platform
 
@@ -442,12 +442,12 @@ index 0000000..7107d45
 +	}; 
 +};
 diff --git a/arch/powerpc/platforms/52xx/Kconfig b/arch/powerpc/platforms/52xx/Kconfig
-index 696a5ee..8e3c15a 100644
+index 8b8e956..4bbd5ab 100644
 --- a/arch/powerpc/platforms/52xx/Kconfig
 +++ b/arch/powerpc/platforms/52xx/Kconfig
-@@ -23,6 +23,11 @@ config PPC_MPC5200_SIMPLE
- 	  Boards that are compatible with this generic platform support
- 	  are: 'tqc,tqm5200', 'promess,motionpro', 'schindler,cm5200'.
+@@ -29,6 +29,11 @@ config PPC_MPC5200_SIMPLE
+ 	     schindler,cm5200
+ 	     tqc,tqm5200
  
 +config PPC_DSPEAK01
 +	bool "Digispeaker DSPEAK01 Alpha Model"
@@ -458,17 +458,17 @@ index 696a5ee..8e3c15a 100644
  	bool "bPlan Efika 5k2. MPC5200B based computer"
  	depends on PPC_MPC52xx
 diff --git a/arch/powerpc/platforms/52xx/Makefile b/arch/powerpc/platforms/52xx/Makefile
-index b8a5206..a9ecd90 100644
+index bfd4f52..faf32ce 100644
 --- a/arch/powerpc/platforms/52xx/Makefile
 +++ b/arch/powerpc/platforms/52xx/Makefile
-@@ -5,6 +5,7 @@ obj-y				+= mpc52xx_pic.o mpc52xx_common.o
+@@ -5,6 +5,7 @@ obj-y				+= mpc52xx_pic.o mpc52xx_common.o mpc52xx_gpt.o
  obj-$(CONFIG_PCI)		+= mpc52xx_pci.o
  
  obj-$(CONFIG_PPC_MPC5200_SIMPLE) += mpc5200_simple.o
 +obj-$(CONFIG_PPC_DSPEAK01) += dspeak01.o
  obj-$(CONFIG_PPC_EFIKA)		+= efika.o
  obj-$(CONFIG_PPC_LITE5200)	+= lite5200.o
- 
+ obj-$(CONFIG_PPC_MEDIA5200)	+= media5200.o
 diff --git a/arch/powerpc/platforms/52xx/dspeak01.c b/arch/powerpc/platforms/52xx/dspeak01.c
 new file mode 100644
 index 0000000..a1a7ec2
