@@ -1,7 +1,7 @@
-Bottom: d8fa3c04d3eb2cda4ce5f224ef90cb908c4ef08a
-Top:    6930fa4707778686ea60a17bf79845eaf08c2f3a
+Bottom: 424a2ea9dc76182d3861034fcb7dd1928dadb152
+Top:    0243f59f0d63e75b21eac1e8ea6b864ab9cdeae3
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-03-28 11:50:24 -0400
+Date:   2009-04-05 23:06:46 -0400
 
 Minimal changes to the core input system
 
@@ -32,7 +32,7 @@ Jon Smirl
 ---
 
 diff --git a/drivers/input/input.c b/drivers/input/input.c
-index 1730d73..ffe67c1 100644
+index ec3db3a..72d0067 100644
 --- a/drivers/input/input.c
 +++ b/drivers/input/input.c
 @@ -240,6 +240,10 @@ static void input_handle_event(struct input_dev *dev,
@@ -63,7 +63,7 @@ index 1730d73..ffe67c1 100644
  
  	seq_putc(seq, '\n');
  
-@@ -992,6 +999,8 @@ static int input_print_modalias(char *buf, int size, struct input_dev *id,
+@@ -990,6 +997,8 @@ static int input_print_modalias(char *buf, int size, struct input_dev *id,
  				'f', id->ffbit, 0, FF_MAX);
  	len += input_print_modalias_bits(buf + len, size - len,
  				'w', id->swbit, 0, SW_MAX);
@@ -72,7 +72,7 @@ index 1730d73..ffe67c1 100644
  
  	if (add_cr)
  		len += snprintf(buf + len, max(size - len, 0), "\n");
-@@ -1093,6 +1102,7 @@ INPUT_DEV_CAP_ATTR(LED, led);
+@@ -1091,6 +1100,7 @@ INPUT_DEV_CAP_ATTR(LED, led);
  INPUT_DEV_CAP_ATTR(SND, snd);
  INPUT_DEV_CAP_ATTR(FF, ff);
  INPUT_DEV_CAP_ATTR(SW, sw);
@@ -80,7 +80,7 @@ index 1730d73..ffe67c1 100644
  
  static struct attribute *input_dev_caps_attrs[] = {
  	&dev_attr_ev.attr,
-@@ -1104,6 +1114,7 @@ static struct attribute *input_dev_caps_attrs[] = {
+@@ -1102,6 +1112,7 @@ static struct attribute *input_dev_caps_attrs[] = {
  	&dev_attr_snd.attr,
  	&dev_attr_ff.attr,
  	&dev_attr_sw.attr,
@@ -88,7 +88,7 @@ index 1730d73..ffe67c1 100644
  	NULL
  };
  
-@@ -1221,6 +1232,8 @@ static int input_dev_uevent(struct device *device, struct kobj_uevent_env *env)
+@@ -1219,6 +1230,8 @@ static int input_dev_uevent(struct device *device, struct kobj_uevent_env *env)
  		INPUT_ADD_HOTPLUG_BM_VAR("FF=", dev->ffbit, FF_MAX);
  	if (test_bit(EV_SW, dev->evbit))
  		INPUT_ADD_HOTPLUG_BM_VAR("SW=", dev->swbit, SW_MAX);
@@ -97,7 +97,7 @@ index 1730d73..ffe67c1 100644
  
  	INPUT_ADD_HOTPLUG_MODALIAS_VAR(dev);
  
-@@ -1333,6 +1346,10 @@ void input_set_capability(struct input_dev *dev, unsigned int type, unsigned int
+@@ -1331,6 +1344,10 @@ void input_set_capability(struct input_dev *dev, unsigned int type, unsigned int
  		__set_bit(code, dev->ffbit);
  		break;
  
