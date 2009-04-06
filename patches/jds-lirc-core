@@ -1,7 +1,7 @@
-Bottom: 6930fa4707778686ea60a17bf79845eaf08c2f3a
-Top:    5b0810ee976c48d4b6c88117aa45599e52337146
+Bottom: 0243f59f0d63e75b21eac1e8ea6b864ab9cdeae3
+Top:    471eea37297dbefa973b40fe5db1b89ea825d26e
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-03-28 11:50:27 -0400
+Date:   2009-04-05 23:06:48 -0400
 
 Core IR module
 
@@ -18,7 +18,7 @@ IR messages are sent using an input IOCTL.
 ---
 
 diff --git a/drivers/input/Kconfig b/drivers/input/Kconfig
-index 747633c..780d321 100644
+index 816639c..a1e35ee 100644
 --- a/drivers/input/Kconfig
 +++ b/drivers/input/Kconfig
 @@ -172,6 +172,8 @@ source "drivers/input/touchscreen/Kconfig"
@@ -43,7 +43,7 @@ index 99e2b5e..fec8972 100644
  obj-$(CONFIG_INPUT_APMPOWER)	+= apm-power.o
  
 diff --git a/drivers/input/input.c b/drivers/input/input.c
-index ffe67c1..df22a3a 100644
+index 72d0067..a52b8a1 100644
 --- a/drivers/input/input.c
 +++ b/drivers/input/input.c
 @@ -23,6 +23,8 @@
@@ -55,7 +55,7 @@ index ffe67c1..df22a3a 100644
  MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
  MODULE_DESCRIPTION("Input core");
  MODULE_LICENSE("GPL");
-@@ -1135,6 +1137,7 @@ static void input_dev_release(struct device *device)
+@@ -1133,6 +1135,7 @@ static void input_dev_release(struct device *device)
  	struct input_dev *dev = to_input_dev(device);
  
  	input_ff_destroy(dev);
