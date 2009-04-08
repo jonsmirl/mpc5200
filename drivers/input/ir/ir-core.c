@@ -10,15 +10,6 @@
 
 #include "ir.h"
 
-void input_ir_translate(struct input_dev *dev, int protocol, int device, int command)
-{
-	/* generate the IR format event */
-	input_report_ir(dev, IR_PROTOCOL, protocol);
-	input_report_ir(dev, IR_DEVICE, device);
-	input_report_ir(dev, IR_COMMAND, command);
-	input_sync(dev);
-}
-
 static int encode_sony(struct ir_device *ir, struct ir_command *command)
 {
 	/* Sony SIRC IR code */
@@ -725,11 +716,15 @@ void input_ir_destroy(struct input_dev *dev)
 
 static int __init input_ir_init(void)
 {
-	return 0;
+	config_group_init(&input_ir_remotes.su_group);
+	mutex_init(&input_ir_remotes.su_mutex);
+
+	return configfs_register_subsystem(&input_ir_remotes);
 }
 module_init(input_ir_init);
 
 static void __exit input_ir_exit(void)
 {
+	configfs_unregister_subsystem(&input_ir_remotes);
 }
 module_exit(input_ir_exit);
