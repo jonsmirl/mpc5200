@@ -1,0 +1,402 @@
+/*
+ * linux/sound/mpc52xx-ac97.c -- AC97 support for the Freescale MPC52xx chip.
+ *
+ * Copyright 2008 Jon Smirl, Digispeaker
+ * Author: Jon Smirl <jonsmirl@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/platform_device.h>
+#include <linux/interrupt.h>
+#include <linux/wait.h>
+#include <linux/delay.h>
+
+#include <sound/driver.h>
+#include <sound/core.h>
+#include <sound/pcm.h>
+#include <sound/ac97_codec.h>
+#include <sound/initval.h>
+#include <sound/soc.h>
+
+#include <asm/mpc52xx_psc.h>
+#include <asm/irq.h>
+#include <linux/mutex.h>
+
+#include "mpc52xx-dma.h"
+
+/* Private structure */
+struct mpc52xx_ac97_priv {
+	struct mpc52xx_dma_priv dma;
+	int irq;
+	struct mutex mutex;
+};
+
+#define DRV_NAME "mpc52xx-psc-ac97"
+
+static unsigned short mpc52xx_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+{
+	struct mpc52xx_ac97_priv *priv = ac97->private_data;
+	int timeout;
+	unsigned int val;
+
+	mutex_lock(&priv->mutex);
+	printk("ac97 read: reg %04x\n", reg);
+
+	/* Wait for it to be ready */
+	timeout = 1000;
+	while ((--timeout) && (in_be16(&priv->dma.psc->mpc52xx_psc_status) &
+						MPC52xx_PSC_SR_CMDSEND) )
+		udelay(10);
+
+	if (!timeout) {
+		printk(KERN_ERR DRV_NAME ": timeout on ac97 bus (rdy)\n");
+		return 0xffff;
+	}
+
+	/* Do the read */
+	out_be32(&priv->dma.psc->ac97_cmd, (1<<31) | ((reg & 0x7f) << 24));
+
+	/* Wait for the answer */
+	timeout = 1000;
+	while ((--timeout) && !(in_be16(&priv->dma.psc->mpc52xx_psc_status) &
+						MPC52xx_PSC_SR_DATA_VAL) )
+		udelay(10);
+
+	if (!timeout) {
+		printk(KERN_ERR DRV_NAME ": timeout on ac97 read (val)\n");
+		return 0xffff;
+	}
+
+	/* Get the data */
+	val = in_be32(&priv->dma.psc->ac97_data);
+	if ( ((val>>24) & 0x7f) != reg ) {
+		printk(KERN_ERR DRV_NAME ": reg echo error on ac97 read\n");
+		return 0xffff;
+	}
+	val = (val >> 8) & 0xffff;
+
+	printk("ac97 read ok: reg %04x  val %04x\n", reg, val);
+
+	mutex_unlock(&priv->mutex);
+	return (unsigned short) val;
+}
+
+static void mpc52xx_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned short val)
+{
+	struct mpc52xx_ac97_priv *priv = ac97->private_data;
+	int timeout;
+
+	//printk("ac97 write: reg %04x  val %04x\n", reg, val);
+	mutex_lock(&priv->mutex);
+
+	/* Wait for it to be ready */
+	timeout = 1000;
+	while ((--timeout) && (in_be16(&priv->dma.psc->mpc52xx_psc_status) &
+						MPC52xx_PSC_SR_CMDSEND) )
+		udelay(10);
+
+	if (!timeout) {
+		printk(KERN_ERR DRV_NAME ": timeout on ac97 write\n");
+		return;
+	}
+
+	/* Write data */
+	out_be32(&priv->dma.psc->ac97_cmd, ((reg & 0x7f) << 24) | (val << 8));
+	
+	mutex_unlock(&priv->mutex);
+}
+
+static void mpc52xx_ac97_cold_reset(struct snd_ac97 *ac97)
+{
+	struct mpc52xx_ac97_priv *priv = ac97->private_data;
+
+	printk("mpc52xx_ac97_cold_reset\n");
+
+	/* Do a cold reset */
+	out_8(&priv->dma.psc->op1, MPC52xx_PSC_OP_RES);
+	udelay(10);
+	out_8(&priv->dma.psc->op0, MPC52xx_PSC_OP_RES);
+	udelay(50);
+
+	/* PSC recover from cold reset (cfr user manual, not sure if useful) */
+	out_be32(&priv->dma.psc->sicr, in_be32(&priv->dma.psc->sicr));
+}
+
+static void mpc52xx_ac97_warm_reset(struct snd_ac97 *ac97)
+{
+	printk("mpc52xx_ac97_warm_reset\n");
+}
+
+static irqreturn_t mpc52xx_ac97_irq(int irq, void *dev_id)
+{
+	struct mpc52xx_ac97_priv *priv = dev_id;
+
+	static int icnt = 0;
+#if 1
+{
+	unsigned int val;
+	val = in_be32(&priv->dma.psc->ac97_data);
+	printk(KERN_INFO "mpc52xx_ac97_irq fired (isr=%04x, status=%04x) %08x\n", in_be16(&priv->dma.psc->mpc52xx_psc_imr), in_be16(&priv->dma.psc->mpc52xx_psc_status), val);
+	out_8(&priv->dma.psc->command,MPC52xx_PSC_RST_ERR_STAT);
+}
+#endif
+
+	/* Anti Crash during dev ;) */
+#if 1
+	if ((icnt++) > 5000)
+		out_be16(&priv->dma.psc->mpc52xx_psc_imr, 0);
+#endif
+
+	/* Print statuts */
+	printk(KERN_DEBUG "isr: %04x", in_be16(&priv->dma.psc->mpc52xx_psc_imr));
+	out_8(&priv->dma.psc->command,MPC52xx_PSC_RST_ERR_STAT);
+
+	return IRQ_HANDLED;
+}
+
+static struct snd_ac97_bus_ops mpc52xx_ac97_ops = {
+	.read		= mpc52xx_ac97_read,
+	.write		= mpc52xx_ac97_write,
+	.reset		= mpc52xx_ac97_cold_reset,
+	.warm_reset	= mpc52xx_ac97_warm_reset,
+};
+
+
+#ifdef CONFIG_PM
+static int mpc52xx_ac97_suspend(struct device *dev, pm_message_t state)
+{
+	return 0;
+}
+
+static int mpc52xx_ac97_resume(struct device *dev)
+{
+	return 0;
+}
+
+#else
+#define mpc52xx_ac97_suspend	NULL
+#define mpc52xx_ac97_resume	NULL
+#endif
+
+static int mpc52xx_ac97_hw_analog_params(struct snd_pcm_substream *substream,
+	struct snd_pcm_hw_params *params, struct snd_soc_dai_runtime *cpu_dai)
+{
+	struct mpc52xx_ac97_priv *priv = cpu_dai->private_data;
+	
+	printk("mpc52xx_ac97_hw_analog_params\n");
+	printk("channels %d\n",substream->runtime->channels);
+	printk("rate %d\n",substream->runtime->rate);
+	printk("periods %d\n",substream->runtime->periods);
+	printk("tick_time %d\n",substream->runtime->tick_time);
+	printk("period_step %d\n",substream->runtime->period_step);
+	printk("slots %d\n",priv->dma.psc->ac97_slots);
+
+	/* FIXME, need a spinlock to protect access */
+	if (substream->runtime->channels == 1)
+		out_be32(&priv->dma.psc->ac97_slots, 0x01000000);
+	else
+		out_be32(&priv->dma.psc->ac97_slots, 0x03000000);
+
+	return 0;
+}
+
+static int mpc52xx_ac97_hw_digital_params(struct snd_pcm_substream *substream,
+	struct snd_pcm_hw_params *params, struct snd_soc_dai_runtime *cpu_dai)
+{
+	return 0;
+}
+
+static int mpc52xx_ac97_new(struct snd_soc_dai_runtime *cpu_dai)
+{
+	printk("mpc52xx_ac97_new\n");
+	
+	return 0;
+}
+
+static void mpc52xx_ac97_free(struct snd_soc_dai_runtime *cpu_dai)
+{
+	//struct mpc52xx_ac97_priv *priv = cpu_dai->private_data;
+	
+	printk("mpc52xx_ac97_free\n");
+}
+
+static struct snd_soc_dai mpc52xx_dai_ac97[] = {
+{	
+	.name	= "mpc52xx AC97 analog",
+	.id	= MPC52XX_DAI_AC97_ANALOG,
+	.ac97_control	= 1,
+	.new	= mpc52xx_ac97_new,
+	.free	= mpc52xx_ac97_free,
+	
+	.playback = {
+		.stream_name	= "mpc52xx AC97 analog",
+		.channels_min	= 1,
+		.channels_max	= 6,
+		.rates		= SNDRV_PCM_RATE_8000_48000,
+		.formats	= SNDRV_PCM_FORMAT_S32_BE,
+	},
+	.capture = {
+		.stream_name	= "mpc52xx AC97 analog",
+		.channels_min	= 1,
+		.channels_max	= 2,
+		.rates		= SNDRV_PCM_RATE_8000_48000,
+		.formats	= SNDRV_PCM_FMTBIT_S32_BE,
+	},
+	/* alsa ops */
+	.hw_params	= mpc52xx_ac97_hw_analog_params,
+	/* ac97_ops */
+	.ac97_ops 	= &mpc52xx_ac97_ops,
+},
+{	
+	.name	= "mpc52xx AC97 digital",
+	.id	= MPC52XX_DAI_AC97_DIGITAL,
+	
+	.playback = {
+		.stream_name	= "mpc52xx AC97 digital",
+		.channels_min	= 1,
+		.channels_max	= 2,
+		.rates		= SNDRV_PCM_RATE_32000 | \
+			SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
+		.formats	= SNDRV_PCM_FORMAT_IEC958_SUBFRAME_BE,
+	},
+	/* alsa ops */
+	.hw_params 	= mpc52xx_ac97_hw_digital_params,
+	/* ac97_ops */
+	.ac97_ops 	= &mpc52xx_ac97_ops,
+}};
+
+static void mpc52xx_ac97_hwinit(struct mpc52xx_ac97_priv *priv)
+{
+	printk("mpc52xx_ac97_hwinit\n");
+	
+	/* Reset everything first by safety */
+	out_8(&priv->dma.psc->command, MPC52xx_PSC_RST_RX);
+	out_8(&priv->dma.psc->command, MPC52xx_PSC_RST_TX);
+	out_8(&priv->dma.psc->command, MPC52xx_PSC_RST_ERR_STAT);
+
+	/* Do a cold reset of codec */
+	out_8(&priv->dma.psc->op1, MPC52xx_PSC_OP_RES);
+	udelay(10);
+	out_8(&priv->dma.psc->op0, MPC52xx_PSC_OP_RES);
+	udelay(50);
+
+	/* Configure AC97 enhanced mode */
+	out_be32(&priv->dma.psc->sicr, MPC52xx_PSC_SICR_ENC97 | MPC52xx_PSC_SICR_SYNCPOL | MPC52xx_PSC_SICR_CLKPOL);
+
+	/* No slots active */
+	out_be32(&priv->dma.psc->ac97_slots, 0x00000000);
+
+	/* No IRQ */
+	out_be16(&priv->dma.psc->mpc52xx_psc_imr, 0x0000);
+
+	/* FIFO levels */
+	out_8(&priv->dma.psc->rfcntl, 0x07);
+	out_8(&priv->dma.psc->tfcntl, 0x07);
+	out_be16(&priv->dma.psc->rfalarm, 0x80);
+	out_be16(&priv->dma.psc->tfalarm, 0x80);
+
+	/* Go */
+	out_8(&priv->dma.psc->command, MPC52xx_PSC_TX_ENABLE);
+	out_8(&priv->dma.psc->command, MPC52xx_PSC_RX_ENABLE);
+}
+
+static int mpc52xx_ac97_probe(struct device *dev)
+{
+	struct mpc52xx_ac97_priv *priv;
+	struct of_device *op;
+	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	int rv;
+	
+	printk(KERN_INFO "MPC52xx SoC Audio PCM driver\n");
+
+	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
+	if (priv == NULL)
+		return -ENOMEM;
+		
+	mutex_init(&priv->mutex);
+	platform->private_data = priv;
+	op = platform->machine->private_data;
+	platform->machine->private_data = priv;
+	
+	rv = mpc52xx_dma_setup(&priv->dma, platform, op);
+	if (rv < 0)
+		return rv;
+	
+	mpc52xx_ac97_hwinit(priv);
+
+	priv->irq = irq_of_parse_and_map(op->node, 0);
+	if (priv->irq == NO_IRQ) {
+		rv = -ENXIO;
+		goto fail_irq;
+	}
+	
+	printk("Requesting IRQ %d\n", priv->irq);
+	rv = request_irq(priv->irq, mpc52xx_ac97_irq,
+						IRQF_SHARED, DRV_NAME, priv);
+	if (rv < 0) {
+		printk(KERN_ERR "mpc52xx_ac97 - failed to attach interrupt\n");
+		rv = -ENXIO;
+		goto fail_request;
+	}
+
+	mpc52xx_dma_enable(&priv->dma);
+	
+	rv = snd_soc_platform_add_dai(platform, mpc52xx_dai_ac97, 3, priv);
+	if (rv < 0)
+		return rv;
+		
+	return snd_soc_register_platform(platform);
+
+fail_request:	
+fail_irq:
+	return rv;
+}
+
+static int mpc52xx_ac97_remove(struct device *dev)
+{
+	struct snd_soc_platform *platform = to_snd_soc_platform(dev);
+	struct mpc52xx_ac97_priv *priv = platform->private_data;
+	
+    if (priv->irq != NO_IRQ)
+    	irq_dispose_mapping(priv->irq);
+
+	mpc52xx_dma_cleanup(platform->private_data);
+	snd_soc_unregister_platform(platform);
+	return 0;
+}
+
+const char mpc_ac97_id[] = "mpc52xx-ac97";
+EXPORT_SYMBOL_GPL(mpc_ac97_id);
+
+static struct device_driver mpc52xx_ac97_driver = {
+	.name 		= mpc_ac97_id,
+	.owner		= THIS_MODULE,
+	.bus 		= &asoc_bus_type,
+	.probe		= mpc52xx_ac97_probe,
+	.remove		= __devexit_p(mpc52xx_ac97_remove),
+	.suspend	= mpc52xx_ac97_suspend,
+	.resume		= mpc52xx_ac97_resume,
+};
+
+static __init int mpc52xx_ac97_init(void)
+{
+	printk("mpc52xx_ac97_init\n");
+	return driver_register(&mpc52xx_ac97_driver);
+}
+
+static __exit void mpc52xx_ac97_exit(void)
+{
+	driver_unregister(&mpc52xx_ac97_driver);
+}
+
+module_init(mpc52xx_ac97_init);
+module_exit(mpc52xx_ac97_exit);
+
+MODULE_AUTHOR("Jon Smirl");
+MODULE_DESCRIPTION("MPC52xx AC97 module");
+MODULE_LICENSE("GPL");
