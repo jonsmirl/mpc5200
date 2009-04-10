@@ -1,7 +1,7 @@
-Bottom: 64b95d5d41699231613431cf87f3840bc89afe10
+Bottom: f54db151d224356762de1da904a58a6524f2f9ae
 Top:    6548dcf03712b30176db374fcdbf152fb5d9dc43
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-04-10 16:30:11 -0400
+Date:   2009-04-10 16:31:11 -0400
 
 Fabric bindings for STAC9766 on the Efika
 
@@ -9,10 +9,10 @@ Fabric bindings for STAC9766 on the Efika
 ---
 
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index 8678993..0926492 100644
+index 16a1e28..0926492 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
-@@ -53,16 +53,16 @@ config SND_SOC_MPC5200_AC97
+@@ -53,9 +53,9 @@ config SND_SOC_MPC5200_AC97
  	  Say Y here to support the MPC5200 PSCs in AC97 mode.
  
  config SND_MPC52xx_SOC_EFIKA
@@ -25,14 +25,6 @@ index 8678993..0926492 100644
  	select SND_SOC_STAC9766
  	help
  	  Say Y if you want to add support for sound on the Efika.
- 
- config SND_MPC52xx_SOC_DSPEAK01
- 	tristate "SoC I2S Audio support for Digispeaker DSPEAK01 with TAS5504"
--	depends on SND_MPC52xx_SOC && PPC_DSPEAK01
-+	depends on PPC_DSPEAK01
- 	select SND_SOC_MPC5200_I2S
- 	select SND_SOC_TAS5504
- 	help
 diff --git a/sound/soc/fsl/efika-stac9766.c b/sound/soc/fsl/efika-stac9766.c
 new file mode 100644
 index 0000000..9b43b3b
