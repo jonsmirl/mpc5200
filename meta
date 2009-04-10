@@ -1,6 +1,6 @@
 Version: 1
-Previous: fc297d07e0e1d742e71f59108cc2219c71cc1a41
-Head: f1db896c64376ce3dd3d701e8d8cbb9671382b4e
+Previous: aee9433006f28d8ba9e4d5b515243d57fa4ce4ca
+Head: 82b0b1195ba5287e711a0360d97cb8a18a5c1ce5
 Applied:
   Makefile: e97ee3862951038b0d0378ac7c39db31be9b3cfb
   jds_platform: 9ef76ccc2df9cc7fbecd384ed041cbc3e6b1f573
@@ -20,7 +20,6 @@ Applied:
   jds-lirc-mce2: 2c3f08b6bfa4739afc28dec514c49b00bf8e7d2e
   m_1: fd004c4e9e493c47d5a13a3786d2f6f4d803debf
   spi-mmc: 6cae45ac99ff9208e1d90696a5f71aabda347a49
-  stac9766: f877725618e524e3d21495a08d025000e290f57a
-  refresh-temp: f1db896c64376ce3dd3d701e8d8cbb9671382b4e
+  stac9766: 82b0b1195ba5287e711a0360d97cb8a18a5c1ce5
 Unapplied:
 Hidden:
