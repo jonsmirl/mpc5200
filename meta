@@ -1,6 +1,6 @@
 Version: 1
-Previous: 68b02109cfb95df677e0a2da7e90f288fac4de82
-Head: 840954ec1c608c81919241cb043dcf59d7b716f7
+Previous: 063b15d23de64dbcaabfefa1c80798642d606ee3
+Head: 356e48a97dc818c5f7e0a476d078d9d51d63c2f1
 Applied:
   Makefile: e97ee3862951038b0d0378ac7c39db31be9b3cfb
   jds_platform: 9ef76ccc2df9cc7fbecd384ed041cbc3e6b1f573
@@ -21,7 +21,6 @@ Applied:
   m_1: fd004c4e9e493c47d5a13a3786d2f6f4d803debf
   spi-mmc: 6cae45ac99ff9208e1d90696a5f71aabda347a49
   stac9766: 82b0b1195ba5287e711a0360d97cb8a18a5c1ce5
-  mpc5200-ac97: 3e7d5f665b217cc9f973ba62251d2b9055a6afa1
-  refresh-temp: 840954ec1c608c81919241cb043dcf59d7b716f7
+  mpc5200-ac97: 356e48a97dc818c5f7e0a476d078d9d51d63c2f1
 Unapplied:
 Hidden:
