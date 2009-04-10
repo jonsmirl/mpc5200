@@ -1,0 +1,393 @@
+/*
+ * Efika driver for the PSC of the Freescale MPC52xx configured as AC97 interface
+ *
+ * Copyright 2008 Jon Smirl, Digispeaker
+ * Author: Jon Smirl <jonsmirl@gmail.com>
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2. This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/interrupt.h>
+
+#include <sound/driver.h>
+#include <sound/core.h>
+#include <sound/pcm.h>
+#include <sound/soc.h>
+#include <sound/soc-dapm.h>
+#include <sound/initval.h>
+#include <sound/ac97_codec.h>
+
+#include <asm/of_platform.h>
+#include <asm/mpc52xx_psc.h>
+
+#include "../codecs/stac9766.h"
+#include "mpc52xx-dma.h"
+
+#define EFIKA_HP        0
+#define EFIKA_MIC_INT   1
+#define EFIKA_HEADSET   2
+#define EFIKA_HP_OFF    3
+#define EFIKA_SPK_ON    0
+#define EFIKA_SPK_OFF   1
+
+#define DRV_NAME "mpc52xx-psc-ac97"
+
+static int mpc52xx_jack_func;
+static int mpc52xx_spk_func;
+
+static void mpc52xx_ext_control(struct snd_soc_machine *machine)
+{
+	/* set up jack connection */
+	switch (mpc52xx_jack_func) {
+	case EFIKA_HP:
+		snd_soc_dapm_disable_pin(machine, "Headset Jack");
+		snd_soc_dapm_disable_pin(machine, "Mic (Internal)");
+		snd_soc_dapm_enable_pin(machine, "Headphone Jack");
+		break;
+	case EFIKA_MIC_INT:
+		snd_soc_dapm_disable_pin(machine, "Headset Jack");
+		snd_soc_dapm_disable_pin(machine, "Headphone Jack");
+		snd_soc_dapm_enable_pin(machine, "Mic (Internal)");
+		break;
+	case EFIKA_HEADSET:
+		snd_soc_dapm_disable_pin(machine, "Headphone Jack");
+		snd_soc_dapm_disable_pin(machine, "Mic (Internal)");
+		snd_soc_dapm_enable_pin(machine, "Headset Jack");
+		break;
+	}
+
+	if (mpc52xx_spk_func == EFIKA_SPK_ON)
+		snd_soc_dapm_enable_pin(machine, "Speaker");
+	else
+		snd_soc_dapm_disable_pin(machine, "Speaker");
+
+	snd_soc_dapm_sync(machine);
+}
+
+static int mpc52xx_get_jack(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = mpc52xx_jack_func;
+	return 0;
+}
+
+static int mpc52xx_set_jack(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_machine *machine =  snd_kcontrol_chip(kcontrol);
+
+	if (mpc52xx_jack_func == ucontrol->value.integer.value[0])
+		return 0;
+
+	mpc52xx_jack_func = ucontrol->value.integer.value[0];
+	mpc52xx_ext_control(machine);
+	return 1;
+}
+
+static int mpc52xx_get_spk(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = mpc52xx_spk_func;
+	return 0;
+}
+
+static int mpc52xx_set_spk(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_machine *machine =  snd_kcontrol_chip(kcontrol);
+
+	if (mpc52xx_spk_func == ucontrol->value.integer.value[0])
+		return 0;
+
+	mpc52xx_spk_func = ucontrol->value.integer.value[0];
+	mpc52xx_ext_control(machine);
+	return 1;
+}
+
+/* mpc52xx dapm event handlers */
+static int mpc52xx_hp_event(struct snd_soc_dapm_widget *w, int event)
+{
+	//if (SND_SOC_DAPM_EVENT_ON(event))
+	//	set_tc6393_gpio(&tc6393_device.dev,EFIKA_TC6393_L_MUTE);
+	//else
+	//	reset_tc6393_gpio(&tc6393_device.dev,EFIKA_TC6393_L_MUTE);
+	return 0;
+}
+
+/* mpc52xx machine dapm widgets */
+static const struct snd_soc_dapm_widget mpc52xx_dapm_widgets[] = {
+	SND_SOC_DAPM_HP("Headphone Jack", mpc52xx_hp_event),
+	SND_SOC_DAPM_HP("Headset Jack", NULL),
+	SND_SOC_DAPM_MIC("Mic (Internal)", NULL),
+	SND_SOC_DAPM_SPK("Speaker", NULL),
+};
+
+/* mpc52xx audio map */
+static const char *audio_map[][3] = {
+
+	/* headphone connected to HPOUTL, HPOUTR */
+	{"Headphone Jack", NULL, "HPOUTL"},
+	{"Headphone Jack", NULL, "HPOUTR"},
+
+	/* ext speaker connected to LOUT2, ROUT2 */
+	{"Speaker", NULL, "LOUT2"},
+	{"Speaker", NULL, "ROUT2"},
+
+	/* internal mic is connected to mic1, mic2 differential - with bias */
+	{"MIC1", NULL, "Mic Bias"},
+	{"MIC2", NULL, "Mic Bias"},
+	{"Mic Bias", NULL, "Mic (Internal)"},
+
+	/* headset is connected to HPOUTR, and LINEINR with bias */
+	{"Headset Jack", NULL, "HPOUTR"},
+	{"LINEINR", NULL, "Mic Bias"},
+	{"Mic Bias", NULL, "Headset Jack"},
+
+	{NULL, NULL, NULL},
+};
+
+static const char *jack_function[] = {"Headphone", "Mic", "Line", "Headset", "Off"};
+static const char *spk_function[] = {"On", "Off"};
+static const struct soc_enum mpc52xx_enum[] = {
+	SOC_ENUM_SINGLE_EXT(5, jack_function),
+	SOC_ENUM_SINGLE_EXT(2, spk_function),
+};
+
+static const struct snd_kcontrol_new mpc52xx_controls[] = {
+	SOC_ENUM_EXT("Jack Function", mpc52xx_enum[0], mpc52xx_get_jack,
+		mpc52xx_set_jack),
+	SOC_ENUM_EXT("Speaker Function", mpc52xx_enum[1], mpc52xx_get_spk,
+		mpc52xx_set_spk),
+};
+
+static int mpc52xx_stac9766_write(void *control_data, long val, int reg)
+{
+	struct snd_ac97 *ac97 = (struct snd_ac97 *)control_data;
+	ac97->bus->ops->write(ac97, reg, val);
+	return 0;
+}
+
+static int mpc52xx_stac9766_read(void *control_data, int reg)
+{
+	struct snd_ac97 *ac97 = (struct snd_ac97 *)control_data;
+	
+	return ac97->bus->ops->read(ac97, reg);
+}
+
+static int mpc52xx_init(struct snd_soc_machine *machine)
+{
+	struct snd_soc_codec *codec;
+	struct snd_ac97_bus_ops *ac97_ops = NULL;
+	int i, ret;
+
+	printk("mpc52xx_init 1\n");
+	codec = snd_soc_get_codec(machine, stac9766_codec_id);
+	if (codec == NULL)
+		return -ENODEV;
+	
+	printk("mpc52xx_init 2\n");
+	snd_soc_codec_set_io(codec, mpc52xx_stac9766_read, mpc52xx_stac9766_write, codec->ac97);
+		
+	printk("mpc52xx_init 3\n");
+	ac97_ops = snd_soc_get_ac97_ops(machine, MPC52XX_DAI_AC97_ANALOG);
+	
+	printk("mpc52xx_init 4\n");
+	/* register with AC97 bus for ad-hoc driver access */
+	ret = snd_soc_new_ac97_codec(codec, ac97_ops, machine->card, 0, 0);
+	if (ret < 0)
+		return ret;
+	codec->ac97->private_data = machine->private_data;
+		
+	printk("mpc52xx_init 5 %p\n", ac97_ops);
+	printk("mpc52xx_init 5 %p\n", ac97_ops->reset);
+	/* do a cold reset for the controller and then try
+	 * a warm reset followed by an optional cold reset for codec */
+	ac97_ops->reset(codec->ac97);
+	printk("mpc52xx_init 5a\n");
+	ac97_ops->warm_reset(codec->ac97);
+	printk("mpc52xx_init 5b\n");
+	if (ac97_ops->read(codec->ac97, AC97_VENDOR_ID1) == 0) {
+		printk(KERN_ERR "AC97 link error\n");
+		return ret;
+	}
+
+	printk("mpc52xx_init 6\n");
+	snd_soc_codec_init(codec, machine);
+
+	/* set up mpc52xx codec pins */
+	snd_soc_dapm_disable_pin(machine, "OUT3");
+	snd_soc_dapm_disable_pin(machine, "MONOOUT");
+
+	/* Add test specific controls */
+	for (i = 0; i < ARRAY_SIZE(mpc52xx_controls); i++) {
+		if ((ret = snd_ctl_add(machine->card,
+				snd_soc_cnew(&mpc52xx_controls[i], 
+					codec, NULL))) < 0)
+			return ret;
+	}
+
+	/* Add mpc52xx specific widgets */
+	for(i = 0; i < ARRAY_SIZE(mpc52xx_dapm_widgets); i++) {
+		snd_soc_dapm_new_control(machine, codec, 
+			&mpc52xx_dapm_widgets[i]);
+	}
+
+	/* set up mpc52xx specific audio path audio_mapnects */
+	for(i = 0; audio_map[i][0] != NULL; i++) {
+		snd_soc_dapm_add_route(machine, audio_map[i][0], 
+			audio_map[i][1], audio_map[i][2]);
+	}
+
+	snd_soc_dapm_sync(machine);
+	
+	return 0;
+}
+
+static int machine_is_mpc52xx(struct of_device *op)
+{
+	return 1;
+}
+
+/*
+ * This is an example machine initialization for a stac9766 connected to a
+ * mpc5200. It is missing logic to detect hp/mic insertions and logic
+ * to re-route the audio in such an event.
+ */
+static int mpc52xx_stac9766_probe(struct of_device *op, const struct of_device_id *match)
+{
+	struct snd_soc_machine *machine;
+	int ret;
+
+	if (!machine_is_mpc52xx(op))
+		return -ENODEV;
+	
+	printk("mpc52xx_stac9766_probe\n");
+	
+	machine = snd_soc_machine_create("Efika", &op->dev, 
+		SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
+	if (machine == NULL)
+		return -ENOMEM;
+
+	machine->longname = "Efika-STAC9766";
+	machine->init = mpc52xx_init,
+	machine->private_data = op;
+
+	platform_set_drvdata(op, machine);
+
+	ret = snd_soc_codec_create(machine, stac9766_codec_id);
+	if (ret < 0)
+		goto err;
+
+	ret = snd_soc_platform_create(machine, mpc_ac97_id);
+	if (ret < 0)
+		goto err;
+
+	ret = snd_soc_pcm_create(machine, "efika-stac9766 analog", NULL, 
+		STAC9766_DAI_AC97_ANALOG, MPC52XX_DAI_AC97_ANALOG, 1, 1);
+	if (ret < 0)
+		goto err;
+	
+	ret = snd_soc_pcm_create(machine, "efika-stac9766 digital", NULL, 
+		STAC9766_DAI_AC97_DIGITAL, MPC52XX_DAI_AC97_DIGITAL, 1, 0);
+	if (ret < 0)
+		goto err;
+
+	ret = snd_soc_machine_register(machine);
+	return ret;
+	
+err:
+	snd_soc_machine_free(machine);
+	return ret;
+}
+
+static int __exit mpc52xx_stac9766_remove(struct of_device *op)
+{
+	struct snd_soc_machine *machine = platform_get_drvdata(op);
+
+	kfree(machine->private_data);
+	snd_soc_machine_free(machine);
+	return 0;
+}
+
+#ifdef CONFIG_PM
+
+static int mpc52xx_stac9766_suspend(struct of_device *op, 
+	pm_message_t state)
+{
+	struct snd_soc_machine *machine = platform_get_drvdata(op);
+	return snd_soc_suspend(machine, state);
+}
+
+static int mpc52xx_stac9766_resume(struct of_device *op)
+{
+	struct snd_soc_machine *machine = platform_get_drvdata(op);
+	return snd_soc_resume(machine);
+}
+
+#else
+#define mpc52xx_stac9766_suspend NULL
+#define mpc52xx_stac9766_resume  NULL
+#endif
+
+
+static struct of_device_id mpc52xx_stac9766_match[] = {
+	{
+		.compatible	= "mpc5200b-psc-ac97",	/* B only for now */
+	},
+};
+/* Prevent autoload during developpment phase ... */
+/* MODULE_DEVICE_TABLE(of, mpc52xx_stac9766_match); */
+
+
+static struct of_platform_driver mpc52xx_stac9766_driver = {
+	.owner		= THIS_MODULE,
+	.name		= DRV_NAME,
+	.match_table	= mpc52xx_stac9766_match,
+	.probe		= mpc52xx_stac9766_probe,
+	.remove		= mpc52xx_stac9766_remove,
+	.suspend	= mpc52xx_stac9766_suspend,
+	.resume		= mpc52xx_stac9766_resume,
+	.driver		= {
+		.name	= DRV_NAME,
+	},
+};
+
+
+/* ======================================================================== */
+/* Module                                                                   */
+/* ======================================================================== */
+
+static int __init
+mpc52xx_stac9766_init(void)
+{
+	int rv;
+
+	printk(KERN_INFO "Sound: Efika fabric driver\n");
+
+	rv = of_register_platform_driver(&mpc52xx_stac9766_driver);
+	if (rv) {
+		printk(KERN_ERR DRV_NAME ": "
+			"of_register_platform_driver failed (%i)\n", rv);
+		return rv;
+	}
+
+	return 0;
+}
+
+static void __exit
+mpc52xx_stac9766_exit(void)
+{
+	of_unregister_platform_driver(&mpc52xx_stac9766_driver);
+}
+
+module_init(mpc52xx_stac9766_init);
+module_exit(mpc52xx_stac9766_exit);
+
+MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
+MODULE_DESCRIPTION(DRV_NAME ": Freescale MPC52xx Efika fabric driver");
+MODULE_LICENSE("GPL");
+
