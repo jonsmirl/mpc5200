@@ -1,0 +1,31 @@
+Bottom: d7d03fded9a2182d7e3ed3f14c4f252a5c52f538
+Top:    64b95d5d41699231613431cf87f3840bc89afe10
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-10 16:30:01 -0400
+
+Refresh of mpc5200-ac97
+
+---
+
+diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
+index 27879b7..8678993 100644
+--- a/sound/soc/fsl/Kconfig
++++ b/sound/soc/fsl/Kconfig
+@@ -38,7 +38,7 @@ config SND_SOC_MPC8610_HPCD
+ 
+ config SND_SOC_MPC5200_I2S
+ 	tristate "Freescale MPC5200 PSC in I2S mode driver"
+-	depends on PPC_MPC52xx && PPC_BESTCOMM
++	depends on SND_MPC52xx_SOC && PPC_BESTCOMM
+ 	select SND_SOC_OF_SIMPLE
+ 	select PPC_BESTCOMM_GEN_BD
+ 	help
+@@ -46,7 +46,7 @@ config SND_SOC_MPC5200_I2S
+ 
+ config SND_SOC_MPC5200_AC97
+ 	tristate "Freescale MPC5200 PSC in AC97 mode driver"
+-	depends on PPC_MPC52xx && PPC_BESTCOMM
++	depends on SND_MPC52xx_SOC && PPC_BESTCOMM
+ 	select SND_SOC_OF_SIMPLE
+ 	select PPC_BESTCOMM_GEN_BD
+ 	help
