@@ -1,5 +1,5 @@
 Bottom: 211bf86742097bbd8ba823d9a7e43b2a50c6165a
-Top:    58a50f9c3b984542dfeb2659b3ade4a69c1978ba
+Top:    c5c375376ad6e0f9f7cd488fb9a145c5dea50cd7
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-08 18:12:34 -0400
 
@@ -1118,7 +1118,7 @@ index 0000000..58c378c
 +#define TAS5504_FORMATS SNDRV_PCM_FMTBIT_S32
 +
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index 9fc9082..3dcc068 100644
+index 9fc9082..d480a73 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
 @@ -1,6 +1,23 @@
@@ -1160,7 +1160,7 @@ index 9fc9082..3dcc068 100644
 +
 +config SND_MPC52xx_SOC_DSPEAK01
 +	tristate "SoC I2S Audio support for Digispeaker DSPEAK01 with TAS5504"
-+	depends on SND_MPC52xx_SOC && PPC_DSPEAK01
++	depends on PPC_DSPEAK01
 +	select SND_SOC_MPC5200_I2S
 +	select SND_SOC_TAS5504
 +	help

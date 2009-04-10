@@ -1,6 +1,6 @@
 Version: 1
-Previous: 0aadaae2777679bde1f42e9c55e60b3ac696b94e
-Head: ef7b786301909788794143532740dd6dc3134eac
+Previous: 9cee499212dbe852546f825142cc7566d9c9519f
+Head: d6a25da549b01f33b39054138db39cd911aaba5f
 Applied:
   Makefile: e97ee3862951038b0d0378ac7c39db31be9b3cfb
   jds_platform: 9ef76ccc2df9cc7fbecd384ed041cbc3e6b1f573
@@ -8,19 +8,18 @@ Applied:
   jds-soc-machine: d9eca8ffc9409c7a9026f096e5c9711a1643c280
   jds-psc-c: 92a395a1b719e43010aa00456e68fcff12af395c
   soc-u32-cleanup: 7148eea33d3f3881cebc1d4e75bb09e8d7e85e83
-  jds-audio: f14887f70827dc244a10b695d669aeb77cc505a8
-  g_spi_4: 958927376af2590fbd981bb81d22774417f215a2
-  mpc5200-rtc: 18cdabe8acbd6be4ca724ba0d2a040f824e57bee
-  lirc: 3e99141aa2d25fa9c03a8c86e9deecb0602a8f9c
-  jds-lirc-base: d8b3820872e85688aad6f46bd88bb7d1da9e4f4e
-  jds-lirc-core: 515dd2b03c8e6c0e39af8498ee317d7ca1cb535f
-  jds-lirc-configfs: 8436d07e1bd028c45441ac3a9a5d0edea81a51a6
-  jds-lirc-gpt: 424e5176a26d5c89d42eeb3f8633c280e76fe12d
-  jds-lirc-device-tree: 4036a4b28e8ad35895d2496febfe8cdc2940ad3f
-  jds-lirc-mce2: 2c3f08b6bfa4739afc28dec514c49b00bf8e7d2e
-  m_1: fd004c4e9e493c47d5a13a3786d2f6f4d803debf
-  spi-mmc: 6cae45ac99ff9208e1d90696a5f71aabda347a49
-  refresh-temp: ef7b786301909788794143532740dd6dc3134eac
+  jds-audio: 02e2ab26b15be88ac16e481000c530504758ef18
+  g_spi_4: 4dbb3f28440cbb5a8be4662c8ca30ed4e33e2770
+  mpc5200-rtc: 0985eac01aa99b73757170bbde32eb68c122cdea
+  lirc: 4ce2e06dc6c4b72fac99cdc70e97fda1101e1cfb
+  jds-lirc-base: fa0a5e0abca641a9d6ccf0fa37d7673d76640041
+  jds-lirc-core: 14011d5bb6ed423fa1dda90424176b348eaaf095
+  jds-lirc-configfs: ad6dfe62ac8eb7ba209ae7909498bcf603c04a1a
+  jds-lirc-gpt: 0244b8ac8e5505f4b5a3ce249ecffc16655fa3c8
+  jds-lirc-device-tree: 742c3c28293a99dd3550f46449b1645fb278c566
+  jds-lirc-mce2: 6e767da31f8e1f1a2b462be1226e8a6a78e9f9f7
+  m_1: 0f209236c376a3b94bae2b09fdb12c649b14666c
+  spi-mmc: d6a25da549b01f33b39054138db39cd911aaba5f
 Unapplied:
   stac9766: b737ea3fcc4616f893704442ba581decafd4eb7f
   mpc5200-ac97: 61763d5b7544f81d7d24d7a8d0ce0a8f414430d3
