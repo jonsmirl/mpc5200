@@ -15,6 +15,9 @@ int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
 			   struct snd_soc_dai *dai);
 
 extern const struct snd_pcm_hardware mpc5200_pcm_hardware;
+<<<<<<< current:sound/soc/fsl/mpc5200_dma.h
 extern struct snd_soc_platform mpc5200_soc_platform;
+=======
+>>>>>>> patched:sound/soc/fsl/mpc5200_dma.h
 
 #endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
