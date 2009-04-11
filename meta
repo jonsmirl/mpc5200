@@ -1,6 +1,6 @@
 Version: 1
-Previous: 8b977a2d7edbac2e41c531980e8dff9ed9239e83
-Head: 3f791a3aa7d03e68fff7ca64d99197b7c5d1c4b1
+Previous: 87418eeadbbd7e1aa3b45ce9c5700fcd7252afce
+Head: 10d596b91ce516116f7a6a59331d870f58d9cc54
 Applied:
   Makefile: e97ee3862951038b0d0378ac7c39db31be9b3cfb
   jds_platform: 9ef76ccc2df9cc7fbecd384ed041cbc3e6b1f573
@@ -21,6 +21,7 @@ Applied:
   m_1: 0f209236c376a3b94bae2b09fdb12c649b14666c
   spi-mmc: d6a25da549b01f33b39054138db39cd911aaba5f
   stac9766: 3f791a3aa7d03e68fff7ca64d99197b7c5d1c4b1
+  refresh-temp: 10d596b91ce516116f7a6a59331d870f58d9cc54
 Unapplied:
   mpc5200-ac97: 4f1b2310daac768708b3ddcdca5c045ae05d0b27
   efika-stac9766: cd362e20fd36f1876f9420175ee484b55c932830
