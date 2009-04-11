@@ -1,0 +1,15 @@
+/*
+ * Freescale MPC5200 PSC in AC97 mode
+ * ALSA SoC Digital Audio Interface (DAI) driver
+ *
+ */
+
+#ifndef __SOUND_SOC_FSL_MPC52xx_PSC_AC97_H__
+#define __SOUND_SOC_FSL_MPC52xx_PSC_AC97_H__
+
+#define MPC5200_AC97_ANALOG 0
+#define MPC5200_AC97_DIGITAL 1
+
+extern struct snd_soc_dai mpc5200_dai_ac97[];
+
+#endif /* __SOUND_SOC_FSL_MPC52xx_PSC_AC97_H__ */
