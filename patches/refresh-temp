@@ -1,0 +1,22 @@
+Bottom: 2cda0db574527a5620d54f1d1f050a78305381bf
+Top:    2ed2d8a5dd6dcf8d3be87f39b269fa71cc7230f3
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-16 13:59:49 -0400
+
+Refresh of efika-stac9766
+
+---
+
+diff --git a/sound/soc/fsl/efika-stac9766.c b/sound/soc/fsl/efika-stac9766.c
+index 6bfa498..39b3693 100644
+--- a/sound/soc/fsl/efika-stac9766.c
++++ b/sound/soc/fsl/efika-stac9766.c
+@@ -216,7 +216,7 @@ static struct snd_soc_dai_link efika_dai[] = {
+ 
+ static struct snd_soc_card efika = {
+ 	.name = "Efika-STAC9766",
+-	.platform = &fsl_soc_platform,
++	.platform = &mpc5200_soc_platform,
+ 	.dai_link = efika_dai,
+ 	.num_links = ARRAY_SIZE(efika_dai),
+ };
