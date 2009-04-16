@@ -273,7 +273,7 @@ static struct snd_soc_dai_ops psc_ac97_digital_ops = {
 	.hw_params	= psc_ac97_hw_digital_params,
 };
 
-static struct snd_soc_dai mpc5200_dai_ac97[] = {
+struct snd_soc_dai mpc5200_dai_ac97[] = {
 {
 	.name	= "mpc5200 AC97 analog",
 	.id	= MPC5200_AC97_ANALOG,
