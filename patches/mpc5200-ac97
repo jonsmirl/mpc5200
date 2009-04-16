@@ -1,5 +1,5 @@
 Bottom: 584de820537c8c7ac0b13dc08b9faa1b31e111b0
-Top:    9ae3f74c9c48276c55ee394f6e94331e6543c645
+Top:    a5167817f55bf16c8ebd368c7602a2b41d6ed8ea
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-10 22:51:07 -0400
 
@@ -61,43 +61,6 @@ index c3a49dc..70c44bf 100644
  
  # MPC5200 Machine Support
  snd_soc_dspeak01_fabric-objs := dspeak01_fabric.o
-diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index c09faf3..82ae382 100644
---- a/sound/soc/fsl/mpc5200_dma.c
-+++ b/sound/soc/fsl/mpc5200_dma.c
-@@ -534,11 +534,18 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
- 	}
- }
- 
-+<<<<<<< current:sound/soc/fsl/mpc5200_dma.c
- struct snd_soc_platform mpc5200_soc_platform = {
-+=======
-+struct snd_soc_platform psc_dma_pcm_soc_platform = {
-+>>>>>>> patched:sound/soc/fsl/mpc5200_dma.c
- 	.name		= "mpc5200-psc-audio",
- 	.pcm_ops	= &psc_dma_pcm_ops,
- 	.pcm_new	= &psc_dma_pcm_new,
- 	.pcm_free	= &psc_dma_pcm_free,
- };
-+<<<<<<< current:sound/soc/fsl/mpc5200_dma.c
- EXPORT_SYMBOL_GPL(mpc5200_soc_platform);
- 
-+=======
-+>>>>>>> patched:sound/soc/fsl/mpc5200_dma.c
-diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
-index 09ff62f..5578384 100644
---- a/sound/soc/fsl/mpc5200_dma.h
-+++ b/sound/soc/fsl/mpc5200_dma.h
-@@ -15,6 +15,9 @@ int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
- 			   struct snd_soc_dai *dai);
- 
- extern const struct snd_pcm_hardware mpc5200_pcm_hardware;
-+<<<<<<< current:sound/soc/fsl/mpc5200_dma.h
- extern struct snd_soc_platform mpc5200_soc_platform;
-+=======
-+>>>>>>> patched:sound/soc/fsl/mpc5200_dma.h
- 
- #endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
 index 0000000..9ec8ac5
