@@ -202,14 +202,14 @@ static struct snd_soc_dai_link efika_dai[] = {
 	{
 		.name = "AC97 Analog",
 		.stream_name = "AC97 Analog",
-		.cpu_dai = &mpc5200_ac97_dai[MPC5200_DAI_AC97_ANALOG],
+		.cpu_dai = &mpc5200_dai_ac97[MPC5200_AC97_ANALOG],
 		.codec_dai = &stac9766_dai[STAC9766_DAI_AC97_ANALOG],
 		.init = efika_stac9766_init,
 	},
 	{
 		.name = "AC97 Digital",
 		.stream_name = "AC97 Digital",
-		.cpu_dai = &mpc5200_ac97_dai[MPC5200_DAI_AC97_DIGITAL],
+		.cpu_dai = &mpc5200_dai_ac97[MPC5200_AC97_DIGITAL],
 		.codec_dai = &stac9766_dai[STAC9766_DAI_AC97_DIGITAL],
 	},
 };
