@@ -1,5 +1,5 @@
 Bottom: 25357fdb2252d11336d7583d5fcccf46c77a3cef
-Top:    9ecbacaa7ca2dcf06cc27a2d51f31e6fd4047e63
+Top:    dc3888e6907f3bef2cff76cee65614179f319344
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-10 16:31:10 -0400
 
@@ -31,14 +31,14 @@ index 7e639b9..efec4f9 100644
  	tristate
  
 diff --git a/sound/soc/codecs/Makefile b/sound/soc/codecs/Makefile
-index f906124..779000f 100644
+index f906124..81084dc 100644
 --- a/sound/soc/codecs/Makefile
 +++ b/sound/soc/codecs/Makefile
 @@ -7,6 +7,7 @@ snd-soc-cs4270-objs := cs4270.o
  snd-soc-l3-objs := l3.o
  snd-soc-pcm3008-objs := pcm3008.o
  snd-soc-ssm2602-objs := ssm2602.o
-+snd-soc-stac9766-objs := stac9766.0
++snd-soc-stac9766-objs := stac9766.o
  snd-soc-tlv320aic23-objs := tlv320aic23.o
  snd-soc-tas5504-objs := tas5504.o
  snd-soc-tlv320aic26-objs := tlv320aic26.o
