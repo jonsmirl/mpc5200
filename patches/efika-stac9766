@@ -1,5 +1,5 @@
 Bottom: e7f97cb14dd3e8904c6d86fc12590175207992fd
-Top:    6f25149d3891222cbd706bd0c3e42955f3f735ee
+Top:    8c16be6063e5827edac8c1b989a41cc9a328ca91
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-10 16:31:11 -0400
 
@@ -40,10 +40,10 @@ index 70c44bf..dd8febc 100644
 +
 diff --git a/sound/soc/fsl/efika-stac9766.c b/sound/soc/fsl/efika-stac9766.c
 new file mode 100644
-index 0000000..39b3693
+index 0000000..c0ebd7f
 --- /dev/null
 +++ b/sound/soc/fsl/efika-stac9766.c
-@@ -0,0 +1,328 @@
+@@ -0,0 +1,312 @@
 +/*
 + * Efika driver for the PSC of the Freescale MPC52xx configured as AC97 interface
 + *
@@ -214,21 +214,7 @@ index 0000000..39b3693
 +		efika_set_spk),
 +};
 +
-+static int efika_stac9766_write(void *control_data, long val, int reg)
-+{
-+	struct snd_ac97 *ac97 = (struct snd_ac97 *)control_data;
-+	ac97->bus->ops->write(ac97, reg, val);
-+	return 0;
-+}
-+
-+static int efika_stac9766_read(void *control_data, int reg)
-+{
-+	struct snd_ac97 *ac97 = (struct snd_ac97 *)control_data;
-+
-+	return ac97->bus->ops->read(ac97, reg);
-+}
-+
-+static int efika_stac9766_init(struct snd_soc_codec *codec)
++static int efika_init(struct snd_soc_codec *codec)
 +{
 +
 +	/* set up efika codec pins */
@@ -250,7 +236,7 @@ index 0000000..39b3693
 +		.stream_name = "AC97 Analog",
 +		.cpu_dai = &mpc5200_dai_ac97[MPC5200_AC97_ANALOG],
 +		.codec_dai = &stac9766_dai[STAC9766_DAI_AC97_ANALOG],
-+		.init = efika_stac9766_init,
++		.init = efika_init,
 +	},
 +	{
 +		.name = "AC97 Digital",
@@ -300,14 +286,12 @@ index 0000000..39b3693
 +static int efika_stac9766_suspend(struct of_device *op,
 +	pm_message_t state)
 +{
-+	struct snd_soc_codec *codec = platform_get_drvdata(op);
-+	return snd_soc_suspend(codec, state);
++	return 0;
 +}
 +
 +static int efika_stac9766_resume(struct of_device *op)
 +{
-+	struct snd_soc_codec *codec = platform_get_drvdata(op);
-+	return snd_soc_resume(codec);
++	return 0;
 +}
 +
 +#else
