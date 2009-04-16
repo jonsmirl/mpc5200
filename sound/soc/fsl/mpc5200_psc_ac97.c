@@ -1,5 +1,5 @@
 /*
- * linux/sound/mpc52xx-ac97.c -- AC97 support for the Freescale MPC52xx chip.
+ * linux/sound/mpc5200-ac97.c -- AC97 support for the Freescale MPC52xx chip.
  *
  * Copyright 2008 Jon Smirl, Digispeaker
  * Author: Jon Smirl <jonsmirl@gmail.com>
@@ -32,6 +32,7 @@
 #include <asm/mpc52xx_psc.h>
 
 #include "mpc5200_dma.h"
+#include "mpc5200_psc_ac97.h"
 
 MODULE_AUTHOR("Jon Smirl");
 MODULE_DESCRIPTION("MPC52xx AC97 module");
@@ -114,7 +115,7 @@ struct psc_ac97 {
 	} stats;
 };
 
-#define DRV_NAME "mpc52xx-psc-ac97"
+#define DRV_NAME "mpc5200-psc-ac97"
 
 static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 {
@@ -274,21 +275,21 @@ static struct snd_soc_dai_ops psc_ac97_digital_ops = {
 
 static struct snd_soc_dai psc_dai_ac97[] = {
 {
-	.name	= "mpc52xx AC97 analog",
-	.id	= 0,
+	.name	= "mpc5200 AC97 analog",
+	.id	= MPC5200_AC97_ANALOG,
 	.ac97_control	= 1,
 	.suspend = psc_ac97_suspend,
 	.resume = psc_ac97_resume,
 
 	.playback = {
-		.stream_name	= "mpc52xx AC97 analog",
+		.stream_name	= "mpc5200 AC97 analog",
 		.channels_min	= 1,
 		.channels_max	= 6,
 		.rates		= SNDRV_PCM_RATE_8000_48000,
 		.formats	= SNDRV_PCM_FORMAT_S32_BE,
 	},
 	.capture = {
-		.stream_name	= "mpc52xx AC97 analog",
+		.stream_name	= "mpc5200 AC97 analog",
 		.channels_min	= 1,
 		.channels_max	= 2,
 		.rates		= SNDRV_PCM_RATE_8000_48000,
@@ -297,13 +298,13 @@ static struct snd_soc_dai psc_dai_ac97[] = {
 	.ops 	= &psc_ac97_analog_ops,
 },
 {
-	.name	= "mpc52xx AC97 digital",
-	.id	= 1,
+	.name	= "mpc5200 AC97 digital",
+	.id	= MPC5200_AC97_DIGITAL,
 	.suspend = psc_ac97_suspend,
 	.resume = psc_ac97_resume,
 
 	.playback = {
-		.stream_name	= "mpc52xx AC97 digital",
+		.stream_name	= "mpc5200 AC97 digital",
 		.channels_min	= 1,
 		.channels_max	= 2,
 		.rates		= SNDRV_PCM_RATE_32000 | \
