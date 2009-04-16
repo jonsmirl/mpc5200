@@ -12,6 +12,6 @@
 #define STAC9766_DAI_AC97_ANALOG		0
 #define STAC9766_DAI_AC97_DIGITAL		1
 
-extern const char stac9766_codec_id[];
+extern struct snd_soc_dai stac9766_dai[];
 
 #endif
