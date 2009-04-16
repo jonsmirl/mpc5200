@@ -1,5 +1,5 @@
 Bottom: 25357fdb2252d11336d7583d5fcccf46c77a3cef
-Top:    e933c3c2d604de8a476e6e31608588ee6f2dd67a
+Top:    9ecbacaa7ca2dcf06cc27a2d51f31e6fd4047e63
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-10 16:31:10 -0400
 
@@ -9,7 +9,7 @@ Codec for STAC9766 used on the Efika
 ---
 
 diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
-index 7e639b9..dc99b51 100644
+index 7e639b9..efec4f9 100644
 --- a/sound/soc/codecs/Kconfig
 +++ b/sound/soc/codecs/Kconfig
 @@ -19,6 +19,7 @@ config SND_SOC_ALL_CODECS
@@ -24,7 +24,7 @@ index 7e639b9..dc99b51 100644
  config SND_SOC_SSM2602
  	tristate
  
-+config SND_SOC_9766
++config SND_SOC_STAC9766
 +	tristate
 +
  config SND_SOC_TAS5504
