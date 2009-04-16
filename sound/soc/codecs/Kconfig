@@ -91,7 +91,7 @@ config SND_SOC_PCM3008
 config SND_SOC_SSM2602
 	tristate
 
-config SND_SOC_9766
+config SND_SOC_STAC9766
 	tristate
 
 config SND_SOC_TAS5504
