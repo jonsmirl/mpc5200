@@ -130,7 +130,7 @@ static const struct snd_soc_dapm_widget efika_dapm_widgets[] = {
 };
 
 /* efika audio map */
-static const char *audio_map[][3] = {
+static const struct snd_soc_dapm_route audio_map[] = {
 
 	/* headphone connected to HPOUTL, HPOUTR */
 	{"Headphone Jack", NULL, "HPOUTL"},
