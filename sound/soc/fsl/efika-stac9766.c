@@ -216,7 +216,7 @@ static struct snd_soc_dai_link efika_dai[] = {
 
 static struct snd_soc_card efika = {
 	.name = "Efika-STAC9766",
-	.platform = &fsl_soc_platform,
+	.platform = &mpc5200_soc_platform,
 	.dai_link = efika_dai,
 	.num_links = ARRAY_SIZE(efika_dai),
 };
