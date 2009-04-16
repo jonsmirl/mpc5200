@@ -1,0 +1,21 @@
+Bottom: a116681518df78f6b1a70f6e80826c83f7dead07
+Top:    e80dbd662d1ac9e822727e9abf283c61aa771328
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-16 13:10:12 -0400
+
+Refresh of stac9766
+
+---
+
+diff --git a/sound/soc/codecs/stac9766.h b/sound/soc/codecs/stac9766.h
+index 6d5ae95..d4c7516 100644
+--- a/sound/soc/codecs/stac9766.h
++++ b/sound/soc/codecs/stac9766.h
+@@ -12,6 +12,6 @@
+ #define STAC9766_DAI_AC97_ANALOG		0
+ #define STAC9766_DAI_AC97_DIGITAL		1
+ 
+-extern const char stac9766_codec_id[];
++extern struct snd_soc_dai stac9766_dai[];
+ 
+ #endif
