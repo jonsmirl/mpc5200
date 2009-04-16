@@ -354,7 +354,7 @@ static struct snd_soc_dai_ops stac9766_dai_ops_digital = {
 	.prepare	= ac97_digital_prepare,
 };
 
-static struct snd_soc_dai stac9766_dai[] = {
+struct snd_soc_dai stac9766_dai[] = {
 {
 	.name	= "stac9766 analog",
 	.id	= 0,
