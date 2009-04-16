@@ -534,18 +534,11 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
 	}
 }
 
-<<<<<<< current:sound/soc/fsl/mpc5200_dma.c
 struct snd_soc_platform mpc5200_soc_platform = {
-=======
-struct snd_soc_platform psc_dma_pcm_soc_platform = {
->>>>>>> patched:sound/soc/fsl/mpc5200_dma.c
 	.name		= "mpc5200-psc-audio",
 	.pcm_ops	= &psc_dma_pcm_ops,
 	.pcm_new	= &psc_dma_pcm_new,
 	.pcm_free	= &psc_dma_pcm_free,
 };
-<<<<<<< current:sound/soc/fsl/mpc5200_dma.c
 EXPORT_SYMBOL_GPL(mpc5200_soc_platform);
 
-=======
->>>>>>> patched:sound/soc/fsl/mpc5200_dma.c
