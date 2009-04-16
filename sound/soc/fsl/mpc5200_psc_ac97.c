@@ -273,7 +273,7 @@ static struct snd_soc_dai_ops psc_ac97_digital_ops = {
 	.hw_params	= psc_ac97_hw_digital_params,
 };
 
-static struct snd_soc_dai psc_dai_ac97[] = {
+static struct snd_soc_dai mpc5200_dai_ac97[] = {
 {
 	.name	= "mpc5200 AC97 analog",
 	.id	= MPC5200_AC97_ANALOG,
@@ -313,7 +313,7 @@ static struct snd_soc_dai psc_dai_ac97[] = {
 	},
 	.ops 	= &psc_ac97_digital_ops,
 }};
-EXPORT_SYMBOL_GPL(psc_dai_ac97);
+EXPORT_SYMBOL_GPL(mpc5200_dai_ac97);
 
 static int psc_ac97_hw_params(struct snd_pcm_substream *substream,
 				 struct snd_pcm_hw_params *params,
