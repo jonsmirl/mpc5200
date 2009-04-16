@@ -412,7 +412,6 @@ int stac9766_reset(struct snd_soc_codec *codec, int try_warm)
 		return -EIO;
 	return 0;
 }
-EXPORT_SYMBOL_GPL(stac9766_reset);
 
 static int stac9766_codec_probe(struct platform_device *pdev)
 {
