@@ -1,0 +1,21 @@
+Bottom: 489fcd498cfff2742a6b5f6cf482afa672f079a3
+Top:    780f4095b28aa36199efdcf771bb25533c27207e
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-16 13:05:55 -0400
+
+Refresh of efika-stac9766
+
+---
+
+diff --git a/sound/soc/fsl/efika-stac9766.c b/sound/soc/fsl/efika-stac9766.c
+index 2dc06e1..3d446de 100644
+--- a/sound/soc/fsl/efika-stac9766.c
++++ b/sound/soc/fsl/efika-stac9766.c
+@@ -27,6 +27,7 @@
+ #include <sound/soc-dapm.h>
+ 
+ #include "mpc5200_dma.h"
++#include "mpc5200_psc_ac97.h"
+ #include "../codecs/stac9766.h"
+ 
+ #define EFIKA_HP        0
