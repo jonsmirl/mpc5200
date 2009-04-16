@@ -1,5 +1,5 @@
 Bottom: 31b28a64b7ef562f5c366804ddf4d552fbe08143
-Top:    6f691eafcdd9a959d78e6a9dbd8a9ac112c77927
+Top:    a6b8a1c0b82700a6ced6fc3be8c002571ca9ca93
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-10 22:51:07 -0400
 
@@ -636,7 +636,7 @@ index 0000000..78ceec3
 +#endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..77a5f73
+index 0000000..9ec8ac5
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
 @@ -0,0 +1,815 @@
@@ -915,7 +915,7 @@ index 0000000..77a5f73
 +	.hw_params	= psc_ac97_hw_digital_params,
 +};
 +
-+static struct snd_soc_dai mpc5200_dai_ac97[] = {
++struct snd_soc_dai mpc5200_dai_ac97[] = {
 +{
 +	.name	= "mpc5200 AC97 analog",
 +	.id	= MPC5200_AC97_ANALOG,
