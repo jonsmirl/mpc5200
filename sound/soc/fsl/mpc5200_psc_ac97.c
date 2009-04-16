@@ -116,7 +116,7 @@ struct psc_ac97 {
 
 #define DRV_NAME "mpc52xx-psc-ac97"
 
-static unsigned short mpc52xx_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 {
 	struct psc_ac97 *psc_ac97 = ac97->private_data;
 	int timeout;
@@ -164,7 +164,7 @@ static unsigned short mpc52xx_ac97_read(struct snd_ac97 *ac97, unsigned short re
 	return (unsigned short) val;
 }
 
-static void mpc52xx_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned short val)
+static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned short val)
 {
 	struct psc_ac97 *psc_ac97 = ac97->private_data;
 	int timeout;
@@ -189,11 +189,11 @@ static void mpc52xx_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsign
 	spin_unlock(&psc_ac97->lock);
 }
 
-static void mpc52xx_ac97_cold_reset(struct snd_ac97 *ac97)
+static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
 {
 	struct psc_ac97 *psc_ac97 = ac97->private_data;
 
-	printk("mpc52xx_ac97_cold_reset\n");
+	printk("psc_ac97_cold_reset\n");
 
 	/* Do a cold reset */
 	out_8(&psc_ac97->psc_regs->op1, MPC52xx_PSC_OP_RES);
@@ -205,76 +205,46 @@ static void mpc52xx_ac97_cold_reset(struct snd_ac97 *ac97)
 	out_be32(&psc_ac97->psc_regs->sicr, in_be32(&psc_ac97->psc_regs->sicr));
 }
 
-static void mpc52xx_ac97_warm_reset(struct snd_ac97 *ac97)
+static void psc_ac97_warm_reset(struct snd_ac97 *ac97)
 {
-	printk("mpc52xx_ac97_warm_reset\n");
+	printk("psc_ac97_warm_reset\n");
 }
 
-static irqreturn_t mpc52xx_ac97_irq(int irq, void *dev_id)
-{
-	struct psc_ac97 *psc_ac97 = dev_id;
-
-	static int icnt = 0;
-#if 1
-{
-	unsigned int val;
-	val = in_be32(&psc_ac97->psc_regs->ac97_data);
-	printk(KERN_INFO "mpc52xx_ac97_irq fired (isr=%04x, status=%04x) %08x\n",
-									in_be16(&psc_ac97->psc_regs->mpc52xx_psc_imr),
-									in_be16(&psc_ac97->psc_regs->sr_csr.status), val);
-	out_8(&psc_ac97->psc_regs->command,MPC52xx_PSC_RST_ERR_STAT);
-}
-#endif
-
-	/* Anti Crash during dev ;) */
-#if 1
-	if ((icnt++) > 5000)
-		out_be16(&psc_ac97->psc_regs->mpc52xx_psc_imr, 0);
-#endif
-
-	/* Print statuts */
-	printk(KERN_DEBUG "isr: %04x", in_be16(&psc_ac97->psc_regs->mpc52xx_psc_imr));
-	out_8(&psc_ac97->psc_regs->command,MPC52xx_PSC_RST_ERR_STAT);
-
-	return IRQ_HANDLED;
-}
-
-static struct snd_ac97_bus_ops mpc52xx_ac97_ops = {
-	.read		= mpc52xx_ac97_read,
-	.write		= mpc52xx_ac97_write,
-	.reset		= mpc52xx_ac97_cold_reset,
-	.warm_reset	= mpc52xx_ac97_warm_reset,
+struct snd_ac97_bus_ops soc_ac97_ops = {
+	.read		= psc_ac97_read,
+	.write		= psc_ac97_write,
+	.reset		= psc_ac97_cold_reset,
+	.warm_reset	= psc_ac97_warm_reset,
 };
-
+EXPORT_SYMBOL_GPL(soc_ac97_ops);
 
 #ifdef CONFIG_PM
-static int mpc52xx_ac97_suspend(struct device *dev, pm_message_t state)
+static int psc_ac97_suspend(struct snd_soc_dai *dai)
 {
 	return 0;
 }
 
-static int mpc52xx_ac97_resume(struct device *dev)
+static int psc_ac97_resume(struct snd_soc_dai *dai)
 {
 	return 0;
 }
 
 #else
-#define mpc52xx_ac97_suspend	NULL
-#define mpc52xx_ac97_resume	NULL
+#define psc_ac97_suspend	NULL
+#define psc_ac97_resume	NULL
 #endif
 
-static int mpc52xx_ac97_hw_analog_params(struct snd_pcm_substream *substream,
+static int psc_ac97_hw_analog_params(struct snd_pcm_substream *substream,
 				 struct snd_pcm_hw_params *params,
 				 struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct psc_ac97 *psc_ac97 = rtd->dai->cpu_dai->private_data;
 
-	printk("mpc52xx_ac97_hw_analog_params\n");
+	printk("psc_ac97_hw_analog_params\n");
 	printk("channels %d\n",substream->runtime->channels);
 	printk("rate %d\n",substream->runtime->rate);
 	printk("periods %d\n",substream->runtime->periods);
-	printk("tick_time %d\n",substream->runtime->tick_time);
 	printk("period_step %d\n",substream->runtime->period_step);
 	printk("slots %d\n",psc_ac97->psc_regs->ac97_slots);
 
@@ -287,18 +257,28 @@ static int mpc52xx_ac97_hw_analog_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int mpc52xx_ac97_hw_digital_params(struct snd_pcm_substream *substream,
+static int psc_ac97_hw_digital_params(struct snd_pcm_substream *substream,
 				 struct snd_pcm_hw_params *params,
 				 struct snd_soc_dai *dai)
 {
 	return 0;
 }
 
-static struct snd_soc_dai mpc52xx_dai_ac97[] = {
+static struct snd_soc_dai_ops psc_ac97_analog_ops = {
+	.hw_params	= psc_ac97_hw_analog_params,
+};
+
+static struct snd_soc_dai_ops psc_ac97_digital_ops = {
+	.hw_params	= psc_ac97_hw_digital_params,
+};
+
+static struct snd_soc_dai psc_dai_ac97[] = {
 {
 	.name	= "mpc52xx AC97 analog",
-	.id	= MPC52XX_DAI_AC97_ANALOG,
+	.id	= 0,
 	.ac97_control	= 1,
+	.suspend = psc_ac97_suspend,
+	.resume = psc_ac97_resume,
 
 	.playback = {
 		.stream_name	= "mpc52xx AC97 analog",
@@ -314,14 +294,13 @@ static struct snd_soc_dai mpc52xx_dai_ac97[] = {
 		.rates		= SNDRV_PCM_RATE_8000_48000,
 		.formats	= SNDRV_PCM_FMTBIT_S32_BE,
 	},
-	/* alsa ops */
-	.hw_params	= mpc52xx_ac97_hw_analog_params,
-	/* ac97_ops */
-	.ac97_ops 	= &mpc52xx_ac97_ops,
+	.ops 	= &psc_ac97_analog_ops,
 },
 {
 	.name	= "mpc52xx AC97 digital",
-	.id	= MPC52XX_DAI_AC97_DIGITAL,
+	.id	= 1,
+	.suspend = psc_ac97_suspend,
+	.resume = psc_ac97_resume,
 
 	.playback = {
 		.stream_name	= "mpc52xx AC97 digital",
@@ -331,11 +310,9 @@ static struct snd_soc_dai mpc52xx_dai_ac97[] = {
 			SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
 		.formats	= SNDRV_PCM_FORMAT_IEC958_SUBFRAME_BE,
 	},
-	/* alsa ops */
-	.hw_params 	= mpc52xx_ac97_hw_digital_params,
-	/* ac97_ops */
-	.ac97_ops 	= &mpc52xx_ac97_ops,
+	.ops 	= &psc_ac97_digital_ops,
 }};
+EXPORT_SYMBOL_GPL(psc_dai_ac97);
 
 static int psc_ac97_hw_params(struct snd_pcm_substream *substream,
 				 struct snd_pcm_hw_params *params,
