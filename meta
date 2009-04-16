@@ -1,6 +1,6 @@
 Version: 1
-Previous: 9df3b78e2782ea8d1a2bf34a4b2c059b5ffa7bd7
-Head: c900b12d0ca43dfcf12933ea0934b35645ae624c
+Previous: f485f2e9cd10125edadfcb1f64b82668f8eb36cc
+Head: b502eaa1130068eac182cddb5a08be2fae3e19d1
 Applied:
   Makefile: e97ee3862951038b0d0378ac7c39db31be9b3cfb
   jds_platform: 9ef76ccc2df9cc7fbecd384ed041cbc3e6b1f573
@@ -20,8 +20,7 @@ Applied:
   jds-lirc-mce2: 6e767da31f8e1f1a2b462be1226e8a6a78e9f9f7
   m_1: 0f209236c376a3b94bae2b09fdb12c649b14666c
   spi-mmc: d6a25da549b01f33b39054138db39cd911aaba5f
-  stac9766: 86ae0b0eab3c613c099d89bd5dd06fd82192feb0
-  refresh-temp: c900b12d0ca43dfcf12933ea0934b35645ae624c
+  stac9766: b502eaa1130068eac182cddb5a08be2fae3e19d1
 Unapplied:
   mpc5200-dma: 7d243506e1b0109461dd98b69200f657ad52147a
   mpc5200-ac97: 7ae1bfcc8323a2449ee2aac0d34e6656de568231

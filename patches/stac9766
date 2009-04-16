@@ -1,5 +1,5 @@
 Bottom: 25357fdb2252d11336d7583d5fcccf46c77a3cef
-Top:    99985116708bd11269540f64d1ef03f6a3c68168
+Top:    87e7689cda54052627876bc13ddc03e152218139
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-10 16:31:10 -0400
 
@@ -578,10 +578,10 @@ index 0000000..75a3932
 +MODULE_LICENSE("GPL");
 diff --git a/sound/soc/codecs/stac9766.h b/sound/soc/codecs/stac9766.h
 new file mode 100644
-index 0000000..d4c7516
+index 0000000..4634c69
 --- /dev/null
 +++ b/sound/soc/codecs/stac9766.h
-@@ -0,0 +1,17 @@
+@@ -0,0 +1,19 @@
 +/*
 + * stac9766.h  --  STAC9766 Soc Audio driver
 + */
@@ -597,5 +597,7 @@ index 0000000..d4c7516
 +#define STAC9766_DAI_AC97_DIGITAL		1
 +
 +extern struct snd_soc_dai stac9766_dai[];
++extern struct snd_soc_codec_device soc_codec_dev_stac9766;
++
 +
 +#endif
