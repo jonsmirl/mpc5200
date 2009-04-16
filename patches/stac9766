@@ -1,5 +1,5 @@
 Bottom: 25357fdb2252d11336d7583d5fcccf46c77a3cef
-Top:    87e7689cda54052627876bc13ddc03e152218139
+Top:    e933c3c2d604de8a476e6e31608588ee6f2dd67a
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-10 16:31:10 -0400
 
@@ -52,10 +52,10 @@ index f906124..779000f 100644
  obj-$(CONFIG_SND_SOC_TLV320AIC26)	+= snd-soc-tlv320aic26.o
 diff --git a/sound/soc/codecs/stac9766.c b/sound/soc/codecs/stac9766.c
 new file mode 100644
-index 0000000..75a3932
+index 0000000..2f4f2f8
 --- /dev/null
 +++ b/sound/soc/codecs/stac9766.c
-@@ -0,0 +1,520 @@
+@@ -0,0 +1,519 @@
 +/*
 + * stac9766.c  --  ALSA Soc STAC9766 codec support
 + *
@@ -470,7 +470,6 @@ index 0000000..75a3932
 +		return -EIO;
 +	return 0;
 +}
-+EXPORT_SYMBOL_GPL(stac9766_reset);
 +
 +static int stac9766_codec_probe(struct platform_device *pdev)
 +{
