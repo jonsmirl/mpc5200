@@ -1,5 +1,5 @@
 Bottom: 31b28a64b7ef562f5c366804ddf4d552fbe08143
-Top:    c98ffce4c7cf23fcebae20bb5f4eb872fa1354e0
+Top:    6f691eafcdd9a959d78e6a9dbd8a9ac112c77927
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-10 22:51:07 -0400
 
@@ -636,7 +636,7 @@ index 0000000..78ceec3
 +#endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..13b53c3
+index 0000000..77a5f73
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
 @@ -0,0 +1,815 @@
@@ -915,7 +915,7 @@ index 0000000..13b53c3
 +	.hw_params	= psc_ac97_hw_digital_params,
 +};
 +
-+static struct snd_soc_dai psc_dai_ac97[] = {
++static struct snd_soc_dai mpc5200_dai_ac97[] = {
 +{
 +	.name	= "mpc5200 AC97 analog",
 +	.id	= MPC5200_AC97_ANALOG,
@@ -955,7 +955,7 @@ index 0000000..13b53c3
 +	},
 +	.ops 	= &psc_ac97_digital_ops,
 +}};
-+EXPORT_SYMBOL_GPL(psc_dai_ac97);
++EXPORT_SYMBOL_GPL(mpc5200_dai_ac97);
 +
 +static int psc_ac97_hw_params(struct snd_pcm_substream *substream,
 +				 struct snd_pcm_hw_params *params,
@@ -1457,10 +1457,10 @@ index 0000000..13b53c3
 +module_exit(psc_ac97_exit);
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.h b/sound/soc/fsl/mpc5200_psc_ac97.h
 new file mode 100644
-index 0000000..d028c55
+index 0000000..7daba97
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.h
-@@ -0,0 +1,13 @@
+@@ -0,0 +1,15 @@
 +/*
 + * Freescale MPC5200 PSC in AC97 mode
 + * ALSA SoC Digital Audio Interface (DAI) driver
@@ -1472,5 +1472,7 @@ index 0000000..d028c55
 +
 +#define MPC5200_AC97_ANALOG 0
 +#define MPC5200_AC97_DIGITAL 1
++
++extern struct snd_soc_dai mpc5200_dai_ac97[];
 +
 +#endif /* __SOUND_SOC_FSL_MPC52xx_PSC_AC97_H__ */
