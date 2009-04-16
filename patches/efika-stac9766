@@ -1,5 +1,5 @@
 Bottom: c98ffce4c7cf23fcebae20bb5f4eb872fa1354e0
-Top:    4a7126dc513292d00c013bf1eae328117eb12710
+Top:    6bf0c9c3912cdb60e12cc89a479195bd74f8cd1f
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-10 16:31:11 -0400
 
@@ -40,7 +40,7 @@ index 70c44bf..dd8febc 100644
 +
 diff --git a/sound/soc/fsl/efika-stac9766.c b/sound/soc/fsl/efika-stac9766.c
 new file mode 100644
-index 0000000..1cc2f0f
+index 0000000..2dc06e1
 --- /dev/null
 +++ b/sound/soc/fsl/efika-stac9766.c
 @@ -0,0 +1,327 @@
@@ -176,7 +176,7 @@ index 0000000..1cc2f0f
 +};
 +
 +/* efika audio map */
-+static const char *audio_map[][3] = {
++static const struct snd_soc_dapm_route audio_map[] = {
 +
 +	/* headphone connected to HPOUTL, HPOUTR */
 +	{"Headphone Jack", NULL, "HPOUTL"},
