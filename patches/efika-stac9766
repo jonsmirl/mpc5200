@@ -1,5 +1,5 @@
 Bottom: fdada81fb221e63dd84e54c10986508028fe3f07
-Top:    e80dbd662d1ac9e822727e9abf283c61aa771328
+Top:    38dcb64a316019d564ed9277cc74dc6c59d92b43
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-10 16:31:11 -0400
 
@@ -40,7 +40,7 @@ index 70c44bf..dd8febc 100644
 +
 diff --git a/sound/soc/fsl/efika-stac9766.c b/sound/soc/fsl/efika-stac9766.c
 new file mode 100644
-index 0000000..39b3693
+index 0000000..6bfa498
 --- /dev/null
 +++ b/sound/soc/fsl/efika-stac9766.c
 @@ -0,0 +1,328 @@
@@ -262,7 +262,7 @@ index 0000000..39b3693
 +
 +static struct snd_soc_card efika = {
 +	.name = "Efika-STAC9766",
-+	.platform = &mpc5200_soc_platform,
++	.platform = &fsl_soc_platform,
 +	.dai_link = efika_dai,
 +	.num_links = ARRAY_SIZE(efika_dai),
 +};
