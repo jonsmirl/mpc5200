@@ -13,5 +13,7 @@
 #define STAC9766_DAI_AC97_DIGITAL		1
 
 extern struct snd_soc_dai stac9766_dai[];
+extern struct snd_soc_codec_device soc_codec_dev_stac9766;
+
 
 #endif
