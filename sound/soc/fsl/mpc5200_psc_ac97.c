@@ -9,6 +9,8 @@
  * published by the Free Software Foundation.
  */
 
+#define DEBUG
+
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
@@ -34,9 +36,10 @@
 #include "mpc5200_dma.h"
 #include "mpc5200_psc_ac97.h"
 
-MODULE_AUTHOR("Jon Smirl");
-MODULE_DESCRIPTION("MPC52xx AC97 module");
+MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
+MODULE_DESCRIPTION("mpc5200 AC97 module");
 MODULE_LICENSE("GPL");
+
 
 /**
  * PSC_AC97_RATES: sample rates supported by the AC97
@@ -56,79 +59,22 @@ MODULE_LICENSE("GPL");
 			 SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S24_BE | \
 			 SNDRV_PCM_FMTBIT_S32_BE)
 
-/**
- * psc_ac97_stream - Data specific to a single stream (playback or capture)
- * @active:		flag indicating if the stream is active
- * @psc_ac97:		pointer back to parent psc_ac97 data structure
- * @bcom_task:		bestcomm task structure
- * @irq:		irq number for bestcomm task
- * @period_start:	physical address of start of DMA region
- * @period_end:		physical address of end of DMA region
- * @period_next_pt:	physical address of next DMA buffer to enqueue
- * @period_bytes:	size of DMA period in bytes
- */
-struct psc_ac97_stream {
-	int active;
-	struct psc_ac97 *psc_ac97;
-	struct bcom_task *bcom_task;
-	int irq;
-	struct snd_pcm_substream *stream;
-	dma_addr_t period_start;
-	dma_addr_t period_end;
-	dma_addr_t period_next_pt;
-	dma_addr_t period_current_pt;
-	int period_bytes;
-};
-
-/**
- * psc_ac97 - Private driver data
- * @name: short name for this device ("PSC0", "PSC1", etc)
- * @psc_regs: pointer to the PSC's registers
- * @fifo_regs: pointer to the PSC's FIFO registers
- * @irq: IRQ of this PSC
- * @dev: struct device pointer
- * @dai: the CPU DAI for this device
- * @sicr: Base value used in serial interface control register; mode is ORed
- *        with this value.
- * @playback: Playback stream context data
- * @capture: Capture stream context data
- */
-struct psc_ac97 {
-	char name[32];
-	struct mpc52xx_psc __iomem *psc_regs;
-	struct mpc52xx_psc_fifo __iomem *fifo_regs;
-	unsigned int irq;
-	struct device *dev;
-	struct snd_soc_dai dai;
-	spinlock_t lock;
-	u32 sicr;
-	uint sysclk;
-
-	/* per-stream data */
-	struct psc_ac97_stream playback;
-	struct psc_ac97_stream capture;
-
-	/* Statistics */
-	struct {
-		int overrun_count;
-		int underrun_count;
-	} stats;
-};
-
 #define DRV_NAME "mpc5200-psc-ac97"
+
+struct psc_dma *psc_dma;
 
 static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 {
-	struct psc_ac97 *psc_ac97 = ac97->private_data;
+	//struct psc_dma *psc_dma = ac97->private_data;
 	int timeout;
 	unsigned int val;
 
-	spin_lock(&psc_ac97->lock);
+	spin_lock(&psc_dma->lock);
 	printk("ac97 read: reg %04x\n", reg);
 
 	/* Wait for it to be ready */
 	timeout = 1000;
-	while ((--timeout) && (in_be16(&psc_ac97->psc_regs->sr_csr.status) &
+	while ((--timeout) && (in_be16(&psc_dma->psc_regs->sr_csr.status) &
 						MPC52xx_PSC_SR_CMDSEND) )
 		udelay(10);
 
@@ -138,21 +84,21 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 	}
 
 	/* Do the read */
-	out_be32(&psc_ac97->psc_regs->ac97_cmd, (1<<31) | ((reg & 0x7f) << 24));
+	out_be32(&psc_dma->psc_regs->ac97_cmd, (1<<31) | ((reg & 0x7f) << 24));
 
 	/* Wait for the answer */
 	timeout = 1000;
-	while ((--timeout) && !(in_be16(&psc_ac97->psc_regs->sr_csr.status) &
+	while ((--timeout) && !(in_be16(&psc_dma->psc_regs->sr_csr.status) &
 						MPC52xx_PSC_SR_DATA_VAL) )
 		udelay(10);
 
 	if (!timeout) {
-		printk(KERN_ERR DRV_NAME ": timeout on ac97 read (val)\n");
+		printk(KERN_ERR DRV_NAME ": timeout on ac97 read (val) %x\n", in_be16(&psc_dma->psc_regs->sr_csr.status));
 		return 0xffff;
 	}
 
 	/* Get the data */
-	val = in_be32(&psc_ac97->psc_regs->ac97_data);
+	val = in_be32(&psc_dma->psc_regs->ac97_data);
 	if ( ((val>>24) & 0x7f) != reg ) {
 		printk(KERN_ERR DRV_NAME ": reg echo error on ac97 read\n");
 		return 0xffff;
@@ -161,21 +107,21 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 
 	printk("ac97 read ok: reg %04x  val %04x\n", reg, val);
 
-	spin_unlock(&psc_ac97->lock);
+	spin_unlock(&psc_dma->lock);
 	return (unsigned short) val;
 }
 
 static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned short val)
 {
-	struct psc_ac97 *psc_ac97 = ac97->private_data;
+	//struct psc_dma *psc_dma = ac97->private_data;
 	int timeout;
 
 	//printk("ac97 write: reg %04x  val %04x\n", reg, val);
-	spin_lock(&psc_ac97->lock);
+	spin_lock(&psc_dma->lock);
 
 	/* Wait for it to be ready */
 	timeout = 1000;
-	while ((--timeout) && (in_be16(&psc_ac97->psc_regs->sr_csr.status) &
+	while ((--timeout) && (in_be16(&psc_dma->psc_regs->sr_csr.status) &
 						MPC52xx_PSC_SR_CMDSEND) )
 		udelay(10);
 
@@ -185,25 +131,25 @@ static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned s
 	}
 
 	/* Write data */
-	out_be32(&psc_ac97->psc_regs->ac97_cmd, ((reg & 0x7f) << 24) | (val << 8));
+	out_be32(&psc_dma->psc_regs->ac97_cmd, ((reg & 0x7f) << 24) | (val << 8));
 
-	spin_unlock(&psc_ac97->lock);
+	spin_unlock(&psc_dma->lock);
 }
 
 static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
 {
-	struct psc_ac97 *psc_ac97 = ac97->private_data;
+	//struct psc_dma *psc_dma = ac97->private_data;
 
-	printk("psc_ac97_cold_reset\n");
+	printk("psc_ac97_cold_reset %p\n", ac97);
 
 	/* Do a cold reset */
-	out_8(&psc_ac97->psc_regs->op1, MPC52xx_PSC_OP_RES);
+	out_8(&psc_dma->psc_regs->op1, MPC52xx_PSC_OP_RES);
 	udelay(10);
-	out_8(&psc_ac97->psc_regs->op0, MPC52xx_PSC_OP_RES);
+	out_8(&psc_dma->psc_regs->op0, MPC52xx_PSC_OP_RES);
 	udelay(50);
 
 	/* PSC recover from cold reset (cfr user manual, not sure if useful) */
-	out_be32(&psc_ac97->psc_regs->sicr, in_be32(&psc_ac97->psc_regs->sicr));
+	out_be32(&psc_dma->psc_regs->sicr, in_be32(&psc_dma->psc_regs->sicr));
 }
 
 static void psc_ac97_warm_reset(struct snd_ac97 *ac97)
@@ -240,91 +186,11 @@ static int psc_ac97_hw_analog_params(struct snd_pcm_substream *substream,
 				 struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct psc_ac97 *psc_ac97 = rtd->dai->cpu_dai->private_data;
-
-	printk("psc_ac97_hw_analog_params\n");
-	printk("channels %d\n",substream->runtime->channels);
-	printk("rate %d\n",substream->runtime->rate);
-	printk("periods %d\n",substream->runtime->periods);
-	printk("period_step %d\n",substream->runtime->period_step);
-	printk("slots %d\n",psc_ac97->psc_regs->ac97_slots);
-
-	/* FIXME, need a spinlock to protect access */
-	if (substream->runtime->channels == 1)
-		out_be32(&psc_ac97->psc_regs->ac97_slots, 0x01000000);
-	else
-		out_be32(&psc_ac97->psc_regs->ac97_slots, 0x03000000);
-
-	return 0;
-}
-
-static int psc_ac97_hw_digital_params(struct snd_pcm_substream *substream,
-				 struct snd_pcm_hw_params *params,
-				 struct snd_soc_dai *dai)
-{
-	return 0;
-}
-
-static struct snd_soc_dai_ops psc_ac97_analog_ops = {
-	.hw_params	= psc_ac97_hw_analog_params,
-};
-
-static struct snd_soc_dai_ops psc_ac97_digital_ops = {
-	.hw_params	= psc_ac97_hw_digital_params,
-};
-
-struct snd_soc_dai mpc5200_dai_ac97[] = {
-{
-	.name	= "mpc5200 AC97 analog",
-	.id	= MPC5200_AC97_ANALOG,
-	.ac97_control	= 1,
-	.suspend = psc_ac97_suspend,
-	.resume = psc_ac97_resume,
-
-	.playback = {
-		.stream_name	= "mpc5200 AC97 analog",
-		.channels_min	= 1,
-		.channels_max	= 6,
-		.rates		= SNDRV_PCM_RATE_8000_48000,
-		.formats	= SNDRV_PCM_FORMAT_S32_BE,
-	},
-	.capture = {
-		.stream_name	= "mpc5200 AC97 analog",
-		.channels_min	= 1,
-		.channels_max	= 2,
-		.rates		= SNDRV_PCM_RATE_8000_48000,
-		.formats	= SNDRV_PCM_FMTBIT_S32_BE,
-	},
-	.ops 	= &psc_ac97_analog_ops,
-},
-{
-	.name	= "mpc5200 AC97 digital",
-	.id	= MPC5200_AC97_DIGITAL,
-	.suspend = psc_ac97_suspend,
-	.resume = psc_ac97_resume,
-
-	.playback = {
-		.stream_name	= "mpc5200 AC97 digital",
-		.channels_min	= 1,
-		.channels_max	= 2,
-		.rates		= SNDRV_PCM_RATE_32000 | \
-			SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
-		.formats	= SNDRV_PCM_FORMAT_IEC958_SUBFRAME_BE,
-	},
-	.ops 	= &psc_ac97_digital_ops,
-}};
-EXPORT_SYMBOL_GPL(mpc5200_dai_ac97);
-
-static int psc_ac97_hw_params(struct snd_pcm_substream *substream,
-				 struct snd_pcm_hw_params *params,
-				 struct snd_soc_dai *dai)
-{
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct psc_ac97 *psc_ac97 = rtd->dai->cpu_dai->private_data;
+	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
 	uint bits, framesync, bitclk, value;
 	u32 mode;
 
-	dev_dbg(psc_ac97->dev, "%s(substream=%p) p_size=%i p_bytes=%i"
+	dev_dbg(psc_dma->dev, "%s(substream=%p) p_size=%i p_bytes=%i"
 		" periods=%i buffer_size=%i  buffer_bytes=%i\n",
 		__func__, substream, params_period_size(params),
 		params_period_bytes(params), params_periods(params),
@@ -348,30 +214,56 @@ static int psc_ac97_hw_params(struct snd_pcm_substream *substream,
 		bits = 32;
 		break;
 	default:
-		dev_dbg(psc_ac97->dev, "invalid format\n");
+		dev_dbg(psc_dma->dev, "invalid format\n");
 		return -EINVAL;
 	}
-	out_be32(&psc_ac97->psc_regs->sicr, psc_ac97->sicr | mode);
+	out_be32(&psc_dma->psc_regs->sicr, psc_dma->sicr | mode);
 
-	if (psc_ac97->sysclk) {
+	if (psc_dma->sysclk) {
 		framesync = bits * 2;
-		bitclk = (psc_ac97->sysclk) / (params_rate(params) * framesync);
+		bitclk = (psc_dma->sysclk) / (params_rate(params) * framesync);
 
 		/* bitclk field is byte swapped due to mpc5200/b compatibility */
 		value = ((framesync - 1) << 24) |
 			(((bitclk - 1) & 0xFF) << 16) | ((bitclk - 1) & 0xFF00);
 
-		dev_dbg(psc_ac97->dev, "%s(substream=%p) rate=%i sysclk=%i"
+		dev_dbg(psc_dma->dev, "%s(substream=%p) rate=%i sysclk=%i"
 			" framesync=%i bitclk=%i reg=%X\n",
-			__FUNCTION__, substream, params_rate(params), psc_ac97->sysclk,
+			__FUNCTION__, substream, params_rate(params), psc_dma->sysclk,
 			framesync, bitclk, value);
 
-		out_be32(&psc_ac97->psc_regs->ccr, value);
-		out_8(&psc_ac97->psc_regs->ctur, bits - 1);
+		out_be32(&psc_dma->psc_regs->ccr, value);
+		out_8(&psc_dma->psc_regs->ctur, bits - 1);
 	}
 
   	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 
+	return 0;
+#if 0
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
+
+	printk("psc_ac97_hw_analog_params\n");
+	printk("channels %d\n",substream->runtime->channels);
+	printk("rate %d\n",substream->runtime->rate);
+	printk("periods %d\n",substream->runtime->periods);
+	printk("period_step %d\n",substream->runtime->period_step);
+	printk("slots %d\n",psc_dma->psc_regs->ac97_slots);
+
+	// FIXME, need a spinlock to protect access
+	if (substream->runtime->channels == 1)
+		out_be32(&psc_dma->psc_regs->ac97_slots, 0x01000000);
+	else
+		out_be32(&psc_dma->psc_regs->ac97_slots, 0x03000000);
+
+	return 0;
+#endif
+}
+
+static int psc_ac97_hw_digital_params(struct snd_pcm_substream *substream,
+				 struct snd_pcm_hw_params *params,
+				 struct snd_soc_dai *dai)
+{
 	return 0;
 }
 
@@ -388,8 +280,8 @@ static int psc_ac97_hw_params(struct snd_pcm_substream *substream,
  */
 static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
 {
-	struct psc_ac97 *psc_ac97 = cpu_dai->private_data;
-	dev_dbg(psc_ac97->dev, "psc_ac97_set_fmt(cpu_dai=%p, format=%i)\n",
+	struct psc_dma *psc_dma = cpu_dai->private_data;
+	dev_dbg(psc_dma->dev, "psc_ac97_set_fmt(cpu_dai=%p, format=%i)\n",
 				cpu_dai, format);
 	return (format == SND_SOC_DAIFMT_AC97) ? 0 : -EINVAL;
 }
@@ -404,164 +296,54 @@ static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
 /**
  * psc_ac97_dai_template: template CPU Digital Audio Interface
  */
-static struct snd_soc_dai_ops psc_ac97_dai_ops = {
+static struct snd_soc_dai_ops psc_ac97_analog_ops = {
 	.startup	= mpc5200_dma_startup,
-	.hw_params	= psc_ac97_hw_params,
+	.hw_params	= psc_ac97_hw_analog_params,
 	.hw_free	= mpc5200_dma_hw_free,
 	.shutdown	= mpc5200_dma_shutdown,
 	.trigger	= mpc5200_dma_trigger,
 	.set_fmt	= psc_ac97_set_fmt,
 };
 
-static struct snd_soc_dai psc_ac97_dai_template = {
+static struct snd_soc_dai_ops psc_ac97_digital_ops = {
+	.startup	= mpc5200_dma_startup,
+	.hw_params	= psc_ac97_hw_digital_params,
+	.hw_free	= mpc5200_dma_hw_free,
+	.shutdown	= mpc5200_dma_shutdown,
+	.trigger	= mpc5200_dma_trigger,
+	.set_fmt	= psc_ac97_set_fmt,
+};
+
+static struct snd_soc_dai psc_ac97_dai_template[] = {
+{
+	.name	= "%s analog",
+	.suspend = psc_ac97_suspend,
+	.resume = psc_ac97_resume,
 	.playback = {
-		.channels_min = 2,
-		.channels_max = 2,
-		.rates = PSC_AC97_RATES,
-		.formats = PSC_AC97_FORMATS,
+		.channels_min	= 1,
+		.channels_max	= 6,
+		.rates		= SNDRV_PCM_RATE_8000_48000,
+		.formats	= SNDRV_PCM_FORMAT_S32_BE,
 	},
 	.capture = {
-		.channels_min = 2,
-		.channels_max = 2,
-		.rates = PSC_AC97_RATES,
-		.formats = PSC_AC97_FORMATS,
+		.channels_min	= 1,
+		.channels_max	= 2,
+		.rates		= SNDRV_PCM_RATE_8000_48000,
+		.formats	= SNDRV_PCM_FMTBIT_S32_BE,
 	},
-	.ops = &psc_ac97_dai_ops,
-};
-
-/* ---------------------------------------------------------------------
- * The PSC AC97 'ASoC platform' driver
- *
- * Can be referenced by an 'ASoC machine' driver
- * This driver only deals with the audio bus; it doesn't have any
- * interaction with the attached codec
- */
-
-static int psc_ac97_pcm_open(struct snd_pcm_substream *substream)
+	.ops = &psc_ac97_analog_ops,
+},
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct psc_ac97 *psc_ac97 = rtd->dai->cpu_dai->private_data;
-	struct psc_ac97_stream *s;
-
-	dev_dbg(psc_ac97->dev, "psc_ac97_pcm_open(substream=%p)\n", substream);
-
-	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
-		s = &psc_ac97->capture;
-	else
-		s = &psc_ac97->playback;
-
-	snd_soc_set_runtime_hwparams(substream, &mpc5200_pcm_hardware);
-
-	s->stream = substream;
-	return 0;
-}
-
-static int psc_ac97_pcm_close(struct snd_pcm_substream *substream)
-{
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct psc_ac97 *psc_ac97 = rtd->dai->cpu_dai->private_data;
-	struct psc_ac97_stream *s;
-
-	dev_dbg(psc_ac97->dev, "psc_ac97_pcm_close(substream=%p)\n", substream);
-
-	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
-		s = &psc_ac97->capture;
-	else
-		s = &psc_ac97->playback;
-
-	s->stream = NULL;
-	return 0;
-}
-
-static snd_pcm_uframes_t
-psc_ac97_pcm_pointer(struct snd_pcm_substream *substream)
-{
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct psc_ac97 *psc_ac97 = rtd->dai->cpu_dai->private_data;
-	struct psc_ac97_stream *s;
-	dma_addr_t count;
-
-	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
-		s = &psc_ac97->capture;
-	else
-		s = &psc_ac97->playback;
-
-	count = s->period_current_pt - s->period_start;
-
-	return bytes_to_frames(substream->runtime, count);
-}
-
-static struct snd_pcm_ops psc_ac97_pcm_ops = {
-	.open		= psc_ac97_pcm_open,
-	.close		= psc_ac97_pcm_close,
-	.ioctl		= snd_pcm_lib_ioctl,
-	.pointer	= psc_ac97_pcm_pointer,
-};
-
-static u64 psc_ac97_pcm_dmamask = 0xffffffff;
-static int psc_ac97_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
-			   struct snd_pcm *pcm)
-{
-	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
-	size_t size = mpc5200_pcm_hardware.buffer_bytes_max;
-	int rc = 0;
-
-	dev_dbg(rtd->socdev->dev, "psc_ac97_pcm_new(card=%p, dai=%p, pcm=%p)\n",
-		card, dai, pcm);
-
-	if (!card->dev->dma_mask)
-		card->dev->dma_mask = &psc_ac97_pcm_dmamask;
-	if (!card->dev->coherent_dma_mask)
-		card->dev->coherent_dma_mask = 0xffffffff;
-
-	if (pcm->streams[0].substream) {
-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
-					&pcm->streams[0].substream->dma_buffer);
-		if (rc)
-			goto playback_alloc_err;
-	}
-
-	if (pcm->streams[1].substream) {
-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
-					&pcm->streams[1].substream->dma_buffer);
-		if (rc)
-			goto capture_alloc_err;
-	}
-
-	return 0;
-
- capture_alloc_err:
-	if (pcm->streams[0].substream)
-		snd_dma_free_pages(&pcm->streams[0].substream->dma_buffer);
- playback_alloc_err:
-	dev_err(card->dev, "Cannot allocate buffer(s)\n");
-	return -ENOMEM;
-}
-
-static void psc_ac97_pcm_free(struct snd_pcm *pcm)
-{
-	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
-	struct snd_pcm_substream *substream;
-	int stream;
-
-	dev_dbg(rtd->socdev->dev, "psc_ac97_pcm_free(pcm=%p)\n", pcm);
-
-	for (stream = 0; stream < 2; stream++) {
-		substream = pcm->streams[stream].substream;
-		if (substream) {
-			snd_dma_free_pages(&substream->dma_buffer);
-			substream->dma_buffer.area = NULL;
-			substream->dma_buffer.addr = 0;
-		}
-	}
-}
-
-struct snd_soc_platform psc_ac97_pcm_soc_platform = {
-	.name		= "mpc5200-psc-audio",
-	.pcm_ops	= &psc_ac97_pcm_ops,
-	.pcm_new	= &psc_ac97_pcm_new,
-	.pcm_free	= &psc_ac97_pcm_free,
-};
+	.name	= "%s digital",
+	.playback = {
+		.channels_min	= 1,
+		.channels_max	= 2,
+		.rates		= SNDRV_PCM_RATE_32000 | \
+			SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
+		.formats	= SNDRV_PCM_FORMAT_IEC958_SUBFRAME_BE,
+	},
+	.ops = &psc_ac97_digital_ops,
+}};
 
 /* ---------------------------------------------------------------------
  * Sysfs attributes for debugging
@@ -570,24 +352,24 @@ struct snd_soc_platform psc_ac97_pcm_soc_platform = {
 static ssize_t psc_ac97_status_show(struct device *dev,
 			   struct device_attribute *attr, char *buf)
 {
-	struct psc_ac97 *psc_ac97 = dev_get_drvdata(dev);
+	struct psc_dma *psc_dma = dev_get_drvdata(dev);
 
 	return sprintf(buf, "status=%.4x sicr=%.8x rfnum=%i rfstat=0x%.4x "
 			"tfnum=%i tfstat=0x%.4x\n",
-			in_be16(&psc_ac97->psc_regs->sr_csr.status),
-			in_be32(&psc_ac97->psc_regs->sicr),
-			in_be16(&psc_ac97->fifo_regs->rfnum) & 0x1ff,
-			in_be16(&psc_ac97->fifo_regs->rfstat),
-			in_be16(&psc_ac97->fifo_regs->tfnum) & 0x1ff,
-			in_be16(&psc_ac97->fifo_regs->tfstat));
+			in_be16(&psc_dma->psc_regs->sr_csr.status),
+			in_be32(&psc_dma->psc_regs->sicr),
+			in_be16(&psc_dma->fifo_regs->rfnum) & 0x1ff,
+			in_be16(&psc_dma->fifo_regs->rfstat),
+			in_be16(&psc_dma->fifo_regs->tfnum) & 0x1ff,
+			in_be16(&psc_dma->fifo_regs->tfstat));
 }
 
-static int *psc_ac97_get_stat_attr(struct psc_ac97 *psc_ac97, const char *name)
+static int *psc_ac97_get_stat_attr(struct psc_dma *psc_dma, const char *name)
 {
 	if (strcmp(name, "playback_underrun") == 0)
-		return &psc_ac97->stats.underrun_count;
+		return &psc_dma->stats.underrun_count;
 	if (strcmp(name, "capture_overrun") == 0)
-		return &psc_ac97->stats.overrun_count;
+		return &psc_dma->stats.overrun_count;
 
 	return NULL;
 }
@@ -595,10 +377,10 @@ static int *psc_ac97_get_stat_attr(struct psc_ac97 *psc_ac97, const char *name)
 static ssize_t psc_ac97_stat_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
-	struct psc_ac97 *psc_ac97 = dev_get_drvdata(dev);
+	struct psc_dma *psc_dma = dev_get_drvdata(dev);
 	int *attrib;
 
-	attrib = psc_ac97_get_stat_attr(psc_ac97, attr->attr.name);
+	attrib = psc_ac97_get_stat_attr(psc_dma, attr->attr.name);
 	if (!attrib)
 		return 0;
 
@@ -610,10 +392,10 @@ static ssize_t psc_ac97_stat_store(struct device *dev,
 				  const char *buf,
 				  size_t count)
 {
-	struct psc_ac97 *psc_ac97 = dev_get_drvdata(dev);
+	struct psc_dma *psc_dma = dev_get_drvdata(dev);
 	int *attrib;
 
-	attrib = psc_ac97_get_stat_attr(psc_ac97, attr->attr.name);
+	attrib = psc_ac97_get_stat_attr(psc_dma, attr->attr.name);
 	if (!attrib)
 		return 0;
 
@@ -627,6 +409,7 @@ static DEVICE_ATTR(playback_underrun, 0644, psc_ac97_stat_show,
 static DEVICE_ATTR(capture_overrun, 0644, psc_ac97_stat_show,
 			psc_ac97_stat_store);
 
+
 /* ---------------------------------------------------------------------
  * OF platform bus binding code:
  * - Probe/remove operations
@@ -636,13 +419,11 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 				      const struct of_device_id *match)
 {
 	phys_addr_t fifo;
-	struct psc_ac97 *psc_ac97;
+	//struct psc_dma *psc_dma;
 	struct resource res;
-	int size, psc_id, irq, rc;
+	int i, size, psc_id, irq, rc;
 	const __be32 *prop;
 	void __iomem *regs;
-
-	dev_dbg(&op->dev, "probing psc ac97 device\n");
 
 	/* Get the PSC ID */
 	prop = of_get_property(op->node, "cell-index", &size);
@@ -663,119 +444,122 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	}
 
 	/* Allocate and initialize the driver private data */
-	psc_ac97 = kzalloc(sizeof *psc_ac97, GFP_KERNEL);
-	if (!psc_ac97) {
+	psc_dma = kzalloc(sizeof *psc_dma, GFP_KERNEL);
+	if (!psc_dma) {
 		iounmap(regs);
 		return -ENOMEM;
 	}
-	spin_lock_init(&psc_ac97->lock);
-	psc_ac97->irq = irq;
-	psc_ac97->psc_regs = regs;
-	psc_ac97->fifo_regs = regs + sizeof *psc_ac97->psc_regs;
-	psc_ac97->dev = &op->dev;
-	psc_ac97->playback.psc_ac97 = psc_ac97;
-	psc_ac97->capture.psc_ac97 = psc_ac97;
-	snprintf(psc_ac97->name, sizeof psc_ac97->name, "PSC%u", psc_id+1);
+	spin_lock_init(&psc_dma->lock);
+	psc_dma->irq = irq;
+	psc_dma->psc_regs = regs;
+	psc_dma->fifo_regs = regs + sizeof *psc_dma->psc_regs;
+	psc_dma->dev = &op->dev;
+	psc_dma->playback.psc_dma = psc_dma;
+	psc_dma->capture.psc_dma = psc_dma;
+	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u AC97", psc_id+1);
 
 	/* Fill out the CPU DAI structure */
-	memcpy(&psc_ac97->dai, &psc_ac97_dai_template, sizeof psc_ac97->dai);
-	psc_ac97->dai.private_data = psc_ac97;
-	psc_ac97->dai.name = psc_ac97->name;
-	psc_ac97->dai.id = psc_id;
+	for (i = 0; i < PSC_MAX_DAI; i++) {
+		memcpy(&psc_dma->dai[i], &psc_ac97_dai_template, sizeof(struct snd_soc_dai));
+		psc_dma->dai[i].private_data = psc_dma;
+		snprintf(psc_dma->stream_name[i], PSC_STREAM_NAME_LEN, psc_ac97_dai_template[i].name, psc_dma->name);
+printk("Name is $%s$\n", psc_dma->stream_name[i]);
+		psc_dma->dai[i].name = psc_dma->stream_name[i];
+		psc_dma->dai[i].id = psc_id;
+	}
 
 	/* Find the address of the fifo data registers and setup the
 	 * DMA tasks */
 	fifo = res.start + offsetof(struct mpc52xx_psc, buffer.buffer_32);
-	psc_ac97->capture.bcom_task =
+	psc_dma->capture.bcom_task =
 		bcom_psc_gen_bd_rx_init(psc_id, 10, fifo, 512);
-	psc_ac97->playback.bcom_task =
+	psc_dma->playback.bcom_task =
 		bcom_psc_gen_bd_tx_init(psc_id, 10, fifo);
-	if (!psc_ac97->capture.bcom_task ||
-	    !psc_ac97->playback.bcom_task) {
+	if (!psc_dma->capture.bcom_task ||
+	    !psc_dma->playback.bcom_task) {
 		dev_err(&op->dev, "Could not allocate bestcomm tasks\n");
 		iounmap(regs);
-		kfree(psc_ac97);
+		kfree(psc_dma);
 		return -ENODEV;
 	}
 
 	/* Disable all interrupts and reset the PSC */
-	out_be16(&psc_ac97->psc_regs->isr_imr.imr, 0);
-	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_RST_RX); /* reset receiver */
-	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_RST_TX); /* reset transmitter */
-	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_RST_ERR_STAT); /* reset error */
-	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_SEL_MODE_REG_1); /* reset mode */
+	out_be16(&psc_dma->psc_regs->isr_imr.imr, 0);
+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_RX); /* reset receiver */
+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_TX); /* reset transmitter */
+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_ERR_STAT); /* reset error */
+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_SEL_MODE_REG_1); /* reset mode */
 
 	/* Do a cold reset of codec */
-	out_8(&psc_ac97->psc_regs->op1, MPC52xx_PSC_OP_RES);
+	out_8(&psc_dma->psc_regs->op1, MPC52xx_PSC_OP_RES);
 	udelay(10);
-	out_8(&psc_ac97->psc_regs->op0, MPC52xx_PSC_OP_RES);
+	out_8(&psc_dma->psc_regs->op0, MPC52xx_PSC_OP_RES);
 	udelay(50);
 
 	/* Configure the serial interface mode to AC97 */
-	psc_ac97->sicr = MPC52xx_PSC_SICR_ENAC97 | MPC52xx_PSC_SICR_SYNCPOL |
-			MPC52xx_PSC_SICR_CLKPOL;
-	out_be32(&psc_ac97->psc_regs->sicr, psc_ac97->sicr);
+	psc_dma->sicr = MPC52xx_PSC_SICR_SIM_AC97 | MPC52xx_PSC_SICR_ENAC97;
+	out_be32(&psc_dma->psc_regs->sicr, psc_dma->sicr);
 
 	/* No slots active */
-	out_be32(&psc_ac97->psc_regs->ac97_slots, 0x00000000);
-
-	/* Check for the codec handle.  If it is not present then we
-	 * are done */
-	if (!of_get_property(op->node, "codec-handle", NULL))
-		return 0;
+	out_be32(&psc_dma->psc_regs->ac97_slots, 0x00000000);
 
 	/* Set up mode register;
 	 * First write: RxRdy (FIFO Alarm) generates rx FIFO irq
 	 * Second write: register Normal mode for non loopback
 	 */
-	out_8(&psc_ac97->psc_regs->mode, 0);
-	out_8(&psc_ac97->psc_regs->mode, 0);
+	out_8(&psc_dma->psc_regs->mode, 0);
+	out_8(&psc_dma->psc_regs->mode, 0);
 
 	/* Set the TX and RX fifo alarm thresholds */
-	out_be16(&psc_ac97->fifo_regs->rfalarm, 0x100);
-	out_8(&psc_ac97->fifo_regs->rfcntl, 0x4);
-	out_be16(&psc_ac97->fifo_regs->tfalarm, 0x100);
-	out_8(&psc_ac97->fifo_regs->tfcntl, 0x7);
+	out_be16(&psc_dma->fifo_regs->rfalarm, 0x100);
+	out_8(&psc_dma->fifo_regs->rfcntl, 0x4);
+	out_be16(&psc_dma->fifo_regs->tfalarm, 0x100);
+	out_8(&psc_dma->fifo_regs->tfcntl, 0x7);
+
+	/* Go */
+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_TX_ENABLE);
+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RX_ENABLE);
 
 	/* Lookup the IRQ numbers */
-	psc_ac97->playback.irq =
-		bcom_get_task_irq(psc_ac97->playback.bcom_task);
-	psc_ac97->capture.irq =
-		bcom_get_task_irq(psc_ac97->capture.bcom_task);
+	psc_dma->playback.irq =
+		bcom_get_task_irq(psc_dma->playback.bcom_task);
+	psc_dma->capture.irq =
+		bcom_get_task_irq(psc_dma->capture.bcom_task);
 
 	/* Save what we've done so it can be found again later */
-	dev_set_drvdata(&op->dev, psc_ac97);
+	dev_set_drvdata(&op->dev, psc_dma);
 
 	/* Register the SYSFS files */
-	rc = device_create_file(psc_ac97->dev, &dev_attr_status);
-	rc |= device_create_file(psc_ac97->dev, &dev_attr_capture_overrun);
-	rc |= device_create_file(psc_ac97->dev, &dev_attr_playback_underrun);
+	rc = device_create_file(psc_dma->dev, &dev_attr_status);
+	rc |= device_create_file(psc_dma->dev, &dev_attr_capture_overrun);
+	rc |= device_create_file(psc_dma->dev, &dev_attr_playback_underrun);
 	if (rc)
-		dev_info(psc_ac97->dev, "error creating sysfs files\n");
+		dev_info(psc_dma->dev, "error creating sysfs files\n");
 
-	snd_soc_register_platform(&psc_ac97_pcm_soc_platform);
+	rc = snd_soc_register_dais(psc_dma->dai, PSC_MAX_DAI);
+	if (rc != 0) {
+		printk("Failed to register DAI\n");
+		return 0;
+	}
 
 	/* Tell the ASoC OF helpers about it */
-	of_snd_soc_register_platform(&psc_ac97_pcm_soc_platform, op->node,
-				     &psc_ac97->dai);
+	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, PSC_MAX_DAI);
 
 	return 0;
 }
 
 static int __devexit psc_ac97_of_remove(struct of_device *op)
 {
-	struct psc_ac97 *psc_ac97 = dev_get_drvdata(&op->dev);
+	struct psc_dma *psc_dma = dev_get_drvdata(&op->dev);
 
 	dev_dbg(&op->dev, "psc_ac97_remove()\n");
 
-	snd_soc_unregister_platform(&psc_ac97_pcm_soc_platform);
+	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
+	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
 
-	bcom_gen_bd_rx_release(psc_ac97->capture.bcom_task);
-	bcom_gen_bd_tx_release(psc_ac97->playback.bcom_task);
-
-	iounmap(psc_ac97->psc_regs);
-	iounmap(psc_ac97->fifo_regs);
-	kfree(psc_ac97);
+	iounmap(psc_dma->psc_regs);
+	iounmap(psc_dma->fifo_regs);
+	kfree(psc_dma);
 	dev_set_drvdata(&op->dev, NULL);
 
 	return 0;
