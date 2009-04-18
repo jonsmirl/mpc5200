@@ -243,7 +243,7 @@ unsigned int stac9766_ac97_read(struct snd_soc_codec *codec,
 {
 	u16 val = 0, *cache = codec->reg_cache;
 
-	if (reg/2 > ARRAY_SIZE(stac9766_reg))
+	if (reg / 2 > ARRAY_SIZE(stac9766_reg))
 		return -EIO;
 
 	if (reg == AC97_RESET || reg == AC97_GPIO_STATUS || AC97_INT_PAGING ||
@@ -253,8 +253,8 @@ unsigned int stac9766_ac97_read(struct snd_soc_codec *codec,
 		printk("stac9766_ac97_read actual reg %02x val %04x\n", reg, val);
 		return val;
 	}
-	printk("stac9766_ac97_read cache reg %02x val %04x\n", reg, cache[reg/2]);
-	return cache[reg/2];
+	printk("stac9766_ac97_read cache reg %02x val %04x\n", reg, cache[reg / 2]);
+	return cache[reg / 2];
 }
 
 int stac9766_ac97_write(struct snd_soc_codec *codec, unsigned int reg,
@@ -263,11 +263,11 @@ int stac9766_ac97_write(struct snd_soc_codec *codec, unsigned int reg,
 	u16 *cache = codec->reg_cache;
 
 	printk("stac9766_ac97_write reg %02x val %04x\n", reg, val);
-	if (reg/2 > ARRAY_SIZE(stac9766_reg))
+	if (reg / 2 > ARRAY_SIZE(stac9766_reg))
 		return -EIO;
 
 	soc_ac97_ops.write(codec->ac97, reg, val);
-	cache[reg/2] = val;
+	cache[reg / 2] = val;
 	return 0;
 }
 
@@ -421,6 +421,7 @@ static int stac9766_codec_probe(struct platform_device *pdev)
 	int ret = 0;
 
 	printk(KERN_INFO "STAC9766 SoC Audio Codec %s\n", STAC9766_VERSION);
+	printk("private_data is %p\n", socdev);
 
 	socdev->card->codec = kzalloc(sizeof(struct snd_soc_codec),
 				      GFP_KERNEL);
@@ -450,7 +451,7 @@ static int stac9766_codec_probe(struct platform_device *pdev)
 	ret = snd_soc_new_ac97_codec(codec, &soc_ac97_ops, 0);
 	if (ret < 0)
 		goto codec_err;
-	codec->ac97->private_data = platform_get_drvdata(pdev);
+	printk("private_dats get %p\n", codec->ac97->private_data);
 
 	/* register pcms */
 	ret = snd_soc_new_pcms(socdev, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);

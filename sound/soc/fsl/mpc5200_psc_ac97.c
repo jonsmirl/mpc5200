@@ -120,9 +120,11 @@ struct psc_ac97 {
 
 #define DRV_NAME "mpc5200-psc-ac97"
 
+struct psc_ac97 *psc_ac97;
+
 static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 {
-	struct psc_ac97 *psc_ac97 = ac97->private_data;
+	//struct psc_ac97 *psc_ac97 = ac97->private_data;
 	int timeout;
 	unsigned int val;
 
@@ -170,7 +172,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 
 static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned short val)
 {
-	struct psc_ac97 *psc_ac97 = ac97->private_data;
+	//struct psc_ac97 *psc_ac97 = ac97->private_data;
 	int timeout;
 
 	//printk("ac97 write: reg %04x  val %04x\n", reg, val);
@@ -195,7 +197,7 @@ static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned s
 
 static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
 {
-	struct psc_ac97 *psc_ac97 = ac97->private_data;
+	//struct psc_ac97 *psc_ac97 = ac97->private_data;
 
 	printk("psc_ac97_cold_reset %p\n", ac97);
 
@@ -507,7 +509,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 				      const struct of_device_id *match)
 {
 	phys_addr_t fifo;
-	struct psc_ac97 *psc_ac97;
+	//struct psc_ac97 *psc_ac97;
 	struct resource res;
 	int size, psc_id, irq, rc;
 	const __be32 *prop;
@@ -631,8 +633,6 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 
 		pdev = platform_device_alloc(name, 0);
 
-		platform_set_drvdata(pdev, psc_ac97);
-
 		dev_archdata_set_node(&dev_ad, child);
 		pdev->dev.archdata = dev_ad;
 
@@ -660,8 +660,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	}
 
 	/* Tell the ASoC OF helpers about it */
-	of_snd_soc_register_platform(&mpc5200_soc_platform, op->node,
-				     &psc_ac97->dai);
+	of_snd_soc_register_cpu_dai(op->node, &psc_ac97->dai);
 
 	return 0;
 }

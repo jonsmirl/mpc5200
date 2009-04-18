@@ -217,9 +217,9 @@ static struct snd_soc_device efika_snd_devdata = {
  * mpc5200. It is missing logic to detect hp/mic insertions and logic
  * to re-route the audio in such an event.
  */
-static int efika_stac9766_probe(struct of_device *op, const struct of_device_id *match)
+static int efika_stac9766_probe(struct platform_device *pdev)
 {
-	of_snd_soc_register_machine("Efika", NULL);
+	of_snd_soc_register_fabric("Efika", NULL);
 	return 0;
 }
 
@@ -230,13 +230,13 @@ static int __exit efika_stac9766_remove(struct of_device *op)
 
 #ifdef CONFIG_PM
 
-static int efika_stac9766_suspend(struct of_device *op,
+static int efika_stac9766_suspend(struct platform_device *pdev,
 	pm_message_t state)
 {
 	return 0;
 }
 
-static int efika_stac9766_resume(struct of_device *op)
+static int efika_stac9766_resume(struct platform_device *pdev)
 {
 	return 0;
 }
@@ -246,57 +246,27 @@ static int efika_stac9766_resume(struct of_device *op)
 #define efika_stac9766_resume  NULL
 #endif
 
-/* Match table for of_platform binding */
-static struct of_device_id psc_ac97_match[] __devinitdata = {
-	{ .compatible = "efika-stac9766", },
-	{}
-};
-MODULE_DEVICE_TABLE(of, psc_ac97_match);
-
-static struct of_platform_driver efika_stac9766_driver = {
-	.owner		= THIS_MODULE,
-	.name		= DRV_NAME,
-	.match_table	= psc_ac97_match,
-	.probe		= efika_stac9766_probe,
-	.remove		= efika_stac9766_remove,
-	.suspend	= efika_stac9766_suspend,
-	.resume		= efika_stac9766_resume,
-	.driver		= {
-		.name	= DRV_NAME,
+static struct platform_driver efika_fabric = {
+	.probe	= efika_stac9766_probe,
+	.suspend = efika_stac9766_suspend,
+ 	.resume = efika_stac9766_resume,
+	.driver	= {
+		.name	= "efika-audio-fabric",
 	},
 };
 
-
-/* ======================================================================== */
-/* Module                                                                   */
-/* ======================================================================== */
-
-static int __init
-efika_stac9766_init(void)
+static __init int efika_fabric_init(void)
 {
-	int rv;
-
-	if (!machine_is_compatible("bplan,efika"))
-		return -ENODEV;
-
-	rv = of_register_platform_driver(&efika_stac9766_driver);
-	if (rv) {
-		printk(KERN_ERR DRV_NAME ": "
-			"of_register_platform_driver failed (%i)\n", rv);
-		return rv;
-	}
-
-	return 0;
+	return platform_driver_register(&efika_fabric);
 }
 
-static void __exit
-efika_stac9766_exit(void)
+static __exit void efika_fabric_exit(void)
 {
-	of_unregister_platform_driver(&efika_stac9766_driver);
 }
 
-module_init(efika_stac9766_init);
-module_exit(efika_stac9766_exit);
+module_init(efika_fabric_init);
+module_exit(efika_fabric_exit);
+
 
 MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
 MODULE_DESCRIPTION(DRV_NAME ": mpc5200 Efika fabric driver");

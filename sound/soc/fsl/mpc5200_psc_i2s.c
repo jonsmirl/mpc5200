@@ -452,8 +452,7 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 		dev_info(psc_i2s->dev, "error creating sysfs files\n");
 
 	/* Tell the ASoC OF helpers about it */
-	of_snd_soc_register_platform(&mpc5200_soc_platform, op->node,
-				     &psc_i2s->dai);
+	of_snd_soc_register_cpu_dai(op->node, &psc_i2s->dai);
 
 	return 0;
 }
