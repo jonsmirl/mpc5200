@@ -1,5 +1,5 @@
 Bottom: 7090f3c8e5cf61768300de4d78ea10e18b3f1c24
-Top:    5b48792dce8b5ea940bef277fb96c7c7f25e3e4b
+Top:    94ccc57ece966ee080aed477ca28177cdb800762
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-17 20:45:40 -0400
 
@@ -9,7 +9,7 @@ Fabric bindings for STAC9766 on the Efika
 ---
 
 diff --git a/sound/soc/codecs/stac9766.c b/sound/soc/codecs/stac9766.c
-index 2f4f2f8..b99c2b1 100644
+index 2f4f2f8..b915262 100644
 --- a/sound/soc/codecs/stac9766.c
 +++ b/sound/soc/codecs/stac9766.c
 @@ -25,6 +25,7 @@
@@ -20,7 +20,15 @@ index 2f4f2f8..b99c2b1 100644
  
  #include "stac9766.h"
  
-@@ -513,7 +514,39 @@ struct snd_soc_codec_device soc_codec_dev_stac9766 = {
+@@ -449,6 +450,7 @@ static int stac9766_codec_probe(struct platform_device *pdev)
+ 	ret = snd_soc_new_ac97_codec(codec, &soc_ac97_ops, 0);
+ 	if (ret < 0)
+ 		goto codec_err;
++	codec->ac97->private_data = platform_get_drvdata(pdev);
+ 
+ 	/* register pcms */
+ 	ret = snd_soc_new_pcms(socdev, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
+@@ -513,7 +515,37 @@ struct snd_soc_codec_device soc_codec_dev_stac9766 = {
  };
  EXPORT_SYMBOL_GPL(soc_codec_dev_stac9766);
  
@@ -28,9 +36,7 @@ index 2f4f2f8..b99c2b1 100644
 +{
 +#if defined(CONFIG_SND_SOC_OF_SIMPLE)
 +	/* Tell the of_soc helper about this codec */
-+
-+	/* fixme -- allocate some unique data */
-+	of_snd_soc_register_codec(&soc_codec_dev_stac9766, &soc_codec_dev_stac9766, stac9766_dai,
++	of_snd_soc_register_codec(&soc_codec_dev_stac9766, pdev->dev.archdata.of_node, stac9766_dai,
 +				  pdev->dev.archdata.of_node);
 +#endif
 +	return 0;
@@ -467,7 +473,7 @@ index c09faf3..4a3dbd8 100644
 +
 +
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
-index 9ec8ac5..0563c15 100644
+index 9ec8ac5..eb17c42 100644
 --- a/sound/soc/fsl/mpc5200_psc_ac97.c
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
 @@ -9,6 +9,8 @@
@@ -493,20 +499,7 @@ index 9ec8ac5..0563c15 100644
  /**
   * PSC_AC97_RATES: sample rates supported by the AC97
   *
-@@ -117,9 +120,11 @@ struct psc_ac97 {
- 
- #define DRV_NAME "mpc5200-psc-ac97"
- 
-+static struct psc_ac97 *psc_ac97;
-+
- static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
- {
--	struct psc_ac97 *psc_ac97 = ac97->private_data;
-+	//struct psc_ac97 *psc_ac97 = ac97->private_data;
- 	int timeout;
- 	unsigned int val;
- 
-@@ -147,7 +152,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+@@ -147,7 +150,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
  		udelay(10);
  
  	if (!timeout) {
@@ -515,28 +508,16 @@ index 9ec8ac5..0563c15 100644
  		return 0xffff;
  	}
  
-@@ -167,7 +172,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
- 
- static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned short val)
+@@ -194,7 +197,7 @@ static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
  {
--	struct psc_ac97 *psc_ac97 = ac97->private_data;
-+	//struct psc_ac97 *psc_ac97 = ac97->private_data;
- 	int timeout;
- 
- 	//printk("ac97 write: reg %04x  val %04x\n", reg, val);
-@@ -192,9 +197,9 @@ static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned s
- 
- static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
- {
--	struct psc_ac97 *psc_ac97 = ac97->private_data;
-+	//struct psc_ac97 *psc_ac97 = ac97->private_data;
+ 	struct psc_ac97 *psc_ac97 = ac97->private_data;
  
 -	printk("psc_ac97_cold_reset\n");
 +	printk("psc_ac97_cold_reset %p\n", ac97);
  
  	/* Do a cold reset */
  	out_8(&psc_ac97->psc_regs->op1, MPC52xx_PSC_OP_RES);
-@@ -429,139 +434,6 @@ static struct snd_soc_dai psc_ac97_dai_template = {
+@@ -429,139 +432,6 @@ static struct snd_soc_dai psc_ac97_dai_template = {
  	.ops = &psc_ac97_dai_ops,
  };
  
@@ -676,7 +657,7 @@ index 9ec8ac5..0563c15 100644
  
  /* ---------------------------------------------------------------------
   * Sysfs attributes for debugging
-@@ -627,6 +499,7 @@ static DEVICE_ATTR(playback_underrun, 0644, psc_ac97_stat_show,
+@@ -627,6 +497,7 @@ static DEVICE_ATTR(playback_underrun, 0644, psc_ac97_stat_show,
  static DEVICE_ATTR(capture_overrun, 0644, psc_ac97_stat_show,
  			psc_ac97_stat_store);
  
@@ -684,13 +665,7 @@ index 9ec8ac5..0563c15 100644
  /* ---------------------------------------------------------------------
   * OF platform bus binding code:
   * - Probe/remove operations
-@@ -636,13 +509,12 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
- 				      const struct of_device_id *match)
- {
- 	phys_addr_t fifo;
--	struct psc_ac97 *psc_ac97;
-+	//struct psc_ac97 *psc_ac97;
- 	struct resource res;
+@@ -641,8 +512,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
  	int size, psc_id, irq, rc;
  	const __be32 *prop;
  	void __iomem *regs;
@@ -700,16 +675,7 @@ index 9ec8ac5..0563c15 100644
  
  	/* Get the PSC ID */
  	prop = of_get_property(op->node, "cell-index", &size);
-@@ -703,7 +575,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
- 	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_RST_RX); /* reset receiver */
- 	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_RST_TX); /* reset transmitter */
- 	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_RST_ERR_STAT); /* reset error */
--	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_SEL_MODE_REG_1); /* reset mode */
-+	//out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_SEL_MODE_REG_1); /* reset mode */
- 
- 	/* Do a cold reset of codec */
- 	out_8(&psc_ac97->psc_regs->op1, MPC52xx_PSC_OP_RES);
-@@ -712,18 +584,12 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
+@@ -712,18 +582,12 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
  	udelay(50);
  
  	/* Configure the serial interface mode to AC97 */
@@ -729,7 +695,7 @@ index 9ec8ac5..0563c15 100644
  	/* Set up mode register;
  	 * First write: RxRdy (FIFO Alarm) generates rx FIFO irq
  	 * Second write: register Normal mode for non loopback
-@@ -737,12 +603,44 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
+@@ -737,12 +601,48 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
  	out_be16(&psc_ac97->fifo_regs->tfalarm, 0x100);
  	out_8(&psc_ac97->fifo_regs->tfcntl, 0x7);
  
@@ -761,9 +727,13 @@ index 9ec8ac5..0563c15 100644
 +		}
 +		request_module("%s", name);
 +
-+		dev_archdata_set_node(&dev_ad, child);
 +		pdev = platform_device_alloc(name, 0);
++
++		platform_set_drvdata(pdev, psc_ac97);
++
++		dev_archdata_set_node(&dev_ad, child);
 +		pdev->dev.archdata = dev_ad;
++
 +		rc = platform_device_add(pdev);
 +		if (rc) {
 +			platform_device_put(pdev);
@@ -774,7 +744,7 @@ index 9ec8ac5..0563c15 100644
  	/* Save what we've done so it can be found again later */
  	dev_set_drvdata(&op->dev, psc_ac97);
  
-@@ -753,10 +651,14 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
+@@ -753,10 +653,14 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
  	if (rc)
  		dev_info(psc_ac97->dev, "error creating sysfs files\n");
  
@@ -791,7 +761,7 @@ index 9ec8ac5..0563c15 100644
  				     &psc_ac97->dai);
  
  	return 0;
-@@ -768,8 +670,6 @@ static int __devexit psc_ac97_of_remove(struct of_device *op)
+@@ -768,8 +672,6 @@ static int __devexit psc_ac97_of_remove(struct of_device *op)
  
  	dev_dbg(&op->dev, "psc_ac97_remove()\n");
  
