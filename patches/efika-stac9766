@@ -1,5 +1,5 @@
 Bottom: 7090f3c8e5cf61768300de4d78ea10e18b3f1c24
-Top:    94ccc57ece966ee080aed477ca28177cdb800762
+Top:    f2decdfe3c51fe4e4ff659fbfb270b64fe26c6a3
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-17 20:45:40 -0400
 
@@ -8,8 +8,54 @@ Fabric bindings for STAC9766 on the Efika
 
 ---
 
+diff --git a/arch/powerpc/platforms/52xx/efika.c b/arch/powerpc/platforms/52xx/efika.c
+index a2068fa..c7a6a48 100644
+--- a/arch/powerpc/platforms/52xx/efika.c
++++ b/arch/powerpc/platforms/52xx/efika.c
+@@ -211,12 +211,18 @@ static int __init efika_probe(void)
+ 	return 1;
+ }
+ 
++static void __init efika_declare_platform_devices(void)
++{
++	mpc52xx_declare_of_platform_devices();
++	platform_device_register_simple("efika-audio-fabric", 0, NULL, 0);
++}
++
+ define_machine(efika)
+ {
+ 	.name			= EFIKA_PLATFORM_NAME,
+ 	.probe			= efika_probe,
+ 	.setup_arch		= efika_setup_arch,
+-	.init			= mpc52xx_declare_of_platform_devices,
++	.init			= efika_declare_platform_devices,
+ 	.show_cpuinfo		= efika_show_cpuinfo,
+ 	.init_IRQ		= mpc52xx_init_irq,
+ 	.get_irq		= mpc52xx_get_irq,
+diff --git a/include/sound/soc-of-simple.h b/include/sound/soc-of-simple.h
+index dc979be..9fea23e 100644
+--- a/include/sound/soc-of-simple.h
++++ b/include/sound/soc-of-simple.h
+@@ -16,12 +16,13 @@ int of_snd_soc_register_codec(struct snd_soc_codec_device *codec_dev,
+ 			      void *codec_data, struct snd_soc_dai *dai,
+ 			      struct device_node *node);
+ 
+-int of_snd_soc_register_platform(struct snd_soc_platform *platform,
+-				 struct device_node *node,
++int of_snd_soc_register_cpu_dai(struct device_node *node,
+ 				 struct snd_soc_dai *cpu_dai);
+ 
+-#endif
++int of_snd_soc_register_platform(struct snd_soc_platform *platform);
++
++int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops);
+ 
+-void of_snd_soc_register_machine(char *name, struct snd_soc_ops *ops);
++#endif
+ 
+ #endif /* _INCLUDE_SOC_OF_H_ */
 diff --git a/sound/soc/codecs/stac9766.c b/sound/soc/codecs/stac9766.c
-index 2f4f2f8..b915262 100644
+index 2f4f2f8..79beee7 100644
 --- a/sound/soc/codecs/stac9766.c
 +++ b/sound/soc/codecs/stac9766.c
 @@ -25,6 +25,7 @@
@@ -20,15 +66,57 @@ index 2f4f2f8..b915262 100644
  
  #include "stac9766.h"
  
-@@ -449,6 +450,7 @@ static int stac9766_codec_probe(struct platform_device *pdev)
+@@ -242,7 +243,7 @@ unsigned int stac9766_ac97_read(struct snd_soc_codec *codec,
+ {
+ 	u16 val = 0, *cache = codec->reg_cache;
+ 
+-	if (reg/2 > ARRAY_SIZE(stac9766_reg))
++	if (reg / 2 > ARRAY_SIZE(stac9766_reg))
+ 		return -EIO;
+ 
+ 	if (reg == AC97_RESET || reg == AC97_GPIO_STATUS || AC97_INT_PAGING ||
+@@ -252,8 +253,8 @@ unsigned int stac9766_ac97_read(struct snd_soc_codec *codec,
+ 		printk("stac9766_ac97_read actual reg %02x val %04x\n", reg, val);
+ 		return val;
+ 	}
+-	printk("stac9766_ac97_read cache reg %02x val %04x\n", reg, cache[reg/2]);
+-	return cache[reg/2];
++	printk("stac9766_ac97_read cache reg %02x val %04x\n", reg, cache[reg / 2]);
++	return cache[reg / 2];
+ }
+ 
+ int stac9766_ac97_write(struct snd_soc_codec *codec, unsigned int reg,
+@@ -262,11 +263,11 @@ int stac9766_ac97_write(struct snd_soc_codec *codec, unsigned int reg,
+ 	u16 *cache = codec->reg_cache;
+ 
+ 	printk("stac9766_ac97_write reg %02x val %04x\n", reg, val);
+-	if (reg/2 > ARRAY_SIZE(stac9766_reg))
++	if (reg / 2 > ARRAY_SIZE(stac9766_reg))
+ 		return -EIO;
+ 
+ 	soc_ac97_ops.write(codec->ac97, reg, val);
+-	cache[reg/2] = val;
++	cache[reg / 2] = val;
+ 	return 0;
+ }
+ 
+@@ -420,6 +421,7 @@ static int stac9766_codec_probe(struct platform_device *pdev)
+ 	int ret = 0;
+ 
+ 	printk(KERN_INFO "STAC9766 SoC Audio Codec %s\n", STAC9766_VERSION);
++	printk("private_data is %p\n", socdev);
+ 
+ 	socdev->card->codec = kzalloc(sizeof(struct snd_soc_codec),
+ 				      GFP_KERNEL);
+@@ -449,6 +451,7 @@ static int stac9766_codec_probe(struct platform_device *pdev)
  	ret = snd_soc_new_ac97_codec(codec, &soc_ac97_ops, 0);
  	if (ret < 0)
  		goto codec_err;
-+	codec->ac97->private_data = platform_get_drvdata(pdev);
++	printk("private_dats get %p\n", codec->ac97->private_data);
  
  	/* register pcms */
  	ret = snd_soc_new_pcms(socdev, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
-@@ -513,7 +515,37 @@ struct snd_soc_codec_device soc_codec_dev_stac9766 = {
+@@ -513,7 +516,37 @@ struct snd_soc_codec_device soc_codec_dev_stac9766 = {
  };
  EXPORT_SYMBOL_GPL(soc_codec_dev_stac9766);
  
@@ -102,24 +190,34 @@ index 16a1e28..0926492 100644
  	help
  	  Say Y if you want to add support for sound on the Efika.
 diff --git a/sound/soc/fsl/Makefile b/sound/soc/fsl/Makefile
-index 70c44bf..dd8febc 100644
+index 70c44bf..e3fd761 100644
 --- a/sound/soc/fsl/Makefile
 +++ b/sound/soc/fsl/Makefile
-@@ -17,5 +17,8 @@ obj-$(CONFIG_SND_SOC_MPC5200_AC97) += mpc5200_psc_ac97.o
- 
- # MPC5200 Machine Support
+@@ -19,3 +19,5 @@ obj-$(CONFIG_SND_SOC_MPC5200_AC97) += mpc5200_psc_ac97.o
  snd_soc_dspeak01_fabric-objs := dspeak01_fabric.o
-+snd-soc-efika-stac9766-objs := efika-stac9766.o
  
  obj-$(CONFIG_SND_MPC52xx_SOC_DSPEAK01) += snd_soc_dspeak01_fabric.o
-+obj-$(CONFIG_SND_MPC52xx_SOC_EFIKA) += snd-soc-efika-stac9766.o
++obj-$(CONFIG_SND_MPC52xx_SOC_EFIKA) += efika-audio-fabric.o
 +
-diff --git a/sound/soc/fsl/efika-stac9766.c b/sound/soc/fsl/efika-stac9766.c
+diff --git a/sound/soc/fsl/dspeak01_fabric.c b/sound/soc/fsl/dspeak01_fabric.c
+index bd35a14..da65761 100644
+--- a/sound/soc/fsl/dspeak01_fabric.c
++++ b/sound/soc/fsl/dspeak01_fabric.c
+@@ -113,7 +113,7 @@ static int __devinit dspeak01_fabric_probe(struct of_device *op,
+ 	if (!fabric.clock)
+ 		return -ENODEV;
+ 
+-	of_snd_soc_register_machine("DSPEAK01", &dspeak01_fabric_ops);
++	of_snd_soc_register_fabric("DSPEAK01", &dspeak01_fabric_ops);
+ 	return 0;
+ }
+ 
+diff --git a/sound/soc/fsl/efika-audio-fabric.c b/sound/soc/fsl/efika-audio-fabric.c
 new file mode 100644
-index 0000000..340d7a3
+index 0000000..c880df8
 --- /dev/null
-+++ b/sound/soc/fsl/efika-stac9766.c
-@@ -0,0 +1,304 @@
++++ b/sound/soc/fsl/efika-audio-fabric.c
+@@ -0,0 +1,274 @@
 +/*
 + * Efika driver for the PSC of the Freescale MPC52xx configured as AC97 interface
 + *
@@ -339,9 +437,9 @@ index 0000000..340d7a3
 + * mpc5200. It is missing logic to detect hp/mic insertions and logic
 + * to re-route the audio in such an event.
 + */
-+static int efika_stac9766_probe(struct of_device *op, const struct of_device_id *match)
++static int efika_stac9766_probe(struct platform_device *pdev)
 +{
-+	of_snd_soc_register_machine("Efika", NULL);
++	of_snd_soc_register_fabric("Efika", NULL);
 +	return 0;
 +}
 +
@@ -352,13 +450,13 @@ index 0000000..340d7a3
 +
 +#ifdef CONFIG_PM
 +
-+static int efika_stac9766_suspend(struct of_device *op,
++static int efika_stac9766_suspend(struct platform_device *pdev,
 +	pm_message_t state)
 +{
 +	return 0;
 +}
 +
-+static int efika_stac9766_resume(struct of_device *op)
++static int efika_stac9766_resume(struct platform_device *pdev)
 +{
 +	return 0;
 +}
@@ -368,64 +466,34 @@ index 0000000..340d7a3
 +#define efika_stac9766_resume  NULL
 +#endif
 +
-+/* Match table for of_platform binding */
-+static struct of_device_id psc_ac97_match[] __devinitdata = {
-+	{ .compatible = "efika-stac9766", },
-+	{}
-+};
-+MODULE_DEVICE_TABLE(of, psc_ac97_match);
-+
-+static struct of_platform_driver efika_stac9766_driver = {
-+	.owner		= THIS_MODULE,
-+	.name		= DRV_NAME,
-+	.match_table	= psc_ac97_match,
-+	.probe		= efika_stac9766_probe,
-+	.remove		= efika_stac9766_remove,
-+	.suspend	= efika_stac9766_suspend,
-+	.resume		= efika_stac9766_resume,
-+	.driver		= {
-+		.name	= DRV_NAME,
++static struct platform_driver efika_fabric = {
++	.probe	= efika_stac9766_probe,
++	.suspend = efika_stac9766_suspend,
++ 	.resume = efika_stac9766_resume,
++	.driver	= {
++		.name	= "efika-audio-fabric",
 +	},
 +};
 +
-+
-+/* ======================================================================== */
-+/* Module                                                                   */
-+/* ======================================================================== */
-+
-+static int __init
-+efika_stac9766_init(void)
++static __init int efika_fabric_init(void)
 +{
-+	int rv;
-+
-+	if (!machine_is_compatible("bplan,efika"))
-+		return -ENODEV;
-+
-+	rv = of_register_platform_driver(&efika_stac9766_driver);
-+	if (rv) {
-+		printk(KERN_ERR DRV_NAME ": "
-+			"of_register_platform_driver failed (%i)\n", rv);
-+		return rv;
-+	}
-+
-+	return 0;
++	return platform_driver_register(&efika_fabric);
 +}
 +
-+static void __exit
-+efika_stac9766_exit(void)
++static __exit void efika_fabric_exit(void)
 +{
-+	of_unregister_platform_driver(&efika_stac9766_driver);
 +}
 +
-+module_init(efika_stac9766_init);
-+module_exit(efika_stac9766_exit);
++module_init(efika_fabric_init);
++module_exit(efika_fabric_exit);
++
 +
 +MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
 +MODULE_DESCRIPTION(DRV_NAME ": mpc5200 Efika fabric driver");
 +MODULE_LICENSE("GPL");
 +
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index c09faf3..4a3dbd8 100644
+index c09faf3..09e7548 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -4,6 +4,8 @@
@@ -454,12 +522,14 @@ index c09faf3..4a3dbd8 100644
  					&pcm->streams[1].substream->dma_buffer);
  		if (rc)
  			goto capture_alloc_err;
-@@ -542,3 +544,17 @@ struct snd_soc_platform mpc5200_soc_platform = {
+@@ -542,3 +544,19 @@ struct snd_soc_platform mpc5200_soc_platform = {
  };
  EXPORT_SYMBOL_GPL(mpc5200_soc_platform);
  
 +static int __init mpc5200_soc_platform_init(void)
 +{
++	/* Tell the ASoC OF helpers about it */
++	of_snd_soc_register_platform(&mpc5200_soc_platform);
 +	return snd_soc_register_platform(&mpc5200_soc_platform);
 +}
 +module_init(mpc5200_soc_platform_init);
@@ -473,7 +543,7 @@ index c09faf3..4a3dbd8 100644
 +
 +
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
-index 9ec8ac5..eb17c42 100644
+index 9ec8ac5..d5af6b5 100644
 --- a/sound/soc/fsl/mpc5200_psc_ac97.c
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
 @@ -9,6 +9,8 @@
@@ -499,7 +569,20 @@ index 9ec8ac5..eb17c42 100644
  /**
   * PSC_AC97_RATES: sample rates supported by the AC97
   *
-@@ -147,7 +150,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+@@ -117,9 +120,11 @@ struct psc_ac97 {
+ 
+ #define DRV_NAME "mpc5200-psc-ac97"
+ 
++struct psc_ac97 *psc_ac97;
++
+ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+ {
+-	struct psc_ac97 *psc_ac97 = ac97->private_data;
++	//struct psc_ac97 *psc_ac97 = ac97->private_data;
+ 	int timeout;
+ 	unsigned int val;
+ 
+@@ -147,7 +152,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
  		udelay(10);
  
  	if (!timeout) {
@@ -508,16 +591,28 @@ index 9ec8ac5..eb17c42 100644
  		return 0xffff;
  	}
  
-@@ -194,7 +197,7 @@ static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
+@@ -167,7 +172,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+ 
+ static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned short val)
  {
- 	struct psc_ac97 *psc_ac97 = ac97->private_data;
+-	struct psc_ac97 *psc_ac97 = ac97->private_data;
++	//struct psc_ac97 *psc_ac97 = ac97->private_data;
+ 	int timeout;
+ 
+ 	//printk("ac97 write: reg %04x  val %04x\n", reg, val);
+@@ -192,9 +197,9 @@ static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned s
+ 
+ static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
+ {
+-	struct psc_ac97 *psc_ac97 = ac97->private_data;
++	//struct psc_ac97 *psc_ac97 = ac97->private_data;
  
 -	printk("psc_ac97_cold_reset\n");
 +	printk("psc_ac97_cold_reset %p\n", ac97);
  
  	/* Do a cold reset */
  	out_8(&psc_ac97->psc_regs->op1, MPC52xx_PSC_OP_RES);
-@@ -429,139 +432,6 @@ static struct snd_soc_dai psc_ac97_dai_template = {
+@@ -429,139 +434,6 @@ static struct snd_soc_dai psc_ac97_dai_template = {
  	.ops = &psc_ac97_dai_ops,
  };
  
@@ -657,7 +752,7 @@ index 9ec8ac5..eb17c42 100644
  
  /* ---------------------------------------------------------------------
   * Sysfs attributes for debugging
-@@ -627,6 +497,7 @@ static DEVICE_ATTR(playback_underrun, 0644, psc_ac97_stat_show,
+@@ -627,6 +499,7 @@ static DEVICE_ATTR(playback_underrun, 0644, psc_ac97_stat_show,
  static DEVICE_ATTR(capture_overrun, 0644, psc_ac97_stat_show,
  			psc_ac97_stat_store);
  
@@ -665,7 +760,13 @@ index 9ec8ac5..eb17c42 100644
  /* ---------------------------------------------------------------------
   * OF platform bus binding code:
   * - Probe/remove operations
-@@ -641,8 +512,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
+@@ -636,13 +509,12 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
+ 				      const struct of_device_id *match)
+ {
+ 	phys_addr_t fifo;
+-	struct psc_ac97 *psc_ac97;
++	//struct psc_ac97 *psc_ac97;
+ 	struct resource res;
  	int size, psc_id, irq, rc;
  	const __be32 *prop;
  	void __iomem *regs;
@@ -675,7 +776,7 @@ index 9ec8ac5..eb17c42 100644
  
  	/* Get the PSC ID */
  	prop = of_get_property(op->node, "cell-index", &size);
-@@ -712,18 +582,12 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
+@@ -712,18 +584,12 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
  	udelay(50);
  
  	/* Configure the serial interface mode to AC97 */
@@ -695,7 +796,7 @@ index 9ec8ac5..eb17c42 100644
  	/* Set up mode register;
  	 * First write: RxRdy (FIFO Alarm) generates rx FIFO irq
  	 * Second write: register Normal mode for non loopback
-@@ -737,12 +601,48 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
+@@ -737,12 +603,46 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
  	out_be16(&psc_ac97->fifo_regs->tfalarm, 0x100);
  	out_8(&psc_ac97->fifo_regs->tfcntl, 0x7);
  
@@ -729,8 +830,6 @@ index 9ec8ac5..eb17c42 100644
 +
 +		pdev = platform_device_alloc(name, 0);
 +
-+		platform_set_drvdata(pdev, psc_ac97);
-+
 +		dev_archdata_set_node(&dev_ad, child);
 +		pdev->dev.archdata = dev_ad;
 +
@@ -744,7 +843,7 @@ index 9ec8ac5..eb17c42 100644
  	/* Save what we've done so it can be found again later */
  	dev_set_drvdata(&op->dev, psc_ac97);
  
-@@ -753,10 +653,14 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
+@@ -753,11 +653,14 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
  	if (rc)
  		dev_info(psc_ac97->dev, "error creating sysfs files\n");
  
@@ -757,11 +856,12 @@ index 9ec8ac5..eb17c42 100644
  
  	/* Tell the ASoC OF helpers about it */
 -	of_snd_soc_register_platform(&psc_ac97_pcm_soc_platform, op->node,
-+	of_snd_soc_register_platform(&mpc5200_soc_platform, op->node,
- 				     &psc_ac97->dai);
+-				     &psc_ac97->dai);
++	of_snd_soc_register_cpu_dai(op->node, &psc_ac97->dai);
  
  	return 0;
-@@ -768,8 +672,6 @@ static int __devexit psc_ac97_of_remove(struct of_device *op)
+ }
+@@ -768,8 +671,6 @@ static int __devexit psc_ac97_of_remove(struct of_device *op)
  
  	dev_dbg(&op->dev, "psc_ac97_remove()\n");
  
@@ -771,7 +871,7 @@ index 9ec8ac5..eb17c42 100644
  	bcom_gen_bd_tx_release(psc_ac97->playback.bcom_task);
  
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index ff6255f..9e174ad 100644
+index ff6255f..b82f59b 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
 @@ -270,140 +270,6 @@ static struct snd_soc_dai psc_i2s_dai_template = {
@@ -915,7 +1015,7 @@ index ff6255f..9e174ad 100644
   * Sysfs attributes for debugging
   */
  
-@@ -585,10 +451,8 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+@@ -585,11 +451,8 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
  	if (rc)
  		dev_info(psc_i2s->dev, "error creating sysfs files\n");
  
@@ -923,11 +1023,12 @@ index ff6255f..9e174ad 100644
 -
  	/* Tell the ASoC OF helpers about it */
 -	of_snd_soc_register_platform(&psc_i2s_pcm_soc_platform, op->node,
-+	of_snd_soc_register_platform(&mpc5200_soc_platform, op->node,
- 				     &psc_i2s->dai);
+-				     &psc_i2s->dai);
++	of_snd_soc_register_cpu_dai(op->node, &psc_i2s->dai);
  
  	return 0;
-@@ -600,8 +464,6 @@ static int __devexit psc_i2s_of_remove(struct of_device *op)
+ }
+@@ -600,8 +463,6 @@ static int __devexit psc_i2s_of_remove(struct of_device *op)
  
  	dev_dbg(&op->dev, "psc_i2s_remove()\n");
  
@@ -937,19 +1038,82 @@ index ff6255f..9e174ad 100644
  	bcom_gen_bd_tx_release(psc_i2s->playback.bcom_task);
  
 diff --git a/sound/soc/fsl/soc-of-simple.c b/sound/soc/fsl/soc-of-simple.c
-index 2d0ca0b..98f91a1 100644
+index 2d0ca0b..fb08ec8 100644
 --- a/sound/soc/fsl/soc-of-simple.c
 +++ b/sound/soc/fsl/soc-of-simple.c
-@@ -142,11 +142,29 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform,
- 	pr_info("registering ASoC platform driver: %s\n", node->full_name);
+@@ -34,12 +34,14 @@ struct of_snd_soc_device {
+ 	struct snd_soc_card card;
+ 	struct snd_soc_dai_link dai_link;
+ 	struct platform_device *pdev;
+-	struct device_node *platform_node;
++	struct device_node *cpu_dai_node;
+ 	struct device_node *codec_node;
+ };
+ 
+-static struct snd_soc_ops *machine_ops = NULL;
+-static char *machine_name = NULL;
++/* template values */
++struct snd_soc_platform *template_platform;
++char *template_name;
++struct snd_soc_ops *template_ops;
+ 
+ static struct of_snd_soc_device *
+ of_snd_soc_get_device(struct device_node *codec_node)
+@@ -61,7 +63,10 @@ of_snd_soc_get_device(struct device_node *codec_node)
+ 	of_soc->card.dai_link = &of_soc->dai_link;
+ 	of_soc->card.num_links = 1;
+ 	of_soc->device.card = &of_soc->card;
+-	of_soc->dai_link.ops = machine_ops;
++	of_soc->dai_link.ops = template_ops;
++	of_soc->card.name = template_name;
++	of_soc->card.platform = template_platform;
++
+ 	list_add(&of_soc->list, &of_snd_soc_device_list);
+ 
+ 	return of_soc;
+@@ -74,10 +79,12 @@ static void of_snd_soc_register_device(struct of_snd_soc_device *of_soc)
+ 
+ 	/* Only register the device if both the codec and platform have
+ 	 * been registered */
+-	if ((!of_soc->device.codec_data) || (!of_soc->platform_node) || !machine_name)
++	printk("Match %p %p %p %p\n", of_soc->device.codec_data, of_soc->cpu_dai_node, of_soc->card.platform, of_soc->card.name);
++	if ((!of_soc->device.codec_data) || (!of_soc->cpu_dai_node) ||
++									!of_soc->card.platform || !of_soc->card.name)
+ 		return;
+ 
+-	pr_info("platform<-->codec match achieved; registering machine\n");
++	pr_info("platform<-->codec match achieved; registering fabric\n");
+ 
+ 	pdev = platform_device_alloc("soc-audio", of_soc->id);
+ 	if (!pdev) {
+@@ -130,8 +137,7 @@ int of_snd_soc_register_codec(struct snd_soc_codec_device *codec_dev,
+ }
+ EXPORT_SYMBOL_GPL(of_snd_soc_register_codec);
+ 
+-int of_snd_soc_register_platform(struct snd_soc_platform *platform,
+-				 struct device_node *node,
++int of_snd_soc_register_cpu_dai(struct device_node *node,
+ 				 struct snd_soc_dai *cpu_dai)
+ {
+ 	struct of_snd_soc_device *of_soc;
+@@ -139,14 +145,44 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform,
+ 	const phandle *handle;
+ 	int len, rc = 0;
+ 
+-	pr_info("registering ASoC platform driver: %s\n", node->full_name);
++	pr_info("registering ASoC CPU DAI driver: %s\n", node->full_name);
  
  	handle = of_get_property(node, "codec-handle", &len);
 -	if (!handle || len < sizeof(handle))
 -		return -ENODEV;
 -	codec_node = of_find_node_by_phandle(*handle);
 -	if (!codec_node)
+-		return -ENODEV;
 +	if (!handle || len < sizeof(handle)) {
++		/* Check for the codec child nodes */
 +		for_each_child_of_node(node, codec_node) {
++			struct platform_device *pdev;
++			struct dev_archdata dev_ad = {};
 +			char name[MODULE_NAME_LEN];
 +			const u32 *addr;
 +			int len;
@@ -962,18 +1126,88 @@ index 2d0ca0b..98f91a1 100644
 +				printk(KERN_ERR "psc-ac97: invalid reg in device tree\n");
 +				continue;
 +			}
-+			goto found;
++			request_module("%s", name);
++
++			pdev = platform_device_alloc(name, 0);
++
++			dev_archdata_set_node(&dev_ad, codec_node);
++			pdev->dev.archdata = dev_ad;
++
++			rc = platform_device_add(pdev);
++			if (rc) {
++				platform_device_put(pdev);
++				return rc;
++			}
 +		}
- 		return -ENODEV;
 +	} else {
 +		codec_node = of_find_node_by_phandle(*handle);
 +		if (!codec_node)
 +			return -ENODEV;
 +	}
-+found:
  	pr_info("looking for codec: %s\n", codec_node->full_name);
  
  	mutex_lock(&of_snd_soc_mutex);
+@@ -156,10 +192,8 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform,
+ 		goto out;
+ 	}
+ 
+-	of_soc->platform_node = node;
++	of_soc->cpu_dai_node = node;
+ 	of_soc->dai_link.cpu_dai = cpu_dai;
+-	of_soc->card.platform = platform;
+-	of_soc->card.name = machine_name;
+ 
+ 	/* Now try to register the SoC device */
+ 	of_snd_soc_register_device(of_soc);
+@@ -168,20 +202,41 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform,
+ 	mutex_unlock(&of_snd_soc_mutex);
+ 	return rc;
+ }
+-EXPORT_SYMBOL_GPL(of_snd_soc_register_platform);
++EXPORT_SYMBOL_GPL(of_snd_soc_register_cpu_dai);
+ 
+-void of_snd_soc_register_machine(char *name, struct snd_soc_ops *ops)
++int of_snd_soc_register_platform(struct snd_soc_platform *platform)
+ {
+ 	struct of_snd_soc_device *of_soc;
++	int rc = 0;
+ 
+-	machine_name = name;
+-	machine_ops = ops;
++	pr_info("registering ASoC platform driver: %s\n", platform->name);
++	template_platform = platform;
+ 
++	mutex_lock(&of_snd_soc_mutex);
+ 	list_for_each_entry(of_soc, &of_snd_soc_device_list, list) {
+-		of_soc->dai_link.ops = machine_ops;
+-		of_soc->card.name = machine_name;
++		of_soc->card.platform = platform;
+ 		of_snd_soc_register_device(of_soc);
+ 	}
++	mutex_unlock(&of_snd_soc_mutex);
++	return rc;
++}
++EXPORT_SYMBOL_GPL(of_snd_soc_register_platform);
+ 
++int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops)
++{
++	struct of_snd_soc_device *of_soc;
++
++	pr_info("registering ASoC fabric driver: %s\n", name);
++	template_name = name;
++	template_ops = ops;
++
++	mutex_lock(&of_snd_soc_mutex);
++	list_for_each_entry(of_soc, &of_snd_soc_device_list, list) {
++		of_soc->dai_link.ops = ops;
++		of_soc->card.name = name;
++		of_snd_soc_register_device(of_soc);
++	}
++	mutex_unlock(&of_snd_soc_mutex);
++	return 0;
+ }
+-EXPORT_SYMBOL_GPL(of_snd_soc_register_machine);
++EXPORT_SYMBOL_GPL(of_snd_soc_register_fabric);
 diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
 index 8d0389a..144b171 100644
 --- a/sound/soc/soc-core.c
