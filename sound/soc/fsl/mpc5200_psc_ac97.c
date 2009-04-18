@@ -9,6 +9,8 @@
  * published by the Free Software Foundation.
  */
 
+#define DEBUG
+
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
@@ -34,9 +36,10 @@
 #include "mpc5200_dma.h"
 #include "mpc5200_psc_ac97.h"
 
-MODULE_AUTHOR("Jon Smirl");
-MODULE_DESCRIPTION("MPC52xx AC97 module");
+MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
+MODULE_DESCRIPTION("mpc5200 AC97 module");
 MODULE_LICENSE("GPL");
+
 
 /**
  * PSC_AC97_RATES: sample rates supported by the AC97
@@ -147,7 +150,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 		udelay(10);
 
 	if (!timeout) {
-		printk(KERN_ERR DRV_NAME ": timeout on ac97 read (val)\n");
+		printk(KERN_ERR DRV_NAME ": timeout on ac97 read (val) %x\n", in_be16(&psc_ac97->psc_regs->sr_csr.status));
 		return 0xffff;
 	}
 
@@ -194,7 +197,7 @@ static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
 {
 	struct psc_ac97 *psc_ac97 = ac97->private_data;
 
-	printk("psc_ac97_cold_reset\n");
+	printk("psc_ac97_cold_reset %p\n", ac97);
 
 	/* Do a cold reset */
 	out_8(&psc_ac97->psc_regs->op1, MPC52xx_PSC_OP_RES);
@@ -429,139 +432,6 @@ static struct snd_soc_dai psc_ac97_dai_template = {
 	.ops = &psc_ac97_dai_ops,
 };
 
-/* ---------------------------------------------------------------------
- * The PSC AC97 'ASoC platform' driver
- *
- * Can be referenced by an 'ASoC machine' driver
- * This driver only deals with the audio bus; it doesn't have any
- * interaction with the attached codec
- */
-
-static int psc_ac97_pcm_open(struct snd_pcm_substream *substream)
-{
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct psc_ac97 *psc_ac97 = rtd->dai->cpu_dai->private_data;
-	struct psc_ac97_stream *s;
-
-	dev_dbg(psc_ac97->dev, "psc_ac97_pcm_open(substream=%p)\n", substream);
-
-	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
-		s = &psc_ac97->capture;
-	else
-		s = &psc_ac97->playback;
-
-	snd_soc_set_runtime_hwparams(substream, &mpc5200_pcm_hardware);
-
-	s->stream = substream;
-	return 0;
-}
-
-static int psc_ac97_pcm_close(struct snd_pcm_substream *substream)
-{
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct psc_ac97 *psc_ac97 = rtd->dai->cpu_dai->private_data;
-	struct psc_ac97_stream *s;
-
-	dev_dbg(psc_ac97->dev, "psc_ac97_pcm_close(substream=%p)\n", substream);
-
-	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
-		s = &psc_ac97->capture;
-	else
-		s = &psc_ac97->playback;
-
-	s->stream = NULL;
-	return 0;
-}
-
-static snd_pcm_uframes_t
-psc_ac97_pcm_pointer(struct snd_pcm_substream *substream)
-{
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct psc_ac97 *psc_ac97 = rtd->dai->cpu_dai->private_data;
-	struct psc_ac97_stream *s;
-	dma_addr_t count;
-
-	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
-		s = &psc_ac97->capture;
-	else
-		s = &psc_ac97->playback;
-
-	count = s->period_current_pt - s->period_start;
-
-	return bytes_to_frames(substream->runtime, count);
-}
-
-static struct snd_pcm_ops psc_ac97_pcm_ops = {
-	.open		= psc_ac97_pcm_open,
-	.close		= psc_ac97_pcm_close,
-	.ioctl		= snd_pcm_lib_ioctl,
-	.pointer	= psc_ac97_pcm_pointer,
-};
-
-static u64 psc_ac97_pcm_dmamask = 0xffffffff;
-static int psc_ac97_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
-			   struct snd_pcm *pcm)
-{
-	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
-	size_t size = mpc5200_pcm_hardware.buffer_bytes_max;
-	int rc = 0;
-
-	dev_dbg(rtd->socdev->dev, "psc_ac97_pcm_new(card=%p, dai=%p, pcm=%p)\n",
-		card, dai, pcm);
-
-	if (!card->dev->dma_mask)
-		card->dev->dma_mask = &psc_ac97_pcm_dmamask;
-	if (!card->dev->coherent_dma_mask)
-		card->dev->coherent_dma_mask = 0xffffffff;
-
-	if (pcm->streams[0].substream) {
-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
-					&pcm->streams[0].substream->dma_buffer);
-		if (rc)
-			goto playback_alloc_err;
-	}
-
-	if (pcm->streams[1].substream) {
-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
-					&pcm->streams[1].substream->dma_buffer);
-		if (rc)
-			goto capture_alloc_err;
-	}
-
-	return 0;
-
- capture_alloc_err:
-	if (pcm->streams[0].substream)
-		snd_dma_free_pages(&pcm->streams[0].substream->dma_buffer);
- playback_alloc_err:
-	dev_err(card->dev, "Cannot allocate buffer(s)\n");
-	return -ENOMEM;
-}
-
-static void psc_ac97_pcm_free(struct snd_pcm *pcm)
-{
-	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
-	struct snd_pcm_substream *substream;
-	int stream;
-
-	dev_dbg(rtd->socdev->dev, "psc_ac97_pcm_free(pcm=%p)\n", pcm);
-
-	for (stream = 0; stream < 2; stream++) {
-		substream = pcm->streams[stream].substream;
-		if (substream) {
-			snd_dma_free_pages(&substream->dma_buffer);
-			substream->dma_buffer.area = NULL;
-			substream->dma_buffer.addr = 0;
-		}
-	}
-}
-
-struct snd_soc_platform psc_ac97_pcm_soc_platform = {
-	.name		= "mpc5200-psc-audio",
-	.pcm_ops	= &psc_ac97_pcm_ops,
-	.pcm_new	= &psc_ac97_pcm_new,
-	.pcm_free	= &psc_ac97_pcm_free,
-};
 
 /* ---------------------------------------------------------------------
  * Sysfs attributes for debugging
@@ -627,6 +497,7 @@ static DEVICE_ATTR(playback_underrun, 0644, psc_ac97_stat_show,
 static DEVICE_ATTR(capture_overrun, 0644, psc_ac97_stat_show,
 			psc_ac97_stat_store);
 
+
 /* ---------------------------------------------------------------------
  * OF platform bus binding code:
  * - Probe/remove operations
@@ -641,8 +512,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	int size, psc_id, irq, rc;
 	const __be32 *prop;
 	void __iomem *regs;
-
-	dev_dbg(&op->dev, "probing psc ac97 device\n");
+	struct device_node *child;
 
 	/* Get the PSC ID */
 	prop = of_get_property(op->node, "cell-index", &size);
@@ -712,17 +582,11 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	udelay(50);
 
 	/* Configure the serial interface mode to AC97 */
-	psc_ac97->sicr = MPC52xx_PSC_SICR_ENAC97 | MPC52xx_PSC_SICR_SYNCPOL |
-			MPC52xx_PSC_SICR_CLKPOL;
+	psc_ac97->sicr = MPC52xx_PSC_SICR_SIM_AC97 | MPC52xx_PSC_SICR_ENAC97;
 	out_be32(&psc_ac97->psc_regs->sicr, psc_ac97->sicr);
 
 	/* No slots active */
 	out_be32(&psc_ac97->psc_regs->ac97_slots, 0x00000000);
-
-	/* Check for the codec handle.  If it is not present then we
-	 * are done */
-	if (!of_get_property(op->node, "codec-handle", NULL))
-		return 0;
 
 	/* Set up mode register;
 	 * First write: RxRdy (FIFO Alarm) generates rx FIFO irq
@@ -737,11 +601,47 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	out_be16(&psc_ac97->fifo_regs->tfalarm, 0x100);
 	out_8(&psc_ac97->fifo_regs->tfcntl, 0x7);
 
+	/* Go */
+	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_TX_ENABLE);
+	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_RX_ENABLE);
+
 	/* Lookup the IRQ numbers */
 	psc_ac97->playback.irq =
 		bcom_get_task_irq(psc_ac97->playback.bcom_task);
 	psc_ac97->capture.irq =
 		bcom_get_task_irq(psc_ac97->capture.bcom_task);
+
+	/* Check for the codec child nodes */
+	for_each_child_of_node(op->node, child) {
+		struct platform_device *pdev;
+		struct dev_archdata dev_ad = {};
+		char name[MODULE_NAME_LEN];
+		const u32 *addr;
+		int len;
+
+		if (of_modalias_node(child, name, sizeof(name)) < 0)
+			continue;
+
+		addr = of_get_property(child, "reg", &len);
+		if (!addr || len < sizeof(int) || *addr > (1 << 10) - 1) {
+			printk(KERN_ERR "psc-ac97: invalid reg in device tree\n");
+			continue;
+		}
+		request_module("%s", name);
+
+		pdev = platform_device_alloc(name, 0);
+
+		platform_set_drvdata(pdev, psc_ac97);
+
+		dev_archdata_set_node(&dev_ad, child);
+		pdev->dev.archdata = dev_ad;
+
+		rc = platform_device_add(pdev);
+		if (rc) {
+			platform_device_put(pdev);
+			return rc;
+		}
+	}
 
 	/* Save what we've done so it can be found again later */
 	dev_set_drvdata(&op->dev, psc_ac97);
@@ -753,10 +653,14 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	if (rc)
 		dev_info(psc_ac97->dev, "error creating sysfs files\n");
 
-	snd_soc_register_platform(&psc_ac97_pcm_soc_platform);
+	rc = snd_soc_register_dai(&psc_ac97->dai);
+	if (rc != 0) {
+		printk("Failed to register DAI\n");
+		return 0;
+	}
 
 	/* Tell the ASoC OF helpers about it */
-	of_snd_soc_register_platform(&psc_ac97_pcm_soc_platform, op->node,
+	of_snd_soc_register_platform(&mpc5200_soc_platform, op->node,
 				     &psc_ac97->dai);
 
 	return 0;
@@ -767,8 +671,6 @@ static int __devexit psc_ac97_of_remove(struct of_device *op)
 	struct psc_ac97 *psc_ac97 = dev_get_drvdata(&op->dev);
 
 	dev_dbg(&op->dev, "psc_ac97_remove()\n");
-
-	snd_soc_unregister_platform(&psc_ac97_pcm_soc_platform);
 
 	bcom_gen_bd_rx_release(psc_ac97->capture.bcom_task);
 	bcom_gen_bd_tx_release(psc_ac97->playback.bcom_task);

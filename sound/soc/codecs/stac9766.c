@@ -25,6 +25,7 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
+#include <sound/soc-of-simple.h>
 
 #include "stac9766.h"
 
@@ -449,6 +450,7 @@ static int stac9766_codec_probe(struct platform_device *pdev)
 	ret = snd_soc_new_ac97_codec(codec, &soc_ac97_ops, 0);
 	if (ret < 0)
 		goto codec_err;
+	codec->ac97->private_data = platform_get_drvdata(pdev);
 
 	/* register pcms */
 	ret = snd_soc_new_pcms(socdev, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
@@ -513,7 +515,37 @@ struct snd_soc_codec_device soc_codec_dev_stac9766 = {
 };
 EXPORT_SYMBOL_GPL(soc_codec_dev_stac9766);
 
+static int __init stac9766_probe(struct platform_device *pdev)
+{
+#if defined(CONFIG_SND_SOC_OF_SIMPLE)
+	/* Tell the of_soc helper about this codec */
+	of_snd_soc_register_codec(&soc_codec_dev_stac9766, pdev->dev.archdata.of_node, stac9766_dai,
+				  pdev->dev.archdata.of_node);
+#endif
+	return 0;
+}
 
-MODULE_DESCRIPTION("ASoC STAC9766 driver");
-MODULE_AUTHOR("Jon Smirl");
+static struct platform_driver stac9766_driver = {
+	.probe	= stac9766_probe,
+	.driver	= {
+		.name	= "stac9766",
+	},
+};
+
+static __init int stac9766_driver_init(void)
+{
+
+	snd_soc_register_dai(stac9766_dai);
+	return platform_driver_register(&stac9766_driver);
+}
+
+static __exit void stac9766_driver_exit(void)
+{
+}
+
+module_init(stac9766_driver_init);
+module_exit(stac9766_driver_exit);
+
+MODULE_DESCRIPTION("ASoC stac9766 driver");
+MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
 MODULE_LICENSE("GPL");
