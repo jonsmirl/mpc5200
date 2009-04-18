@@ -40,6 +40,7 @@ MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
 MODULE_DESCRIPTION("mpc5200 AC97 module");
 MODULE_LICENSE("GPL");
 
+
 /**
  * PSC_AC97_RATES: sample rates supported by the AC97
  *
@@ -119,9 +120,11 @@ struct psc_ac97 {
 
 #define DRV_NAME "mpc5200-psc-ac97"
 
+static struct psc_ac97 *psc_ac97;
+
 static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 {
-	struct psc_ac97 *psc_ac97 = ac97->private_data;
+	//struct psc_ac97 *psc_ac97 = ac97->private_data;
 	int timeout;
 	unsigned int val;
 
@@ -149,7 +152,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 		udelay(10);
 
 	if (!timeout) {
-		printk(KERN_ERR DRV_NAME ": timeout on ac97 read (val)\n");
+		printk(KERN_ERR DRV_NAME ": timeout on ac97 read (val) %x\n", in_be16(&psc_ac97->psc_regs->sr_csr.status));
 		return 0xffff;
 	}
 
@@ -169,7 +172,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 
 static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned short val)
 {
-	struct psc_ac97 *psc_ac97 = ac97->private_data;
+	//struct psc_ac97 *psc_ac97 = ac97->private_data;
 	int timeout;
 
 	//printk("ac97 write: reg %04x  val %04x\n", reg, val);
@@ -194,9 +197,9 @@ static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned s
 
 static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
 {
-	struct psc_ac97 *psc_ac97 = ac97->private_data;
+	//struct psc_ac97 *psc_ac97 = ac97->private_data;
 
-	printk("psc_ac97_cold_reset\n");
+	printk("psc_ac97_cold_reset %p\n", ac97);
 
 	/* Do a cold reset */
 	out_8(&psc_ac97->psc_regs->op1, MPC52xx_PSC_OP_RES);
@@ -496,6 +499,7 @@ static DEVICE_ATTR(playback_underrun, 0644, psc_ac97_stat_show,
 static DEVICE_ATTR(capture_overrun, 0644, psc_ac97_stat_show,
 			psc_ac97_stat_store);
 
+
 /* ---------------------------------------------------------------------
  * OF platform bus binding code:
  * - Probe/remove operations
@@ -505,7 +509,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 				      const struct of_device_id *match)
 {
 	phys_addr_t fifo;
-	struct psc_ac97 *psc_ac97;
+	//struct psc_ac97 *psc_ac97;
 	struct resource res;
 	int size, psc_id, irq, rc;
 	const __be32 *prop;
@@ -571,7 +575,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_RST_RX); /* reset receiver */
 	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_RST_TX); /* reset transmitter */
 	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_RST_ERR_STAT); /* reset error */
-	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_SEL_MODE_REG_1); /* reset mode */
+	//out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_SEL_MODE_REG_1); /* reset mode */
 
 	/* Do a cold reset of codec */
 	out_8(&psc_ac97->psc_regs->op1, MPC52xx_PSC_OP_RES);
@@ -580,12 +584,34 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	udelay(50);
 
 	/* Configure the serial interface mode to AC97 */
-	psc_ac97->sicr = MPC52xx_PSC_SICR_ENAC97 | MPC52xx_PSC_SICR_SYNCPOL |
-			MPC52xx_PSC_SICR_CLKPOL;
+	psc_ac97->sicr = MPC52xx_PSC_SICR_SIM_AC97 | MPC52xx_PSC_SICR_ENAC97;
 	out_be32(&psc_ac97->psc_regs->sicr, psc_ac97->sicr);
 
 	/* No slots active */
 	out_be32(&psc_ac97->psc_regs->ac97_slots, 0x00000000);
+
+	/* Set up mode register;
+	 * First write: RxRdy (FIFO Alarm) generates rx FIFO irq
+	 * Second write: register Normal mode for non loopback
+	 */
+	out_8(&psc_ac97->psc_regs->mode, 0);
+	out_8(&psc_ac97->psc_regs->mode, 0);
+
+	/* Set the TX and RX fifo alarm thresholds */
+	out_be16(&psc_ac97->fifo_regs->rfalarm, 0x100);
+	out_8(&psc_ac97->fifo_regs->rfcntl, 0x4);
+	out_be16(&psc_ac97->fifo_regs->tfalarm, 0x100);
+	out_8(&psc_ac97->fifo_regs->tfcntl, 0x7);
+
+	/* Go */
+	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_TX_ENABLE);
+	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_RX_ENABLE);
+
+	/* Lookup the IRQ numbers */
+	psc_ac97->playback.irq =
+		bcom_get_task_irq(psc_ac97->playback.bcom_task);
+	psc_ac97->capture.irq =
+		bcom_get_task_irq(psc_ac97->capture.bcom_task);
 
 	/* Check for the codec child nodes */
 	for_each_child_of_node(op->node, child) {
@@ -614,25 +640,6 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 			return rc;
 		}
 	}
-
-	/* Set up mode register;
-	 * First write: RxRdy (FIFO Alarm) generates rx FIFO irq
-	 * Second write: register Normal mode for non loopback
-	 */
-	out_8(&psc_ac97->psc_regs->mode, 0);
-	out_8(&psc_ac97->psc_regs->mode, 0);
-
-	/* Set the TX and RX fifo alarm thresholds */
-	out_be16(&psc_ac97->fifo_regs->rfalarm, 0x100);
-	out_8(&psc_ac97->fifo_regs->rfcntl, 0x4);
-	out_be16(&psc_ac97->fifo_regs->tfalarm, 0x100);
-	out_8(&psc_ac97->fifo_regs->tfcntl, 0x7);
-
-	/* Lookup the IRQ numbers */
-	psc_ac97->playback.irq =
-		bcom_get_task_irq(psc_ac97->playback.bcom_task);
-	psc_ac97->capture.irq =
-		bcom_get_task_irq(psc_ac97->capture.bcom_task);
 
 	/* Save what we've done so it can be found again later */
 	dev_set_drvdata(&op->dev, psc_ac97);

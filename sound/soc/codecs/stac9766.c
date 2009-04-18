@@ -520,7 +520,7 @@ static int __init stac9766_probe(struct platform_device *pdev)
 	/* Tell the of_soc helper about this codec */
 
 	/* fixme -- allocate some unique data */
-	of_snd_soc_register_codec(&soc_codec_dev_stac9766, 1, stac9766_dai,
+	of_snd_soc_register_codec(&soc_codec_dev_stac9766, &soc_codec_dev_stac9766, stac9766_dai,
 				  pdev->dev.archdata.of_node);
 #endif
 	return 0;
@@ -536,7 +536,7 @@ static struct platform_driver stac9766_driver = {
 static __init int stac9766_driver_init(void)
 {
 
-	snd_soc_register_dai(&stac9766_dai);
+	snd_soc_register_dai(stac9766_dai);
 	return platform_driver_register(&stac9766_driver);
 }
 
