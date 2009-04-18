@@ -17,5 +17,8 @@ obj-$(CONFIG_SND_SOC_MPC5200_AC97) += mpc5200_psc_ac97.o
 
 # MPC5200 Machine Support
 snd_soc_dspeak01_fabric-objs := dspeak01_fabric.o
+snd-soc-efika-stac9766-objs := efika-stac9766.o
 
 obj-$(CONFIG_SND_MPC52xx_SOC_DSPEAK01) += snd_soc_dspeak01_fabric.o
+obj-$(CONFIG_SND_MPC52xx_SOC_EFIKA) += snd-soc-efika-stac9766.o
+
