@@ -1,7 +1,7 @@
-Bottom: 8ea5ffdd6c520841e2fc42aea6b67b97d640c0f7
-Top:    25357fdb2252d11336d7583d5fcccf46c77a3cef
+Bottom: 2896e388ec85c13f402e0d53c4163cbae4fce2a7
+Top:    a505ea798ee848b26ebb55e1db991c04c89ac5b7
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-04-08 18:12:42 -0400
+Date:   2009-04-17 20:45:38 -0400
 
 Fix ups to make mmc over spi work
 
@@ -35,10 +35,10 @@ index 398a949..c50e9c6 100644
  				voltage-range = <3300 3300>;
  				/*gpios = <&sdcsr_pio 1 0   /*  WP */
 diff --git a/drivers/mmc/host/mmc_spi.c b/drivers/mmc/host/mmc_spi.c
-index 72f8bde..9827f32 100644
+index f48349d..5f5df73 100644
 --- a/drivers/mmc/host/mmc_spi.c
 +++ b/drivers/mmc/host/mmc_spi.c
-@@ -1438,7 +1438,7 @@ static int __devexit mmc_spi_remove(struct spi_device *spi)
+@@ -1516,7 +1516,7 @@ static int __devexit mmc_spi_remove(struct spi_device *spi)
  
  static struct spi_driver mmc_spi_driver = {
  	.driver = {

@@ -1,28 +1,28 @@
 Version: 1
-Previous: 6854beef057adb790c38ffe8c058b8c4132c52a1
-Head: ff5876d497193adfe369451d4fbddc83c3ce2fbd
+Previous: a3a19a77be35934f538c4d47794edbb683ebf65a
+Head: 184d826cc64f94ae1d4ffc249bd9fb0cac70f9da
 Applied:
-  Makefile: e97ee3862951038b0d0378ac7c39db31be9b3cfb
-  jds_platform: 9ef76ccc2df9cc7fbecd384ed041cbc3e6b1f573
-  max9485: d11f2d940043d77bee137c223599ba5aa7c6ae49
-  jds-soc-machine: d9eca8ffc9409c7a9026f096e5c9711a1643c280
-  jds-psc-c: 92a395a1b719e43010aa00456e68fcff12af395c
-  soc-u32-cleanup: 7148eea33d3f3881cebc1d4e75bb09e8d7e85e83
-  jds-audio: 02e2ab26b15be88ac16e481000c530504758ef18
-  g_spi_4: 4dbb3f28440cbb5a8be4662c8ca30ed4e33e2770
-  mpc5200-rtc: 0985eac01aa99b73757170bbde32eb68c122cdea
-  lirc: 4ce2e06dc6c4b72fac99cdc70e97fda1101e1cfb
-  jds-lirc-base: fa0a5e0abca641a9d6ccf0fa37d7673d76640041
-  jds-lirc-core: 14011d5bb6ed423fa1dda90424176b348eaaf095
-  jds-lirc-configfs: ad6dfe62ac8eb7ba209ae7909498bcf603c04a1a
-  jds-lirc-gpt: 0244b8ac8e5505f4b5a3ce249ecffc16655fa3c8
-  jds-lirc-device-tree: 742c3c28293a99dd3550f46449b1645fb278c566
-  jds-lirc-mce2: 6e767da31f8e1f1a2b462be1226e8a6a78e9f9f7
-  m_1: 0f209236c376a3b94bae2b09fdb12c649b14666c
-  spi-mmc: d6a25da549b01f33b39054138db39cd911aaba5f
-  stac9766: 4ce8a61c63b42ce979e37cba7f117f6cc4767c38
-  mpc5200-dma: 757e6f8e20126e2a80f08fe5d34b8a4cedfb47e5
-  mpc5200-ac97: 205b35d596cc25a71cf946e7549213f3365d4e5e
-  efika-stac9766: ff5876d497193adfe369451d4fbddc83c3ce2fbd
+  Makefile: 3d02512cfba5ab724e6de0cc3bab66185d579544
+  jds_platform: befae02ff37ed41cd9ccc0974dbbaba73a66da27
+  max9485: c746157237e543031dd083771640f87831ed82db
+  jds-soc-machine: 09875b1412191ac7a1b025a564d695c2f887beb9
+  jds-psc-c: cfd7437775bef1d3697249a404d3a1040fdef19f
+  soc-u32-cleanup: b94506e5c184de4c57f63a203c18f7755ff64f13
+  jds-audio: 225712fa2ccdae132a8baa1c08f145d39febd6db
+  g_spi_4: 12ae431680a510d7b238eedcef1ff2337d1d0af8
+  mpc5200-rtc: b31c2fe14a535004549323ca628543a98ff1be5e
+  lirc: e319ee11b111d5240f1272ad1c45a68c265c56e7
+  jds-lirc-base: 447ff5332330df525621ac384bf1759e6dc00b41
+  jds-lirc-core: 3f63e7ff997a32afd1588abab514e8cbb1c3fadc
+  jds-lirc-configfs: d82108f69d4ac8f243793dd28ea1a5d601e9a4c5
+  jds-lirc-gpt: c47bd2e8f756458313de1e7f48ce939e683de246
+  jds-lirc-device-tree: 6b0b51f011b99a954f9adadf5fdf75d34d965e0d
+  jds-lirc-mce2: 8ad73fb3f8edb7403ba9d9737234d9c4eb8735e0
+  m_1: 8768c6e03a7bb9f7f0913d1ba6c563b9c966d96e
+  spi-mmc: 643f7c9f732ce1d61e0bce23bf4f293c58638ad3
+  stac9766: 3c3bbda4b73986624bc20ad36a1f5076103601be
+  mpc5200-dma: 98fbb2ad9837631b19d49f78b69a21ac2c393ca6
+  mpc5200-ac97: 1147ff7f052714521d925f3714c9390100290822
+  efika-stac9766: 184d826cc64f94ae1d4ffc249bd9fb0cac70f9da
 Unapplied:
 Hidden:

@@ -1,7 +1,7 @@
-Bottom: bc4f5789c6b036cb942647d1b26cace2a88728e0
-Top:    cb20c0cd6dde78332bd2c12e4407629f262c4e44
+Bottom: 3aa582c79441eaf8cd030dbbad921f91381c7575
+Top:    01fddf8c8ee9b259eb750301d3cd3a5f5d2904cd
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-04-08 18:12:39 -0400
+Date:   2009-04-17 20:45:37 -0400
 
 Core IR module
 
@@ -43,7 +43,7 @@ index 99e2b5e..fec8972 100644
  obj-$(CONFIG_INPUT_APMPOWER)	+= apm-power.o
  
 diff --git a/drivers/input/input.c b/drivers/input/input.c
-index 72d0067..a52b8a1 100644
+index baa3ba1..7cfa392 100644
 --- a/drivers/input/input.c
 +++ b/drivers/input/input.c
 @@ -23,6 +23,8 @@
@@ -55,7 +55,7 @@ index 72d0067..a52b8a1 100644
  MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
  MODULE_DESCRIPTION("Input core");
  MODULE_LICENSE("GPL");
-@@ -1133,6 +1135,7 @@ static void input_dev_release(struct device *device)
+@@ -1140,6 +1142,7 @@ static void input_dev_release(struct device *device)
  	struct input_dev *dev = to_input_dev(device);
  
  	input_ff_destroy(dev);
