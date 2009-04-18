@@ -24,12 +24,20 @@ config SND_SOC_MPC8610_HPCD
 
 config SND_SOC_MPC5200_I2S
 	tristate "Freescale MPC5200 PSC in I2S mode driver"
-	depends on PPC_MPC52xx && PPC_BESTCOMM
+	depends on SND_MPC52xx_SOC && PPC_BESTCOMM
 	select SND_SOC_OF_SIMPLE
 	select SND_MPC52xx_DMA
 	select PPC_BESTCOMM_GEN_BD
 	help
 	  Say Y here to support the MPC5200 PSCs in I2S mode.
+
+config SND_SOC_MPC5200_AC97
+	tristate "Freescale MPC5200 PSC in AC97 mode driver"
+	depends on SND_MPC52xx_SOC && PPC_BESTCOMM
+	select SND_SOC_OF_SIMPLE
+	select PPC_BESTCOMM_GEN_BD
+	help
+	  Say Y here to support the MPC5200 PSCs in AC97 mode.
 
 config SND_MPC52xx_SOC_DSPEAK01
 	tristate "SoC I2S Audio support for Digispeaker DSPEAK01 with TAS5504"
