@@ -16,12 +16,13 @@ int of_snd_soc_register_codec(struct snd_soc_codec_device *codec_dev,
 			      void *codec_data, struct snd_soc_dai *dai,
 			      struct device_node *node);
 
-int of_snd_soc_register_platform(struct snd_soc_platform *platform,
-				 struct device_node *node,
+int of_snd_soc_register_cpu_dai(struct device_node *node,
 				 struct snd_soc_dai *cpu_dai);
 
-#endif
+int of_snd_soc_register_platform(struct snd_soc_platform *platform);
 
-void of_snd_soc_register_machine(char *name, struct snd_soc_ops *ops);
+int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops);
+
+#endif
 
 #endif /* _INCLUDE_SOC_OF_H_ */
