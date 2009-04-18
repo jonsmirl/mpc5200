@@ -120,11 +120,9 @@ struct psc_ac97 {
 
 #define DRV_NAME "mpc5200-psc-ac97"
 
-static struct psc_ac97 *psc_ac97;
-
 static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 {
-	//struct psc_ac97 *psc_ac97 = ac97->private_data;
+	struct psc_ac97 *psc_ac97 = ac97->private_data;
 	int timeout;
 	unsigned int val;
 
@@ -172,7 +170,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 
 static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned short val)
 {
-	//struct psc_ac97 *psc_ac97 = ac97->private_data;
+	struct psc_ac97 *psc_ac97 = ac97->private_data;
 	int timeout;
 
 	//printk("ac97 write: reg %04x  val %04x\n", reg, val);
@@ -197,7 +195,7 @@ static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned s
 
 static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
 {
-	//struct psc_ac97 *psc_ac97 = ac97->private_data;
+	struct psc_ac97 *psc_ac97 = ac97->private_data;
 
 	printk("psc_ac97_cold_reset %p\n", ac97);
 
@@ -509,7 +507,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 				      const struct of_device_id *match)
 {
 	phys_addr_t fifo;
-	//struct psc_ac97 *psc_ac97;
+	struct psc_ac97 *psc_ac97;
 	struct resource res;
 	int size, psc_id, irq, rc;
 	const __be32 *prop;
@@ -575,7 +573,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_RST_RX); /* reset receiver */
 	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_RST_TX); /* reset transmitter */
 	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_RST_ERR_STAT); /* reset error */
-	//out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_SEL_MODE_REG_1); /* reset mode */
+	out_8(&psc_ac97->psc_regs->command, MPC52xx_PSC_SEL_MODE_REG_1); /* reset mode */
 
 	/* Do a cold reset of codec */
 	out_8(&psc_ac97->psc_regs->op1, MPC52xx_PSC_OP_RES);
@@ -631,9 +629,13 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 		}
 		request_module("%s", name);
 
-		dev_archdata_set_node(&dev_ad, child);
 		pdev = platform_device_alloc(name, 0);
+
+		platform_set_drvdata(pdev, psc_ac97);
+
+		dev_archdata_set_node(&dev_ad, child);
 		pdev->dev.archdata = dev_ad;
+
 		rc = platform_device_add(pdev);
 		if (rc) {
 			platform_device_put(pdev);

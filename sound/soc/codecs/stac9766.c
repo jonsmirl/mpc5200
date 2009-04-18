@@ -450,6 +450,7 @@ static int stac9766_codec_probe(struct platform_device *pdev)
 	ret = snd_soc_new_ac97_codec(codec, &soc_ac97_ops, 0);
 	if (ret < 0)
 		goto codec_err;
+	codec->ac97->private_data = platform_get_drvdata(pdev);
 
 	/* register pcms */
 	ret = snd_soc_new_pcms(socdev, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
@@ -518,9 +519,7 @@ static int __init stac9766_probe(struct platform_device *pdev)
 {
 #if defined(CONFIG_SND_SOC_OF_SIMPLE)
 	/* Tell the of_soc helper about this codec */
-
-	/* fixme -- allocate some unique data */
-	of_snd_soc_register_codec(&soc_codec_dev_stac9766, &soc_codec_dev_stac9766, stac9766_dai,
+	of_snd_soc_register_codec(&soc_codec_dev_stac9766, pdev->dev.archdata.of_node, stac9766_dai,
 				  pdev->dev.archdata.of_node);
 #endif
 	return 0;
