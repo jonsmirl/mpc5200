@@ -270,140 +270,6 @@ static struct snd_soc_dai psc_i2s_dai_template = {
 };
 
 /* ---------------------------------------------------------------------
- * The PSC I2S 'ASoC platform' driver
- *
- * Can be referenced by an 'ASoC machine' driver
- * This driver only deals with the audio bus; it doesn't have any
- * interaction with the attached codec
- */
-
-static int psc_i2s_pcm_open(struct snd_pcm_substream *substream)
-{
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct psc_i2s *psc_i2s = rtd->dai->cpu_dai->private_data;
-	struct psc_i2s_stream *s;
-
-	dev_dbg(psc_i2s->dev, "psc_i2s_pcm_open(substream=%p)\n", substream);
-
-	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
-		s = &psc_i2s->capture;
-	else
-		s = &psc_i2s->playback;
-
-	snd_soc_set_runtime_hwparams(substream, &mpc5200_pcm_hardware);
-
-	s->stream = substream;
-	return 0;
-}
-
-static int psc_i2s_pcm_close(struct snd_pcm_substream *substream)
-{
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct psc_i2s *psc_i2s = rtd->dai->cpu_dai->private_data;
-	struct psc_i2s_stream *s;
-
-	dev_dbg(psc_i2s->dev, "psc_i2s_pcm_close(substream=%p)\n", substream);
-
-	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
-		s = &psc_i2s->capture;
-	else
-		s = &psc_i2s->playback;
-
-	s->stream = NULL;
-	return 0;
-}
-
-static snd_pcm_uframes_t
-psc_i2s_pcm_pointer(struct snd_pcm_substream *substream)
-{
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct psc_i2s *psc_i2s = rtd->dai->cpu_dai->private_data;
-	struct psc_i2s_stream *s;
-	dma_addr_t count;
-
-	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
-		s = &psc_i2s->capture;
-	else
-		s = &psc_i2s->playback;
-
-	count = s->period_current_pt - s->period_start;
-
-	return bytes_to_frames(substream->runtime, count);
-}
-
-static struct snd_pcm_ops psc_i2s_pcm_ops = {
-	.open		= psc_i2s_pcm_open,
-	.close		= psc_i2s_pcm_close,
-	.ioctl		= snd_pcm_lib_ioctl,
-	.pointer	= psc_i2s_pcm_pointer,
-};
-
-static u64 psc_i2s_pcm_dmamask = 0xffffffff;
-static int psc_i2s_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
-			   struct snd_pcm *pcm)
-{
-	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
-	size_t size = mpc5200_pcm_hardware.buffer_bytes_max;
-	int rc = 0;
-
-	dev_dbg(rtd->socdev->dev, "psc_i2s_pcm_new(card=%p, dai=%p, pcm=%p)\n",
-		card, dai, pcm);
-
-	if (!card->dev->dma_mask)
-		card->dev->dma_mask = &psc_i2s_pcm_dmamask;
-	if (!card->dev->coherent_dma_mask)
-		card->dev->coherent_dma_mask = 0xffffffff;
-
-	if (pcm->streams[0].substream) {
-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
-					&pcm->streams[0].substream->dma_buffer);
-		if (rc)
-			goto playback_alloc_err;
-	}
-
-	if (pcm->streams[1].substream) {
-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
-					&pcm->streams[1].substream->dma_buffer);
-		if (rc)
-			goto capture_alloc_err;
-	}
-
-	return 0;
-
- capture_alloc_err:
-	if (pcm->streams[0].substream)
-		snd_dma_free_pages(&pcm->streams[0].substream->dma_buffer);
- playback_alloc_err:
-	dev_err(card->dev, "Cannot allocate buffer(s)\n");
-	return -ENOMEM;
-}
-
-static void psc_i2s_pcm_free(struct snd_pcm *pcm)
-{
-	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
-	struct snd_pcm_substream *substream;
-	int stream;
-
-	dev_dbg(rtd->socdev->dev, "psc_i2s_pcm_free(pcm=%p)\n", pcm);
-
-	for (stream = 0; stream < 2; stream++) {
-		substream = pcm->streams[stream].substream;
-		if (substream) {
-			snd_dma_free_pages(&substream->dma_buffer);
-			substream->dma_buffer.area = NULL;
-			substream->dma_buffer.addr = 0;
-		}
-	}
-}
-
-struct snd_soc_platform psc_i2s_pcm_soc_platform = {
-	.name		= "mpc5200-psc-audio",
-	.pcm_ops	= &psc_i2s_pcm_ops,
-	.pcm_new	= &psc_i2s_pcm_new,
-	.pcm_free	= &psc_i2s_pcm_free,
-};
-
-/* ---------------------------------------------------------------------
  * Sysfs attributes for debugging
  */
 
@@ -585,11 +451,8 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	if (rc)
 		dev_info(psc_i2s->dev, "error creating sysfs files\n");
 
-	snd_soc_register_platform(&psc_i2s_pcm_soc_platform);
-
 	/* Tell the ASoC OF helpers about it */
-	of_snd_soc_register_platform(&psc_i2s_pcm_soc_platform, op->node,
-				     &psc_i2s->dai);
+	of_snd_soc_register_cpu_dai(op->node, &psc_i2s->dai);
 
 	return 0;
 }
@@ -599,8 +462,6 @@ static int __devexit psc_i2s_of_remove(struct of_device *op)
 	struct psc_i2s *psc_i2s = dev_get_drvdata(&op->dev);
 
 	dev_dbg(&op->dev, "psc_i2s_remove()\n");
-
-	snd_soc_unregister_platform(&psc_i2s_pcm_soc_platform);
 
 	bcom_gen_bd_rx_release(psc_i2s->capture.bcom_task);
 	bcom_gen_bd_tx_release(psc_i2s->playback.bcom_task);
