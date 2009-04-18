@@ -142,11 +142,29 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform,
 	pr_info("registering ASoC platform driver: %s\n", node->full_name);
 
 	handle = of_get_property(node, "codec-handle", &len);
-	if (!handle || len < sizeof(handle))
+	if (!handle || len < sizeof(handle)) {
+		for_each_child_of_node(node, codec_node) {
+			char name[MODULE_NAME_LEN];
+			const u32 *addr;
+			int len;
+
+			if (of_modalias_node(codec_node, name, sizeof(name)) < 0)
+				continue;
+
+			addr = of_get_property(codec_node, "reg", &len);
+			if (!addr || len < sizeof(int) || *addr > (1 << 10) - 1) {
+				printk(KERN_ERR "psc-ac97: invalid reg in device tree\n");
+				continue;
+			}
+			goto found;
+		}
 		return -ENODEV;
-	codec_node = of_find_node_by_phandle(*handle);
-	if (!codec_node)
-		return -ENODEV;
+	} else {
+		codec_node = of_find_node_by_phandle(*handle);
+		if (!codec_node)
+			return -ENODEV;
+	}
+found:
 	pr_info("looking for codec: %s\n", codec_node->full_name);
 
 	mutex_lock(&of_snd_soc_mutex);

@@ -4,6 +4,8 @@
  * Copyright (C) 2008 Secret Lab Technologies Ltd.
  */
 
+#define DEBUG
+
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
@@ -541,4 +543,18 @@ struct snd_soc_platform mpc5200_soc_platform = {
 	.pcm_free	= &psc_dma_pcm_free,
 };
 EXPORT_SYMBOL_GPL(mpc5200_soc_platform);
+
+static int __init mpc5200_soc_platform_init(void)
+{
+	return snd_soc_register_platform(&mpc5200_soc_platform);
+}
+module_init(mpc5200_soc_platform_init);
+
+static void __exit mpc5200_soc_platform_exit(void)
+{
+	snd_soc_unregister_platform(&mpc5200_soc_platform);
+}
+module_exit(mpc5200_soc_platform_exit);
+
+
 

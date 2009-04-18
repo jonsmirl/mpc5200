@@ -212,7 +212,6 @@ static struct snd_soc_device efika_snd_devdata = {
 	.codec_dev = &soc_codec_dev_stac9766,
 };
 
-static struct platform_device *efika_snd_device;
 /*
  * This is an example codec initialization for a stac9766 connected to a
  * mpc5200. It is missing logic to detect hp/mic insertions and logic
@@ -220,18 +219,12 @@ static struct platform_device *efika_snd_device;
  */
 static int efika_stac9766_probe(struct of_device *op, const struct of_device_id *match)
 {
-	efika_snd_device = platform_device_alloc("soc-audio", -1);
-	if (!efika_snd_device)
-		return -ENOMEM;
-
-	platform_set_drvdata(efika_snd_device, &efika_snd_devdata);
-	efika_snd_devdata.dev = &efika_snd_device->dev;
-	return platform_device_add(efika_snd_device);
+	of_snd_soc_register_machine("Efika", NULL);
+	return 0;
 }
 
 static int __exit efika_stac9766_remove(struct of_device *op)
 {
-	platform_device_unregister(efika_snd_device);
 	return 0;
 }
 
@@ -253,10 +246,9 @@ static int efika_stac9766_resume(struct of_device *op)
 #define efika_stac9766_resume  NULL
 #endif
 
-
 /* Match table for of_platform binding */
 static struct of_device_id psc_ac97_match[] __devinitdata = {
-	{ .compatible = "fsl,mpc5200-psc-ac97", },
+	{ .compatible = "efika-stac9766", },
 	{}
 };
 MODULE_DEVICE_TABLE(of, psc_ac97_match);
@@ -307,6 +299,6 @@ module_init(efika_stac9766_init);
 module_exit(efika_stac9766_exit);
 
 MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
-MODULE_DESCRIPTION(DRV_NAME ": Freescale MPC52xx Efika fabric driver");
+MODULE_DESCRIPTION(DRV_NAME ": mpc5200 Efika fabric driver");
 MODULE_LICENSE("GPL");
 
