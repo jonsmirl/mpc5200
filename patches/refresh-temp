@@ -1,0 +1,278 @@
+Bottom: dc7d3cdf9cb19b246951ea3b2dd1f5cd4ab45098
+Top:    8e6d684751be8bdf6036fed609fe71ffadc35b7e
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-19 17:35:50 -0400
+
+Refresh of efika-stac9766
+
+---
+
+diff --git a/include/sound/soc-of-simple.h b/include/sound/soc-of-simple.h
+index 9fea23e..9322714 100644
+--- a/include/sound/soc-of-simple.h
++++ b/include/sound/soc-of-simple.h
+@@ -14,14 +14,15 @@
+ 
+ int of_snd_soc_register_codec(struct snd_soc_codec_device *codec_dev,
+ 			      void *codec_data, struct snd_soc_dai *dai,
+-			      struct device_node *node);
++			      size_t count, struct device_node *node);
+ 
+ int of_snd_soc_register_cpu_dai(struct device_node *node,
+-				 struct snd_soc_dai *cpu_dai);
++				 struct snd_soc_dai *cpu_dai, size_t count);
+ 
+ int of_snd_soc_register_platform(struct snd_soc_platform *platform);
+ 
+-int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops);
++int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops,
++								int (*init)(struct snd_soc_codec *codec));
+ 
+ #endif
+ 
+diff --git a/sound/soc/codecs/stac9766.c b/sound/soc/codecs/stac9766.c
+index 79beee7..aca866b 100644
+--- a/sound/soc/codecs/stac9766.c
++++ b/sound/soc/codecs/stac9766.c
+@@ -421,7 +421,6 @@ static int stac9766_codec_probe(struct platform_device *pdev)
+ 	int ret = 0;
+ 
+ 	printk(KERN_INFO "STAC9766 SoC Audio Codec %s\n", STAC9766_VERSION);
+-	printk("private_data is %p\n", socdev);
+ 
+ 	socdev->card->codec = kzalloc(sizeof(struct snd_soc_codec),
+ 				      GFP_KERNEL);
+@@ -451,7 +450,6 @@ static int stac9766_codec_probe(struct platform_device *pdev)
+ 	ret = snd_soc_new_ac97_codec(codec, &soc_ac97_ops, 0);
+ 	if (ret < 0)
+ 		goto codec_err;
+-	printk("private_dats get %p\n", codec->ac97->private_data);
+ 
+ 	/* register pcms */
+ 	ret = snd_soc_new_pcms(socdev, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
+@@ -520,8 +518,9 @@ static int __init stac9766_probe(struct platform_device *pdev)
+ {
+ #if defined(CONFIG_SND_SOC_OF_SIMPLE)
+ 	/* Tell the of_soc helper about this codec */
+-	of_snd_soc_register_codec(&soc_codec_dev_stac9766, pdev->dev.archdata.of_node, stac9766_dai,
+-				  pdev->dev.archdata.of_node);
++	of_snd_soc_register_codec(&soc_codec_dev_stac9766, pdev->dev.archdata.of_node,
++									stac9766_dai, ARRAY_SIZE(stac9766_dai),
++									pdev->dev.archdata.of_node);
+ #endif
+ 	return 0;
+ }
+@@ -535,8 +534,7 @@ static struct platform_driver stac9766_driver = {
+ 
+ static __init int stac9766_driver_init(void)
+ {
+-
+-	snd_soc_register_dai(stac9766_dai);
++	snd_soc_register_dais(stac9766_dai, ARRAY_SIZE(stac9766_dai));
+ 	return platform_driver_register(&stac9766_driver);
+ }
+ 
+diff --git a/sound/soc/codecs/tas5504.c b/sound/soc/codecs/tas5504.c
+index ae5813e..d2dbdaa 100644
+--- a/sound/soc/codecs/tas5504.c
++++ b/sound/soc/codecs/tas5504.c
+@@ -822,7 +822,7 @@ static int tas5504_i2c_probe(struct i2c_client *client,
+ 
+ #if defined(CONFIG_SND_SOC_OF_SIMPLE)
+ 	/* Tell the of_soc helper about this codec */
+-	of_snd_soc_register_codec(&tas5504_soc_codec_dev, priv, &tas5504_dai,
++	of_snd_soc_register_codec(&tas5504_soc_codec_dev, priv, &tas5504_dai, 1,
+ 				  client->dev.archdata.of_node);
+ #endif
+ 
+diff --git a/sound/soc/fsl/dspeak01_fabric.c b/sound/soc/fsl/dspeak01_fabric.c
+index da65761..c6c7890 100644
+--- a/sound/soc/fsl/dspeak01_fabric.c
++++ b/sound/soc/fsl/dspeak01_fabric.c
+@@ -113,7 +113,7 @@ static int __devinit dspeak01_fabric_probe(struct of_device *op,
+ 	if (!fabric.clock)
+ 		return -ENODEV;
+ 
+-	of_snd_soc_register_fabric("DSPEAK01", &dspeak01_fabric_ops);
++	of_snd_soc_register_fabric("DSPEAK01", &dspeak01_fabric_ops, NULL);
+ 	return 0;
+ }
+ 
+diff --git a/sound/soc/fsl/efika-audio-fabric.c b/sound/soc/fsl/efika-audio-fabric.c
+index c880df8..6e0d216 100644
+--- a/sound/soc/fsl/efika-audio-fabric.c
++++ b/sound/soc/fsl/efika-audio-fabric.c
+@@ -184,34 +184,6 @@ static int efika_init(struct snd_soc_codec *codec)
+ 	return 0;
+ }
+ 
+-static struct snd_soc_dai_link efika_dai[] = {
+-	{
+-		.name = "AC97 Analog",
+-		.stream_name = "AC97 Analog",
+-		.cpu_dai = &mpc5200_dai_ac97[MPC5200_AC97_ANALOG],
+-		.codec_dai = &stac9766_dai[STAC9766_DAI_AC97_ANALOG],
+-		.init = efika_init,
+-	},
+-	{
+-		.name = "AC97 Digital",
+-		.stream_name = "AC97 Digital",
+-		.cpu_dai = &mpc5200_dai_ac97[MPC5200_AC97_DIGITAL],
+-		.codec_dai = &stac9766_dai[STAC9766_DAI_AC97_DIGITAL],
+-	},
+-};
+-
+-static struct snd_soc_card efika = {
+-	.name = "Efika-STAC9766",
+-	.platform = &mpc5200_soc_platform,
+-	.dai_link = efika_dai,
+-	.num_links = ARRAY_SIZE(efika_dai),
+-};
+-
+-static struct snd_soc_device efika_snd_devdata = {
+-	.card = &efika,
+-	.codec_dev = &soc_codec_dev_stac9766,
+-};
+-
+ /*
+  * This is an example codec initialization for a stac9766 connected to a
+  * mpc5200. It is missing logic to detect hp/mic insertions and logic
+@@ -219,7 +191,7 @@ static struct snd_soc_device efika_snd_devdata = {
+  */
+ static int efika_stac9766_probe(struct platform_device *pdev)
+ {
+-	of_snd_soc_register_fabric("Efika", NULL);
++	of_snd_soc_register_fabric("Efika", NULL, efika_init);
+ 	return 0;
+ }
+ 
+diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
+index 1298b46..673f190 100644
+--- a/sound/soc/fsl/mpc5200_psc_ac97.c
++++ b/sound/soc/fsl/mpc5200_psc_ac97.c
+@@ -570,7 +570,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
+ 	}
+ 
+ 	/* Tell the ASoC OF helpers about it */
+-	of_snd_soc_register_cpu_dai(op->node, &psc_dma->dai);
++	of_snd_soc_register_cpu_dai(op->node, &psc_dma->dai, 1);
+ 
+ 	return 0;
+ }
+diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
+index f9be67d..9d8af4b 100644
+--- a/sound/soc/fsl/mpc5200_psc_i2s.c
++++ b/sound/soc/fsl/mpc5200_psc_i2s.c
+@@ -393,7 +393,7 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+ 		dev_info(psc_dma->dev, "error creating sysfs files\n");
+ 
+ 	/* Tell the ASoC OF helpers about it */
+-	of_snd_soc_register_cpu_dai(op->node, &psc_dma->dai);
++	of_snd_soc_register_cpu_dai(op->node, &psc_dma->dai, 1);
+ 
+ 	return 0;
+ }
+diff --git a/sound/soc/fsl/soc-of-simple.c b/sound/soc/fsl/soc-of-simple.c
+index fb08ec8..f4e06b4 100644
+--- a/sound/soc/fsl/soc-of-simple.c
++++ b/sound/soc/fsl/soc-of-simple.c
+@@ -42,6 +42,7 @@ struct of_snd_soc_device {
+ struct snd_soc_platform *template_platform;
+ char *template_name;
+ struct snd_soc_ops *template_ops;
++int (*template_init)(struct snd_soc_codec *codec);
+ 
+ static struct of_snd_soc_device *
+ of_snd_soc_get_device(struct device_node *codec_node)
+@@ -64,6 +65,7 @@ of_snd_soc_get_device(struct device_node *codec_node)
+ 	of_soc->card.num_links = 1;
+ 	of_soc->device.card = &of_soc->card;
+ 	of_soc->dai_link.ops = template_ops;
++	of_soc->dai_link.init = template_init;
+ 	of_soc->card.name = template_name;
+ 	of_soc->card.platform = template_platform;
+ 
+@@ -79,7 +81,6 @@ static void of_snd_soc_register_device(struct of_snd_soc_device *of_soc)
+ 
+ 	/* Only register the device if both the codec and platform have
+ 	 * been registered */
+-	printk("Match %p %p %p %p\n", of_soc->device.codec_data, of_soc->cpu_dai_node, of_soc->card.platform, of_soc->card.name);
+ 	if ((!of_soc->device.codec_data) || (!of_soc->cpu_dai_node) ||
+ 									!of_soc->card.platform || !of_soc->card.name)
+ 		return;
+@@ -107,7 +108,7 @@ static void of_snd_soc_register_device(struct of_snd_soc_device *of_soc)
+ 
+ int of_snd_soc_register_codec(struct snd_soc_codec_device *codec_dev,
+ 			      void *codec_data, struct snd_soc_dai *dai,
+-			      struct device_node *node)
++			      size_t count, struct device_node *node)
+ {
+ 	struct of_snd_soc_device *of_soc;
+ 	int rc = 0;
+@@ -138,7 +139,7 @@ int of_snd_soc_register_codec(struct snd_soc_codec_device *codec_dev,
+ EXPORT_SYMBOL_GPL(of_snd_soc_register_codec);
+ 
+ int of_snd_soc_register_cpu_dai(struct device_node *node,
+-				 struct snd_soc_dai *cpu_dai)
++				 struct snd_soc_dai *cpu_dai, size_t count)
+ {
+ 	struct of_snd_soc_device *of_soc;
+ 	struct device_node *codec_node;
+@@ -148,7 +149,9 @@ int of_snd_soc_register_cpu_dai(struct device_node *node,
+ 	pr_info("registering ASoC CPU DAI driver: %s\n", node->full_name);
+ 
+ 	handle = of_get_property(node, "codec-handle", &len);
+-	if (!handle || len < sizeof(handle)) {
++	if (handle && len >= sizeof(handle))
++		codec_node = of_find_node_by_phandle(*handle);
++	else {
+ 		/* Check for the codec child nodes */
+ 		for_each_child_of_node(node, codec_node) {
+ 			struct platform_device *pdev;
+@@ -162,7 +165,7 @@ int of_snd_soc_register_cpu_dai(struct device_node *node,
+ 
+ 			addr = of_get_property(codec_node, "reg", &len);
+ 			if (!addr || len < sizeof(int) || *addr > (1 << 10) - 1) {
+-				printk(KERN_ERR "psc-ac97: invalid reg in device tree\n");
++				pr_err("invalid codec reg in device tree\n");
+ 				continue;
+ 			}
+ 			request_module("%s", name);
+@@ -177,12 +180,11 @@ int of_snd_soc_register_cpu_dai(struct device_node *node,
+ 				platform_device_put(pdev);
+ 				return rc;
+ 			}
++			break;
+ 		}
+-	} else {
+-		codec_node = of_find_node_by_phandle(*handle);
+-		if (!codec_node)
+-			return -ENODEV;
+ 	}
++	if (!codec_node)
++		return -ENODEV;
+ 	pr_info("looking for codec: %s\n", codec_node->full_name);
+ 
+ 	mutex_lock(&of_snd_soc_mutex);
+@@ -222,17 +224,20 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform)
+ }
+ EXPORT_SYMBOL_GPL(of_snd_soc_register_platform);
+ 
+-int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops)
++int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops,
++								int (*init)(struct snd_soc_codec *codec))
+ {
+ 	struct of_snd_soc_device *of_soc;
+ 
+ 	pr_info("registering ASoC fabric driver: %s\n", name);
+ 	template_name = name;
+ 	template_ops = ops;
++	template_init = init;
+ 
+ 	mutex_lock(&of_snd_soc_mutex);
+ 	list_for_each_entry(of_soc, &of_snd_soc_device_list, list) {
+ 		of_soc->dai_link.ops = ops;
++		of_soc->dai_link.init = init;
+ 		of_soc->card.name = name;
+ 		of_snd_soc_register_device(of_soc);
+ 	}
