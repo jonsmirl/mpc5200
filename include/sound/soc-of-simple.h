@@ -14,14 +14,15 @@
 
 int of_snd_soc_register_codec(struct snd_soc_codec_device *codec_dev,
 			      void *codec_data, struct snd_soc_dai *dai,
-			      struct device_node *node);
+			      size_t count, struct device_node *node);
 
 int of_snd_soc_register_cpu_dai(struct device_node *node,
-				 struct snd_soc_dai *cpu_dai);
+				 struct snd_soc_dai *cpu_dai, size_t count);
 
 int of_snd_soc_register_platform(struct snd_soc_platform *platform);
 
-int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops);
+int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops,
+								int (*init)(struct snd_soc_codec *codec));
 
 #endif
 

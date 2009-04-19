@@ -570,7 +570,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	}
 
 	/* Tell the ASoC OF helpers about it */
-	of_snd_soc_register_cpu_dai(op->node, &psc_dma->dai);
+	of_snd_soc_register_cpu_dai(op->node, &psc_dma->dai, 1);
 
 	return 0;
 }

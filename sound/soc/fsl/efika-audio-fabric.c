@@ -184,34 +184,6 @@ static int efika_init(struct snd_soc_codec *codec)
 	return 0;
 }
 
-static struct snd_soc_dai_link efika_dai[] = {
-	{
-		.name = "AC97 Analog",
-		.stream_name = "AC97 Analog",
-		.cpu_dai = &mpc5200_dai_ac97[MPC5200_AC97_ANALOG],
-		.codec_dai = &stac9766_dai[STAC9766_DAI_AC97_ANALOG],
-		.init = efika_init,
-	},
-	{
-		.name = "AC97 Digital",
-		.stream_name = "AC97 Digital",
-		.cpu_dai = &mpc5200_dai_ac97[MPC5200_AC97_DIGITAL],
-		.codec_dai = &stac9766_dai[STAC9766_DAI_AC97_DIGITAL],
-	},
-};
-
-static struct snd_soc_card efika = {
-	.name = "Efika-STAC9766",
-	.platform = &mpc5200_soc_platform,
-	.dai_link = efika_dai,
-	.num_links = ARRAY_SIZE(efika_dai),
-};
-
-static struct snd_soc_device efika_snd_devdata = {
-	.card = &efika,
-	.codec_dev = &soc_codec_dev_stac9766,
-};
-
 /*
  * This is an example codec initialization for a stac9766 connected to a
  * mpc5200. It is missing logic to detect hp/mic insertions and logic
@@ -219,7 +191,7 @@ static struct snd_soc_device efika_snd_devdata = {
  */
 static int efika_stac9766_probe(struct platform_device *pdev)
 {
-	of_snd_soc_register_fabric("Efika", NULL);
+	of_snd_soc_register_fabric("Efika", NULL, efika_init);
 	return 0;
 }
 

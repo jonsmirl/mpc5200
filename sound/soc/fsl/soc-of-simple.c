@@ -42,6 +42,7 @@ struct of_snd_soc_device {
 struct snd_soc_platform *template_platform;
 char *template_name;
 struct snd_soc_ops *template_ops;
+int (*template_init)(struct snd_soc_codec *codec);
 
 static struct of_snd_soc_device *
 of_snd_soc_get_device(struct device_node *codec_node)
@@ -64,6 +65,7 @@ of_snd_soc_get_device(struct device_node *codec_node)
 	of_soc->card.num_links = 1;
 	of_soc->device.card = &of_soc->card;
 	of_soc->dai_link.ops = template_ops;
+	of_soc->dai_link.init = template_init;
 	of_soc->card.name = template_name;
 	of_soc->card.platform = template_platform;
 
@@ -79,7 +81,6 @@ static void of_snd_soc_register_device(struct of_snd_soc_device *of_soc)
 
 	/* Only register the device if both the codec and platform have
 	 * been registered */
-	printk("Match %p %p %p %p\n", of_soc->device.codec_data, of_soc->cpu_dai_node, of_soc->card.platform, of_soc->card.name);
 	if ((!of_soc->device.codec_data) || (!of_soc->cpu_dai_node) ||
 									!of_soc->card.platform || !of_soc->card.name)
 		return;
@@ -107,7 +108,7 @@ static void of_snd_soc_register_device(struct of_snd_soc_device *of_soc)
 
 int of_snd_soc_register_codec(struct snd_soc_codec_device *codec_dev,
 			      void *codec_data, struct snd_soc_dai *dai,
-			      struct device_node *node)
+			      size_t count, struct device_node *node)
 {
 	struct of_snd_soc_device *of_soc;
 	int rc = 0;
@@ -138,7 +139,7 @@ int of_snd_soc_register_codec(struct snd_soc_codec_device *codec_dev,
 EXPORT_SYMBOL_GPL(of_snd_soc_register_codec);
 
 int of_snd_soc_register_cpu_dai(struct device_node *node,
-				 struct snd_soc_dai *cpu_dai)
+				 struct snd_soc_dai *cpu_dai, size_t count)
 {
 	struct of_snd_soc_device *of_soc;
 	struct device_node *codec_node;
@@ -148,7 +149,9 @@ int of_snd_soc_register_cpu_dai(struct device_node *node,
 	pr_info("registering ASoC CPU DAI driver: %s\n", node->full_name);
 
 	handle = of_get_property(node, "codec-handle", &len);
-	if (!handle || len < sizeof(handle)) {
+	if (handle && len >= sizeof(handle))
+		codec_node = of_find_node_by_phandle(*handle);
+	else {
 		/* Check for the codec child nodes */
 		for_each_child_of_node(node, codec_node) {
 			struct platform_device *pdev;
@@ -162,7 +165,7 @@ int of_snd_soc_register_cpu_dai(struct device_node *node,
 
 			addr = of_get_property(codec_node, "reg", &len);
 			if (!addr || len < sizeof(int) || *addr > (1 << 10) - 1) {
-				printk(KERN_ERR "psc-ac97: invalid reg in device tree\n");
+				pr_err("invalid codec reg in device tree\n");
 				continue;
 			}
 			request_module("%s", name);
@@ -177,12 +180,11 @@ int of_snd_soc_register_cpu_dai(struct device_node *node,
 				platform_device_put(pdev);
 				return rc;
 			}
+			break;
 		}
-	} else {
-		codec_node = of_find_node_by_phandle(*handle);
-		if (!codec_node)
-			return -ENODEV;
 	}
+	if (!codec_node)
+		return -ENODEV;
 	pr_info("looking for codec: %s\n", codec_node->full_name);
 
 	mutex_lock(&of_snd_soc_mutex);
@@ -222,17 +224,20 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform)
 }
 EXPORT_SYMBOL_GPL(of_snd_soc_register_platform);
 
-int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops)
+int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops,
+								int (*init)(struct snd_soc_codec *codec))
 {
 	struct of_snd_soc_device *of_soc;
 
 	pr_info("registering ASoC fabric driver: %s\n", name);
 	template_name = name;
 	template_ops = ops;
+	template_init = init;
 
 	mutex_lock(&of_snd_soc_mutex);
 	list_for_each_entry(of_soc, &of_snd_soc_device_list, list) {
 		of_soc->dai_link.ops = ops;
+		of_soc->dai_link.init = init;
 		of_soc->card.name = name;
 		of_snd_soc_register_device(of_soc);
 	}

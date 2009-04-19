@@ -421,7 +421,6 @@ static int stac9766_codec_probe(struct platform_device *pdev)
 	int ret = 0;
 
 	printk(KERN_INFO "STAC9766 SoC Audio Codec %s\n", STAC9766_VERSION);
-	printk("private_data is %p\n", socdev);
 
 	socdev->card->codec = kzalloc(sizeof(struct snd_soc_codec),
 				      GFP_KERNEL);
@@ -451,7 +450,6 @@ static int stac9766_codec_probe(struct platform_device *pdev)
 	ret = snd_soc_new_ac97_codec(codec, &soc_ac97_ops, 0);
 	if (ret < 0)
 		goto codec_err;
-	printk("private_dats get %p\n", codec->ac97->private_data);
 
 	/* register pcms */
 	ret = snd_soc_new_pcms(socdev, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
@@ -520,8 +518,9 @@ static int __init stac9766_probe(struct platform_device *pdev)
 {
 #if defined(CONFIG_SND_SOC_OF_SIMPLE)
 	/* Tell the of_soc helper about this codec */
-	of_snd_soc_register_codec(&soc_codec_dev_stac9766, pdev->dev.archdata.of_node, stac9766_dai,
-				  pdev->dev.archdata.of_node);
+	of_snd_soc_register_codec(&soc_codec_dev_stac9766, pdev->dev.archdata.of_node,
+									stac9766_dai, ARRAY_SIZE(stac9766_dai),
+									pdev->dev.archdata.of_node);
 #endif
 	return 0;
 }
@@ -535,8 +534,7 @@ static struct platform_driver stac9766_driver = {
 
 static __init int stac9766_driver_init(void)
 {
-
-	snd_soc_register_dai(stac9766_dai);
+	snd_soc_register_dais(stac9766_dai, ARRAY_SIZE(stac9766_dai));
 	return platform_driver_register(&stac9766_driver);
 }
 
