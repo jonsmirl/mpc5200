@@ -131,8 +131,7 @@ int of_snd_soc_register_codec(struct snd_soc_codec_device *codec_dev,
 	of_soc->device.codec_dev = codec_dev;
 	of_soc->card.num_links = min(count, of_soc->card.num_links);
 	for (i = 0; i < of_soc->card.num_links; i++) {
-		of_soc->dai_link[i].name = (char *)node->name;
-		of_soc->dai_link[i].stream_name = (char *)node->name;
+		of_soc->dai_link[i].name = dai[i].name;
 		of_soc->dai_link[i].codec_dai = dai;
 	}
 	/* Now try to register the SoC device */
@@ -202,8 +201,10 @@ int of_snd_soc_register_cpu_dai(struct device_node *node,
 
 	of_soc->cpu_dai_node = node;
 	of_soc->card.num_links = min(count, of_soc->card.num_links);
-	for (i = 0; i < of_soc->card.num_links; i++)
+	for (i = 0; i < of_soc->card.num_links; i++) {
+		of_soc->dai_link[i].stream_name = cpu_dai[i].name;
 		of_soc->dai_link[i].cpu_dai = &cpu_dai[i];
+	}
 
 	/* Now try to register the SoC device */
 	of_snd_soc_register_device(of_soc);
