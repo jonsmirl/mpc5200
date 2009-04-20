@@ -14,4 +14,6 @@ obj-$(CONFIG_SND_SOC_MPC8610) += snd-soc-fsl-ssi.o snd-soc-fsl-dma.o
 obj-$(CONFIG_SND_MPC52xx_SOC) += mpc5200_dma.o
 obj-$(CONFIG_SND_SOC_MPC5200_I2S) += mpc5200_psc_i2s.o
 
+# MPC5200 Machine Support
+obj-$(CONFIG_SND_MPC52xx_SOC_DSPEAK01) += dspeak01_fabric.o
 
