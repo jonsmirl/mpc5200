@@ -1,5 +1,5 @@
 Bottom: 50a98123212c718b5782419595ca87f4cf7ad3a2
-Top:    7b527f711768166a0eaa950c02710df6fdd564f1
+Top:    52f2408fae2e8631c5a797277d5bcb245a0c4511
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-17 20:45:40 -0400
 
@@ -91,19 +91,6 @@ index 302ba6d..14d2fce 100644
  # MPC5200 Machine Support
  obj-$(CONFIG_SND_MPC52xx_SOC_DSPEAK01) += dspeak01_fabric.o
 +obj-$(CONFIG_SND_MPC52xx_SOC_EFIKA) += efika-audio-fabric.o
- 
-diff --git a/sound/soc/fsl/dspeak01_fabric.c b/sound/soc/fsl/dspeak01_fabric.c
-index bd35a14..c6c7890 100644
---- a/sound/soc/fsl/dspeak01_fabric.c
-+++ b/sound/soc/fsl/dspeak01_fabric.c
-@@ -113,7 +113,7 @@ static int __devinit dspeak01_fabric_probe(struct of_device *op,
- 	if (!fabric.clock)
- 		return -ENODEV;
- 
--	of_snd_soc_register_machine("DSPEAK01", &dspeak01_fabric_ops);
-+	of_snd_soc_register_fabric("DSPEAK01", &dspeak01_fabric_ops, NULL);
- 	return 0;
- }
  
 diff --git a/sound/soc/fsl/efika-audio-fabric.c b/sound/soc/fsl/efika-audio-fabric.c
 new file mode 100644
