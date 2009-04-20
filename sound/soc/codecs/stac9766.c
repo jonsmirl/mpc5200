@@ -25,7 +25,6 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
-#include <sound/soc-of-simple.h>
 
 #include "stac9766.h"
 
@@ -243,7 +242,7 @@ unsigned int stac9766_ac97_read(struct snd_soc_codec *codec,
 {
 	u16 val = 0, *cache = codec->reg_cache;
 
-	if (reg / 2 > ARRAY_SIZE(stac9766_reg))
+	if (reg/2 > ARRAY_SIZE(stac9766_reg))
 		return -EIO;
 
 	if (reg == AC97_RESET || reg == AC97_GPIO_STATUS || AC97_INT_PAGING ||
@@ -253,8 +252,8 @@ unsigned int stac9766_ac97_read(struct snd_soc_codec *codec,
 		printk("stac9766_ac97_read actual reg %02x val %04x\n", reg, val);
 		return val;
 	}
-	printk("stac9766_ac97_read cache reg %02x val %04x\n", reg, cache[reg / 2]);
-	return cache[reg / 2];
+	printk("stac9766_ac97_read cache reg %02x val %04x\n", reg, cache[reg/2]);
+	return cache[reg/2];
 }
 
 int stac9766_ac97_write(struct snd_soc_codec *codec, unsigned int reg,
@@ -263,11 +262,11 @@ int stac9766_ac97_write(struct snd_soc_codec *codec, unsigned int reg,
 	u16 *cache = codec->reg_cache;
 
 	printk("stac9766_ac97_write reg %02x val %04x\n", reg, val);
-	if (reg / 2 > ARRAY_SIZE(stac9766_reg))
+	if (reg/2 > ARRAY_SIZE(stac9766_reg))
 		return -EIO;
 
 	soc_ac97_ops.write(codec->ac97, reg, val);
-	cache[reg / 2] = val;
+	cache[reg/2] = val;
 	return 0;
 }
 
@@ -514,37 +513,7 @@ struct snd_soc_codec_device soc_codec_dev_stac9766 = {
 };
 EXPORT_SYMBOL_GPL(soc_codec_dev_stac9766);
 
-static int __init stac9766_probe(struct platform_device *pdev)
-{
-#if defined(CONFIG_SND_SOC_OF_SIMPLE)
-	/* Tell the of_soc helper about this codec */
-	of_snd_soc_register_codec(&soc_codec_dev_stac9766, pdev->dev.archdata.of_node,
-									stac9766_dai, ARRAY_SIZE(stac9766_dai),
-									pdev->dev.archdata.of_node);
-#endif
-	return 0;
-}
 
-static struct platform_driver stac9766_driver = {
-	.probe	= stac9766_probe,
-	.driver	= {
-		.name	= "stac9766",
-	},
-};
-
-static __init int stac9766_driver_init(void)
-{
-	snd_soc_register_dais(stac9766_dai, ARRAY_SIZE(stac9766_dai));
-	return platform_driver_register(&stac9766_driver);
-}
-
-static __exit void stac9766_driver_exit(void)
-{
-}
-
-module_init(stac9766_driver_init);
-module_exit(stac9766_driver_exit);
-
-MODULE_DESCRIPTION("ASoC stac9766 driver");
-MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
+MODULE_DESCRIPTION("ASoC STAC9766 driver");
+MODULE_AUTHOR("Jon Smirl");
 MODULE_LICENSE("GPL");
