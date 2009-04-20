@@ -1,6 +1,6 @@
 Version: 1
-Previous: 0cea14e8f94a77d7de58e024fcf1ff46c7e109ec
-Head: 33f35f9f56870275380660febc300eddb21982f4
+Previous: 4626bddbf1417a7949fb9b57a63d69d6b4ff6aa0
+Head: 23e57346e74b5512c7e776f82e5fae1bbf542122
 Applied:
   Makefile: 3d02512cfba5ab724e6de0cc3bab66185d579544
   digispeak: befae02ff37ed41cd9ccc0974dbbaba73a66da27
@@ -17,8 +17,7 @@ Applied:
   spi-mmc: c7588849208e8e279eda8b42b15fbaabecfb416c
   soc-u32-cleanup: 4e47dff3ad7d0c100f1df31a9f523cbd2b3a7737
   i2s-cell-clock: be4ed8cdcd855921f9ddf31f1bc0631cda77effa
-  of-soc-simple-rework: f8c10b2146dca3fa330bf46a2825854e139c225f
-  refresh-temp: 33f35f9f56870275380660febc300eddb21982f4
+  of-soc-simple-rework: 23e57346e74b5512c7e776f82e5fae1bbf542122
 Unapplied:
   mpc5200-dma-split: 963d46af854dc05b135ee6b296c4cd57413be936
   max9485-i2c: 7c870ba65e98782f3b7ac618b09c57a0878d3177
