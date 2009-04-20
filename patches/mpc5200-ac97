@@ -1,5 +1,5 @@
-Bottom: 841daabefc6acc62d6ac8159eeab513567720e95
-Top:    eabf309fac304f53d9c0f6928db6330ee3d2d8c1
+Bottom: 8f4f0733ca9fd7513aa8de031f97e212b791ffb7
+Top:    ca0782162ab0201bfcc1d1bc4c2bfe129b9ea0f6
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-17 20:45:40 -0400
 
@@ -24,16 +24,17 @@ index a218da6..11abc69 100644
  #define MPC52xx_PSC_SR_RXRDY	0x0100
  #define MPC52xx_PSC_SR_RXFULL	0x0200
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index 2536f7c..8b4f73a 100644
+index 5e5efa5..449464b 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
-@@ -38,12 +38,20 @@ config SND_SOC_MPC8610_HPCD
+@@ -24,13 +24,21 @@ config SND_SOC_MPC8610_HPCD
  
  config SND_SOC_MPC5200_I2S
  	tristate "Freescale MPC5200 PSC in I2S mode driver"
 -	depends on PPC_MPC52xx && PPC_BESTCOMM
 +	depends on SND_MPC52xx_SOC && PPC_BESTCOMM
  	select SND_SOC_OF_SIMPLE
+ 	select SND_MPC52xx_DMA
  	select PPC_BESTCOMM_GEN_BD
  	help
  	  Say Y here to support the MPC5200 PSCs in I2S mode.
@@ -50,12 +51,12 @@ index 2536f7c..8b4f73a 100644
  	tristate "SoC I2S Audio support for Digispeaker DSPEAK01 with TAS5504"
  	depends on PPC_DSPEAK01
 diff --git a/sound/soc/fsl/Makefile b/sound/soc/fsl/Makefile
-index 7c77e68..302ba6d 100644
+index 7e46a33..3a28a4d 100644
 --- a/sound/soc/fsl/Makefile
 +++ b/sound/soc/fsl/Makefile
 @@ -13,6 +13,7 @@ obj-$(CONFIG_SND_SOC_MPC8610) += snd-soc-fsl-ssi.o snd-soc-fsl-dma.o
  # MPC5200 Platform Support
- obj-$(CONFIG_SND_MPC52xx_SOC) += mpc5200_dma.o
+ obj-$(CONFIG_SND_MPC52xx_DMA) += mpc5200_dma.o
  obj-$(CONFIG_SND_SOC_MPC5200_I2S) += mpc5200_psc_i2s.o
 +obj-$(CONFIG_SND_SOC_MPC5200_AC97) += mpc5200_psc_ac97.o
  
