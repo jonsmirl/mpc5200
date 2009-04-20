@@ -1,6 +1,6 @@
 Version: 1
-Previous: 30220962ceda2b254564450ab79d5066f6b8a92d
-Head: 95ba84f1bfd2a2228cd370f3dc6a221ff2cdab99
+Previous: 5f5c9e25d1fdf0816d0faf40372ad1035af217b8
+Head: e3bb22df7ca99ebbfe7ddd4af24d7b9e6a94be28
 Applied:
   Makefile: 3d02512cfba5ab724e6de0cc3bab66185d579544
   digispeak: befae02ff37ed41cd9ccc0974dbbaba73a66da27
@@ -19,6 +19,7 @@ Applied:
   i2s-cell-clock: be4ed8cdcd855921f9ddf31f1bc0631cda77effa
   of-soc-simple-rework: 6b2c880713b59f13394a7fc70b0e859b3c76747a
   mpc5200-dma-split: 95ba84f1bfd2a2228cd370f3dc6a221ff2cdab99
+  refresh-temp: e3bb22df7ca99ebbfe7ddd4af24d7b9e6a94be28
 Unapplied:
   max9485-i2c: 3f3677d2115c01b77d36ff6bce306becb743e211
   tas5504-codec: d2be1266364c85ead94693a49b4977e9e8bde58a
