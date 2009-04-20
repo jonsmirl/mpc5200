@@ -1,9 +1,9 @@
 Version: 1
-Previous: d1cb63586d203773d8a131de487e2c8d5439a18e
-Head: aefe6475720bd5eb8aacbc881488f3aa65618562
+Previous: 170071d5ed18401a10b61e67c7e369fd1e1ee254
+Head: 3d02512cfba5ab724e6de0cc3bab66185d579544
 Applied:
-Unapplied:
   Makefile: 3d02512cfba5ab724e6de0cc3bab66185d579544
+Unapplied:
   jds_platform: befae02ff37ed41cd9ccc0974dbbaba73a66da27
   max9485: c746157237e543031dd083771640f87831ed82db
   jds-soc-machine: 09875b1412191ac7a1b025a564d695c2f887beb9
