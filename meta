@@ -1,6 +1,6 @@
 Version: 1
-Previous: 504c72ac5c5d4ec222e106d172b7093267b1697f
-Head: 43c26e80c668ea3357070b90bfe820db9d83ebce
+Previous: 0fa6a5317cae938792301df3e7f8e04e94e6fccd
+Head: be4ed8cdcd855921f9ddf31f1bc0631cda77effa
 Applied:
   Makefile: 3d02512cfba5ab724e6de0cc3bab66185d579544
   digispeak: befae02ff37ed41cd9ccc0974dbbaba73a66da27
@@ -17,6 +17,7 @@ Applied:
   spi-mmc: c7588849208e8e279eda8b42b15fbaabecfb416c
   soc-u32-cleanup: 4e47dff3ad7d0c100f1df31a9f523cbd2b3a7737
   i2s-cell-clock: be4ed8cdcd855921f9ddf31f1bc0631cda77effa
+Unapplied:
   of-soc-simple-rework: f8c10b2146dca3fa330bf46a2825854e139c225f
   mpc5200-dma-split: 963d46af854dc05b135ee6b296c4cd57413be936
   max9485-i2c: 7c870ba65e98782f3b7ac618b09c57a0878d3177
@@ -25,5 +26,4 @@ Applied:
   stac9766-codec: 07e13ce86094b7b44d3e9c9d4eb1a15b73cc2ea0
   mpc5200-ac97: a2268a586c04fc9e6012c86a03a75474f8cd189a
   efika-audio: 43c26e80c668ea3357070b90bfe820db9d83ebce
-Unapplied:
 Hidden:
