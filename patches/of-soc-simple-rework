@@ -1,5 +1,5 @@
 Bottom: 24be41c69fe0ac4a410cf70580d8ccf09fbf0c6e
-Top:    fd34b5a3ffb452269347b2a4d7c23a4c4fe57d04
+Top:    0c44306d27f485119bf32f244b10972d79fa3a74
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-17 20:45:33 -0400
 
@@ -53,6 +53,21 @@ index a064e19..61d3c29 100644
  
  #endif
  
+diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
+index 02a05c2..5fe7eda 100644
+--- a/sound/soc/fsl/mpc5200_psc_i2s.c
++++ b/sound/soc/fsl/mpc5200_psc_i2s.c
+@@ -877,8 +877,8 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+ 	snd_soc_register_platform(&psc_i2s_pcm_soc_platform);
+ 
+ 	/* Tell the ASoC OF helpers about it */
+-	of_snd_soc_register_platform(&psc_i2s_pcm_soc_platform, op->node,
+-				     &psc_i2s->dai);
++	of_snd_soc_register_platform(&psc_i2s_pcm_soc_platform);
++	of_snd_soc_register_cpu_dai(op->node, &psc_i2s->dai, 1);
+ 
+ 	return 0;
+ }
 diff --git a/sound/soc/fsl/soc-of-simple.c b/sound/soc/fsl/soc-of-simple.c
 index 8bc5cd9..2b32f64 100644
 --- a/sound/soc/fsl/soc-of-simple.c
