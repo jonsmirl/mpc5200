@@ -1,6 +1,6 @@
 Version: 1
-Previous: a8872d7f95975eac747588fd9cbe12380c4cf610
-Head: c696a69125ddc2598dbb36002931728391fb8e74
+Previous: 465c113aa5c83aa1e4e5d3881cabd6cea1be52ea
+Head: 0bff79d0630b0202eefa76b9409db60f16578684
 Applied:
   Makefile: 3d02512cfba5ab724e6de0cc3bab66185d579544
   jds_platform: befae02ff37ed41cd9ccc0974dbbaba73a66da27
@@ -10,13 +10,13 @@ Applied:
   jds-lirc-base: 96d1f71743146e80d3b940b1bed5caf7616fdd66
   jds-lirc-core: ef86b2a56d6fe96085650acde0d9c31ff897b23d
   jds-lirc-configfs: c696a69125ddc2598dbb36002931728391fb8e74
+  jds-lirc-gpt: 0bff79d0630b0202eefa76b9409db60f16578684
 Unapplied:
   max9485: c746157237e543031dd083771640f87831ed82db
   jds-soc-machine: 09875b1412191ac7a1b025a564d695c2f887beb9
   jds-psc-c: cfd7437775bef1d3697249a404d3a1040fdef19f
   soc-u32-cleanup: b94506e5c184de4c57f63a203c18f7755ff64f13
   jds-audio: 225712fa2ccdae132a8baa1c08f145d39febd6db
-  jds-lirc-gpt: c47bd2e8f756458313de1e7f48ce939e683de246
   jds-lirc-device-tree: 6b0b51f011b99a954f9adadf5fdf75d34d965e0d
   jds-lirc-mce2: 8ad73fb3f8edb7403ba9d9737234d9c4eb8735e0
   m_1: 8768c6e03a7bb9f7f0913d1ba6c563b9c966d96e
