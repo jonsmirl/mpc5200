@@ -26,7 +26,6 @@
 #include <asm/mpc52xx_psc.h>
 
 #include "mpc5200_dma.h"
-#include "mpc5200_psc_i2s.h"
 
 MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
 MODULE_DESCRIPTION("Freescale MPC5200 PSC in I2S mode ASoC Driver");
@@ -207,7 +206,7 @@ static int psc_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
 		else
 			bcom_gen_bd_tx_reset(s->bcom_task);
 		while (!bcom_queue_full(s->bcom_task))
-			psc_i2s_bcom_enqueue_next_buffer(s);
+			psc_dma_bcom_enqueue_next_buffer(s);
 		bcom_enable(s->bcom_task);
 
 		/* Due to errata in the i2s mode; need to line up enabling

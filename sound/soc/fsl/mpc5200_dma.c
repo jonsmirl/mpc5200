@@ -142,7 +142,7 @@ static irqreturn_t psc_dma_status_irq(int irq, void *_psc_dma)
  * the queue.  Otherwise the enqueue will fail and the audio ring buffer
  * will get out of sync
  */
-static void psc_dma_bcom_enqueue_next_buffer(struct psc_dma_stream *s)
+void psc_dma_bcom_enqueue_next_buffer(struct psc_dma_stream *s)
 {
 	struct bcom_bd *bd;
 

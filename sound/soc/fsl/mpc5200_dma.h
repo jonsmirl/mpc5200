@@ -13,6 +13,7 @@ void mpc5200_dma_shutdown(struct snd_pcm_substream *substream,
 			     struct snd_soc_dai *dai);
 int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
 			   struct snd_soc_dai *dai);
+void psc_dma_bcom_enqueue_next_buffer(struct psc_dma_stream *s);
 
 extern const struct snd_pcm_hardware mpc5200_pcm_hardware;
 extern struct snd_soc_platform mpc5200_soc_platform;
