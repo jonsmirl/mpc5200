@@ -421,7 +421,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	phys_addr_t fifo;
 	//struct psc_dma *psc_dma;
 	struct resource res;
-	int i, size, psc_id, irq, rc;
+	int i, nDAI, size, psc_id, irq, rc;
 	const __be32 *prop;
 	void __iomem *regs;
 
@@ -459,11 +459,12 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u AC97", psc_id+1);
 
 	/* Fill out the CPU DAI structure */
-	for (i = 0; i < PSC_MAX_DAI; i++) {
-		memcpy(&psc_dma->dai[i], &psc_ac97_dai_template, sizeof(struct snd_soc_dai));
+	nDAI = ARRAY_SIZE(psc_ac97_dai_template);
+	nDAI = min(nDAI, SOC_OF_SIMPLE_MAX_DAI);
+	for (i = 0; i < nDAI; i++) {
+		memcpy(&psc_dma->dai[i], &psc_ac97_dai_template[i], sizeof(struct snd_soc_dai));
 		psc_dma->dai[i].private_data = psc_dma;
 		snprintf(psc_dma->stream_name[i], PSC_STREAM_NAME_LEN, psc_ac97_dai_template[i].name, psc_dma->name);
-printk("Name is $%s$\n", psc_dma->stream_name[i]);
 		psc_dma->dai[i].name = psc_dma->stream_name[i];
 		psc_dma->dai[i].id = psc_id;
 	}
@@ -536,14 +537,14 @@ printk("Name is $%s$\n", psc_dma->stream_name[i]);
 	if (rc)
 		dev_info(psc_dma->dev, "error creating sysfs files\n");
 
-	rc = snd_soc_register_dais(psc_dma->dai, PSC_MAX_DAI);
+	rc = snd_soc_register_dais(psc_dma->dai, nDAI);
 	if (rc != 0) {
 		printk("Failed to register DAI\n");
 		return 0;
 	}
 
 	/* Tell the ASoC OF helpers about it */
-	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, PSC_MAX_DAI);
+	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, nDAI);
 
 	return 0;
 }

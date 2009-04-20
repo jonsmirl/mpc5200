@@ -5,7 +5,8 @@
 #ifndef __SOUND_SOC_FSL_MPC5200_DMA_H__
 #define __SOUND_SOC_FSL_MPC5200_DMA_H__
 
-#define PSC_MAX_DAI 2
+#include <sound/soc-of-simple.h>
+
 #define PSC_STREAM_NAME_LEN 32
 
 /**
@@ -51,8 +52,8 @@ struct psc_dma {
 	struct mpc52xx_psc_fifo __iomem *fifo_regs;
 	unsigned int irq;
 	struct device *dev;
-	struct snd_soc_dai dai[PSC_MAX_DAI];
-	char stream_name[PSC_MAX_DAI][PSC_STREAM_NAME_LEN];
+	struct snd_soc_dai dai[SOC_OF_SIMPLE_MAX_DAI];
+	char stream_name[SOC_OF_SIMPLE_MAX_DAI][PSC_STREAM_NAME_LEN];
 	spinlock_t lock;
 	u32 sicr;
 	uint sysclk;
