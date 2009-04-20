@@ -4,8 +4,6 @@
  * Copyright (C) 2008 Secret Lab Technologies Ltd.
  */
 
-#define DEBUG
-
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
@@ -49,6 +47,65 @@ const struct snd_pcm_hardware mpc5200_pcm_hardware = {
 	.periods_max		= 256,
 	.buffer_bytes_max	= 2 * 1024 * 1024,
 	.fifo_size		= 0,
+};
+
+/**
+ * psc_dma_stream - Data specific to a single stream (playback or capture)
+ * @active:		flag indicating if the stream is active
+ * @psc_dma:		pointer back to parent psc_dma data structure
+ * @bcom_task:		bestcomm task structure
+ * @irq:		irq number for bestcomm task
+ * @period_start:	physical address of start of DMA region
+ * @period_end:		physical address of end of DMA region
+ * @period_next_pt:	physical address of next DMA buffer to enqueue
+ * @period_bytes:	size of DMA period in bytes
+ */
+struct psc_dma_stream {
+	int active;
+	struct psc_dma *psc_dma;
+	struct bcom_task *bcom_task;
+	int irq;
+	struct snd_pcm_substream *stream;
+	dma_addr_t period_start;
+	dma_addr_t period_end;
+	dma_addr_t period_next_pt;
+	dma_addr_t period_current_pt;
+	int period_bytes;
+};
+
+/**
+ * psc_dma - Private driver data
+ * @name: short name for this device ("PSC0", "PSC1", etc)
+ * @psc_regs: pointer to the PSC's registers
+ * @fifo_regs: pointer to the PSC's FIFO registers
+ * @irq: IRQ of this PSC
+ * @dev: struct device pointer
+ * @dai: the CPU DAI for this device
+ * @sicr: Base value used in serial interface control register; mode is ORed
+ *        with this value.
+ * @playback: Playback stream context data
+ * @capture: Capture stream context data
+ */
+struct psc_dma {
+	char name[32];
+	struct mpc52xx_psc __iomem *psc_regs;
+	struct mpc52xx_psc_fifo __iomem *fifo_regs;
+	unsigned int irq;
+	struct device *dev;
+	struct snd_soc_dai dai;
+	spinlock_t lock;
+	u32 sicr;
+	uint sysclk;
+
+	/* per-stream data */
+	struct psc_dma_stream playback;
+	struct psc_dma_stream capture;
+
+	/* Statistics */
+	struct {
+		int overrun_count;
+		int underrun_count;
+	} stats;
 };
 
 /*
@@ -436,14 +493,14 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
 		card->dev->coherent_dma_mask = 0xffffffff;
 
 	if (pcm->streams[0].substream) {
-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
+		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
 					&pcm->streams[0].substream->dma_buffer);
 		if (rc)
 			goto playback_alloc_err;
 	}
 
 	if (pcm->streams[1].substream) {
-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
+		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
 					&pcm->streams[1].substream->dma_buffer);
 		if (rc)
 			goto capture_alloc_err;
@@ -484,20 +541,4 @@ struct snd_soc_platform mpc5200_soc_platform = {
 	.pcm_free	= &psc_dma_pcm_free,
 };
 EXPORT_SYMBOL_GPL(mpc5200_soc_platform);
-
-static int __init mpc5200_soc_platform_init(void)
-{
-	/* Tell the ASoC OF helpers about it */
-	of_snd_soc_register_platform(&mpc5200_soc_platform);
-	return snd_soc_register_platform(&mpc5200_soc_platform);
-}
-module_init(mpc5200_soc_platform_init);
-
-static void __exit mpc5200_soc_platform_exit(void)
-{
-	snd_soc_unregister_platform(&mpc5200_soc_platform);
-}
-module_exit(mpc5200_soc_platform_exit);
-
-
 
