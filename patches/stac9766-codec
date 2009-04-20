@@ -1,5 +1,5 @@
 Bottom: 6bfc45d9490ec1342328423a096c63715c29e945
-Top:    3558442eb5defe479acf3a5ad2dc1cb7b70de50a
+Top:    e00899e198e5b01e6430dbdd2ad81961b82be316
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-17 20:45:39 -0400
 
@@ -52,10 +52,10 @@ index f906124..81084dc 100644
  obj-$(CONFIG_SND_SOC_TLV320AIC26)	+= snd-soc-tlv320aic26.o
 diff --git a/sound/soc/codecs/stac9766.c b/sound/soc/codecs/stac9766.c
 new file mode 100644
-index 0000000..2f4f2f8
+index 0000000..aca866b
 --- /dev/null
 +++ b/sound/soc/codecs/stac9766.c
-@@ -0,0 +1,519 @@
+@@ -0,0 +1,550 @@
 +/*
 + * stac9766.c  --  ALSA Soc STAC9766 codec support
 + *
@@ -83,6 +83,7 @@ index 0000000..2f4f2f8
 +#include <sound/pcm_params.h>
 +#include <sound/soc.h>
 +#include <sound/soc-dapm.h>
++#include <sound/soc-of-simple.h>
 +
 +#include "stac9766.h"
 +
@@ -300,7 +301,7 @@ index 0000000..2f4f2f8
 +{
 +	u16 val = 0, *cache = codec->reg_cache;
 +
-+	if (reg/2 > ARRAY_SIZE(stac9766_reg))
++	if (reg / 2 > ARRAY_SIZE(stac9766_reg))
 +		return -EIO;
 +
 +	if (reg == AC97_RESET || reg == AC97_GPIO_STATUS || AC97_INT_PAGING ||
@@ -310,8 +311,8 @@ index 0000000..2f4f2f8
 +		printk("stac9766_ac97_read actual reg %02x val %04x\n", reg, val);
 +		return val;
 +	}
-+	printk("stac9766_ac97_read cache reg %02x val %04x\n", reg, cache[reg/2]);
-+	return cache[reg/2];
++	printk("stac9766_ac97_read cache reg %02x val %04x\n", reg, cache[reg / 2]);
++	return cache[reg / 2];
 +}
 +
 +int stac9766_ac97_write(struct snd_soc_codec *codec, unsigned int reg,
@@ -320,11 +321,11 @@ index 0000000..2f4f2f8
 +	u16 *cache = codec->reg_cache;
 +
 +	printk("stac9766_ac97_write reg %02x val %04x\n", reg, val);
-+	if (reg/2 > ARRAY_SIZE(stac9766_reg))
++	if (reg / 2 > ARRAY_SIZE(stac9766_reg))
 +		return -EIO;
 +
 +	soc_ac97_ops.write(codec->ac97, reg, val);
-+	cache[reg/2] = val;
++	cache[reg / 2] = val;
 +	return 0;
 +}
 +
@@ -571,9 +572,39 @@ index 0000000..2f4f2f8
 +};
 +EXPORT_SYMBOL_GPL(soc_codec_dev_stac9766);
 +
++static int __init stac9766_probe(struct platform_device *pdev)
++{
++#if defined(CONFIG_SND_SOC_OF_SIMPLE)
++	/* Tell the of_soc helper about this codec */
++	of_snd_soc_register_codec(&soc_codec_dev_stac9766, pdev->dev.archdata.of_node,
++									stac9766_dai, ARRAY_SIZE(stac9766_dai),
++									pdev->dev.archdata.of_node);
++#endif
++	return 0;
++}
 +
-+MODULE_DESCRIPTION("ASoC STAC9766 driver");
-+MODULE_AUTHOR("Jon Smirl");
++static struct platform_driver stac9766_driver = {
++	.probe	= stac9766_probe,
++	.driver	= {
++		.name	= "stac9766",
++	},
++};
++
++static __init int stac9766_driver_init(void)
++{
++	snd_soc_register_dais(stac9766_dai, ARRAY_SIZE(stac9766_dai));
++	return platform_driver_register(&stac9766_driver);
++}
++
++static __exit void stac9766_driver_exit(void)
++{
++}
++
++module_init(stac9766_driver_init);
++module_exit(stac9766_driver_exit);
++
++MODULE_DESCRIPTION("ASoC stac9766 driver");
++MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
 +MODULE_LICENSE("GPL");
 diff --git a/sound/soc/codecs/stac9766.h b/sound/soc/codecs/stac9766.h
 new file mode 100644
