@@ -1,5 +1,5 @@
-Bottom: 24be41c69fe0ac4a410cf70580d8ccf09fbf0c6e
-Top:    0c44306d27f485119bf32f244b10972d79fa3a74
+Bottom: c0bdaec2268dd06c9591293aaa484fc8d5870bf7
+Top:    af891520282ccac6ad997d3f372f2f912a9198d8
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-17 20:45:33 -0400
 
@@ -54,10 +54,10 @@ index a064e19..61d3c29 100644
  #endif
  
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 02a05c2..5fe7eda 100644
+index 3aa729d..83f6d76 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
-@@ -877,8 +877,8 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+@@ -833,8 +833,8 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
  	snd_soc_register_platform(&psc_i2s_pcm_soc_platform);
  
  	/* Tell the ASoC OF helpers about it */
