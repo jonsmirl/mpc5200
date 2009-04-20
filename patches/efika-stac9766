@@ -1,5 +1,5 @@
 Bottom: 7090f3c8e5cf61768300de4d78ea10e18b3f1c24
-Top:    59cee822dde81991f1226b8f6d4688620f4bec05
+Top:    bd4c7b19caf1d28aabe4411466c968abf767fef1
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-17 20:45:40 -0400
 
@@ -2035,7 +2035,7 @@ index ff6255f..ba03bb3 100644
  
  	return 0;
 diff --git a/sound/soc/fsl/soc-of-simple.c b/sound/soc/fsl/soc-of-simple.c
-index 2d0ca0b..49c07f6 100644
+index 2d0ca0b..2b32f64 100644
 --- a/sound/soc/fsl/soc-of-simple.c
 +++ b/sound/soc/fsl/soc-of-simple.c
 @@ -32,18 +32,23 @@ struct of_snd_soc_device {
@@ -2113,7 +2113,7 @@ index 2d0ca0b..49c07f6 100644
  
  	pr_info("registering ASoC codec driver: %s\n", node->full_name);
  
-@@ -117,10 +129,12 @@ int of_snd_soc_register_codec(struct snd_soc_codec_device *codec_dev,
+@@ -117,10 +129,11 @@ int of_snd_soc_register_codec(struct snd_soc_codec_device *codec_dev,
  	/* Store the codec data */
  	of_soc->device.codec_data = codec_data;
  	of_soc->device.codec_dev = codec_dev;
@@ -2123,14 +2123,13 @@ index 2d0ca0b..49c07f6 100644
 -
 +	of_soc->card.num_links = min(count, of_soc->card.num_links);
 +	for (i = 0; i < of_soc->card.num_links; i++) {
-+		of_soc->dai_link[i].name = (char *)node->name;
-+		of_soc->dai_link[i].stream_name = (char *)node->name;
++		of_soc->dai_link[i].name = dai[i].name;
 +		of_soc->dai_link[i].codec_dai = dai;
 +	}
  	/* Now try to register the SoC device */
  	of_snd_soc_register_device(of_soc);
  
-@@ -130,21 +144,51 @@ int of_snd_soc_register_codec(struct snd_soc_codec_device *codec_dev,
+@@ -130,21 +143,51 @@ int of_snd_soc_register_codec(struct snd_soc_codec_device *codec_dev,
  }
  EXPORT_SYMBOL_GPL(of_snd_soc_register_codec);
  
@@ -2190,7 +2189,7 @@ index 2d0ca0b..49c07f6 100644
  	if (!codec_node)
  		return -ENODEV;
  	pr_info("looking for codec: %s\n", codec_node->full_name);
-@@ -156,10 +200,10 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform,
+@@ -156,10 +199,12 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform,
  		goto out;
  	}
  
@@ -2200,12 +2199,14 @@ index 2d0ca0b..49c07f6 100644
 -	of_soc->card.name = machine_name;
 +	of_soc->cpu_dai_node = node;
 +	of_soc->card.num_links = min(count, of_soc->card.num_links);
-+	for (i = 0; i < of_soc->card.num_links; i++)
++	for (i = 0; i < of_soc->card.num_links; i++) {
++		of_soc->dai_link[i].stream_name = cpu_dai[i].name;
 +		of_soc->dai_link[i].cpu_dai = &cpu_dai[i];
++	}
  
  	/* Now try to register the SoC device */
  	of_snd_soc_register_device(of_soc);
-@@ -168,20 +212,47 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform,
+@@ -168,20 +213,47 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform,
  	mutex_unlock(&of_snd_soc_mutex);
  	return rc;
  }
