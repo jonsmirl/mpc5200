@@ -1,9 +1,9 @@
 Version: 1
-Previous: 4cb11266e951428e81cc48aec443d6936bc1b259
+Previous: e281651f5e2fd6781076dc853f854a695d0e111c
 Head: 9fb84a3d6a14831a5fc3f4a48c057e6f3fbcb61f
 Applied:
   Makefile: 3d02512cfba5ab724e6de0cc3bab66185d579544
-  jds_platform: befae02ff37ed41cd9ccc0974dbbaba73a66da27
+  digispeak: befae02ff37ed41cd9ccc0974dbbaba73a66da27
   g_spi_4: c9fc62358e279b670e7bd61a1af86f966c5c98a9
   mpc5200-rtc: d331ca9a77173af1f7119e81f14cfa4acec8d2d5
   lirc: 615126b0c464015bc4cdaea3f8eca36585d395c0
