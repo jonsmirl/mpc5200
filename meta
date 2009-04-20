@@ -1,5 +1,5 @@
 Version: 1
-Previous: bc029f6c1b788842ab7a81c306091db58e0c91c8
+Previous: ac9fc46170758ded78f13eae8f408806fde0aed5
 Head: 6792c4168300a2844df9941f011e31d12979d5b9
 Applied:
   Makefile: 3d02512cfba5ab724e6de0cc3bab66185d579544
@@ -21,8 +21,8 @@ Applied:
   of-soc-simple-rework: 977f1004e7b0c9af9413e5edd980af3d0c55bc1e
   mpc5200-dma-split: 95bd68166d27e1b7af105f9e1dfdb6e909ed8e09
   tas5504-codec: 86b485f6bce155fdcc34194a976b3b48e0d71175
+  dspeak-audio: 6792c4168300a2844df9941f011e31d12979d5b9
 Unapplied:
-  dspeak-audio: 3ad9285938338f5349cdc77048750bbce23a896d
   stac9766-codec: 881dac8f13d69fa9d7f5c7c2acc6870657efaa19
   mpc5200-ac97: 392fde7c154f546383cef89220ed735e88bce158
   efika-audio: 1550f83692973999d5bd307479c76b18bd36be7d
