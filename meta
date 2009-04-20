@@ -1,6 +1,6 @@
 Version: 1
-Previous: 11452481844a777879249e389f2e2413ae6eacdf
-Head: 0701b12263361ff5589aa3445017e41d7c97a8c5
+Previous: c98cf913c946f0073b96466d2bebabaabb128ba3
+Head: 377156b0e41585645bb21cdfbccb00ec020936b4
 Applied:
   Makefile: 3d02512cfba5ab724e6de0cc3bab66185d579544
   digispeak: befae02ff37ed41cd9ccc0974dbbaba73a66da27
@@ -24,6 +24,6 @@ Applied:
   dspeak-audio: 16e93e119fce8a2b74cb32c8fdfac801f0e7f25a
   stac9766-codec: 1b620de99b4e7300c2a9119b3dea73084f49f7f2
   mpc5200-ac97: 0701b12263361ff5589aa3445017e41d7c97a8c5
+  efika-audio: 377156b0e41585645bb21cdfbccb00ec020936b4
 Unapplied:
-  efika-audio: a86ffb03c1fd3639bef5a70107d03643bc0802e7
 Hidden:
