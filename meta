@@ -1,6 +1,6 @@
 Version: 1
-Previous: 7e128fdc54a0cdf98602e923d95fa7bcf3ae0b3a
-Head: 160a404dde0808f2d12157e7746b45b4bb945c41
+Previous: d6e4c62fe324119f40b1858c085da2c5924f1cd8
+Head: 6359e09d59e5f0887a6bea139a326de97c83b86d
 Applied:
   Makefile: 3d02512cfba5ab724e6de0cc3bab66185d579544
   jds_platform: befae02ff37ed41cd9ccc0974dbbaba73a66da27
@@ -17,9 +17,9 @@ Applied:
   spi-mmc: c7588849208e8e279eda8b42b15fbaabecfb416c
   soc-u32-cleanup: 4e47dff3ad7d0c100f1df31a9f523cbd2b3a7737
   max9485: 160a404dde0808f2d12157e7746b45b4bb945c41
+  i2s-cell-clock: 6359e09d59e5f0887a6bea139a326de97c83b86d
 Unapplied:
   jds-soc-machine: 09875b1412191ac7a1b025a564d695c2f887beb9
-  i2s-cell-clock: cfd7437775bef1d3697249a404d3a1040fdef19f
   jds-audio: 225712fa2ccdae132a8baa1c08f145d39febd6db
   stac9766: 3c3bbda4b73986624bc20ad36a1f5076103601be
   mpc5200-dma: 98fbb2ad9837631b19d49f78b69a21ac2c393ca6
