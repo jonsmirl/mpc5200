@@ -1,5 +1,5 @@
 Version: 1
-Previous: e281651f5e2fd6781076dc853f854a695d0e111c
+Previous: 1a54d08fa19ce78e8c44eee150375551c29b4e15
 Head: 9fb84a3d6a14831a5fc3f4a48c057e6f3fbcb61f
 Applied:
   Makefile: 3d02512cfba5ab724e6de0cc3bab66185d579544
@@ -23,6 +23,6 @@ Applied:
   stac9766: 235a177ff95e9f4596918b297c329bbbb9ea96e5
   mpc5200-dma: 314b982ed65a0c0d85831052f96f98924eac28cf
   mpc5200-ac97: 0ba3a6f71b687dccceb37cb73c2e9a47ca5d8ce4
-  efika-stac9766: 9fb84a3d6a14831a5fc3f4a48c057e6f3fbcb61f
+  efika-audio: 9fb84a3d6a14831a5fc3f4a48c057e6f3fbcb61f
 Unapplied:
 Hidden:
