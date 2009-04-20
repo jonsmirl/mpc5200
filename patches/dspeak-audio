@@ -1,5 +1,5 @@
 Bottom: e4e59e8f8f15c02a0607f59cf38a6c1f08d6d043
-Top:    f1f3fc67f8077810a8177706d399d99f4e43f425
+Top:    aa5a2df45a24a02c51a1cb9aff28354d4f91379c
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-20 10:13:48 -0400
 
@@ -63,7 +63,7 @@ index aa7708b..7c77e68 100644
  
 diff --git a/sound/soc/fsl/dspeak01_fabric.c b/sound/soc/fsl/dspeak01_fabric.c
 new file mode 100644
-index 0000000..bd35a14
+index 0000000..c6c7890
 --- /dev/null
 +++ b/sound/soc/fsl/dspeak01_fabric.c
 @@ -0,0 +1,179 @@
@@ -182,7 +182,7 @@ index 0000000..bd35a14
 +	if (!fabric.clock)
 +		return -ENODEV;
 +
-+	of_snd_soc_register_machine("DSPEAK01", &dspeak01_fabric_ops);
++	of_snd_soc_register_fabric("DSPEAK01", &dspeak01_fabric_ops, NULL);
 +	return 0;
 +}
 +
