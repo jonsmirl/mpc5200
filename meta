@@ -1,5 +1,5 @@
 Version: 1
-Previous: 42def664cd92652728d829880679980a90d581c2
+Previous: 7e128fdc54a0cdf98602e923d95fa7bcf3ae0b3a
 Head: 160a404dde0808f2d12157e7746b45b4bb945c41
 Applied:
   Makefile: 3d02512cfba5ab724e6de0cc3bab66185d579544
@@ -19,7 +19,7 @@ Applied:
   max9485: 160a404dde0808f2d12157e7746b45b4bb945c41
 Unapplied:
   jds-soc-machine: 09875b1412191ac7a1b025a564d695c2f887beb9
-  jds-psc-c: cfd7437775bef1d3697249a404d3a1040fdef19f
+  i2s-cell-clock: cfd7437775bef1d3697249a404d3a1040fdef19f
   jds-audio: 225712fa2ccdae132a8baa1c08f145d39febd6db
   stac9766: 3c3bbda4b73986624bc20ad36a1f5076103601be
   mpc5200-dma: 98fbb2ad9837631b19d49f78b69a21ac2c393ca6
