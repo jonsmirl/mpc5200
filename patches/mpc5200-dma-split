@@ -1,5 +1,5 @@
 Bottom: c0bdaec2268dd06c9591293aaa484fc8d5870bf7
-Top:    ab2c7712177da32abc38410ec384c6ec6692eac1
+Top:    f406cd8c7f4d869e2b5921aa4e11ca8e89f71703
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-17 20:45:39 -0400
 
@@ -23,7 +23,7 @@ index f85134c..aa7708b 100644
 +
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
 new file mode 100644
-index 0000000..c09faf3
+index 0000000..dcdc68f
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -0,0 +1,544 @@
@@ -171,7 +171,7 @@ index 0000000..c09faf3
 + * the queue.  Otherwise the enqueue will fail and the audio ring buffer
 + * will get out of sync
 + */
-+static void psc_dma_bcom_enqueue_next_buffer(struct psc_dma_stream *s)
++void psc_dma_bcom_enqueue_next_buffer(struct psc_dma_stream *s)
 +{
 +	struct bcom_bd *bd;
 +
@@ -573,10 +573,10 @@ index 0000000..c09faf3
 +
 diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
 new file mode 100644
-index 0000000..09ff62f
+index 0000000..9b8a0c4
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_dma.h
-@@ -0,0 +1,20 @@
+@@ -0,0 +1,21 @@
 +/*
 + * Freescale MPC5200 Audio DMA driver
 + */
@@ -592,26 +592,26 @@ index 0000000..09ff62f
 +			     struct snd_soc_dai *dai);
 +int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
 +			   struct snd_soc_dai *dai);
++void psc_dma_bcom_enqueue_next_buffer(struct psc_dma_stream *s);
 +
 +extern const struct snd_pcm_hardware mpc5200_pcm_hardware;
 +extern struct snd_soc_platform mpc5200_soc_platform;
 +
 +#endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 3aa729d..8346777 100644
+index 3aa729d..1c7593d 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
-@@ -25,6 +25,9 @@
+@@ -25,6 +25,8 @@
  #include <sysdev/bestcomm/gen_bd.h>
  #include <asm/mpc52xx_psc.h>
  
 +#include "mpc5200_dma.h"
-+#include "mpc5200_psc_i2s.h"
 +
  MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
  MODULE_DESCRIPTION("Freescale MPC5200 PSC in I2S mode ASoC Driver");
  MODULE_LICENSE("GPL");
-@@ -105,121 +108,6 @@ struct psc_i2s {
+@@ -105,121 +107,6 @@ struct psc_i2s {
  	} stats;
  };
  
@@ -733,7 +733,16 @@ index 3aa729d..8346777 100644
  static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
  				 struct snd_pcm_hw_params *params,
  				 struct snd_soc_dai *dai)
-@@ -371,52 +259,12 @@ static int psc_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
+@@ -319,7 +206,7 @@ static int psc_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
+ 		else
+ 			bcom_gen_bd_tx_reset(s->bcom_task);
+ 		while (!bcom_queue_full(s->bcom_task))
+-			psc_i2s_bcom_enqueue_next_buffer(s);
++			psc_dma_bcom_enqueue_next_buffer(s);
+ 		bcom_enable(s->bcom_task);
+ 
+ 		/* Due to errata in the i2s mode; need to line up enabling
+@@ -371,52 +258,12 @@ static int psc_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
  		return -EINVAL;
  	}
  
@@ -787,7 +796,7 @@ index 3aa729d..8346777 100644
   * psc_i2s_set_sysclk: set the clock frequency and direction
   *
   * This function is called by the machine driver to tell us what the clock
-@@ -469,11 +317,11 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
+@@ -469,11 +316,11 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
   * psc_i2s_dai_template: template CPU Digital Audio Interface
   */
  static struct snd_soc_dai_ops psc_i2s_dai_ops = {
@@ -803,7 +812,7 @@ index 3aa729d..8346777 100644
  	.set_sysclk	= psc_i2s_set_sysclk,
  	.set_fmt	= psc_i2s_set_fmt,
  };
-@@ -502,23 +350,6 @@ static struct snd_soc_dai psc_i2s_dai_template = {
+@@ -502,23 +349,6 @@ static struct snd_soc_dai psc_i2s_dai_template = {
   * interaction with the attached codec
   */
  
@@ -827,7 +836,7 @@ index 3aa729d..8346777 100644
  static int psc_i2s_pcm_open(struct snd_pcm_substream *substream)
  {
  	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-@@ -532,7 +363,7 @@ static int psc_i2s_pcm_open(struct snd_pcm_substream *substream)
+@@ -532,7 +362,7 @@ static int psc_i2s_pcm_open(struct snd_pcm_substream *substream)
  	else
  		s = &psc_i2s->playback;
  
@@ -836,7 +845,7 @@ index 3aa729d..8346777 100644
  
  	s->stream = substream;
  	return 0;
-@@ -585,7 +416,7 @@ static int psc_i2s_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
+@@ -585,7 +415,7 @@ static int psc_i2s_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
  			   struct snd_pcm *pcm)
  {
  	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
