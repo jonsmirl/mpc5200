@@ -1,5 +1,5 @@
 Bottom: 0c44306d27f485119bf32f244b10972d79fa3a74
-Top:    d32f4793ce0aeeceaf5372072cc54712e0c79698
+Top:    3a2753f2a964a68c04d7f12618ca161cf75cc3a4
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-20 10:34:49 -0400
 
@@ -8,8 +8,30 @@ Split out the DMA code from the mpc5200 i2s driver
 
 ---
 
+diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
+index 9fc9082..95657c1 100644
+--- a/sound/soc/fsl/Kconfig
++++ b/sound/soc/fsl/Kconfig
+@@ -1,6 +1,9 @@
+ config SND_SOC_OF_SIMPLE
+ 	tristate
+ 
++config SND_MPC52xx_DMA
++	tristate
++
+ # ASoC platform support for the Freescale MPC8610 SOC.  This compiles drivers
+ # for the SSI and the Elo DMA controller.  You will still need to select
+ # a platform driver and a codec driver.
+@@ -23,6 +26,7 @@ config SND_SOC_MPC5200_I2S
+ 	tristate "Freescale MPC5200 PSC in I2S mode driver"
+ 	depends on PPC_MPC52xx && PPC_BESTCOMM
+ 	select SND_SOC_OF_SIMPLE
++	select SND_MPC52xx_DMA
+ 	select PPC_BESTCOMM_GEN_BD
+ 	help
+ 	  Say Y here to support the MPC5200 PSCs in I2S mode.
 diff --git a/sound/soc/fsl/Makefile b/sound/soc/fsl/Makefile
-index f85134c..aa7708b 100644
+index f85134c..56b2476 100644
 --- a/sound/soc/fsl/Makefile
 +++ b/sound/soc/fsl/Makefile
 @@ -10,5 +10,8 @@ snd-soc-fsl-ssi-objs := fsl_ssi.o
@@ -17,7 +39,7 @@ index f85134c..aa7708b 100644
  obj-$(CONFIG_SND_SOC_MPC8610) += snd-soc-fsl-ssi.o snd-soc-fsl-dma.o
  
 +# MPC5200 Platform Support
-+obj-$(CONFIG_SND_MPC52xx_SOC) += mpc5200_dma.o
++obj-$(CONFIG_SND_MPC52xx_DMA) += mpc5200_dma.o
  obj-$(CONFIG_SND_SOC_MPC5200_I2S) += mpc5200_psc_i2s.o
  
 +
