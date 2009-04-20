@@ -877,8 +877,8 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	snd_soc_register_platform(&psc_i2s_pcm_soc_platform);
 
 	/* Tell the ASoC OF helpers about it */
-	of_snd_soc_register_platform(&psc_i2s_pcm_soc_platform, op->node,
-				     &psc_i2s->dai);
+	of_snd_soc_register_platform(&psc_i2s_pcm_soc_platform);
+	of_snd_soc_register_cpu_dai(op->node, &psc_i2s->dai, 1);
 
 	return 0;
 }
