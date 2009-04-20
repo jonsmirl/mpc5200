@@ -149,7 +149,7 @@ static int psc_i2s_set_sysclk(struct snd_soc_dai *cpu_dai,
 			dev_dbg(psc_dma->dev, "psc_i2s_set_sysclk(clkdiv %d freq error=%ldHz)\n",
 					clkdiv, (ppc_proc_freq / clkdiv - freq));
 
-			return mpc52xx_set_psc_clkdiv(psc_dma->dai.id + 1, clkdiv);
+			return mpc52xx_set_psc_clkdiv(psc_dma->dai[0].id + 1, clkdiv);
 		}
 	}
 	return 0;
@@ -322,13 +322,13 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	psc_dma->dev = &op->dev;
 	psc_dma->playback.psc_dma = psc_dma;
 	psc_dma->capture.psc_dma = psc_dma;
-	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u", psc_id+1);
+	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u I2S", psc_id+1);
 
 	/* Fill out the CPU DAI structure */
-	memcpy(&psc_dma->dai, &psc_i2s_dai_template, sizeof psc_dma->dai);
-	psc_dma->dai.private_data = psc_dma;
-	psc_dma->dai.name = psc_dma->name;
-	psc_dma->dai.id = psc_id;
+	memcpy(&psc_dma->dai[0], &psc_i2s_dai_template, sizeof psc_dma->dai);
+	psc_dma->dai[0].private_data = psc_dma;
+	psc_dma->dai[0].name = psc_dma->name;
+	psc_dma->dai[0].id = psc_id;
 
 	/* Find the address of the fifo data registers and setup the
 	 * DMA tasks */
@@ -393,7 +393,7 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 		dev_info(psc_dma->dev, "error creating sysfs files\n");
 
 	/* Tell the ASoC OF helpers about it */
-	of_snd_soc_register_cpu_dai(op->node, &psc_dma->dai, 1);
+	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, 1);
 
 	return 0;
 }

@@ -5,6 +5,9 @@
 #ifndef __SOUND_SOC_FSL_MPC5200_DMA_H__
 #define __SOUND_SOC_FSL_MPC5200_DMA_H__
 
+#define PSC_MAX_DAI 2
+#define PSC_STREAM_NAME_LEN 32
+
 /**
  * psc_ac97_stream - Data specific to a single stream (playback or capture)
  * @active:		flag indicating if the stream is active
@@ -48,7 +51,8 @@ struct psc_dma {
 	struct mpc52xx_psc_fifo __iomem *fifo_regs;
 	unsigned int irq;
 	struct device *dev;
-	struct snd_soc_dai dai;
+	struct snd_soc_dai dai[PSC_MAX_DAI];
+	char stream_name[PSC_MAX_DAI][PSC_STREAM_NAME_LEN];
 	spinlock_t lock;
 	u32 sicr;
 	uint sysclk;

@@ -187,86 +187,6 @@ static int psc_ac97_hw_analog_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
-
-	printk("psc_ac97_hw_analog_params\n");
-	printk("channels %d\n",substream->runtime->channels);
-	printk("rate %d\n",substream->runtime->rate);
-	printk("periods %d\n",substream->runtime->periods);
-	printk("period_step %d\n",substream->runtime->period_step);
-	printk("slots %d\n",psc_dma->psc_regs->ac97_slots);
-
-	/* FIXME, need a spinlock to protect access */
-	if (substream->runtime->channels == 1)
-		out_be32(&psc_dma->psc_regs->ac97_slots, 0x01000000);
-	else
-		out_be32(&psc_dma->psc_regs->ac97_slots, 0x03000000);
-
-	return 0;
-}
-
-static int psc_ac97_hw_digital_params(struct snd_pcm_substream *substream,
-				 struct snd_pcm_hw_params *params,
-				 struct snd_soc_dai *dai)
-{
-	return 0;
-}
-
-static struct snd_soc_dai_ops psc_ac97_analog_ops = {
-	.hw_params	= psc_ac97_hw_analog_params,
-};
-
-static struct snd_soc_dai_ops psc_ac97_digital_ops = {
-	.hw_params	= psc_ac97_hw_digital_params,
-};
-
-struct snd_soc_dai mpc5200_dai_ac97[] = {
-{
-	.name	= "mpc5200 AC97 analog",
-	.id	= MPC5200_AC97_ANALOG,
-	.ac97_control	= 1,
-	.suspend = psc_ac97_suspend,
-	.resume = psc_ac97_resume,
-
-	.playback = {
-		.stream_name	= "mpc5200 AC97 analog",
-		.channels_min	= 1,
-		.channels_max	= 6,
-		.rates		= SNDRV_PCM_RATE_8000_48000,
-		.formats	= SNDRV_PCM_FORMAT_S32_BE,
-	},
-	.capture = {
-		.stream_name	= "mpc5200 AC97 analog",
-		.channels_min	= 1,
-		.channels_max	= 2,
-		.rates		= SNDRV_PCM_RATE_8000_48000,
-		.formats	= SNDRV_PCM_FMTBIT_S32_BE,
-	},
-	.ops 	= &psc_ac97_analog_ops,
-},
-{
-	.name	= "mpc5200 AC97 digital",
-	.id	= MPC5200_AC97_DIGITAL,
-	.suspend = psc_ac97_suspend,
-	.resume = psc_ac97_resume,
-
-	.playback = {
-		.stream_name	= "mpc5200 AC97 digital",
-		.channels_min	= 1,
-		.channels_max	= 2,
-		.rates		= SNDRV_PCM_RATE_32000 | \
-			SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
-		.formats	= SNDRV_PCM_FORMAT_IEC958_SUBFRAME_BE,
-	},
-	.ops 	= &psc_ac97_digital_ops,
-}};
-EXPORT_SYMBOL_GPL(mpc5200_dai_ac97);
-
-static int psc_ac97_hw_params(struct snd_pcm_substream *substream,
-				 struct snd_pcm_hw_params *params,
-				 struct snd_soc_dai *dai)
-{
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
 	uint bits, framesync, bitclk, value;
 	u32 mode;
 
@@ -319,6 +239,32 @@ static int psc_ac97_hw_params(struct snd_pcm_substream *substream,
   	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 
 	return 0;
+#if 0
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
+
+	printk("psc_ac97_hw_analog_params\n");
+	printk("channels %d\n",substream->runtime->channels);
+	printk("rate %d\n",substream->runtime->rate);
+	printk("periods %d\n",substream->runtime->periods);
+	printk("period_step %d\n",substream->runtime->period_step);
+	printk("slots %d\n",psc_dma->psc_regs->ac97_slots);
+
+	// FIXME, need a spinlock to protect access
+	if (substream->runtime->channels == 1)
+		out_be32(&psc_dma->psc_regs->ac97_slots, 0x01000000);
+	else
+		out_be32(&psc_dma->psc_regs->ac97_slots, 0x03000000);
+
+	return 0;
+#endif
+}
+
+static int psc_ac97_hw_digital_params(struct snd_pcm_substream *substream,
+				 struct snd_pcm_hw_params *params,
+				 struct snd_soc_dai *dai)
+{
+	return 0;
 }
 
 /**
@@ -350,31 +296,54 @@ static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
 /**
  * psc_ac97_dai_template: template CPU Digital Audio Interface
  */
-static struct snd_soc_dai_ops psc_ac97_dai_ops = {
+static struct snd_soc_dai_ops psc_ac97_analog_ops = {
 	.startup	= mpc5200_dma_startup,
-	.hw_params	= psc_ac97_hw_params,
+	.hw_params	= psc_ac97_hw_analog_params,
 	.hw_free	= mpc5200_dma_hw_free,
 	.shutdown	= mpc5200_dma_shutdown,
 	.trigger	= mpc5200_dma_trigger,
 	.set_fmt	= psc_ac97_set_fmt,
 };
 
-static struct snd_soc_dai psc_ac97_dai_template = {
-	.playback = {
-		.channels_min = 2,
-		.channels_max = 2,
-		.rates = PSC_AC97_RATES,
-		.formats = PSC_AC97_FORMATS,
-	},
-	.capture = {
-		.channels_min = 2,
-		.channels_max = 2,
-		.rates = PSC_AC97_RATES,
-		.formats = PSC_AC97_FORMATS,
-	},
-	.ops = &psc_ac97_dai_ops,
+static struct snd_soc_dai_ops psc_ac97_digital_ops = {
+	.startup	= mpc5200_dma_startup,
+	.hw_params	= psc_ac97_hw_digital_params,
+	.hw_free	= mpc5200_dma_hw_free,
+	.shutdown	= mpc5200_dma_shutdown,
+	.trigger	= mpc5200_dma_trigger,
+	.set_fmt	= psc_ac97_set_fmt,
 };
 
+static struct snd_soc_dai psc_ac97_dai_template[] = {
+{
+	.name	= "%s analog",
+	.suspend = psc_ac97_suspend,
+	.resume = psc_ac97_resume,
+	.playback = {
+		.channels_min	= 1,
+		.channels_max	= 6,
+		.rates		= SNDRV_PCM_RATE_8000_48000,
+		.formats	= SNDRV_PCM_FORMAT_S32_BE,
+	},
+	.capture = {
+		.channels_min	= 1,
+		.channels_max	= 2,
+		.rates		= SNDRV_PCM_RATE_8000_48000,
+		.formats	= SNDRV_PCM_FMTBIT_S32_BE,
+	},
+	.ops = &psc_ac97_analog_ops,
+},
+{
+	.name	= "%s digital",
+	.playback = {
+		.channels_min	= 1,
+		.channels_max	= 2,
+		.rates		= SNDRV_PCM_RATE_32000 | \
+			SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
+		.formats	= SNDRV_PCM_FORMAT_IEC958_SUBFRAME_BE,
+	},
+	.ops = &psc_ac97_digital_ops,
+}};
 
 /* ---------------------------------------------------------------------
  * Sysfs attributes for debugging
@@ -452,7 +421,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	phys_addr_t fifo;
 	//struct psc_dma *psc_dma;
 	struct resource res;
-	int size, psc_id, irq, rc;
+	int i, size, psc_id, irq, rc;
 	const __be32 *prop;
 	void __iomem *regs;
 
@@ -487,13 +456,17 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	psc_dma->dev = &op->dev;
 	psc_dma->playback.psc_dma = psc_dma;
 	psc_dma->capture.psc_dma = psc_dma;
-	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u", psc_id+1);
+	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u AC97", psc_id+1);
 
 	/* Fill out the CPU DAI structure */
-	memcpy(&psc_dma->dai, &psc_ac97_dai_template, sizeof psc_dma->dai);
-	psc_dma->dai.private_data = psc_dma;
-	psc_dma->dai.name = psc_dma->name;
-	psc_dma->dai.id = psc_id;
+	for (i = 0; i < PSC_MAX_DAI; i++) {
+		memcpy(&psc_dma->dai[i], &psc_ac97_dai_template, sizeof(struct snd_soc_dai));
+		psc_dma->dai[i].private_data = psc_dma;
+		snprintf(psc_dma->stream_name[i], PSC_STREAM_NAME_LEN, psc_ac97_dai_template[i].name, psc_dma->name);
+printk("Name is $%s$\n", psc_dma->stream_name[i]);
+		psc_dma->dai[i].name = psc_dma->stream_name[i];
+		psc_dma->dai[i].id = psc_id;
+	}
 
 	/* Find the address of the fifo data registers and setup the
 	 * DMA tasks */
@@ -563,14 +536,14 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	if (rc)
 		dev_info(psc_dma->dev, "error creating sysfs files\n");
 
-	rc = snd_soc_register_dai(&psc_dma->dai);
+	rc = snd_soc_register_dais(psc_dma->dai, PSC_MAX_DAI);
 	if (rc != 0) {
 		printk("Failed to register DAI\n");
 		return 0;
 	}
 
 	/* Tell the ASoC OF helpers about it */
-	of_snd_soc_register_cpu_dai(op->node, &psc_dma->dai, 1);
+	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, PSC_MAX_DAI);
 
 	return 0;
 }
