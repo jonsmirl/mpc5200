@@ -1,0 +1,55 @@
+Bottom: ab2c7712177da32abc38410ec384c6ec6692eac1
+Top:    f406cd8c7f4d869e2b5921aa4e11ca8e89f71703
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-20 10:33:20 -0400
+
+Refresh of mpc5200-dma-split
+
+---
+
+diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
+index c09faf3..dcdc68f 100644
+--- a/sound/soc/fsl/mpc5200_dma.c
++++ b/sound/soc/fsl/mpc5200_dma.c
+@@ -142,7 +142,7 @@ static irqreturn_t psc_dma_status_irq(int irq, void *_psc_dma)
+  * the queue.  Otherwise the enqueue will fail and the audio ring buffer
+  * will get out of sync
+  */
+-static void psc_dma_bcom_enqueue_next_buffer(struct psc_dma_stream *s)
++void psc_dma_bcom_enqueue_next_buffer(struct psc_dma_stream *s)
+ {
+ 	struct bcom_bd *bd;
+ 
+diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
+index 09ff62f..9b8a0c4 100644
+--- a/sound/soc/fsl/mpc5200_dma.h
++++ b/sound/soc/fsl/mpc5200_dma.h
+@@ -13,6 +13,7 @@ void mpc5200_dma_shutdown(struct snd_pcm_substream *substream,
+ 			     struct snd_soc_dai *dai);
+ int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+ 			   struct snd_soc_dai *dai);
++void psc_dma_bcom_enqueue_next_buffer(struct psc_dma_stream *s);
+ 
+ extern const struct snd_pcm_hardware mpc5200_pcm_hardware;
+ extern struct snd_soc_platform mpc5200_soc_platform;
+diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
+index 8346777..1c7593d 100644
+--- a/sound/soc/fsl/mpc5200_psc_i2s.c
++++ b/sound/soc/fsl/mpc5200_psc_i2s.c
+@@ -26,7 +26,6 @@
+ #include <asm/mpc52xx_psc.h>
+ 
+ #include "mpc5200_dma.h"
+-#include "mpc5200_psc_i2s.h"
+ 
+ MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
+ MODULE_DESCRIPTION("Freescale MPC5200 PSC in I2S mode ASoC Driver");
+@@ -207,7 +206,7 @@ static int psc_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
+ 		else
+ 			bcom_gen_bd_tx_reset(s->bcom_task);
+ 		while (!bcom_queue_full(s->bcom_task))
+-			psc_i2s_bcom_enqueue_next_buffer(s);
++			psc_dma_bcom_enqueue_next_buffer(s);
+ 		bcom_enable(s->bcom_task);
+ 
+ 		/* Due to errata in the i2s mode; need to line up enabling
