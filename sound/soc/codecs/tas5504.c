@@ -857,6 +857,7 @@ static struct i2c_driver tas5504_driver = {
 
 static __init int tas5504_driver_init(void)
 {
+	snd_soc_register_dai(&tas5504_dai);
 	return i2c_add_driver(&tas5504_driver);
 }
 
