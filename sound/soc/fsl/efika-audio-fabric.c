@@ -1,0 +1,241 @@
+/*
+ * Efika driver for the PSC of the Freescale MPC52xx configured as AC97 interface
+ *
+ * Copyright 2008 Jon Smirl, Digispeaker
+ * Author: Jon Smirl <jonsmirl@gmail.com>
+ *
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2. This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/interrupt.h>
+#include <linux/device.h>
+#include <linux/delay.h>
+#include <linux/of_device.h>
+#include <linux/of_platform.h>
+#include <linux/dma-mapping.h>
+
+#include <sound/core.h>
+#include <sound/pcm.h>
+#include <sound/pcm_params.h>
+#include <sound/initval.h>
+#include <sound/soc.h>
+#include <sound/soc-of-simple.h>
+#include <sound/soc-dapm.h>
+
+#include "mpc5200_dma.h"
+#include "mpc5200_psc_ac97.h"
+#include "../codecs/stac9766.h"
+
+#define EFIKA_HP        0
+#define EFIKA_MIC_INT   1
+#define EFIKA_HEADSET   2
+#define EFIKA_HP_OFF    3
+#define EFIKA_SPK_ON    0
+#define EFIKA_SPK_OFF   1
+
+#define DRV_NAME "efika-psc-ac97"
+
+static int efika_jack_func;
+static int efika_spk_func;
+
+static void efika_ext_control(struct snd_soc_codec *codec)
+{
+	/* set up jack connection */
+	switch (efika_jack_func) {
+	case EFIKA_HP:
+		snd_soc_dapm_disable_pin(codec, "Headset Jack");
+		snd_soc_dapm_disable_pin(codec, "Mic (Internal)");
+		snd_soc_dapm_enable_pin(codec, "Headphone Jack");
+		break;
+	case EFIKA_MIC_INT:
+		snd_soc_dapm_disable_pin(codec, "Headset Jack");
+		snd_soc_dapm_disable_pin(codec, "Headphone Jack");
+		snd_soc_dapm_enable_pin(codec, "Mic (Internal)");
+		break;
+	case EFIKA_HEADSET:
+		snd_soc_dapm_disable_pin(codec, "Headphone Jack");
+		snd_soc_dapm_disable_pin(codec, "Mic (Internal)");
+		snd_soc_dapm_enable_pin(codec, "Headset Jack");
+		break;
+	}
+
+	if (efika_spk_func == EFIKA_SPK_ON)
+		snd_soc_dapm_enable_pin(codec, "Speaker");
+	else
+		snd_soc_dapm_disable_pin(codec, "Speaker");
+
+	snd_soc_dapm_sync(codec);
+}
+
+static int efika_get_jack(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = efika_jack_func;
+	return 0;
+}
+
+static int efika_set_jack(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec =  snd_kcontrol_chip(kcontrol);
+
+	if (efika_jack_func == ucontrol->value.integer.value[0])
+		return 0;
+
+	efika_jack_func = ucontrol->value.integer.value[0];
+	efika_ext_control(codec);
+	return 1;
+}
+
+static int efika_get_spk(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = efika_spk_func;
+	return 0;
+}
+
+static int efika_set_spk(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec =  snd_kcontrol_chip(kcontrol);
+
+	if (efika_spk_func == ucontrol->value.integer.value[0])
+		return 0;
+
+	efika_spk_func = ucontrol->value.integer.value[0];
+	efika_ext_control(codec);
+	return 1;
+}
+
+/* efika dapm event handlers */
+static int efika_hp_event(struct snd_soc_dapm_widget *w,
+								struct snd_kcontrol *k, int event)
+{
+	//if (SND_SOC_DAPM_EVENT_ON(event))
+	//	set_tc6393_gpio(&tc6393_device.dev,EFIKA_TC6393_L_MUTE);
+	//else
+	//	reset_tc6393_gpio(&tc6393_device.dev,EFIKA_TC6393_L_MUTE);
+	return 0;
+}
+
+/* efika codec dapm widgets */
+static const struct snd_soc_dapm_widget efika_dapm_widgets[] = {
+	SND_SOC_DAPM_HP("Headphone Jack", efika_hp_event),
+	SND_SOC_DAPM_HP("Headset Jack", NULL),
+	SND_SOC_DAPM_MIC("Mic (Internal)", NULL),
+	SND_SOC_DAPM_SPK("Speaker", NULL),
+};
+
+/* efika audio map */
+static const struct snd_soc_dapm_route audio_map[] = {
+
+	/* headphone connected to HPOUTL, HPOUTR */
+	{"Headphone Jack", NULL, "HPOUTL"},
+	{"Headphone Jack", NULL, "HPOUTR"},
+
+	/* ext speaker connected to LOUT2, ROUT2 */
+	{"Speaker", NULL, "LOUT2"},
+	{"Speaker", NULL, "ROUT2"},
+
+	/* internal mic is connected to mic1, mic2 differential - with bias */
+	{"MIC1", NULL, "Mic Bias"},
+	{"MIC2", NULL, "Mic Bias"},
+	{"Mic Bias", NULL, "Mic (Internal)"},
+
+	/* headset is connected to HPOUTR, and LINEINR with bias */
+	{"Headset Jack", NULL, "HPOUTR"},
+	{"LINEINR", NULL, "Mic Bias"},
+	{"Mic Bias", NULL, "Headset Jack"},
+
+	{NULL, NULL, NULL},
+};
+
+static const char *jack_function[] = {"Headphone", "Mic", "Line", "Headset", "Off"};
+static const char *spk_function[] = {"On", "Off"};
+static const struct soc_enum efika_enum[] = {
+	SOC_ENUM_SINGLE_EXT(5, jack_function),
+	SOC_ENUM_SINGLE_EXT(2, spk_function),
+};
+
+static const struct snd_kcontrol_new efika_controls[] = {
+	SOC_ENUM_EXT("Jack Function", efika_enum[0], efika_get_jack,
+		efika_set_jack),
+	SOC_ENUM_EXT("Speaker Function", efika_enum[1], efika_get_spk,
+		efika_set_spk),
+};
+
+static int efika_init(struct snd_soc_codec *codec)
+{
+
+	/* set up efika codec pins */
+	snd_soc_dapm_disable_pin(codec, "OUT3");
+	snd_soc_dapm_disable_pin(codec, "MONOOUT");
+
+	snd_soc_dapm_new_controls(codec, efika_dapm_widgets,
+					ARRAY_SIZE(efika_dapm_widgets));
+
+	snd_soc_dapm_add_routes(codec, audio_map, ARRAY_SIZE(audio_map));
+	snd_soc_dapm_sync(codec);
+
+	return 0;
+}
+
+/*
+ * This is an example codec initialization for a stac9766 connected to a
+ * mpc5200. It is missing logic to detect hp/mic insertions and logic
+ * to re-route the audio in such an event.
+ */
+static int efika_stac9766_probe(struct platform_device *pdev)
+{
+	of_snd_soc_register_fabric("Efika", NULL, efika_init);
+	return 0;
+}
+
+#ifdef CONFIG_PM
+
+static int efika_stac9766_suspend(struct platform_device *pdev,
+	pm_message_t state)
+{
+	return 0;
+}
+
+static int efika_stac9766_resume(struct platform_device *pdev)
+{
+	return 0;
+}
+
+#else
+#define efika_stac9766_suspend NULL
+#define efika_stac9766_resume  NULL
+#endif
+
+static struct platform_driver efika_fabric = {
+	.probe	= efika_stac9766_probe,
+	.suspend = efika_stac9766_suspend,
+ 	.resume = efika_stac9766_resume,
+	.driver	= {
+		.name	= "efika-audio-fabric",
+	},
+};
+
+static __init int efika_fabric_init(void)
+{
+	return platform_driver_register(&efika_fabric);
+}
+
+static __exit void efika_fabric_exit(void)
+{
+}
+
+module_init(efika_fabric_init);
+module_exit(efika_fabric_exit);
+
+
+MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
+MODULE_DESCRIPTION(DRV_NAME ": mpc5200 Efika fabric driver");
+MODULE_LICENSE("GPL");
+
