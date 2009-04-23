@@ -140,11 +140,7 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
  * psc_i2s_dai_template: template CPU Digital Audio Interface
  */
 static struct snd_soc_dai_ops psc_i2s_dai_ops = {
-	.startup	= mpc5200_audio_dma_startup,
 	.hw_params	= psc_i2s_hw_params,
-	.hw_free	= mpc5200_audio_dma_hw_free,
-	.shutdown	= mpc5200_audio_dma_shutdown,
-	.trigger	= mpc5200_audio_dma_trigger,
 	.set_sysclk	= psc_i2s_set_sysclk,
 	.set_fmt	= psc_i2s_set_fmt,
 };
@@ -277,13 +273,13 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	psc_dma->dev = &op->dev;
 	psc_dma->playback.psc_dma = psc_dma;
 	psc_dma->capture.psc_dma = psc_dma;
-	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u", psc_id+1);
+	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u I2S", psc_id+1);
 
 	/* Fill out the CPU DAI structure */
-	memcpy(&psc_dma->dai, &psc_i2s_dai_template, sizeof psc_dma->dai);
-	psc_dma->dai.private_data = psc_dma;
-	psc_dma->dai.name = psc_dma->name;
-	psc_dma->dai.id = psc_id;
+	memcpy(&psc_dma->dai[0], &psc_i2s_dai_template, sizeof psc_dma->dai);
+	psc_dma->dai[0].private_data = psc_dma;
+	psc_dma->dai[0].name = psc_dma->name;
+	psc_dma->dai[0].id = psc_id;
 
 	/* Find the address of the fifo data registers and setup the
 	 * DMA tasks */
@@ -310,9 +306,6 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	/* Configure the serial interface mode; defaulting to CODEC8 mode */
 	psc_dma->sicr = MPC52xx_PSC_SICR_DTS1 | MPC52xx_PSC_SICR_I2S |
 			MPC52xx_PSC_SICR_CLKPOL;
-	if (of_get_property(op->node, "fsl,cellslave", NULL))
-		psc_dma->sicr |= MPC52xx_PSC_SICR_CELLSLAVE |
-				 MPC52xx_PSC_SICR_GENCLK;
 	out_be32(&psc_dma->psc_regs->sicr,
 		 psc_dma->sicr | MPC52xx_PSC_SICR_SIM_CODEC_8);
 
@@ -350,11 +343,16 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	if (rc)
 		dev_info(psc_dma->dev, "error creating sysfs files\n");
 
-	snd_soc_register_platform(&mpc5200_audio_dma_platform);
+	rc = snd_soc_register_dais(psc_dma->dai, 1);
+	if (rc != 0) {
+		printk("Failed to register DAI\n");
+		return 0;
+	}
 
 	/* Tell the ASoC OF helpers about it */
-	of_snd_soc_register_platform(&mpc5200_audio_dma_platform);
-	of_snd_soc_register_cpu_dai(op->node, &psc_dma->dai, 1);
+	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, 1);
+
+	mpc5200_audio_dma_startup(psc_dma);
 
 	return 0;
 }
@@ -365,7 +363,7 @@ static int __devexit psc_i2s_of_remove(struct of_device *op)
 
 	dev_dbg(&op->dev, "psc_i2s_remove()\n");
 
-	snd_soc_unregister_platform(&mpc5200_audio_dma_platform);
+	mpc5200_audio_dma_shutdown(psc_dma);
 
 	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
 	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
