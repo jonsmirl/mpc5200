@@ -1,7 +1,7 @@
-Bottom: da628df1cd2987106d89ea305ae6471dd24825dc
-Top:    fff546e9c9b3d15849e5a2a3dbe8d49340f0179f
+Bottom: d79c5b3089a8a84f90a51bbd26828ab4635d95dc
+Top:    1198488ecd37505caec167d9010a17f3bde4b9ca
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-04-17 20:45:35 -0400
+Date:   2009-04-23 14:07:42 -0400
 
 RTC driver for MPC5200
 
@@ -43,7 +43,7 @@ index 52e049c..e356523 100644
  
  
 diff --git a/drivers/rtc/Kconfig b/drivers/rtc/Kconfig
-index ffe34a1..6e9bc56 100644
+index 4e9851f..ab49d37 100644
 --- a/drivers/rtc/Kconfig
 +++ b/drivers/rtc/Kconfig
 @@ -750,4 +750,14 @@ config RTC_DRV_PS3

@@ -1,29 +1,29 @@
 Version: 1
-Previous: add84438722eb03bdc8de1007e34454a6e9737c5
-Head: a798caafedadb6ba70fabc01162b6e7f5a4a10a7
+Previous: 9443c236f479f6759941644b9325a55d8decfa7d
+Head: 9081e2b65758403400db2f02236d3fb8c767a876
 Applied:
-  Makefile: 3d02512cfba5ab724e6de0cc3bab66185d579544
-  digispeak: befae02ff37ed41cd9ccc0974dbbaba73a66da27
-  g_spi_4: c9fc62358e279b670e7bd61a1af86f966c5c98a9
-  mpc5200-rtc: d331ca9a77173af1f7119e81f14cfa4acec8d2d5
-  lirc: 615126b0c464015bc4cdaea3f8eca36585d395c0
-  jds-lirc-base: 96d1f71743146e80d3b940b1bed5caf7616fdd66
-  jds-lirc-core: ef86b2a56d6fe96085650acde0d9c31ff897b23d
-  jds-lirc-configfs: c696a69125ddc2598dbb36002931728391fb8e74
-  jds-lirc-gpt: 0bff79d0630b0202eefa76b9409db60f16578684
-  jds-lirc-device-tree: 23317df35ee66d6e62b22eefe49c5cbca8b15415
-  jds-lirc-mce2: 1512ac1fd5ae2a42dc53439309f3e5889c691611
-  m_1: 1170b5163c8f8a416d4f1d635579c7567331df9e
-  spi-mmc: c7588849208e8e279eda8b42b15fbaabecfb416c
-  soc-u32-cleanup: 4e47dff3ad7d0c100f1df31a9f523cbd2b3a7737
-  of-soc-simple-rework: 8aa2d07a202d1b05b4b26793daea5fc23893e265
-  mpc5200-dma-split: 72d928a651d974e9d5b6a5e7a401b21ca8e9bba8
-  tas5504-codec: 09779a6158dfc65d006c525630bad28218f13e28
-  max9485-i2c: a4f6a87c2ec061f5137db632ff804084af0cee2f
-  i2s-cell-clock: cd202355c179a3c96d0a2b515f3c9abbb5db3360
-  dspeak-audio: c3d056b71c573b74360293454634886f57223dc3
-  stac9766-codec: aac9a7f9ba9ca5daa6f412e85e12c2dec414bffb
-  mpc5200-ac97: 53514d6a67a64db417e8b2eeb951f8ab3a294aa1
-  efika-audio: a798caafedadb6ba70fabc01162b6e7f5a4a10a7
+  Makefile: 1f8ce8871f4d9303e07d24baedbb8cfd44d6f4ab
+  digispeak: b002f421c6da238f0d2f5077e0ee5b86e7831e29
+  g_spi_4: fa7bb531c75fdb245dc86e8c17f1a81ce5afbebf
+  mpc5200-rtc: 3c14f0aaa645e9dc9768af964445c4e58a5dce4c
+  lirc: f84b3770d67700d6263ece99854f7ccf0f2bd194
+  jds-lirc-base: ce9cd98de190fb9638fc0fef8715e4ce777c9405
+  jds-lirc-core: 2aabeae2ff439be493ff78c9eb522ad094756214
+  jds-lirc-configfs: 1f6c9ff7d8a065662b31a7b315a48a83c598ed77
+  jds-lirc-gpt: fbd40007251c586ffe1c61fda20bcd06c90e386d
+  jds-lirc-device-tree: 409751e6e197873bb6c88095b504c3f216f4dae6
+  jds-lirc-mce2: e8d23cd2c4c63feb235facf0d620b28b747cca1d
+  m_1: 505ce6c4dbeb12de4abac1919dd9a22b4c0fca22
+  spi-mmc: fd8252fd0f93c2608697034126b8f4b436d0d9b7
+  soc-u32-cleanup: c72ad14d21492683c97585dc6196b54c2b75302b
+  of-soc-simple-rework: 082137a1d9eb9c175015799ddf75abca6dd3aea3
+  mpc5200-dma-split: 581fd5c5072251e06cf99e99dded8e3618e191d9
+  tas5504-codec: c0c51fc6e7f38bbcc3c849592f041bb72f3f3126
+  max9485-i2c: f506d5ea4da77794bd70b5bda95b0e93060ed889
+  i2s-cell-clock: cbd674799177f5b8a36bacba2f2d3f410150a712
+  dspeak-audio: 908c1c7f7022d789436909c3f7efa07c1f185e40
+  stac9766-codec: 0230fa4231d3ee5eeb92e709b8aa807a61310b6d
+  mpc5200-ac97: 91f78cdee9fe0957740c77bae0b3d73bd355f54d
+  efika-audio: 9081e2b65758403400db2f02236d3fb8c767a876
 Unapplied:
 Hidden:
