@@ -405,6 +405,12 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	if (rc)
 		dev_info(psc_dma->dev, "error creating sysfs files\n");
 
+	rc = snd_soc_register_dais(psc_dma->dai, 1);
+	if (rc != 0) {
+		printk("Failed to register DAI\n");
+		return 0;
+	}
+
 	/* Tell the ASoC OF helpers about it */
 	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, 1);
 
