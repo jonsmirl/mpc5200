@@ -132,7 +132,7 @@ int of_snd_soc_register_codec(struct snd_soc_codec_device *codec_dev,
 	of_soc->card.num_links = min(count, of_soc->card.num_links);
 	for (i = 0; i < of_soc->card.num_links; i++) {
 		of_soc->dai_link[i].name = dai[i].name;
-		of_soc->dai_link[i].codec_dai = dai;
+		of_soc->dai_link[i].codec_dai = &dai[i];
 	}
 	/* Now try to register the SoC device */
 	of_snd_soc_register_device(of_soc);
