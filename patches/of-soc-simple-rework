@@ -1,5 +1,5 @@
 Bottom: c0bdaec2268dd06c9591293aaa484fc8d5870bf7
-Top:    af891520282ccac6ad997d3f372f2f912a9198d8
+Top:    d07174e0aabd3c1ed87b55b5c6bb1ddfacb0759c
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-17 20:45:33 -0400
 
@@ -69,7 +69,7 @@ index 3aa729d..83f6d76 100644
  	return 0;
  }
 diff --git a/sound/soc/fsl/soc-of-simple.c b/sound/soc/fsl/soc-of-simple.c
-index 8bc5cd9..2b32f64 100644
+index 8bc5cd9..5f859a8 100644
 --- a/sound/soc/fsl/soc-of-simple.c
 +++ b/sound/soc/fsl/soc-of-simple.c
 @@ -32,18 +32,23 @@ struct of_snd_soc_device {
@@ -158,7 +158,7 @@ index 8bc5cd9..2b32f64 100644
 +	of_soc->card.num_links = min(count, of_soc->card.num_links);
 +	for (i = 0; i < of_soc->card.num_links; i++) {
 +		of_soc->dai_link[i].name = dai[i].name;
-+		of_soc->dai_link[i].codec_dai = dai;
++		of_soc->dai_link[i].codec_dai = &dai[i];
 +	}
  	/* Now try to register the SoC device */
  	of_snd_soc_register_device(of_soc);
