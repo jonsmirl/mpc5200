@@ -1,5 +1,5 @@
 Bottom: 672c51c3016414e3217dd8ee8c4716a155d89611
-Top:    e7c997f251810ecefb43e523031b9f2412f1e07c
+Top:    7af5710a903d59a59b595122f29f709f387ab163
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-17 20:45:34 -0400
 
@@ -70,10 +70,10 @@ index 030d245..f906124 100644
  obj-$(CONFIG_SND_SOC_TLV320AIC3X)	+= snd-soc-tlv320aic3x.o
 diff --git a/sound/soc/codecs/tas5504.c b/sound/soc/codecs/tas5504.c
 new file mode 100644
-index 0000000..d2dbdaa
+index 0000000..e3948de
 --- /dev/null
 +++ b/sound/soc/codecs/tas5504.c
-@@ -0,0 +1,873 @@
+@@ -0,0 +1,874 @@
 +/*
 + * Texas Instruments TAS5504 low power audio CODEC
 + * ALSA SoC CODEC driver
@@ -933,6 +933,7 @@ index 0000000..d2dbdaa
 +
 +static __init int tas5504_driver_init(void)
 +{
++	snd_soc_register_dai(&tas5504_dai);
 +	return i2c_add_driver(&tas5504_driver);
 +}
 +
