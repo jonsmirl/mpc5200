@@ -1,9 +1,11 @@
 /*
- * Freescale MPC5200 PSC DMA
+ * Freescale MPC5200 Audio DMA
  * ALSA SoC Platform driver
  *
  * Copyright (C) 2008 Secret Lab Technologies Ltd.
  */
+
+#define DEBUG
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -23,6 +25,8 @@
 
 #include <sysdev/bestcomm/bestcomm.h>
 #include <sysdev/bestcomm/gen_bd.h>
+#include <asm/time.h>
+#include <asm/mpc52xx.h>
 #include <asm/mpc52xx_psc.h>
 
 #include "mpc5200_dma.h"
@@ -99,8 +103,10 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
 
 	/* If the stream is active, then also inform the PCM middle layer
 	 * of the period finished event. */
-	if (s->active)
+	if (s->active) {
+		s->jiffies = jiffies;
 		snd_pcm_period_elapsed(s->stream);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -325,7 +331,7 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
 		   SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
 	.rate_min = 8000,
 	.rate_max = 48000,
-	.channels_min = 2,
+	.channels_min = 1,
 	.channels_max = 2,
 	.period_bytes_max	= 1024 * 1024,
 	.period_bytes_min	= 32,
@@ -337,9 +343,11 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
 
 static int psc_dma_pcm_open(struct snd_pcm_substream *substream)
 {
+	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
 	struct psc_dma_stream *s;
+	int ret;
 
 	dev_dbg(psc_dma->dev, "psc_dma_pcm_open(substream=%p)\n", substream);
 
@@ -349,6 +357,13 @@ static int psc_dma_pcm_open(struct snd_pcm_substream *substream)
 		s = &psc_dma->playback;
 
 	snd_soc_set_runtime_hwparams(substream, &psc_dma_pcm_hardware);
+
+	ret = snd_pcm_hw_constraint_integer(runtime,
+		SNDRV_PCM_HW_PARAM_PERIODS);
+	if (ret < 0) {
+		dev_err(substream->pcm->card->dev, "invalid buffer size\n");
+		return ret;
+	}
 
 	s->stream = substream;
 	return 0;
@@ -374,10 +389,13 @@ static int psc_dma_pcm_close(struct snd_pcm_substream *substream)
 static snd_pcm_uframes_t
 psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
 {
+	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
 	struct psc_dma_stream *s;
 	dma_addr_t count;
+	snd_pcm_uframes_t frames;
+	int delta;
 
 	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
 		s = &psc_dma->capture;
@@ -386,7 +404,11 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
 
 	count = s->period_current_pt - s->period_start;
 
-	return bytes_to_frames(substream->runtime, count);
+	delta = jiffies - s->jiffies;
+	delta = delta * runtime->rate / HZ;
+	frames = bytes_to_frames(substream->runtime, count);
+
+	return frames + delta;
 }
 
 static struct snd_pcm_ops psc_dma_pcm_ops = {
@@ -401,6 +423,7 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
 			   struct snd_pcm *pcm)
 {
 	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
+	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
 	size_t size = psc_dma_pcm_hardware.buffer_bytes_max;
 	int rc = 0;
 
@@ -413,18 +436,21 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
 		card->dev->coherent_dma_mask = 0xffffffff;
 
 	if (pcm->streams[0].substream) {
-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
+		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
 					&pcm->streams[0].substream->dma_buffer);
 		if (rc)
 			goto playback_alloc_err;
 	}
 
 	if (pcm->streams[1].substream) {
-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
+		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
 					&pcm->streams[1].substream->dma_buffer);
 		if (rc)
 			goto capture_alloc_err;
 	}
+
+	if (rtd->socdev->card->codec->ac97)
+		rtd->socdev->card->codec->ac97->private_data = psc_dma;
 
 	return 0;
 
@@ -461,3 +487,18 @@ struct snd_soc_platform mpc5200_dma_platform = {
 	.pcm_free	= &psc_dma_pcm_free,
 };
 EXPORT_SYMBOL_GPL(mpc5200_dma_platform);
+
+static int __init mpc5200_soc_platform_init(void)
+{
+	/* Tell the ASoC OF helpers about it */
+	of_snd_soc_register_platform(&mpc5200_dma_platform);
+	return snd_soc_register_platform(&mpc5200_dma_platform);
+}
+module_init(mpc5200_soc_platform_init);
+
+static void __exit mpc5200_soc_platform_exit(void)
+{
+	snd_soc_unregister_platform(&mpc5200_dma_platform);
+}
+module_exit(mpc5200_soc_platform_exit);
+
