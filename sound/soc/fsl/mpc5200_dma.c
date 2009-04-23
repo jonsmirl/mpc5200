@@ -34,23 +34,6 @@ MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
 MODULE_DESCRIPTION("Freescale MPC5200 PSC in DMA mode ASoC Driver");
 MODULE_LICENSE("GPL");
 
-const struct snd_pcm_hardware mpc5200_pcm_hardware = {
-	.info = SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
-		SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER,
-	.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
-		   SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
-	.rate_min = 8000,
-	.rate_max = 48000,
-	.channels_min = 2,
-	.channels_max = 2,
-	.period_bytes_max	= 1024 * 1024,
-	.period_bytes_min	= 32,
-	.periods_min		= 2,
-	.periods_max		= 256,
-	.buffer_bytes_max	= 2 * 1024 * 1024,
-	.fifo_size		= 0,
-};
-
 /*
  * Interrupt handlers
  */
@@ -241,6 +224,7 @@ int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
 		/* then wait for the transition to high */
 		while ((in_8(&regs->ipcr_acr.ipcr) & 0x80) == 0)
 			;
+
 		/* Finally, enable the PSC.
 		 * Receiver must always be enabled; even when we only want
 		 * transmit.  (see 15.3.2.3 of MPC5200B User's Guide) */
@@ -323,14 +307,6 @@ void mpc5200_dma_shutdown(struct snd_pcm_substream *substream,
 		free_irq(psc_dma->playback.irq, &psc_dma->playback);
 	}
 }
-
-
-/* ---------------------------------------------------------------------
- * ALSA SoC Bindings
- *
- * - Digital Audio Interface (DAI) template
- * - create/destroy dai hooks
- */
 
 
 /* ---------------------------------------------------------------------
