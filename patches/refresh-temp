@@ -1,0 +1,124 @@
+Bottom: 5d1dda08ddf856ee07af6572f5e7dbf1852558ba
+Top:    4ece7c84ca53fcfd0ede19c2b6723aab7ef37669
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-23 13:59:07 -0400
+
+Refresh of mpc5200-ac97
+
+---
+
+diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
+index 07136fb..a2e5672 100644
+--- a/sound/soc/fsl/mpc5200_psc_ac97.c
++++ b/sound/soc/fsl/mpc5200_psc_ac97.c
+@@ -70,7 +70,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+ 	unsigned int val;
+ 
+ 	spin_lock(&psc_dma->lock);
+-	printk("ac97 read: reg %04x\n", reg);
++	//printk("ac97 read: reg %04x\n", reg);
+ 
+ 	/* Wait for it to be ready */
+ 	timeout = 1000;
+@@ -105,7 +105,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+ 	}
+ 	val = (val >> 8) & 0xffff;
+ 
+-	printk("ac97 read ok: reg %04x  val %04x\n", reg, val);
++	//printk("ac97 read ok: reg %04x  val %04x\n", reg, val);
+ 
+ 	spin_unlock(&psc_dma->lock);
+ 	return (unsigned short) val;
+@@ -187,77 +187,23 @@ static int psc_ac97_hw_analog_params(struct snd_pcm_substream *substream,
+ {
+ 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+ 	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
+-	uint bits, framesync, bitclk, value;
+-	u32 mode;
+ 
+ 	dev_dbg(psc_dma->dev, "%s(substream=%p) p_size=%i p_bytes=%i"
+-		" periods=%i buffer_size=%i  buffer_bytes=%i\n",
++		" periods=%i buffer_size=%i  buffer_bytes=%i channels=%i\n",
+ 		__func__, substream, params_period_size(params),
+ 		params_period_bytes(params), params_periods(params),
+-		params_buffer_size(params), params_buffer_bytes(params));
+-
+-	switch (params_format(params)) {
+-	case SNDRV_PCM_FORMAT_S8:
+-		mode = MPC52xx_PSC_SICR_SIM_CODEC_8;
+-		bits = 8;
+-		break;
+-	case SNDRV_PCM_FORMAT_S16_BE:
+-		mode = MPC52xx_PSC_SICR_SIM_CODEC_16;
+-		bits = 16;
+-		break;
+-	case SNDRV_PCM_FORMAT_S24_BE:
+-		mode = MPC52xx_PSC_SICR_SIM_CODEC_24;
+-		bits = 24;
+-		break;
+-	case SNDRV_PCM_FORMAT_S32_BE:
+-		mode = MPC52xx_PSC_SICR_SIM_CODEC_32;
+-		bits = 32;
+-		break;
+-	default:
+-		dev_dbg(psc_dma->dev, "invalid format\n");
+-		return -EINVAL;
+-	}
+-	out_be32(&psc_dma->psc_regs->sicr, psc_dma->sicr | mode);
+-
+-	if (psc_dma->sysclk) {
+-		framesync = bits * 2;
+-		bitclk = (psc_dma->sysclk) / (params_rate(params) * framesync);
+-
+-		/* bitclk field is byte swapped due to mpc5200/b compatibility */
+-		value = ((framesync - 1) << 24) |
+-			(((bitclk - 1) & 0xFF) << 16) | ((bitclk - 1) & 0xFF00);
+-
+-		dev_dbg(psc_dma->dev, "%s(substream=%p) rate=%i sysclk=%i"
+-			" framesync=%i bitclk=%i reg=%X\n",
+-			__FUNCTION__, substream, params_rate(params), psc_dma->sysclk,
+-			framesync, bitclk, value);
+-
+-		out_be32(&psc_dma->psc_regs->ccr, value);
+-		out_8(&psc_dma->psc_regs->ctur, bits - 1);
+-	}
+-
+-  	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
+-
+-	return 0;
+-#if 0
+-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+-	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
+-
+-	printk("psc_ac97_hw_analog_params\n");
+-	printk("channels %d\n",substream->runtime->channels);
+-	printk("rate %d\n",substream->runtime->rate);
+-	printk("periods %d\n",substream->runtime->periods);
+-	printk("period_step %d\n",substream->runtime->period_step);
+-	printk("slots %d\n",psc_dma->psc_regs->ac97_slots);
++		params_buffer_size(params), params_buffer_bytes(params),
++		params_channels(params));
+ 
+ 	// FIXME, need a spinlock to protect access
+-	if (substream->runtime->channels == 1)
++	if (params_channels(params) == 1)
+ 		out_be32(&psc_dma->psc_regs->ac97_slots, 0x01000000);
+ 	else
+ 		out_be32(&psc_dma->psc_regs->ac97_slots, 0x03000000);
+ 
++  	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
++
+ 	return 0;
+-#endif
+ }
+ 
+ static int psc_ac97_hw_digital_params(struct snd_pcm_substream *substream,
+@@ -449,6 +395,8 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
+ 		iounmap(regs);
+ 		return -ENOMEM;
+ 	}
++	printk("psc_dma %p\n", psc_dma);
++
+ 	spin_lock_init(&psc_dma->lock);
+ 	psc_dma->irq = irq;
+ 	psc_dma->psc_regs = regs;
