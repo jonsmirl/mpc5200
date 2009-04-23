@@ -1,9 +1,11 @@
 /*
- * Freescale MPC5200 PSC DMA
+ * Freescale MPC5200 Audio DMA
  * ALSA SoC Platform driver
  *
  * Copyright (C) 2008 Secret Lab Technologies Ltd.
  */
+
+#define DEBUG
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -23,6 +25,8 @@
 
 #include <sysdev/bestcomm/bestcomm.h>
 #include <sysdev/bestcomm/gen_bd.h>
+#include <asm/time.h>
+#include <asm/mpc52xx.h>
 #include <asm/mpc52xx_psc.h>
 
 #include "mpc5200_dma.h"
@@ -113,7 +117,7 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
  * If this is the first stream open, then grab the IRQ and program most of
  * the PSC registers.
  */
-int psc_dma_startup(struct snd_pcm_substream *substream,
+int mpc5200_dma_startup(struct snd_pcm_substream *substream,
 			   struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -146,7 +150,7 @@ int psc_dma_startup(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-int psc_dma_hw_free(struct snd_pcm_substream *substream,
+int mpc5200_dma_hw_free(struct snd_pcm_substream *substream,
 			   struct snd_soc_dai *dai)
 {
 	snd_pcm_set_runtime_buffer(substream, NULL);
@@ -159,7 +163,7 @@ int psc_dma_hw_free(struct snd_pcm_substream *substream,
  * This function is called by ALSA to start, stop, pause, and resume the DMA
  * transfer of data.
  */
-int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
 			   struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -275,7 +279,7 @@ int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
  *
  * Shutdown the PSC if there are no other substreams open.
  */
-void psc_dma_shutdown(struct snd_pcm_substream *substream,
+void mpc5200_dma_shutdown(struct snd_pcm_substream *substream,
 			     struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -320,7 +324,7 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
 	.rate_min = 8000,
 	.rate_max = 48000,
 	.channels_min = 2,
-	.channels_max = 2,
+	.channels_max = 1,
 	.period_bytes_max	= 1024 * 1024,
 	.period_bytes_min	= 32,
 	.periods_min		= 2,
@@ -395,6 +399,7 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
 			   struct snd_pcm *pcm)
 {
 	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
+	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
 	size_t size = psc_dma_pcm_hardware.buffer_bytes_max;
 	int rc = 0;
 
@@ -408,6 +413,7 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
 
 	if (pcm->streams[0].substream) {
 		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
+		//rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
 					&pcm->streams[0].substream->dma_buffer);
 		if (rc)
 			goto playback_alloc_err;
@@ -415,10 +421,14 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
 
 	if (pcm->streams[1].substream) {
 		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
+		//rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
 					&pcm->streams[1].substream->dma_buffer);
 		if (rc)
 			goto capture_alloc_err;
 	}
+
+	if (rtd->socdev->card->codec->ac97)
+		rtd->socdev->card->codec->ac97->private_data = psc_dma;
 
 	return 0;
 
@@ -448,10 +458,25 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
 	}
 }
 
-struct snd_soc_platform psc_dma_pcm_soc_platform = {
+struct snd_soc_platform mpc5200_soc_platform = {
 	.name		= "mpc5200-psc-audio",
 	.pcm_ops	= &psc_dma_pcm_ops,
 	.pcm_new	= &psc_dma_pcm_new,
 	.pcm_free	= &psc_dma_pcm_free,
 };
+EXPORT_SYMBOL_GPL(mpc5200_soc_platform);
+
+static int __init mpc5200_soc_platform_init(void)
+{
+	/* Tell the ASoC OF helpers about it */
+	of_snd_soc_register_platform(&mpc5200_soc_platform);
+	return snd_soc_register_platform(&mpc5200_soc_platform);
+}
+module_init(mpc5200_soc_platform_init);
+
+static void __exit mpc5200_soc_platform_exit(void)
+{
+	snd_soc_unregister_platform(&mpc5200_soc_platform);
+}
+module_exit(mpc5200_soc_platform_exit);
 
