@@ -250,10 +250,10 @@ unsigned int stac9766_ac97_read(struct snd_soc_codec *codec,
 		reg == AC97_VENDOR_ID1 || reg == AC97_VENDOR_ID2) {
 
 		val = soc_ac97_ops.read(codec->ac97, reg);
-		printk("stac9766_ac97_read actual reg %02x val %04x\n", reg, val);
+		//printk("stac9766_ac97_read actual reg %02x val %04x\n", reg, val);
 		return val;
 	}
-	printk("stac9766_ac97_read cache reg %02x val %04x\n", reg, cache[reg / 2]);
+	//printk("stac9766_ac97_read cache reg %02x val %04x\n", reg, cache[reg / 2]);
 	return cache[reg / 2];
 }
 
@@ -262,7 +262,7 @@ int stac9766_ac97_write(struct snd_soc_codec *codec, unsigned int reg,
 {
 	u16 *cache = codec->reg_cache;
 
-	printk("stac9766_ac97_write reg %02x val %04x\n", reg, val);
+	//printk("stac9766_ac97_write reg %02x val %04x\n", reg, val);
 	if (reg / 2 > ARRAY_SIZE(stac9766_reg))
 		return -EIO;
 
@@ -278,7 +278,7 @@ static int ac97_analog_prepare(struct snd_pcm_substream *substream,
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	u16 vra;
 
-	printk("stac9766: ac97_analog_prepare\n");
+	printk("stac9766: ac97_analog_prepare rate %d\n", runtime->rate);
 
 	vra = stac9766_ac97_read(codec, AC97_EXTENDED_STATUS);
 	stac9766_ac97_write(codec, AC97_EXTENDED_STATUS, vra | 0x1);
