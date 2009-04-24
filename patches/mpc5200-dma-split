@@ -1,5 +1,5 @@
 Bottom: c16f41ae9102863b5d5c11aed18dd8abcdae63b5
-Top:    fd6c1a26b6d4ef699e0fa745b0c808066f86ea40
+Top:    9109aa686aa2ed444db6bb06c681b09d73781f6e
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:46 -0400
 
@@ -8,15 +8,6 @@ Split out the DMA code from the mpc5200 i2s driver
 
 ---
 
-diff --git a/sound/soc/fsl/Makefile b/sound/soc/fsl/Makefile
-index 7731ef2..56b2476 100644
---- a/sound/soc/fsl/Makefile
-+++ b/sound/soc/fsl/Makefile
-@@ -14,3 +14,4 @@ obj-$(CONFIG_SND_SOC_MPC8610) += snd-soc-fsl-ssi.o snd-soc-fsl-dma.o
- obj-$(CONFIG_SND_MPC52xx_DMA) += mpc5200_dma.o
- obj-$(CONFIG_SND_SOC_MPC5200_I2S) += mpc5200_psc_i2s.o
- 
-+
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
 index c82ef75..1723e92 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
