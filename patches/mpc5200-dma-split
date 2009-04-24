@@ -1,5 +1,5 @@
 Bottom: c16f41ae9102863b5d5c11aed18dd8abcdae63b5
-Top:    e19a2e3d68fe2ac3ccf2dd52cdf8a390a6671eb6
+Top:    fd6c1a26b6d4ef699e0fa745b0c808066f86ea40
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:46 -0400
 
@@ -8,20 +8,6 @@ Split out the DMA code from the mpc5200 i2s driver
 
 ---
 
-diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index dc79bdf..1c10815 100644
---- a/sound/soc/fsl/Kconfig
-+++ b/sound/soc/fsl/Kconfig
-@@ -4,6 +4,9 @@ config SND_SOC_OF_SIMPLE
- config SND_MPC52xx_DMA
- 	tristate
- 
-+config SND_MPC52xx_DMA
-+	tristate
-+
- # ASoC platform support for the Freescale MPC8610 SOC.  This compiles drivers
- # for the SSI and the Elo DMA controller.  You will still need to select
- # a platform driver and a codec driver.
 diff --git a/sound/soc/fsl/Makefile b/sound/soc/fsl/Makefile
 index 7731ef2..56b2476 100644
 --- a/sound/soc/fsl/Makefile
