@@ -64,18 +64,18 @@ struct psc_dma {
 };
 
 
-int psc_dma_startup(struct snd_pcm_substream *substream,
+int mpc5200_dma_startup(struct snd_pcm_substream *substream,
 			   struct snd_soc_dai *dai);
 
-int psc_dma_hw_free(struct snd_pcm_substream *substream,
+int mpc5200_dma_hw_free(struct snd_pcm_substream *substream,
 			   struct snd_soc_dai *dai);
 
-void psc_dma_shutdown(struct snd_pcm_substream *substream,
+void mpc5200_dma_shutdown(struct snd_pcm_substream *substream,
 			     struct snd_soc_dai *dai);
 
-int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
 			   struct snd_soc_dai *dai);
 
-extern struct snd_soc_platform psc_dma_pcm_soc_platform;
+extern struct snd_soc_platform mpc5200_dma_platform;
 
 #endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
