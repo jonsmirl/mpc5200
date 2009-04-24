@@ -1,0 +1,40 @@
+Bottom: 28989890df352f6d88ff3188385565d2eabdd29f
+Top:    494e445609476533f3f34fc618c4d5f065682c07
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-24 14:39:07 -0400
+
+Refresh of mpc5200-dma-split
+
+---
+
+diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
+index 7a32e63..f496fb2 100644
+--- a/sound/soc/fsl/mpc5200_dma.c
++++ b/sound/soc/fsl/mpc5200_dma.c
+@@ -325,7 +325,7 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
+ 	.rate_min = 8000,
+ 	.rate_max = 48000,
+ 	.channels_min = 2,
+-	.channels_max = 2,
++	.channels_max = 1,
+ 	.period_bytes_max	= 1024 * 1024,
+ 	.period_bytes_min	= 32,
+ 	.periods_min		= 2,
+@@ -400,6 +400,7 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
+ 			   struct snd_pcm *pcm)
+ {
+ 	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
++	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
+ 	size_t size = psc_dma_pcm_hardware.buffer_bytes_max;
+ 	int rc = 0;
+ 
+@@ -425,6 +426,9 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
+ 			goto capture_alloc_err;
+ 	}
+ 
++	if (rtd->socdev->card->codec->ac97)
++		rtd->socdev->card->codec->ac97->private_data = psc_dma;
++
+ 	return 0;
+ 
+  capture_alloc_err:
