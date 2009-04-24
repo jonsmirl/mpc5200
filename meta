@@ -1,6 +1,6 @@
 Version: 1
-Previous: fe8295fe9e4ce06349482572e85de0f5fc2226da
-Head: 13a9898f728895280aa6f994b82030b22913012d
+Previous: 4dbf19aa195f098a1e2e92b59f702629a88f3802
+Head: e7e512aa9381b46241cfebf1585f0e6b2fc66b79
 Applied:
   Makefile: 1f8ce8871f4d9303e07d24baedbb8cfd44d6f4ab
   digispeak: b002f421c6da238f0d2f5077e0ee5b86e7831e29
@@ -18,6 +18,7 @@ Applied:
   soc-u32-cleanup: c72ad14d21492683c97585dc6196b54c2b75302b
   i2s-dma-split: 36ae38e68d198af392f641fbf5ed0dc13a50d6d5
   is2-dma-rename: e7e512aa9381b46241cfebf1585f0e6b2fc66b79
+Unapplied:
   of-soc-simple-rework: c7108a7ca8061526eb22a5296266df665ca36129
   mpc5200-dma-split: e23d68240f368fdf106bf36956a25c63bbac5980
   stac9766-codec: 63304d2542f2d5736f0999352a6b0b23bd324381
@@ -27,5 +28,4 @@ Applied:
   max9485-i2c: 8c0815c1dcf4505ef5dadd01acc9f7168103c9df
   i2s-cell-clock: 8adf56aa4e9972d31c2351ea6a7abb6618f71719
   dspeak-audio: 13a9898f728895280aa6f994b82030b22913012d
-Unapplied:
 Hidden:
