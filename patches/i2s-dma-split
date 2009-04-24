@@ -1,5 +1,5 @@
-Bottom: 5ae79ff74e27fa8b3915e116cfe96d6397d5fd36
-Top:    52c4b6177e933d387e9b8380b87d501c8cb559a1
+Bottom: 1a354cee37b47070fe9172103422603969b65047
+Top:    e3784550e74d3183c4e9bcad952a70c7699b9bc1
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-24 14:47:34 -0400
 
@@ -592,7 +592,7 @@ index 0000000..9a19e8a
 +
 +#endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 83f6d76..d21d7fa 100644
+index 3aa729d..8974b53 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
 @@ -25,6 +25,8 @@
