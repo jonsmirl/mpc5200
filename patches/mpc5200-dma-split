@@ -1,5 +1,5 @@
 Bottom: 5ae79ff74e27fa8b3915e116cfe96d6397d5fd36
-Top:    28989890df352f6d88ff3188385565d2eabdd29f
+Top:    494e445609476533f3f34fc618c4d5f065682c07
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:46 -0400
 
@@ -45,10 +45,10 @@ index f85134c..56b2476 100644
 +
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
 new file mode 100644
-index 0000000..7a32e63
+index 0000000..f496fb2
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_dma.c
-@@ -0,0 +1,479 @@
+@@ -0,0 +1,483 @@
 +/*
 + * Freescale MPC5200 Audio DMA
 + *
@@ -376,7 +376,7 @@ index 0000000..7a32e63
 +	.rate_min = 8000,
 +	.rate_max = 48000,
 +	.channels_min = 2,
-+	.channels_max = 2,
++	.channels_max = 1,
 +	.period_bytes_max	= 1024 * 1024,
 +	.period_bytes_min	= 32,
 +	.periods_min		= 2,
@@ -451,6 +451,7 @@ index 0000000..7a32e63
 +			   struct snd_pcm *pcm)
 +{
 +	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
++	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
 +	size_t size = psc_dma_pcm_hardware.buffer_bytes_max;
 +	int rc = 0;
 +
@@ -475,6 +476,9 @@ index 0000000..7a32e63
 +		if (rc)
 +			goto capture_alloc_err;
 +	}
++
++	if (rtd->socdev->card->codec->ac97)
++		rtd->socdev->card->codec->ac97->private_data = psc_dma;
 +
 +	return 0;
 +
