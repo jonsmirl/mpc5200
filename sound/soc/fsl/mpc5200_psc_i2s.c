@@ -140,11 +140,11 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
  * psc_i2s_dai_template: template CPU Digital Audio Interface
  */
 static struct snd_soc_dai_ops psc_i2s_dai_ops = {
-	.startup	= psc_dma_startup,
+	.startup	= mpc5200_audio_dma_startup,
 	.hw_params	= psc_i2s_hw_params,
-	.hw_free	= psc_dma_hw_free,
-	.shutdown	= psc_dma_shutdown,
-	.trigger	= psc_dma_trigger,
+	.hw_free	= mpc5200_audio_dma_hw_free,
+	.shutdown	= mpc5200_audio_dma_shutdown,
+	.trigger	= mpc5200_audio_dma_trigger,
 	.set_sysclk	= psc_i2s_set_sysclk,
 	.set_fmt	= psc_i2s_set_fmt,
 };
@@ -350,7 +350,7 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	if (rc)
 		dev_info(psc_dma->dev, "error creating sysfs files\n");
 
-	snd_soc_register_platform(&psc_dma_pcm_soc_platform);
+	snd_soc_register_platform(&mpc5200_audio_dma_platform);
 
 	/* Tell the ASoC OF helpers about it */
 	of_snd_soc_register_platform(&mpc5200_audio_dma_platform);
@@ -365,7 +365,7 @@ static int __devexit psc_i2s_of_remove(struct of_device *op)
 
 	dev_dbg(&op->dev, "psc_i2s_remove()\n");
 
-	snd_soc_unregister_platform(&psc_dma_pcm_soc_platform);
+	snd_soc_unregister_platform(&mpc5200_audio_dma_platform);
 
 	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
 	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
