@@ -1,0 +1,23 @@
+Bottom: e19a2e3d68fe2ac3ccf2dd52cdf8a390a6671eb6
+Top:    fd6c1a26b6d4ef699e0fa745b0c808066f86ea40
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-24 17:43:02 -0400
+
+Refresh of mpc5200-dma-split
+
+---
+
+diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
+index 1c10815..dc79bdf 100644
+--- a/sound/soc/fsl/Kconfig
++++ b/sound/soc/fsl/Kconfig
+@@ -4,9 +4,6 @@ config SND_SOC_OF_SIMPLE
+ config SND_MPC52xx_DMA
+ 	tristate
+ 
+-config SND_MPC52xx_DMA
+-	tristate
+-
+ # ASoC platform support for the Freescale MPC8610 SOC.  This compiles drivers
+ # for the SSI and the Elo DMA controller.  You will still need to select
+ # a platform driver and a codec driver.
