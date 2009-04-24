@@ -1,5 +1,5 @@
 Bottom: 1e36cabc3102acb0cb93197d6d082eb203bb3d64
-Top:    b0adfcced9565ece3a05e1d75a9b9b06b795ca48
+Top:    1cd841fbb3fdd0ba5d874970ab977566490c886b
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:47 -0400
 
@@ -52,7 +52,7 @@ index f906124..81084dc 100644
  obj-$(CONFIG_SND_SOC_TLV320AIC26)	+= snd-soc-tlv320aic26.o
 diff --git a/sound/soc/codecs/stac9766.c b/sound/soc/codecs/stac9766.c
 new file mode 100644
-index 0000000..aca866b
+index 0000000..1eff53c
 --- /dev/null
 +++ b/sound/soc/codecs/stac9766.c
 @@ -0,0 +1,550 @@
@@ -308,10 +308,10 @@ index 0000000..aca866b
 +		reg == AC97_VENDOR_ID1 || reg == AC97_VENDOR_ID2) {
 +
 +		val = soc_ac97_ops.read(codec->ac97, reg);
-+		printk("stac9766_ac97_read actual reg %02x val %04x\n", reg, val);
++		//printk("stac9766_ac97_read actual reg %02x val %04x\n", reg, val);
 +		return val;
 +	}
-+	printk("stac9766_ac97_read cache reg %02x val %04x\n", reg, cache[reg / 2]);
++	//printk("stac9766_ac97_read cache reg %02x val %04x\n", reg, cache[reg / 2]);
 +	return cache[reg / 2];
 +}
 +
@@ -320,7 +320,7 @@ index 0000000..aca866b
 +{
 +	u16 *cache = codec->reg_cache;
 +
-+	printk("stac9766_ac97_write reg %02x val %04x\n", reg, val);
++	//printk("stac9766_ac97_write reg %02x val %04x\n", reg, val);
 +	if (reg / 2 > ARRAY_SIZE(stac9766_reg))
 +		return -EIO;
 +
@@ -336,7 +336,7 @@ index 0000000..aca866b
 +	struct snd_pcm_runtime *runtime = substream->runtime;
 +	u16 vra;
 +
-+	printk("stac9766: ac97_analog_prepare\n");
++	printk("stac9766: ac97_analog_prepare rate %d\n", runtime->rate);
 +
 +	vra = stac9766_ac97_read(codec, AC97_EXTENDED_STATUS);
 +	stac9766_ac97_write(codec, AC97_EXTENDED_STATUS, vra | 0x1);
