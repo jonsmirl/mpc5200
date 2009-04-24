@@ -1,5 +1,5 @@
-Bottom: 26fb67ae1b49dd5591e9c5cc2527b963a24beb6f
-Top:    4938da1fe1983a1ce2479ffd7db92b35c506257c
+Bottom: e10cb2d55c3e8f43eb0080b82a8a0dc7ed23f1a5
+Top:    ad72fa10b1c27f8e1fa128667df725ab6859e032
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:48 -0400
 
@@ -24,10 +24,10 @@ index a218da6..11abc69 100644
  #define MPC52xx_PSC_SR_RXRDY	0x0100
  #define MPC52xx_PSC_SR_RXFULL	0x0200
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index 95657c1..4f16e4c 100644
+index 1c10815..d915602 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
-@@ -30,3 +30,14 @@ config SND_SOC_MPC5200_I2S
+@@ -33,3 +33,14 @@ config SND_SOC_MPC5200_I2S
  	select PPC_BESTCOMM_GEN_BD
  	help
  	  Say Y here to support the MPC5200 PSCs in I2S mode.
