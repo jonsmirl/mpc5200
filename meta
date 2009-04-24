@@ -1,5 +1,5 @@
 Version: 1
-Previous: b4fbc0b688fdda58ff8283e38e452bda0a2b270a
+Previous: 2839bed75844e5cb804805798b8f3a4a80dee4a7
 Head: 51492f0ea409edc380a77db17d84708560fa1c07
 Applied:
   Makefile: 1f8ce8871f4d9303e07d24baedbb8cfd44d6f4ab
@@ -19,8 +19,8 @@ Applied:
   of-soc-simple-rework: 082137a1d9eb9c175015799ddf75abca6dd3aea3
   i2s-dma-split: 30191ba745016f6c6e4e993cfe14c8e04917e166
   is2-dma-rename: 2510404a5734f675e19730420235ee52541dc8d0
+  mpc5200-dma-split: 51492f0ea409edc380a77db17d84708560fa1c07
 Unapplied:
-  mpc5200-dma-split: a6c55305d1c4ddb80c059413d1b4cb2e57afd2a7
   stac9766-codec: 6d26bdfc02c8e4632b69753ab4fc81e57d6291cb
   mpc5200-ac97: 16c3fad396e0bd0c53e1fea442325e6ed52a2c46
   efika-audio: e9bbeee01e243d42731cbf9d675aa77253b42b15
