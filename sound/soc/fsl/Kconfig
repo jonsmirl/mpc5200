@@ -4,9 +4,6 @@ config SND_SOC_OF_SIMPLE
 config SND_MPC52xx_DMA
 	tristate
 
-config SND_MPC52xx_DMA
-	tristate
-
 # ASoC platform support for the Freescale MPC8610 SOC.  This compiles drivers
 # for the SSI and the Elo DMA controller.  You will still need to select
 # a platform driver and a codec driver.
