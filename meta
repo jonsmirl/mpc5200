@@ -1,5 +1,5 @@
 Version: 1
-Previous: cd7bdf9ff7f3e915877a3a06eed5e41d56007d90
+Previous: ac27134d1cd2dbee97366c6574301e8c2fb810da
 Head: cf8ddcbc1fda152cb39345f8d5050549f7a8cc71
 Applied:
   Makefile: 1f8ce8871f4d9303e07d24baedbb8cfd44d6f4ab
@@ -18,8 +18,8 @@ Applied:
   soc-u32-cleanup: c72ad14d21492683c97585dc6196b54c2b75302b
   i2s-dma-split: 36ae38e68d198af392f641fbf5ed0dc13a50d6d5
   is2-dma-rename: e7e512aa9381b46241cfebf1585f0e6b2fc66b79
+  of-soc-simple-rework: cf8ddcbc1fda152cb39345f8d5050549f7a8cc71
 Unapplied:
-  of-soc-simple-rework: 082137a1d9eb9c175015799ddf75abca6dd3aea3
   mpc5200-dma-split: 80e98e61c3764f59148f53ddf5a68fe4e9bb4f56
   stac9766-codec: 420e88c74ba7821d19cae4977a9d092935e5036e
   mpc5200-ac97: 2785a2b95f8b9a80dc8e6f64bd37efdd13e548f8
