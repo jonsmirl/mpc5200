@@ -1,6 +1,6 @@
 Version: 1
-Previous: 4102d6577e6736e4fd1e8fcc8e179b78f9a5cbd4
-Head: 51d1b49fc66953b2e57ca7a1c5c200b13e1f65f1
+Previous: 42a1ed2d00f4ca0fbbb2b4a57320daa39dcc48d5
+Head: 420e88c74ba7821d19cae4977a9d092935e5036e
 Applied:
   Makefile: 1f8ce8871f4d9303e07d24baedbb8cfd44d6f4ab
   digispeak: b002f421c6da238f0d2f5077e0ee5b86e7831e29
@@ -20,8 +20,8 @@ Applied:
   i2s-dma-split: 30191ba745016f6c6e4e993cfe14c8e04917e166
   is2-dma-rename: 2510404a5734f675e19730420235ee52541dc8d0
   mpc5200-dma-split: 51d1b49fc66953b2e57ca7a1c5c200b13e1f65f1
+  stac9766-codec: 420e88c74ba7821d19cae4977a9d092935e5036e
 Unapplied:
-  stac9766-codec: 6d26bdfc02c8e4632b69753ab4fc81e57d6291cb
   mpc5200-ac97: 16c3fad396e0bd0c53e1fea442325e6ed52a2c46
   efika-audio: e9bbeee01e243d42731cbf9d675aa77253b42b15
   tas5504-codec: c0c51fc6e7f38bbcc3c849592f041bb72f3f3126
