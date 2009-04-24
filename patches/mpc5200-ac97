@@ -1,5 +1,5 @@
-Bottom: e10cb2d55c3e8f43eb0080b82a8a0dc7ed23f1a5
-Top:    ad72fa10b1c27f8e1fa128667df725ab6859e032
+Bottom: c1bffe8a9115de2dcb2eb1a515b2cc1f54b547d2
+Top:    3899207e78fd1533bd658ffa65f98ba712f2111e
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:48 -0400
 
@@ -24,10 +24,10 @@ index a218da6..11abc69 100644
  #define MPC52xx_PSC_SR_RXRDY	0x0100
  #define MPC52xx_PSC_SR_RXFULL	0x0200
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index 1c10815..d915602 100644
+index dc79bdf..efc13d1 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
-@@ -33,3 +33,14 @@ config SND_SOC_MPC5200_I2S
+@@ -30,3 +30,14 @@ config SND_SOC_MPC5200_I2S
  	select PPC_BESTCOMM_GEN_BD
  	help
  	  Say Y here to support the MPC5200 PSCs in I2S mode.
@@ -43,15 +43,14 @@ index 1c10815..d915602 100644
 +
 +
 diff --git a/sound/soc/fsl/Makefile b/sound/soc/fsl/Makefile
-index 56b2476..dd56424 100644
+index 7731ef2..14631a1 100644
 --- a/sound/soc/fsl/Makefile
 +++ b/sound/soc/fsl/Makefile
-@@ -13,5 +13,6 @@ obj-$(CONFIG_SND_SOC_MPC8610) += snd-soc-fsl-ssi.o snd-soc-fsl-dma.o
+@@ -13,4 +13,5 @@ obj-$(CONFIG_SND_SOC_MPC8610) += snd-soc-fsl-ssi.o snd-soc-fsl-dma.o
  # MPC5200 Platform Support
  obj-$(CONFIG_SND_MPC52xx_DMA) += mpc5200_dma.o
  obj-$(CONFIG_SND_SOC_MPC5200_I2S) += mpc5200_psc_i2s.o
 +obj-$(CONFIG_SND_SOC_MPC5200_AC97) += mpc5200_psc_ac97.o
- 
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
