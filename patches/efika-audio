@@ -1,5 +1,5 @@
-Bottom: 4938da1fe1983a1ce2479ffd7db92b35c506257c
-Top:    c939e5f3bc54f4fafc1937f66bb76f9f15f3af26
+Bottom: ad72fa10b1c27f8e1fa128667df725ab6859e032
+Top:    abfa06c1ddd34501979a5c31569c0112c7a7b5fd
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:48 -0400
 
@@ -33,10 +33,10 @@ index a2068fa..c7a6a48 100644
  	.init_IRQ		= mpc52xx_init_irq,
  	.get_irq		= mpc52xx_get_irq,
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index 4f16e4c..63505a5 100644
+index d915602..f903a73 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
-@@ -40,4 +40,12 @@ config SND_SOC_MPC5200_AC97
+@@ -43,4 +43,12 @@ config SND_SOC_MPC5200_AC97
  	help
  	  Say Y here to support the MPC5200 PSCs in AC97 mode.
  
