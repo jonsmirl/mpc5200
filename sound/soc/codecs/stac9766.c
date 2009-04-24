@@ -276,14 +276,22 @@ static int ac97_analog_prepare(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	u16 vra;
+	unsigned short reg, vra;
 
 	printk("stac9766: ac97_analog_prepare rate %d\n", runtime->rate);
 
 	vra = stac9766_ac97_read(codec, AC97_EXTENDED_STATUS);
 	stac9766_ac97_write(codec, AC97_EXTENDED_STATUS, vra | 0x1);
 
-	return stac9766_ac97_write(codec, AC97_PCM_FRONT_DAC_RATE, runtime->rate);
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		reg = AC97_PCM_FRONT_DAC_RATE;
+	else
+		reg = AC97_PCM_LR_ADC_RATE;
+
+	vra = stac9766_ac97_read(codec, reg);
+	printk("rate is %x %x\n", vra, runtime->rate/2);
+
+	return stac9766_ac97_write(codec, reg, runtime->rate/2);
 }
 
 static int ac97_digital_prepare(struct snd_pcm_substream *substream,
