@@ -1,5 +1,5 @@
 Bottom: a39b9dbe44c50a83dfb25702b0f98b7f73a30c6d
-Top:    672021b8ae05286388d4e3c7f17eedbbe35c6670
+Top:    3e1ea63b0b70ef3f4c53cfbf55a41f74e2d6299e
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:46 -0400
 
@@ -70,7 +70,7 @@ index 284857c..81084dc 100644
  obj-$(CONFIG_SND_SOC_TLV320AIC3X)	+= snd-soc-tlv320aic3x.o
 diff --git a/sound/soc/codecs/tas5504.c b/sound/soc/codecs/tas5504.c
 new file mode 100644
-index 0000000..e3948de
+index 0000000..90f299a
 --- /dev/null
 +++ b/sound/soc/codecs/tas5504.c
 @@ -0,0 +1,874 @@
@@ -919,7 +919,7 @@ index 0000000..e3948de
 +	{ "tas5504", 0 },
 +	{ }
 +};
-+MODULE_DEVICE_TABLE(i2c, tas5504_id);
++MODULE_DEVICE_TABLE(i2c, tas5504_device_id);
 +
 +static struct i2c_driver tas5504_driver = {
 +	.driver		= {
