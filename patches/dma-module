@@ -1,5 +1,5 @@
 Bottom: 7ef961245d0bc27db48de29beae8955b6fabfa55
-Top:    ca3a6110b7c48397a33bd5a590f1e24c83f64734
+Top:    5c6ef04d24e2de8e44294706251761c6ec254ff0
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-24 19:55:42 -0400
 
@@ -8,6 +8,17 @@ Rename the public DMA exports into the global name space
 
 ---
 
+diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
+index dc79bdf..8060b95 100644
+--- a/sound/soc/fsl/Kconfig
++++ b/sound/soc/fsl/Kconfig
+@@ -1,5 +1,5 @@
+ config SND_SOC_OF_SIMPLE
+-	tristate
++	bool
+ 	
+ config SND_MPC52xx_DMA
+ 	tristate
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
 index c82ef75..df73755 100644
 --- a/sound/soc/fsl/mpc5200_dma.c

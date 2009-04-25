@@ -1,5 +1,5 @@
-Bottom: f4a33f0ade08ba4b83b43e386a128c7de8566c9e
-Top:    8b7c5fb27474fda3e349ca01c559179cc4a573b3
+Bottom: 8eddcc50c2c205e09cf5a90428b173715cd8e30f
+Top:    014baf6cffa98842a534c53aab78e90d2514512f
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:47 -0400
 
@@ -9,7 +9,7 @@ Fabric driver for Digispeaker audio
 ---
 
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index a16c7d6..0d56849 100644
+index 266c6b7..c530dc7 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
 @@ -48,4 +48,12 @@ config SND_MPC52xx_SOC_EFIKA

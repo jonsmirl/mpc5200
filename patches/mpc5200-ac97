@@ -1,5 +1,5 @@
-Bottom: 86afeea3bf2c8bebd507788c0e6186b333652d0e
-Top:    8996c54171935654fe02b58956969719e36a4af5
+Bottom: db00b234825fc72dbd191671c255574080e05955
+Top:    b9c8b08cd0bcacf2b9b0b3d5bc022e8438e66b67
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:48 -0400
 
@@ -24,7 +24,7 @@ index a218da6..11abc69 100644
  #define MPC52xx_PSC_SR_RXRDY	0x0100
  #define MPC52xx_PSC_SR_RXFULL	0x0200
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index dc79bdf..efc13d1 100644
+index 8060b95..d8f63f5 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
 @@ -30,3 +30,14 @@ config SND_SOC_MPC5200_I2S
