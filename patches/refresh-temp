@@ -1,0 +1,20 @@
+Bottom: 9af5d63adcbf66351842b0462d35ae615728c384
+Top:    e27eff4af742df5e984dd2431efa1b1fddb3339f
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-24 22:32:46 -0400
+
+Refresh of dspeak-audio
+
+---
+
+diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
+index c530dc7..7ad85d2 100644
+--- a/sound/soc/fsl/Kconfig
++++ b/sound/soc/fsl/Kconfig
+@@ -53,6 +53,7 @@ config SND_MPC52xx_SOC_DSPEAK01
+ 	depends on PPC_DSPEAK01
+ 	select SND_SOC_MPC5200_I2S
+ 	select SND_SOC_TAS5504
++	select MAX9485
+ 	help
+ 	  Say Y if you want to add support for sound on Digispeaker DSPEAK01.
