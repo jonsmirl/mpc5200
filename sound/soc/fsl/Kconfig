@@ -53,6 +53,7 @@ config SND_MPC52xx_SOC_DSPEAK01
 	depends on PPC_DSPEAK01
 	select SND_SOC_MPC5200_I2S
 	select SND_SOC_TAS5504
+	select MAX9485
 	help
 	  Say Y if you want to add support for sound on Digispeaker DSPEAK01.
 
