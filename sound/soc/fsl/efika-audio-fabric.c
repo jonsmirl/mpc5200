@@ -195,11 +195,6 @@ static int efika_stac9766_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int __exit efika_stac9766_remove(struct of_device *op)
-{
-	return 0;
-}
-
 #ifdef CONFIG_PM
 
 static int efika_stac9766_suspend(struct platform_device *pdev,
