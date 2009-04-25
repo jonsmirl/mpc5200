@@ -418,16 +418,14 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
 		card->dev->coherent_dma_mask = 0xffffffff;
 
 	if (pcm->streams[0].substream) {
-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
-		//rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
+		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
 					&pcm->streams[0].substream->dma_buffer);
 		if (rc)
 			goto playback_alloc_err;
 	}
 
 	if (pcm->streams[1].substream) {
-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
-		//rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
+		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
 					&pcm->streams[1].substream->dma_buffer);
 		if (rc)
 			goto capture_alloc_err;
