@@ -1,5 +1,5 @@
 Bottom: e69aa23a5fdd3ee629d0de87b0ef4ef0e6e750ad
-Top:    15296dfcbb3dfb81265545286af0d9364d94cf7b
+Top:    d16813a4634794a26c4f704195f654b90197ee2a
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:46 -0400
 
@@ -9,7 +9,7 @@ Split out the DMA code from the mpc5200 i2s driver
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index df73755..abfc808 100644
+index df73755..7cf3ba0 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -1,10 +1,12 @@
@@ -52,19 +52,20 @@ index df73755..abfc808 100644
  	size_t size = psc_dma_pcm_hardware.buffer_bytes_max;
  	int rc = 0;
  
-@@ -414,6 +419,7 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
+@@ -413,19 +418,22 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
+ 		card->dev->coherent_dma_mask = 0xffffffff;
  
  	if (pcm->streams[0].substream) {
- 		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
-+		//rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
+-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
++		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
  					&pcm->streams[0].substream->dma_buffer);
  		if (rc)
  			goto playback_alloc_err;
-@@ -421,11 +427,15 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
+ 	}
  
  	if (pcm->streams[1].substream) {
- 		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
-+		//rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
+-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
++		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
  					&pcm->streams[1].substream->dma_buffer);
  		if (rc)
  			goto capture_alloc_err;
@@ -76,7 +77,7 @@ index df73755..abfc808 100644
  	return 0;
  
   capture_alloc_err:
-@@ -461,3 +471,18 @@ struct snd_soc_platform mpc5200_dma_platform = {
+@@ -461,3 +469,18 @@ struct snd_soc_platform mpc5200_dma_platform = {
  	.pcm_free	= &psc_dma_pcm_free,
  };
  EXPORT_SYMBOL_GPL(mpc5200_dma_platform);
