@@ -843,7 +843,7 @@ static const struct i2c_device_id tas5504_device_id[] = {
 	{ "tas5504", 0 },
 	{ }
 };
-MODULE_DEVICE_TABLE(i2c, tas5504_id);
+MODULE_DEVICE_TABLE(i2c, tas5504_device_id);
 
 static struct i2c_driver tas5504_driver = {
 	.driver		= {
