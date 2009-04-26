@@ -1,5 +1,5 @@
 Version: 1
-Previous: dfba615706b99ce707c1925a5ae36cca4cfd2904
+Previous: b54dc622c465f7a4971c6607e9137b146862283b
 Head: d848be68bde7f22937e827355630eaa24df9cdb2
 Applied:
   Makefile: 1f8ce8871f4d9303e07d24baedbb8cfd44d6f4ab
@@ -29,6 +29,5 @@ Applied:
   i2s-cell-clock: 11599375a0b4439c74defb77b0eac4a133fa1f32
   dspeak-audio: d848be68bde7f22937e827355630eaa24df9cdb2
 Unapplied:
-  reverse-alsa: a40932e7364fc98a74b884592bff77a950100a4e
   temp: f0378abb06f6c882eb03e66fe16efcdb9c18a880
 Hidden:
