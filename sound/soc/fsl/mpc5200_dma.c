@@ -196,8 +196,6 @@ int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
 		s->period_start = virt_to_phys(runtime->dma_area);
 		s->period_end = s->period_start +
 				(s->period_bytes * runtime->periods);
-		//s->period_end = s->period_start +
-			//	frames_to_bytes(runtime, runtime->buffer_size);
 		s->period_next_pt = s->period_start;
 		s->period_current_pt = s->period_start;
 		s->active = 1;
@@ -333,7 +331,7 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
 		   SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
 	.rate_min = 8000,
 	.rate_max = 48000,
-	.channels_min = 2,
+	.channels_min = 1,
 	.channels_max = 2,
 	.period_bytes_max	= 1024 * 1024,
 	.period_bytes_min	= 32,
@@ -399,9 +397,8 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
 
 	delta = jiffies - s->jiffies;
 	delta = delta * runtime->rate / HZ;
-
 	frames = bytes_to_frames(substream->runtime, count);
-	printk("psc_dma_pcm_pointer pos %ld %d\n", frames, delta);
+
 	return frames + delta;
 }
 
