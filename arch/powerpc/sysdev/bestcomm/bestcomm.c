@@ -40,6 +40,114 @@ static struct of_device_id mpc52xx_sram_ids[] __devinitdata = {
 struct bcom_engine *bcom_eng = NULL;
 EXPORT_SYMBOL_GPL(bcom_eng);	/* needed for inline functions */
 
+/* Debug Dump */
+
+#define BCOM_DPRINTK(a,b...) printk(KERN_DEBUG DRIVER_NAME ": " a, ## b)
+
+void
+bcom_dump_status(void)
+{
+	int i;
+	struct mpc52xx_sdma __iomem *r = bcom_eng->regs;
+
+	BCOM_DPRINTK("BestComm status dump (pa=%08x, va=%p)\n",
+			bcom_eng->regs_base, bcom_eng->regs);
+	BCOM_DPRINTK(" taskBar         = %08x\n", in_be32(&r->taskBar));
+	BCOM_DPRINTK(" currentPointer  = %08x\n", in_be32(&r->currentPointer));
+	BCOM_DPRINTK(" endPointer      = %08x\n", in_be32(&r->endPointer));
+	BCOM_DPRINTK(" variablePointer = %08x\n", in_be32(&r->variablePointer));
+	BCOM_DPRINTK(" IntVect1        = %08x\n", (u32)in_8(&r->IntVect1));
+	BCOM_DPRINTK(" IntVect2        = %08x\n", (u32)in_8(&r->IntVect2));
+	BCOM_DPRINTK(" PtdCntrl        = %08hx\n", in_be16(&r->PtdCntrl));
+	BCOM_DPRINTK(" IntPend         = %08x\n", in_be32(&r->IntPend));
+	BCOM_DPRINTK(" IntMask         = %08x\n", in_be32(&r->IntMask));
+
+	BCOM_DPRINTK(" TCR dump :\n");
+
+	for (i=0; i<16; i++) {
+		printk("%s%04hx%s",
+			(i&0x7) == 0x0 ? KERN_DEBUG "\t" : "",
+			in_be16(&r->tcr[i]),
+			(i&0x7) == 0x7 ? "\n" : " ");
+	}
+
+	BCOM_DPRINTK(" IPR dump :\n");
+
+	for (i=0; i<32; i++) {
+		printk("%s%02x%s",
+			(i&0x7) == 0x0 ? KERN_DEBUG "\t" : "",
+			(u32)in_8(&r->ipr[i]),
+			(i&0x7) == 0x7 ? "\n" : " ");
+	}
+
+	BCOM_DPRINTK(" cReqSelect      = %08x\n", in_be32(&r->cReqSelect));
+	BCOM_DPRINTK(" task_size0      = %08x\n", in_be32(&r->task_size0));
+	BCOM_DPRINTK(" task_size1      = %08x\n", in_be32(&r->task_size1));
+	BCOM_DPRINTK(" MDEDebug        = %08x\n", in_be32(&r->MDEDebug));
+	BCOM_DPRINTK(" ADSDebug        = %08x\n", in_be32(&r->ADSDebug));
+	BCOM_DPRINTK(" Value1          = %08x\n", in_be32(&r->Value1));
+	BCOM_DPRINTK(" Value2          = %08x\n", in_be32(&r->Value2));
+	BCOM_DPRINTK(" Control         = %08x\n", in_be32(&r->Control));
+	BCOM_DPRINTK(" Status          = %08x\n", in_be32(&r->Status));
+	BCOM_DPRINTK(" PTDDebug        = %08x\n", in_be32(&r->PTDDebug));
+}
+
+void
+bcom_dump_task(int task)
+{
+	int i;
+	u32 *p;
+	struct bcom_tdt *tdt = &bcom_eng->tdt[task];
+
+	BCOM_DPRINTK("Task dump %d\n", task);
+	BCOM_DPRINTK(" tcr          = %04hx\n", bcom_eng->regs->tcr[task]);
+	BCOM_DPRINTK(" tdt          = %p\n", &bcom_eng->tdt[task]);
+	BCOM_DPRINTK(" tdt->start   = %08x\n", tdt->start);
+	BCOM_DPRINTK(" tdt->stop    = %08x\n", tdt->stop);
+	BCOM_DPRINTK(" tdt->var     = %08x\n", tdt->var);
+	BCOM_DPRINTK(" tdt->fdt     = %08x\n", tdt->fdt);
+	BCOM_DPRINTK(" tdt->status  = %08x\n", tdt->exec_status);
+	BCOM_DPRINTK(" tdt->mvtp    = %08x\n", tdt->mvtp);
+	BCOM_DPRINTK(" tdt->context = %08x\n", tdt->context);
+	BCOM_DPRINTK(" tdt->litbase = %08x\n", tdt->litbase);
+
+	BCOM_DPRINTK(" code    :\n");
+
+	p = bcom_task_desc(task);
+	for (i=0; i<bcom_task_num_descs(task); i++)
+		printk(KERN_DEBUG "\t%p %08x\n", &p[i], p[i]);
+
+	BCOM_DPRINTK(" var :\n");
+
+	p = bcom_task_var(task);
+	for (i=0; i<BCOM_MAX_VAR; i++)
+		printk(KERN_DEBUG "\t%p %08x\n", &p[i], p[i]);
+
+	BCOM_DPRINTK(" inc :\n");
+
+	p = bcom_task_inc(task);
+	for (i=0; i < BCOM_MAX_INC; i++)
+		printk(KERN_DEBUG "\t%p %08x\n", &p[i], p[i]);
+}
+
+void
+bcom_dump_bdring(struct bcom_task *tsk)
+{
+	int i, j;
+
+	BCOM_DPRINTK("BD ring dump %d\n", tsk->tasknum);
+
+	for (i=0; i<tsk->num_bd; i++) {
+		BCOM_DPRINTK(" BD[%02d] :\n", i);
+		BCOM_DPRINTK("  cookie   : %p\n", tsk->cookie[i]);
+		BCOM_DPRINTK("  status   : %08x\n", tsk->bd[i].status);
+		for (j=0; j<(tsk->bd_size/sizeof(u32))-1; j++)
+			BCOM_DPRINTK("  data[%02d] : %08x\n",
+				j, tsk->bd[i].data[j]);
+	}
+}
+
+
 /* ======================================================================== */
 /* Public and private API                                                   */
 /* ======================================================================== */
