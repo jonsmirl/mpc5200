@@ -3,7 +3,7 @@ Top:    7ef961245d0bc27db48de29beae8955b6fabfa55
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-24 15:01:55 -0400
 
-Rename the functions in the DMA file from i2s to dma
+Rename the functions in the mpc5200 DMA file from i2s to dma to reflect the file they are in.
 
 
 ---
