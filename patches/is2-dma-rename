@@ -5,6 +5,8 @@ Date:   2009-04-24 15:01:55 -0400
 
 Rename the functions in the mpc5200 DMA file from i2s to dma to reflect the file they are in.
 
+Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
+
 
 ---
 
