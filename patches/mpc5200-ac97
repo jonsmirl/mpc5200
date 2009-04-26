@@ -1,5 +1,5 @@
 Bottom: 9fa14460affc2974fd62b98d7aad36818380c870
-Top:    127937bc5fac39809ee73ba449fe0a4186b4fa48
+Top:    6cbd3b9d39c09797085cdced089b1f9b4ca9542f
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:48 -0400
 
@@ -54,7 +54,7 @@ index 7731ef2..14631a1 100644
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..66981ee
+index 0000000..5e91163
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
 @@ -0,0 +1,528 @@
@@ -229,11 +229,11 @@ index 0000000..66981ee
 +
 +	dev_dbg(psc_dma->dev, "%s(substream=%p) p_size=%i p_bytes=%i"
 +		" periods=%i buffer_size=%i  buffer_bytes=%i channels=%i"
-+		" rate=%i\n",
++		" rate=%i format=%i\n",
 +		__func__, substream, params_period_size(params),
 +		params_period_bytes(params), params_periods(params),
 +		params_buffer_size(params), params_buffer_bytes(params),
-+		params_channels(params), params_rate(params));
++		params_channels(params), params_rate(params), params_format(params));
 +
 +	// FIXME, need a spinlock to protect access
 +	if (params_channels(params) == 1)
@@ -309,7 +309,7 @@ index 0000000..66981ee
 +		.channels_min	= 1,
 +		.channels_max	= 6,
 +		.rates		= SNDRV_PCM_RATE_8000_48000,
-+		.formats	= SNDRV_PCM_FORMAT_S32_BE,
++		.formats	= SNDRV_PCM_FMTBIT_S32_BE,
 +	},
 +	.capture = {
 +		.channels_min	= 1,
