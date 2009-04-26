@@ -169,11 +169,11 @@ static int psc_ac97_hw_analog_params(struct snd_pcm_substream *substream,
 
 	dev_dbg(psc_dma->dev, "%s(substream=%p) p_size=%i p_bytes=%i"
 		" periods=%i buffer_size=%i  buffer_bytes=%i channels=%i"
-		" rate=%i\n",
+		" rate=%i format=%i\n",
 		__func__, substream, params_period_size(params),
 		params_period_bytes(params), params_periods(params),
 		params_buffer_size(params), params_buffer_bytes(params),
-		params_channels(params), params_rate(params));
+		params_channels(params), params_rate(params), params_format(params));
 
 	// FIXME, need a spinlock to protect access
 	if (params_channels(params) == 1)
@@ -249,7 +249,7 @@ static struct snd_soc_dai psc_ac97_dai_template[] = {
 		.channels_min	= 1,
 		.channels_max	= 6,
 		.rates		= SNDRV_PCM_RATE_8000_48000,
-		.formats	= SNDRV_PCM_FORMAT_S32_BE,
+		.formats	= SNDRV_PCM_FMTBIT_S32_BE,
 	},
 	.capture = {
 		.channels_min	= 1,
