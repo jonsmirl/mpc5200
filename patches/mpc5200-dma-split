@@ -1,5 +1,5 @@
 Bottom: 1d7095261984b9ac5f5a965bdb7d5da3e4ccd343
-Top:    6d07a7d1652fc756f6ee8e0c19beeec92a9d55e1
+Top:    6cbc92e85cae6dd6eed0ab0dd555dbb5ea9b2f94
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:46 -0400
 
@@ -9,7 +9,7 @@ Split out the DMA code from the mpc5200 i2s driver
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index df73755..7cf3ba0 100644
+index df73755..f378b99 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -1,10 +1,12 @@
@@ -35,16 +35,55 @@ index df73755..7cf3ba0 100644
  #include <asm/mpc52xx_psc.h>
  
  #include "mpc5200_dma.h"
-@@ -326,7 +330,7 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
+@@ -99,8 +103,10 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
+ 
+ 	/* If the stream is active, then also inform the PCM middle layer
+ 	 * of the period finished event. */
+-	if (s->active)
++	if (s->active) {
++		s->jiffies = jiffies;
+ 		snd_pcm_period_elapsed(s->stream);
++	}
+ 
+ 	return IRQ_HANDLED;
+ }
+@@ -325,7 +331,7 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
+ 		   SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
  	.rate_min = 8000,
  	.rate_max = 48000,
- 	.channels_min = 2,
--	.channels_max = 2,
-+	.channels_max = 1,
+-	.channels_min = 2,
++	.channels_min = 1,
+ 	.channels_max = 2,
  	.period_bytes_max	= 1024 * 1024,
  	.period_bytes_min	= 32,
- 	.periods_min		= 2,
-@@ -401,6 +405,7 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
+@@ -374,10 +380,13 @@ static int psc_dma_pcm_close(struct snd_pcm_substream *substream)
+ static snd_pcm_uframes_t
+ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
+ {
++	struct snd_pcm_runtime *runtime = substream->runtime;
+ 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+ 	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
+ 	struct psc_dma_stream *s;
+ 	dma_addr_t count;
++	snd_pcm_uframes_t frames;
++	int delta;
+ 
+ 	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
+ 		s = &psc_dma->capture;
+@@ -386,7 +395,11 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
+ 
+ 	count = s->period_current_pt - s->period_start;
+ 
+-	return bytes_to_frames(substream->runtime, count);
++	delta = jiffies - s->jiffies;
++	delta = delta * runtime->rate / HZ;
++	frames = bytes_to_frames(substream->runtime, count);
++
++	return frames + delta;
+ }
+ 
+ static struct snd_pcm_ops psc_dma_pcm_ops = {
+@@ -401,6 +414,7 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
  			   struct snd_pcm *pcm)
  {
  	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
@@ -52,7 +91,7 @@ index df73755..7cf3ba0 100644
  	size_t size = psc_dma_pcm_hardware.buffer_bytes_max;
  	int rc = 0;
  
-@@ -413,19 +418,22 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
+@@ -413,19 +427,22 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
  		card->dev->coherent_dma_mask = 0xffffffff;
  
  	if (pcm->streams[0].substream) {
@@ -77,7 +116,7 @@ index df73755..7cf3ba0 100644
  	return 0;
  
   capture_alloc_err:
-@@ -461,3 +469,18 @@ struct snd_soc_platform mpc5200_dma_platform = {
+@@ -461,3 +478,18 @@ struct snd_soc_platform mpc5200_dma_platform = {
  	.pcm_free	= &psc_dma_pcm_free,
  };
  EXPORT_SYMBOL_GPL(mpc5200_dma_platform);
@@ -97,7 +136,7 @@ index df73755..7cf3ba0 100644
 +module_exit(mpc5200_soc_platform_exit);
 +
 diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
-index e52b90e..ae6bc99 100644
+index e52b90e..12876d5 100644
 --- a/sound/soc/fsl/mpc5200_dma.h
 +++ b/sound/soc/fsl/mpc5200_dma.h
 @@ -5,8 +5,12 @@
@@ -114,7 +153,15 @@ index e52b90e..ae6bc99 100644
   * @active:		flag indicating if the stream is active
   * @psc_dma:		pointer back to parent psc_dma data structure
   * @bcom_task:		bestcomm task structure
-@@ -48,9 +52,11 @@ struct psc_dma {
+@@ -27,6 +31,7 @@ struct psc_dma_stream {
+ 	dma_addr_t period_next_pt;
+ 	dma_addr_t period_current_pt;
+ 	int period_bytes;
++	int jiffies;
+ };
+ 
+ /**
+@@ -48,9 +53,11 @@ struct psc_dma {
  	struct mpc52xx_psc_fifo __iomem *fifo_regs;
  	unsigned int irq;
  	struct device *dev;
