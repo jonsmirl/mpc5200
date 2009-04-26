@@ -1,6 +1,6 @@
 Version: 1
-Previous: 3ddcbf00bca6e886744523c336909ca1b44765a5
-Head: f7c3d9bc5ae4c665a714027613951db3b433f934
+Previous: 8f652fd35456f21b4eb77342cbeae2e28b1d44ee
+Head: fc45cf8263df543c9f7ef89cb331d22977bebf65
 Applied:
   Makefile: 1f8ce8871f4d9303e07d24baedbb8cfd44d6f4ab
   digispeak: b002f421c6da238f0d2f5077e0ee5b86e7831e29
@@ -16,18 +16,18 @@ Applied:
   m_1: 505ce6c4dbeb12de4abac1919dd9a22b4c0fca22
   spi-mmc: fd8252fd0f93c2608697034126b8f4b436d0d9b7
   soc-u32-cleanup: c72ad14d21492683c97585dc6196b54c2b75302b
-  i2s-dma-split: 854d640704ac9ee3fa4d55bc51234a71b6a69295
-  is2-dma-rename: 9fe7d28cafd4cf91fe7c97d9d83fa4479c827e3b
-  dma-module: c5008d1daab975fdc1c99974b14ef92d85e5ce09
-  of-soc-simple-rework: fb6a13c651a366d51b10c024321b43cd3c9aefd6
-  mpc5200-dma-split: b131a8f573f0cc5e81ac698985e10473a293cd34
-  stac9766-codec: cbae274e2ccedfd399b377356a5fccc4b71b76a1
-  mpc5200-ac97: ff710ec4adf0dd2cd375943700accf82dfd6c593
-  efika-audio: 07a07e4dc24b42cd2287fc07c7693abdf7b237b5
-  tas5504-codec: 903c8fd203a003076af8279b80a04b10a6a4959a
-  max9485-i2c: f09afb9a725cd5153d4ef6f3411079af859cff9a
-  i2s-cell-clock: ff4f70c0f770e7b56819c46ae54b681fedeef97d
-  dspeak-audio: 7bafc3e555fc413229b59149ce75bf7682a0bc41
-  temp: f7c3d9bc5ae4c665a714027613951db3b433f934
+  i2s-dma-split: fe3aeb5492a61cc3ab7b456d75472cce75d3a63b
+  is2-dma-rename: 38095d535306f74317917febe00e02943987fe3d
+  dma-module: 89d73065f274ac051ac689d04d35fc0215e220a1
+  of-soc-simple-rework: 4ea9afe8615941b35d657ee3353f3aa5ccb66223
+  mpc5200-dma-split: 4ae3987b1bc9a935ae18bd31240eb42496ffeb83
+  stac9766-codec: 5b0a8a6ca0934c5fb9572088d8bd3376aa0c0c09
+  mpc5200-ac97: 2edc50ac8ff570f0f5170e41803f30c168b44168
+  efika-audio: 41aa6e295d0302d0e0c980182df1cdff7f8757a6
+  tas5504-codec: 7e5d395fbe386a95cf878505da0ae02d628da392
+  max9485-i2c: 1028ba5ea57add440413bbbac576b00ddd728645
+  i2s-cell-clock: 31f67a0014db46d80fa83180034acb990b693990
+  dspeak-audio: ae6951ad0f70ef8c811d0569dc21b48b6cddb9e5
+  temp: fc45cf8263df543c9f7ef89cb331d22977bebf65
 Unapplied:
 Hidden:

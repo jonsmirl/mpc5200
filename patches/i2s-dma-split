@@ -5,6 +5,8 @@ Date:   2009-04-24 14:47:34 -0400
 
 Basic split of mpc5200 DMA code out from i2s into a standalone file.
 
+Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
+
 
 ---
 
