@@ -103,8 +103,10 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
 
 	/* If the stream is active, then also inform the PCM middle layer
 	 * of the period finished event. */
-	if (s->active)
+	if (s->active) {
+		s->jiffies = jiffies;
 		snd_pcm_period_elapsed(s->stream);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -194,6 +196,8 @@ int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
 		s->period_start = virt_to_phys(runtime->dma_area);
 		s->period_end = s->period_start +
 				(s->period_bytes * runtime->periods);
+		//s->period_end = s->period_start +
+			//	frames_to_bytes(runtime, runtime->buffer_size);
 		s->period_next_pt = s->period_start;
 		s->period_current_pt = s->period_start;
 		s->active = 1;
@@ -330,7 +334,7 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
 	.rate_min = 8000,
 	.rate_max = 48000,
 	.channels_min = 2,
-	.channels_max = 1,
+	.channels_max = 2,
 	.period_bytes_max	= 1024 * 1024,
 	.period_bytes_min	= 32,
 	.periods_min		= 2,
@@ -378,10 +382,13 @@ static int psc_dma_pcm_close(struct snd_pcm_substream *substream)
 static snd_pcm_uframes_t
 psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
 {
+	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
 	struct psc_dma_stream *s;
 	dma_addr_t count;
+	snd_pcm_uframes_t frames;
+	int delta;
 
 	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
 		s = &psc_dma->capture;
@@ -390,7 +397,12 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
 
 	count = s->period_current_pt - s->period_start;
 
-	return bytes_to_frames(substream->runtime, count);
+	delta = jiffies - s->jiffies;
+	delta = delta * runtime->rate / HZ;
+
+	frames = bytes_to_frames(substream->runtime, count);
+	printk("psc_dma_pcm_pointer pos %ld %d\n", frames, delta);
+	return frames + delta;
 }
 
 static struct snd_pcm_ops psc_dma_pcm_ops = {
