@@ -230,7 +230,7 @@ static int snd_pcm_update_hw_ptr_interrupt(struct snd_pcm_substream *substream)
 			delta = new_hw_ptr - hw_ptr_interrupt;
 	}
 	if (delta < 0) {
-		delta += runtime->buffer_size;
+		delta += runtime->period_size * runtime->periods;
 		if (delta < 0) {
 			hw_ptr_error(substream, 
 				     "Unexpected hw_pointer value "
@@ -243,7 +243,7 @@ static int snd_pcm_update_hw_ptr_interrupt(struct snd_pcm_substream *substream)
 			hw_base -= hw_base % runtime->buffer_size;
 			delta = 0;
 		} else {
-			hw_base += runtime->buffer_size;
+			hw_base += runtime->period_size * runtime->periods;
 			if (hw_base >= runtime->boundary)
 				hw_base = 0;
 			new_hw_ptr = hw_base + pos;
