@@ -1,4 +1,4 @@
-Bottom: c6f183f1119c5f052857fbb4636dda49bf2fadb3
+Bottom: 202cc4ccec12521215fc5c6923d087591b0618f0
 Top:    202cc4ccec12521215fc5c6923d087591b0618f0
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-25 21:13:53 -0400
@@ -8,30 +8,4 @@ temporary holding patch
 
 ---
 
-diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
-index 66981ee..5e91163 100644
---- a/sound/soc/fsl/mpc5200_psc_ac97.c
-+++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -169,11 +169,11 @@ static int psc_ac97_hw_analog_params(struct snd_pcm_substream *substream,
- 
- 	dev_dbg(psc_dma->dev, "%s(substream=%p) p_size=%i p_bytes=%i"
- 		" periods=%i buffer_size=%i  buffer_bytes=%i channels=%i"
--		" rate=%i\n",
-+		" rate=%i format=%i\n",
- 		__func__, substream, params_period_size(params),
- 		params_period_bytes(params), params_periods(params),
- 		params_buffer_size(params), params_buffer_bytes(params),
--		params_channels(params), params_rate(params));
-+		params_channels(params), params_rate(params), params_format(params));
- 
- 	// FIXME, need a spinlock to protect access
- 	if (params_channels(params) == 1)
-@@ -249,7 +249,7 @@ static struct snd_soc_dai psc_ac97_dai_template[] = {
- 		.channels_min	= 1,
- 		.channels_max	= 6,
- 		.rates		= SNDRV_PCM_RATE_8000_48000,
--		.formats	= SNDRV_PCM_FORMAT_S32_BE,
-+		.formats	= SNDRV_PCM_FMTBIT_S32_BE,
- 	},
- 	.capture = {
- 		.channels_min	= 1,
+
