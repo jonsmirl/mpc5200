@@ -162,7 +162,7 @@ static int pcm_dma_psc_free(struct snd_pcm_substream *substream,
  * This function is called by ALSA to start, stop, pause, and resume the DMA
  * transfer of data.
  */
-static int psc_dma_pcm_trigger(struct snd_pcm_substream *substream, int cmd,
+static int pcm_dma_psc_trigger(struct snd_pcm_substream *substream, int cmd,
 			   struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
