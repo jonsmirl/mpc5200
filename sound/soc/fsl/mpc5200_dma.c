@@ -343,9 +343,11 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
 
 static int psc_dma_pcm_open(struct snd_pcm_substream *substream)
 {
+	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
 	struct psc_dma_stream *s;
+	int ret;
 
 	dev_dbg(psc_dma->dev, "psc_dma_pcm_open(substream=%p)\n", substream);
 
@@ -355,6 +357,13 @@ static int psc_dma_pcm_open(struct snd_pcm_substream *substream)
 		s = &psc_dma->playback;
 
 	snd_soc_set_runtime_hwparams(substream, &psc_dma_pcm_hardware);
+
+	ret = snd_pcm_hw_constraint_integer(runtime,
+		SNDRV_PCM_HW_PARAM_PERIODS);
+	if (ret < 0) {
+		dev_err(substream->pcm->card->dev, "invalid buffer size\n");
+		return ret;
+	}
 
 	s->stream = substream;
 	return 0;
