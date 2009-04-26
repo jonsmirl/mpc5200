@@ -1,5 +1,5 @@
 Bottom: e27eff4af742df5e984dd2431efa1b1fddb3339f
-Top:    ef6c3099b0804bad729aac8cb6749444d8516519
+Top:    fde17e0bf29bfdcf076c6da4ce61a47485cf390e
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-25 21:13:53 -0400
 
@@ -191,7 +191,7 @@ index 6add80f..cc3dc8e 100644
  /* bits 30 and 31 are obsoleted (for indirect access) */
  
 diff --git a/sound/core/pcm_lib.c b/sound/core/pcm_lib.c
-index 63d088f..3133ec6 100644
+index 63d088f..0f17289 100644
 --- a/sound/core/pcm_lib.c
 +++ b/sound/core/pcm_lib.c
 @@ -223,16 +223,18 @@ static int snd_pcm_update_hw_ptr_interrupt(struct snd_pcm_substream *substream)
@@ -207,13 +207,23 @@ index 63d088f..3133ec6 100644
  	}
 +	printk("delta %ld buffer_size %ld\n", delta, runtime->buffer_size);
  	if (delta < 0) {
- 		delta += runtime->buffer_size;
+-		delta += runtime->buffer_size;
++		delta += runtime->period_size * runtime->periods;
  		if (delta < 0) {
 -			hw_ptr_error(substream, 
 +			hw_ptr_error(substream,
  				     "Unexpected hw_pointer value "
  				     "(stream=%i, pos=%ld, intr_ptr=%ld)\n",
  				     substream->stream, (long)pos,
+@@ -243,7 +245,7 @@ static int snd_pcm_update_hw_ptr_interrupt(struct snd_pcm_substream *substream)
+ 			hw_base -= hw_base % runtime->buffer_size;
+ 			delta = 0;
+ 		} else {
+-			hw_base += runtime->buffer_size;
++			hw_base += runtime->period_size * runtime->periods;
+ 			if (hw_base >= runtime->boundary)
+ 				hw_base = 0;
+ 			new_hw_ptr = hw_base + pos;
 @@ -317,7 +319,7 @@ int snd_pcm_update_hw_ptr(struct snd_pcm_substream *substream)
  	if (delta < 0) {
  		delta += runtime->buffer_size;
@@ -851,22 +861,31 @@ index 9d60f19..95e69a0 100644
  	/* alsa ops */
  	.ops = &stac9766_dai_ops_analog,
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 7cf3ba0..4710bc7 100644
+index 7cf3ba0..b34533a 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
-@@ -192,8 +192,10 @@ int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
- 		s->period_bytes = frames_to_bytes(runtime,
- 						  runtime->period_size);
+@@ -103,8 +103,10 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
+ 
+ 	/* If the stream is active, then also inform the PCM middle layer
+ 	 * of the period finished event. */
+-	if (s->active)
++	if (s->active) {
++		s->jiffies = jiffies;
+ 		snd_pcm_period_elapsed(s->stream);
++	}
+ 
+ 	return IRQ_HANDLED;
+ }
+@@ -194,6 +196,8 @@ int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
  		s->period_start = virt_to_phys(runtime->dma_area);
-+		//s->period_end = s->period_start +
-+		//		(s->period_bytes * runtime->periods);
  		s->period_end = s->period_start +
--				(s->period_bytes * runtime->periods);
-+				frames_to_bytes(runtime, runtime->buffer_size);
+ 				(s->period_bytes * runtime->periods);
++		//s->period_end = s->period_start +
++			//	frames_to_bytes(runtime, runtime->buffer_size);
  		s->period_next_pt = s->period_start;
  		s->period_current_pt = s->period_start;
  		s->active = 1;
-@@ -330,7 +332,7 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
+@@ -330,7 +334,7 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
  	.rate_min = 8000,
  	.rate_max = 48000,
  	.channels_min = 2,
@@ -875,25 +894,46 @@ index 7cf3ba0..4710bc7 100644
  	.period_bytes_max	= 1024 * 1024,
  	.period_bytes_min	= 32,
  	.periods_min		= 2,
-@@ -382,6 +384,7 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
+@@ -378,10 +382,13 @@ static int psc_dma_pcm_close(struct snd_pcm_substream *substream)
+ static snd_pcm_uframes_t
+ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
+ {
++	struct snd_pcm_runtime *runtime = substream->runtime;
+ 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
  	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
  	struct psc_dma_stream *s;
  	dma_addr_t count;
 +	snd_pcm_uframes_t frames;
++	int delta;
  
  	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
  		s = &psc_dma->capture;
-@@ -390,7 +393,9 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
+@@ -390,7 +397,12 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
  
  	count = s->period_current_pt - s->period_start;
  
 -	return bytes_to_frames(substream->runtime, count);
++	delta = jiffies - s->jiffies;
++	delta = delta * runtime->rate / HZ;
++
 +	frames = bytes_to_frames(substream->runtime, count);
-+	printk("psc_dma_pcm_pointer pos %ld\n", frames);
-+	return frames;
++	printk("psc_dma_pcm_pointer pos %ld %d\n", frames, delta);
++	return frames + delta;
  }
  
  static struct snd_pcm_ops psc_dma_pcm_ops = {
+diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
+index ae6bc99..12876d5 100644
+--- a/sound/soc/fsl/mpc5200_dma.h
++++ b/sound/soc/fsl/mpc5200_dma.h
+@@ -31,6 +31,7 @@ struct psc_dma_stream {
+ 	dma_addr_t period_next_pt;
+ 	dma_addr_t period_current_pt;
+ 	int period_bytes;
++	int jiffies;
+ };
+ 
+ /**
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 index 66981ee..5e91163 100644
 --- a/sound/soc/fsl/mpc5200_psc_ac97.c
