@@ -3,7 +3,9 @@ Top:    ca3a6110b7c48397a33bd5a590f1e24c83f64734
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-24 19:55:42 -0400
 
-Rename the public DMA exports into the global name space so that the DMA code can be loaded as a module.
+Rename exports in mpc5200_dma.c
+
+Rename the public DMA exports into the global name space so that the DMA code can be built as a module.
 
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
