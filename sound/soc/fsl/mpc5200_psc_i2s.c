@@ -188,10 +188,8 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
  * psc_i2s_dai_template: template CPU Digital Audio Interface
  */
 static struct snd_soc_dai_ops psc_i2s_dai_ops = {
-	.startup	= mpc5200_audio_dma_startup,
 	.hw_params	= psc_i2s_hw_params,
 	.hw_free	= mpc5200_audio_dma_hw_free,
-	.shutdown	= mpc5200_audio_dma_shutdown,
 	.trigger	= mpc5200_audio_dma_trigger,
 	.set_sysclk	= psc_i2s_set_sysclk,
 	.set_fmt	= psc_i2s_set_fmt,
@@ -404,6 +402,8 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	/* Tell the ASoC OF helpers about it */
 	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, 1);
 
+	mpc5200_audio_dma_startup(psc_dma);
+
 	return 0;
 }
 
@@ -412,6 +412,8 @@ static int __devexit psc_i2s_of_remove(struct of_device *op)
 	struct psc_dma *psc_dma = dev_get_drvdata(&op->dev);
 
 	dev_dbg(&op->dev, "psc_i2s_remove()\n");
+
+	mpc5200_audio_dma_shutdown(psc_dma);
 
 	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
 	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
