@@ -268,8 +268,7 @@ struct snd_pcm_runtime {
 	int overrange;
 	snd_pcm_uframes_t avail_max;
 	snd_pcm_uframes_t hw_ptr_base;	/* Position at buffer restart */
-	snd_pcm_uframes_t hw_ptr_interrupt; /* Position at interrupt time */
-	unsigned long hw_ptr_jiffies;	/* Time when hw_ptr is updated */
+	snd_pcm_uframes_t hw_ptr_interrupt; /* Position at interrupt time*/
 
 	/* -- HW params -- */
 	snd_pcm_access_t access;	/* access mode */
