@@ -5,6 +5,8 @@ Date:   2009-04-24 19:55:42 -0400
 
 Rename the public DMA exports into the global name space so that the DMA code can be loaded as a module.
 
+Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
+
 
 ---
 
