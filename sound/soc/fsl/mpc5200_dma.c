@@ -119,14 +119,9 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
  * If this is the first stream open, then grab the IRQ and program most of
  * the PSC registers.
  */
-int mpc5200_dma_startup(struct snd_pcm_substream *substream,
-			   struct snd_soc_dai *dai)
+int mpc5200_dma_startup(struct psc_dma *psc_dma)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
 	int rc;
-
-	dev_dbg(psc_dma->dev, "psc_dma_startup(substream=%p)\n", substream);
 
 	if (!psc_dma->playback.active &&
 	    !psc_dma->capture.active) {
@@ -198,14 +193,15 @@ int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
 				(s->period_bytes * runtime->periods);
 		s->period_next_pt = s->period_start;
 		s->period_current_pt = s->period_start;
+		s->jiffies = jiffies;
 		s->active = 1;
 
 		/* First; reset everything */
 		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
-			out_8(&regs->command, MPC52xx_PSC_RST_RX);
+			//out_8(&regs->command, MPC52xx_PSC_RST_RX);
 			out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
 		} else {
-			out_8(&regs->command, MPC52xx_PSC_RST_TX);
+			//out_8(&regs->command, MPC52xx_PSC_RST_TX);
 			out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
 		}
 
@@ -246,15 +242,16 @@ int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
 		s->active = 0;
 		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
 			if (!psc_dma->playback.active) {
-				out_8(&regs->command, 2 << 4);	/* reset rx */
-				out_8(&regs->command, 3 << 4);	/* reset tx */
+				//out_8(&regs->command, 2 << 4);	/* reset rx */
+				//out_8(&regs->command, 3 << 4);	/* reset tx */
 				out_8(&regs->command, 4 << 4);	/* reset err */
 			}
 		} else {
-			out_8(&regs->command, 3 << 4);	/* reset tx */
+			//out_8(&regs->command, 3 << 4);	/* reset tx */
 			out_8(&regs->command, 4 << 4);	/* reset err */
-			if (!psc_dma->capture.active)
-				out_8(&regs->command, 2 << 4);	/* reset rx */
+			if (!psc_dma->capture.active) {
+				//out_8(&regs->command, 2 << 4);	/* reset rx */
+			}
 		}
 
 		bcom_disable(s->bcom_task);
@@ -286,14 +283,8 @@ EXPORT_SYMBOL_GPL(mpc5200_dma_trigger);
  *
  * Shutdown the PSC if there are no other substreams open.
  */
-void mpc5200_dma_shutdown(struct snd_pcm_substream *substream,
-			     struct snd_soc_dai *dai)
+void mpc5200_dma_shutdown(struct psc_dma *psc_dma)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
-
-	dev_dbg(psc_dma->dev, "psc_dma_shutdown(substream=%p)\n", substream);
-
 	/*
 	 * If this is the last active substream, disable the PSC and release
 	 * the IRQ.
@@ -338,7 +329,7 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
 	.periods_min		= 2,
 	.periods_max		= 256,
 	.buffer_bytes_max	= 2 * 1024 * 1024,
-	.fifo_size		= 0,
+	.fifo_size		= 512,
 };
 
 static int psc_dma_pcm_open(struct snd_pcm_substream *substream)

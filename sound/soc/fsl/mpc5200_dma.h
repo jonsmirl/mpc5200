@@ -71,14 +71,12 @@ struct psc_dma {
 };
 
 
-int mpc5200_dma_startup(struct snd_pcm_substream *substream,
-			   struct snd_soc_dai *dai);
+int mpc5200_dma_startup(struct psc_dma *psc_dma);
 
 int mpc5200_dma_hw_free(struct snd_pcm_substream *substream,
 			   struct snd_soc_dai *dai);
 
-void mpc5200_dma_shutdown(struct snd_pcm_substream *substream,
-			     struct snd_soc_dai *dai);
+void mpc5200_dma_shutdown(struct psc_dma *psc_dma);
 
 int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
 			   struct snd_soc_dai *dai);

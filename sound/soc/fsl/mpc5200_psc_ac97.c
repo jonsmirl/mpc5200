@@ -223,19 +223,15 @@ static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
  * psc_ac97_dai_template: template CPU Digital Audio Interface
  */
 static struct snd_soc_dai_ops psc_ac97_analog_ops = {
-	.startup	= mpc5200_dma_startup,
 	.hw_params	= psc_ac97_hw_analog_params,
 	.hw_free	= mpc5200_dma_hw_free,
-	.shutdown	= mpc5200_dma_shutdown,
 	.trigger	= mpc5200_dma_trigger,
 	.set_fmt	= psc_ac97_set_fmt,
 };
 
 static struct snd_soc_dai_ops psc_ac97_digital_ops = {
-	.startup	= mpc5200_dma_startup,
 	.hw_params	= psc_ac97_hw_digital_params,
 	.hw_free	= mpc5200_dma_hw_free,
-	.shutdown	= mpc5200_dma_shutdown,
 	.trigger	= mpc5200_dma_trigger,
 	.set_fmt	= psc_ac97_set_fmt,
 };
@@ -474,6 +470,8 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	/* Tell the ASoC OF helpers about it */
 	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, nDAI);
 
+	mpc5200_dma_startup(psc_dma);
+
 	return 0;
 }
 
@@ -482,6 +480,8 @@ static int __devexit psc_ac97_of_remove(struct of_device *op)
 	struct psc_dma *psc_dma = dev_get_drvdata(&op->dev);
 
 	dev_dbg(&op->dev, "psc_ac97_remove()\n");
+
+	mpc5200_dma_shutdown(psc_dma);
 
 	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
 	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
