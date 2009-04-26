@@ -291,7 +291,7 @@ static int ac97_analog_prepare(struct snd_pcm_substream *substream,
 	vra = stac9766_ac97_read(codec, reg);
 	printk("rate is %x %x\n", vra, runtime->rate/2);
 
-	return stac9766_ac97_write(codec, reg, runtime->rate/2);
+	return stac9766_ac97_write(codec, reg, runtime->rate);
 }
 
 static int ac97_digital_prepare(struct snd_pcm_substream *substream,
@@ -375,14 +375,14 @@ struct snd_soc_dai stac9766_dai[] = {
 		.channels_min	= 1,
 		.channels_max	= 2,
 		.rates		= SNDRV_PCM_RATE_8000_48000,
-		.formats	= SNDRV_PCM_FORMAT_S32,
+		.formats	= SNDRV_PCM_FMTBIT_S32_BE,
 	},
 	.capture = {
 		.stream_name	= "stac9766 analog",
 		.channels_min	= 1,
 		.channels_max	= 2,
 		.rates		= SNDRV_PCM_RATE_8000_48000,
-		.formats	= SNDRV_PCM_FMTBIT_S32,
+		.formats	= SNDRV_PCM_FMTBIT_S32_BE,
 	},
 	/* alsa ops */
 	.ops = &stac9766_dai_ops_analog,

@@ -153,7 +153,7 @@ static inline struct bcom_bd
 }
 
 /**
- * bcom_buffer_done - Checks if a BestComm 
+ * bcom_buffer_done - Checks if a BestComm
  * @tsk: The BestComm task structure
  */
 static inline int
@@ -209,5 +209,10 @@ bcom_retrieve_buffer(struct bcom_task *tsk, u32 *p_status, struct bcom_bd **p_bd
 	tsk->outdex = _bcom_next_outdex(tsk);
 	return cookie;
 }
+
+void bcom_dump_status(void);
+void bcom_dump_task(int task);
+void bcom_dump_bdring(struct bcom_task *tsk);
+
 
 #endif /* __BESTCOMM_H__ */
