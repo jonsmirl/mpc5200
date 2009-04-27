@@ -1,6 +1,6 @@
 Version: 1
-Previous: 46377132cbf5a427f18d70062350a95c2e339d44
-Head: 898b2597c0451c17c6f5f59fcab1202d6974e3b6
+Previous: 7711ff16e7e81ac5eace8641bcd89b9d2f097bd8
+Head: c72ad14d21492683c97585dc6196b54c2b75302b
 Applied:
   Makefile: 1f8ce8871f4d9303e07d24baedbb8cfd44d6f4ab
   digispeak: b002f421c6da238f0d2f5077e0ee5b86e7831e29
@@ -16,11 +16,11 @@ Applied:
   m_1: 505ce6c4dbeb12de4abac1919dd9a22b4c0fca22
   spi-mmc: fd8252fd0f93c2608697034126b8f4b436d0d9b7
   soc-u32-cleanup: c72ad14d21492683c97585dc6196b54c2b75302b
+Unapplied:
   is2-broken: d7ac1d102abd5dae18f01fb530c06f7c823145a9
   i2s-dma-split: e8337d3cefe7a64584632325ea7885dd33fbe9dd
   is2-dma-rename: 6600e8d1dc4df3f40f873cf4217eeca180fdf824
   dma-module: 898b2597c0451c17c6f5f59fcab1202d6974e3b6
-Unapplied:
   of-soc-simple-rework: 75bc9186f9384b11941ed7990807c44ae47442db
   mpc5200-dma-split: acd3078ee072cf1a82a2824693254be4f337e61a
   stac9766-codec: c6bcfa851b547ffce1666c1db8e1d5a0f2a1e247
