@@ -1,0 +1,190 @@
+Bottom: 6941bc727a7231f979d4e52fb0dc3503556bb6cc
+Top:    1542227ecad46d4d354b26adf07077aa848b376a
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-27 12:34:40 -0400
+
+Refresh of temp
+
+---
+
+diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
+index 5a523da..068e04d 100644
+--- a/sound/soc/fsl/mpc5200_dma.c
++++ b/sound/soc/fsl/mpc5200_dma.c
+@@ -119,15 +119,10 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
+  * If this is the first stream open, then grab the IRQ and program most of
+  * the PSC registers.
+  */
+-int mpc5200_audio_dma_startup(struct snd_pcm_substream *substream,
+-			   struct snd_soc_dai *dai)
++int mpc5200_audio_dma_startup(struct psc_dma *psc_dma)
+ {
+-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+-	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
+ 	int rc;
+ 
+-	dev_dbg(psc_dma->dev, "psc_dma_startup(substream=%p)\n", substream);
+-
+ 	if (!psc_dma->playback.active &&
+ 	    !psc_dma->capture.active) {
+ 		/* Setup the IRQs */
+@@ -198,14 +193,15 @@ int mpc5200_audio_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+ 				(s->period_bytes * runtime->periods);
+ 		s->period_next_pt = s->period_start;
+ 		s->period_current_pt = s->period_start;
++		s->jiffies = jiffies;
+ 		s->active = 1;
+ 
+ 		/* First; reset everything */
+ 		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
+-			out_8(&regs->command, MPC52xx_PSC_RST_RX);
++			//out_8(&regs->command, MPC52xx_PSC_RST_RX);
+ 			out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
+ 		} else {
+-			out_8(&regs->command, MPC52xx_PSC_RST_TX);
++			//out_8(&regs->command, MPC52xx_PSC_RST_TX);
+ 			out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
+ 		}
+ 
+@@ -246,15 +242,16 @@ int mpc5200_audio_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+ 		s->active = 0;
+ 		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
+ 			if (!psc_dma->playback.active) {
+-				out_8(&regs->command, 2 << 4);	/* reset rx */
+-				out_8(&regs->command, 3 << 4);	/* reset tx */
++				//out_8(&regs->command, 2 << 4);	/* reset rx */
++				//out_8(&regs->command, 3 << 4);	/* reset tx */
+ 				out_8(&regs->command, 4 << 4);	/* reset err */
+ 			}
+ 		} else {
+-			out_8(&regs->command, 3 << 4);	/* reset tx */
++			//out_8(&regs->command, 3 << 4);	/* reset tx */
+ 			out_8(&regs->command, 4 << 4);	/* reset err */
+-			if (!psc_dma->capture.active)
+-				out_8(&regs->command, 2 << 4);	/* reset rx */
++			if (!psc_dma->capture.active) {
++				//out_8(&regs->command, 2 << 4);	/* reset rx */
++			}
+ 		}
+ 
+ 		bcom_disable(s->bcom_task);
+@@ -286,14 +283,8 @@ EXPORT_SYMBOL_GPL(mpc5200_audio_dma_trigger);
+  *
+  * Shutdown the PSC if there are no other substreams open.
+  */
+-void mpc5200_audio_dma_shutdown(struct snd_pcm_substream *substream,
+-			     struct snd_soc_dai *dai)
++void mpc5200_audio_dma_shutdown(struct psc_dma *psc_dma)
+ {
+-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+-	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
+-
+-	dev_dbg(psc_dma->dev, "psc_dma_shutdown(substream=%p)\n", substream);
+-
+ 	/*
+ 	 * If this is the last active substream, disable the PSC and release
+ 	 * the IRQ.
+@@ -338,7 +329,7 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
+ 	.periods_min		= 2,
+ 	.periods_max		= 256,
+ 	.buffer_bytes_max	= 2 * 1024 * 1024,
+-	.fifo_size		= 0,
++	.fifo_size		= 512,
+ };
+ 
+ static int psc_dma_pcm_open(struct snd_pcm_substream *substream)
+diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
+index 0cdf79b..cf08a6c 100644
+--- a/sound/soc/fsl/mpc5200_dma.h
++++ b/sound/soc/fsl/mpc5200_dma.h
+@@ -71,14 +71,12 @@ struct psc_dma {
+ };
+ 
+ 
+-int mpc5200_audio_dma_startup(struct snd_pcm_substream *substream,
+-			   struct snd_soc_dai *dai);
++int mpc5200_audio_dma_startup(struct psc_dma *psc_dma);
+ 
+ int mpc5200_audio_dma_hw_free(struct snd_pcm_substream *substream,
+ 			   struct snd_soc_dai *dai);
+ 
+-void mpc5200_audio_dma_shutdown(struct snd_pcm_substream *substream,
+-			     struct snd_soc_dai *dai);
++void mpc5200_audio_dma_shutdown(struct psc_dma *psc_dma);
+ 
+ int mpc5200_audio_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+ 			   struct snd_soc_dai *dai);
+diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
+index 6d85ef1..7666429 100644
+--- a/sound/soc/fsl/mpc5200_psc_ac97.c
++++ b/sound/soc/fsl/mpc5200_psc_ac97.c
+@@ -223,19 +223,15 @@ static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
+  * psc_ac97_dai_template: template CPU Digital Audio Interface
+  */
+ static struct snd_soc_dai_ops psc_ac97_analog_ops = {
+-	.startup	= mpc5200_audio_dma_startup,
+ 	.hw_params	= psc_ac97_hw_analog_params,
+ 	.hw_free	= mpc5200_audio_dma_hw_free,
+-	.shutdown	= mpc5200_audio_dma_shutdown,
+ 	.trigger	= mpc5200_audio_dma_trigger,
+ 	.set_fmt	= psc_ac97_set_fmt,
+ };
+ 
+ static struct snd_soc_dai_ops psc_ac97_digital_ops = {
+-	.startup	= mpc5200_audio_dma_startup,
+ 	.hw_params	= psc_ac97_hw_digital_params,
+ 	.hw_free	= mpc5200_audio_dma_hw_free,
+-	.shutdown	= mpc5200_audio_dma_shutdown,
+ 	.trigger	= mpc5200_audio_dma_trigger,
+ 	.set_fmt	= psc_ac97_set_fmt,
+ };
+@@ -474,6 +470,8 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
+ 	/* Tell the ASoC OF helpers about it */
+ 	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, nDAI);
+ 
++	mpc5200_audio_dma_startup(psc_dma);
++
+ 	return 0;
+ }
+ 
+@@ -483,6 +481,8 @@ static int __devexit psc_ac97_of_remove(struct of_device *op)
+ 
+ 	dev_dbg(&op->dev, "psc_ac97_remove()\n");
+ 
++	mpc5200_audio_dma_shutdown(psc_dma);
++
+ 	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
+ 	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
+ 
+diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
+index 5eed09b..8cd7fba 100644
+--- a/sound/soc/fsl/mpc5200_psc_i2s.c
++++ b/sound/soc/fsl/mpc5200_psc_i2s.c
+@@ -188,10 +188,8 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
+  * psc_i2s_dai_template: template CPU Digital Audio Interface
+  */
+ static struct snd_soc_dai_ops psc_i2s_dai_ops = {
+-	.startup	= mpc5200_audio_dma_startup,
+ 	.hw_params	= psc_i2s_hw_params,
+ 	.hw_free	= mpc5200_audio_dma_hw_free,
+-	.shutdown	= mpc5200_audio_dma_shutdown,
+ 	.trigger	= mpc5200_audio_dma_trigger,
+ 	.set_sysclk	= psc_i2s_set_sysclk,
+ 	.set_fmt	= psc_i2s_set_fmt,
+@@ -404,6 +402,8 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+ 	/* Tell the ASoC OF helpers about it */
+ 	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, 1);
+ 
++	mpc5200_audio_dma_startup(psc_dma);
++
+ 	return 0;
+ }
+ 
+@@ -413,6 +413,8 @@ static int __devexit psc_i2s_of_remove(struct of_device *op)
+ 
+ 	dev_dbg(&op->dev, "psc_i2s_remove()\n");
+ 
++	mpc5200_audio_dma_shutdown(psc_dma);
++
+ 	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
+ 	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
