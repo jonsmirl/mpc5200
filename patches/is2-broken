@@ -1,0 +1,11 @@
+Bottom: 1a354cee37b47070fe9172103422603969b65047
+Top:    1a354cee37b47070fe9172103422603969b65047
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-27 11:54:21 -0400
+
+Set the MPC5200 i2s driver to BROKEN status.
+
+
+---
+
+
