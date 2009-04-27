@@ -329,7 +329,7 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
 	.periods_min		= 2,
 	.periods_max		= 256,
 	.buffer_bytes_max	= 2 * 1024 * 1024,
-	.fifo_size		= 0,
+	.fifo_size		= 512,
 };
 
 static int psc_dma_pcm_open(struct snd_pcm_substream *substream)
