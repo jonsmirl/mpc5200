@@ -1,5 +1,5 @@
 Bottom: 8b204c93e7e4cb97e2f8286b11bb61001c511312
-Top:    0e96472563e880dd921493cb5b89fc52ddf2c9e8
+Top:    d3340396808a0f2e1d9083cd3d102c12c95873e9
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:46 -0400
 
@@ -51,6 +51,19 @@ index a064e19..61d3c29 100644
 +int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops,
 +								int (*init)(struct snd_soc_codec *codec));
  
+ #endif
+ 
+diff --git a/sound/soc/codecs/tlv320aic26.c b/sound/soc/codecs/tlv320aic26.c
+index 3387d9e..95a7ac9 100644
+--- a/sound/soc/codecs/tlv320aic26.c
++++ b/sound/soc/codecs/tlv320aic26.c
+@@ -487,7 +487,7 @@ static int aic26_spi_probe(struct spi_device *spi)
+ 
+ #if defined(CONFIG_SND_SOC_OF_SIMPLE)
+ 	/* Tell the of_soc helper about this codec */
+-	of_snd_soc_register_codec(&aic26_soc_codec_dev, aic26, &aic26_dai,
++	of_snd_soc_register_codec(&aic26_soc_codec_dev, aic26, &aic26_dai, 1,
+ 				  spi->dev.archdata.of_node);
  #endif
  
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
