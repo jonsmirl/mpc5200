@@ -1,22 +1,22 @@
 Version: 1
-Previous: 02d3ba9df80199ebea90d11d687affef17cef66e
-Head: d7ac1d102abd5dae18f01fb530c06f7c823145a9
+Previous: 8f3f320ee58d2043ffe6fae15f8f2716c8513647
+Head: f05593901f9529395f8d018e0686246ad56daec1
 Applied:
-  Makefile: 1f8ce8871f4d9303e07d24baedbb8cfd44d6f4ab
-  digispeak: b002f421c6da238f0d2f5077e0ee5b86e7831e29
-  g_spi_4: fa7bb531c75fdb245dc86e8c17f1a81ce5afbebf
-  mpc5200-rtc: 3c14f0aaa645e9dc9768af964445c4e58a5dce4c
-  lirc: f84b3770d67700d6263ece99854f7ccf0f2bd194
-  jds-lirc-base: ce9cd98de190fb9638fc0fef8715e4ce777c9405
-  jds-lirc-core: 2aabeae2ff439be493ff78c9eb522ad094756214
-  jds-lirc-configfs: 1f6c9ff7d8a065662b31a7b315a48a83c598ed77
-  jds-lirc-gpt: fbd40007251c586ffe1c61fda20bcd06c90e386d
-  jds-lirc-device-tree: 409751e6e197873bb6c88095b504c3f216f4dae6
-  jds-lirc-mce2: e8d23cd2c4c63feb235facf0d620b28b747cca1d
-  m_1: 505ce6c4dbeb12de4abac1919dd9a22b4c0fca22
-  spi-mmc: fd8252fd0f93c2608697034126b8f4b436d0d9b7
-  soc-u32-cleanup: c72ad14d21492683c97585dc6196b54c2b75302b
-  is2-broken: d7ac1d102abd5dae18f01fb530c06f7c823145a9
+  Makefile: 13eaef72cd73c90a6ef7b1a73b7584d1e49f7401
+  digispeak: a949241710b09f52efefd1c21a21013754c7391b
+  g_spi_4: a98f5a1e97699b7f1cc565f6dc49418ee9d1b236
+  mpc5200-rtc: 9eb628b00a3f0bbab13b0908e109d072e5fb1169
+  lirc: b9fa6512d26e86754f4c7673006678e232dd28d6
+  jds-lirc-base: 540d66e7ed75e8900261bc4641d364596eea9212
+  jds-lirc-core: 3dfdf50f7c002a93531d05160b9aeb4e147ebf36
+  jds-lirc-configfs: 536e91fd3cf24a8cc3a3ad200585335363f7fe85
+  jds-lirc-gpt: 2a955cfb9d80b5eba612ba47b64a15f36e23fe4c
+  jds-lirc-device-tree: b5361205d3380d6ee1f0556373560bdf8c09f332
+  jds-lirc-mce2: 41221e81b5a14e7e74a05079903def02ff0bd3c3
+  m_1: 33fdd4819c11a252997724387f89a7ec60a9cb92
+  spi-mmc: 47b97c82ed7d91c6446363630f7c278c2d65ed9b
+  soc-u32-cleanup: cf055a094ffc8c44d46e1a4011d03daf4ad8953f
+  is2-broken: f05593901f9529395f8d018e0686246ad56daec1
 Unapplied:
   i2s-dma-split: e8337d3cefe7a64584632325ea7885dd33fbe9dd
   is2-dma-rename: 6600e8d1dc4df3f40f873cf4217eeca180fdf824
