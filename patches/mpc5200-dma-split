@@ -1,5 +1,5 @@
 Bottom: d3340396808a0f2e1d9083cd3d102c12c95873e9
-Top:    3d8e9d36f9ae9dff9f84290796a04d2629ddaf6b
+Top:    75b40d4d1e517b0ac25d19362aee2d503bccb055
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:46 -0400
 
@@ -9,7 +9,7 @@ Split out the DMA code from the mpc5200 i2s driver
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 621bac8..128dc4c 100644
+index 621bac8..5a523da 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -1,10 +1,12 @@
@@ -150,14 +150,14 @@ index 621bac8..128dc4c 100644
 +static int __init mpc5200_soc_platform_init(void)
 +{
 +	/* Tell the ASoC OF helpers about it */
-+	of_snd_soc_register_platform(&mpc5200_dma_platform);
-+	return snd_soc_register_platform(&mpc5200_dma_platform);
++	of_snd_soc_register_platform(&mpc5200_audio_dma_platform);
++	return snd_soc_register_platform(&mpc5200_audio_dma_platform);
 +}
 +module_init(mpc5200_soc_platform_init);
 +
 +static void __exit mpc5200_soc_platform_exit(void)
 +{
-+	snd_soc_unregister_platform(&mpc5200_dma_platform);
++	snd_soc_unregister_platform(&mpc5200_audio_dma_platform);
 +}
 +module_exit(mpc5200_soc_platform_exit);
 +
