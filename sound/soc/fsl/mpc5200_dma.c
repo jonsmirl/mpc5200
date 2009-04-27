@@ -491,14 +491,14 @@ EXPORT_SYMBOL_GPL(mpc5200_audio_dma_platform);
 static int __init mpc5200_soc_platform_init(void)
 {
 	/* Tell the ASoC OF helpers about it */
-	of_snd_soc_register_platform(&mpc5200_dma_platform);
-	return snd_soc_register_platform(&mpc5200_dma_platform);
+	of_snd_soc_register_platform(&mpc5200_audio_dma_platform);
+	return snd_soc_register_platform(&mpc5200_audio_dma_platform);
 }
 module_init(mpc5200_soc_platform_init);
 
 static void __exit mpc5200_soc_platform_exit(void)
 {
-	snd_soc_unregister_platform(&mpc5200_dma_platform);
+	snd_soc_unregister_platform(&mpc5200_audio_dma_platform);
 }
 module_exit(mpc5200_soc_platform_exit);
 
