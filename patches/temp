@@ -1,5 +1,5 @@
 Bottom: f6d5f2e872ae2e285707be682bc56fe95992840b
-Top:    43c00a6c6355d9eec38ffc960d5880aeb54c9c1e
+Top:    ded6496b6ae10d99a6bb95a501242bfdab270821
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-25 21:13:53 -0400
 
@@ -9,7 +9,7 @@ temporary holding patch
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 0034db3..ceb1cf4 100644
+index 0034db3..2fbbdaa 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -119,15 +119,10 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
@@ -85,6 +85,15 @@ index 0034db3..ceb1cf4 100644
  	/*
  	 * If this is the last active substream, disable the PSC and release
  	 * the IRQ.
+@@ -338,7 +329,7 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
+ 	.periods_min		= 2,
+ 	.periods_max		= 256,
+ 	.buffer_bytes_max	= 2 * 1024 * 1024,
+-	.fifo_size		= 0,
++	.fifo_size		= 512,
+ };
+ 
+ static int psc_dma_pcm_open(struct snd_pcm_substream *substream)
 diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
 index 12876d5..2da6579 100644
 --- a/sound/soc/fsl/mpc5200_dma.h
