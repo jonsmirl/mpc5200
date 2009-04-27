@@ -1,0 +1,260 @@
+Bottom: bbf03b172ce730eb1fe931b02588b700fbc438a9
+Top:    440805022eecb8a9e892cb81f449b864814a495c
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-27 12:20:38 -0400
+
+Refresh of mpc5200-dma-split
+
+---
+
+diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
+index 621bac8..128dc4c 100644
+--- a/sound/soc/fsl/mpc5200_dma.c
++++ b/sound/soc/fsl/mpc5200_dma.c
+@@ -1,10 +1,12 @@
+ /*
+- * Freescale MPC5200 PSC DMA
++ * Freescale MPC5200 Audio DMA
+  * ALSA SoC Platform driver
+  *
+  * Copyright (C) 2008 Secret Lab Technologies Ltd.
+  */
+ 
++#define DEBUG
++
+ #include <linux/init.h>
+ #include <linux/module.h>
+ #include <linux/interrupt.h>
+@@ -23,6 +25,8 @@
+ 
+ #include <sysdev/bestcomm/bestcomm.h>
+ #include <sysdev/bestcomm/gen_bd.h>
++#include <asm/time.h>
++#include <asm/mpc52xx.h>
+ #include <asm/mpc52xx_psc.h>
+ 
+ #include "mpc5200_dma.h"
+@@ -99,8 +103,10 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
+ 
+ 	/* If the stream is active, then also inform the PCM middle layer
+ 	 * of the period finished event. */
+-	if (s->active)
++	if (s->active) {
++		s->jiffies = jiffies;
+ 		snd_pcm_period_elapsed(s->stream);
++	}
+ 
+ 	return IRQ_HANDLED;
+ }
+@@ -325,7 +331,7 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
+ 		   SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
+ 	.rate_min = 8000,
+ 	.rate_max = 48000,
+-	.channels_min = 2,
++	.channels_min = 1,
+ 	.channels_max = 2,
+ 	.period_bytes_max	= 1024 * 1024,
+ 	.period_bytes_min	= 32,
+@@ -337,9 +343,11 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
+ 
+ static int psc_dma_pcm_open(struct snd_pcm_substream *substream)
+ {
++	struct snd_pcm_runtime *runtime = substream->runtime;
+ 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+ 	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
+ 	struct psc_dma_stream *s;
++	int ret;
+ 
+ 	dev_dbg(psc_dma->dev, "psc_dma_pcm_open(substream=%p)\n", substream);
+ 
+@@ -350,6 +358,13 @@ static int psc_dma_pcm_open(struct snd_pcm_substream *substream)
+ 
+ 	snd_soc_set_runtime_hwparams(substream, &psc_dma_pcm_hardware);
+ 
++	ret = snd_pcm_hw_constraint_integer(runtime,
++		SNDRV_PCM_HW_PARAM_PERIODS);
++	if (ret < 0) {
++		dev_err(substream->pcm->card->dev, "invalid buffer size\n");
++		return ret;
++	}
++
+ 	s->stream = substream;
+ 	return 0;
+ }
+@@ -374,10 +389,13 @@ static int psc_dma_pcm_close(struct snd_pcm_substream *substream)
+ static snd_pcm_uframes_t
+ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
+ {
++	struct snd_pcm_runtime *runtime = substream->runtime;
+ 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+ 	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
+ 	struct psc_dma_stream *s;
+ 	dma_addr_t count;
++	snd_pcm_uframes_t frames;
++	int delta;
+ 
+ 	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
+ 		s = &psc_dma->capture;
+@@ -386,7 +404,11 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
+ 
+ 	count = s->period_current_pt - s->period_start;
+ 
+-	return bytes_to_frames(substream->runtime, count);
++	delta = jiffies - s->jiffies;
++	delta = delta * runtime->rate / HZ;
++	frames = bytes_to_frames(substream->runtime, count);
++
++	return frames + delta;
+ }
+ 
+ static struct snd_pcm_ops psc_dma_pcm_ops = {
+@@ -401,6 +423,7 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
+ 			   struct snd_pcm *pcm)
+ {
+ 	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
++	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
+ 	size_t size = psc_dma_pcm_hardware.buffer_bytes_max;
+ 	int rc = 0;
+ 
+@@ -413,19 +436,22 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
+ 		card->dev->coherent_dma_mask = 0xffffffff;
+ 
+ 	if (pcm->streams[0].substream) {
+-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
++		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
+ 					&pcm->streams[0].substream->dma_buffer);
+ 		if (rc)
+ 			goto playback_alloc_err;
+ 	}
+ 
+ 	if (pcm->streams[1].substream) {
+-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
++		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
+ 					&pcm->streams[1].substream->dma_buffer);
+ 		if (rc)
+ 			goto capture_alloc_err;
+ 	}
+ 
++	if (rtd->socdev->card->codec->ac97)
++		rtd->socdev->card->codec->ac97->private_data = psc_dma;
++
+ 	return 0;
+ 
+  capture_alloc_err:
+@@ -461,3 +487,18 @@ struct snd_soc_platform mpc5200_audio_dma_platform = {
+ 	.pcm_free	= &psc_dma_pcm_free,
+ };
+ EXPORT_SYMBOL_GPL(mpc5200_audio_dma_platform);
++
++static int __init mpc5200_soc_platform_init(void)
++{
++	/* Tell the ASoC OF helpers about it */
++	of_snd_soc_register_platform(&mpc5200_dma_platform);
++	return snd_soc_register_platform(&mpc5200_dma_platform);
++}
++module_init(mpc5200_soc_platform_init);
++
++static void __exit mpc5200_soc_platform_exit(void)
++{
++	snd_soc_unregister_platform(&mpc5200_dma_platform);
++}
++module_exit(mpc5200_soc_platform_exit);
++
+diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
+index c5b9ad7..0cdf79b 100644
+--- a/sound/soc/fsl/mpc5200_dma.h
++++ b/sound/soc/fsl/mpc5200_dma.h
+@@ -5,8 +5,12 @@
+ #ifndef __SOUND_SOC_FSL_MPC5200_DMA_H__
+ #define __SOUND_SOC_FSL_MPC5200_DMA_H__
+ 
++#include <sound/soc-of-simple.h>
++
++#define PSC_STREAM_NAME_LEN 32
++
+ /**
+- * psc_dma_stream - Data specific to a single stream (playback or capture)
++ * psc_ac97_stream - Data specific to a single stream (playback or capture)
+  * @active:		flag indicating if the stream is active
+  * @psc_dma:		pointer back to parent psc_dma data structure
+  * @bcom_task:		bestcomm task structure
+@@ -27,6 +31,7 @@ struct psc_dma_stream {
+ 	dma_addr_t period_next_pt;
+ 	dma_addr_t period_current_pt;
+ 	int period_bytes;
++	int jiffies;
+ };
+ 
+ /**
+@@ -48,9 +53,11 @@ struct psc_dma {
+ 	struct mpc52xx_psc_fifo __iomem *fifo_regs;
+ 	unsigned int irq;
+ 	struct device *dev;
+-	struct snd_soc_dai dai;
++	struct snd_soc_dai dai[SOC_OF_SIMPLE_MAX_DAI];
++	char stream_name[SOC_OF_SIMPLE_MAX_DAI][PSC_STREAM_NAME_LEN];
+ 	spinlock_t lock;
+ 	u32 sicr;
++	uint sysclk;
+ 
+ 	/* per-stream data */
+ 	struct psc_dma_stream playback;
+diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
+index f6b9f6a..4b71a12 100644
+--- a/sound/soc/fsl/mpc5200_psc_i2s.c
++++ b/sound/soc/fsl/mpc5200_psc_i2s.c
+@@ -277,13 +277,13 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+ 	psc_dma->dev = &op->dev;
+ 	psc_dma->playback.psc_dma = psc_dma;
+ 	psc_dma->capture.psc_dma = psc_dma;
+-	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u", psc_id+1);
++	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u I2S", psc_id+1);
+ 
+ 	/* Fill out the CPU DAI structure */
+-	memcpy(&psc_dma->dai, &psc_i2s_dai_template, sizeof psc_dma->dai);
+-	psc_dma->dai.private_data = psc_dma;
+-	psc_dma->dai.name = psc_dma->name;
+-	psc_dma->dai.id = psc_id;
++	memcpy(&psc_dma->dai[0], &psc_i2s_dai_template, sizeof psc_dma->dai);
++	psc_dma->dai[0].private_data = psc_dma;
++	psc_dma->dai[0].name = psc_dma->name;
++	psc_dma->dai[0].id = psc_id;
+ 
+ 	/* Find the address of the fifo data registers and setup the
+ 	 * DMA tasks */
+@@ -310,9 +310,6 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+ 	/* Configure the serial interface mode; defaulting to CODEC8 mode */
+ 	psc_dma->sicr = MPC52xx_PSC_SICR_DTS1 | MPC52xx_PSC_SICR_I2S |
+ 			MPC52xx_PSC_SICR_CLKPOL;
+-	if (of_get_property(op->node, "fsl,cellslave", NULL))
+-		psc_dma->sicr |= MPC52xx_PSC_SICR_CELLSLAVE |
+-				 MPC52xx_PSC_SICR_GENCLK;
+ 	out_be32(&psc_dma->psc_regs->sicr,
+ 		 psc_dma->sicr | MPC52xx_PSC_SICR_SIM_CODEC_8);
+ 
+@@ -350,11 +347,14 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+ 	if (rc)
+ 		dev_info(psc_dma->dev, "error creating sysfs files\n");
+ 
+-	snd_soc_register_platform(&mpc5200_audio_dma_platform);
++	rc = snd_soc_register_dais(psc_dma->dai, 1);
++	if (rc != 0) {
++		printk("Failed to register DAI\n");
++		return 0;
++	}
+ 
+ 	/* Tell the ASoC OF helpers about it */
+-	of_snd_soc_register_platform(&mpc5200_audio_dma_platform);
+-	of_snd_soc_register_cpu_dai(op->node, &psc_dma->dai, 1);
++	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, 1);
+ 
+ 	return 0;
+ }
+@@ -365,8 +365,6 @@ static int __devexit psc_i2s_of_remove(struct of_device *op)
+ 
+ 	dev_dbg(&op->dev, "psc_i2s_remove()\n");
+ 
+-	snd_soc_unregister_platform(&mpc5200_audio_dma_platform);
+-
+ 	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
+ 	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
