@@ -113,7 +113,7 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
  * If this is the first stream open, then grab the IRQ and program most of
  * the PSC registers.
  */
-int mpc5200_dma_startup(struct snd_pcm_substream *substream,
+int mpc5200_audio_dma_startup(struct snd_pcm_substream *substream,
 			   struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -145,15 +145,15 @@ int mpc5200_dma_startup(struct snd_pcm_substream *substream,
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(mpc5200_dma_startup);
+EXPORT_SYMBOL_GPL(mpc5200_audio_dma_startup);
 
-int mpc5200_dma_hw_free(struct snd_pcm_substream *substream,
+int mpc5200_audio_dma_hw_free(struct snd_pcm_substream *substream,
 			   struct snd_soc_dai *dai)
 {
 	snd_pcm_set_runtime_buffer(substream, NULL);
 	return 0;
 }
-EXPORT_SYMBOL_GPL(mpc5200_dma_hw_free);
+EXPORT_SYMBOL_GPL(mpc5200_audio_dma_hw_free);
 
 
 /**
@@ -162,7 +162,7 @@ EXPORT_SYMBOL_GPL(mpc5200_dma_hw_free);
  * This function is called by ALSA to start, stop, pause, and resume the DMA
  * transfer of data.
  */
-int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+int mpc5200_audio_dma_trigger(struct snd_pcm_substream *substream, int cmd,
 			   struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -272,7 +272,7 @@ int mpc5200_dma_trigger(struct snd_pcm_substream *substream, int cmd,
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(mpc5200_dma_trigger);
+EXPORT_SYMBOL_GPL(mpc5200_audio_dma_trigger);
 
 
 /**
@@ -280,7 +280,7 @@ EXPORT_SYMBOL_GPL(mpc5200_dma_trigger);
  *
  * Shutdown the PSC if there are no other substreams open.
  */
-void mpc5200_dma_shutdown(struct snd_pcm_substream *substream,
+void mpc5200_audio_dma_shutdown(struct snd_pcm_substream *substream,
 			     struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -308,7 +308,7 @@ void mpc5200_dma_shutdown(struct snd_pcm_substream *substream,
 		free_irq(psc_dma->playback.irq, &psc_dma->playback);
 	}
 }
-EXPORT_SYMBOL_GPL(mpc5200_dma_shutdown);
+EXPORT_SYMBOL_GPL(mpc5200_audio_dma_shutdown);
 
 /* ---------------------------------------------------------------------
  * The PSC DMA 'ASoC platform' driver
@@ -454,10 +454,10 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
 	}
 }
 
-struct snd_soc_platform mpc5200_dma_platform = {
+struct snd_soc_platform mpc5200_audio_dma_platform = {
 	.name		= "mpc5200-psc-audio",
 	.pcm_ops	= &psc_dma_pcm_ops,
 	.pcm_new	= &psc_dma_pcm_new,
 	.pcm_free	= &psc_dma_pcm_free,
 };
-EXPORT_SYMBOL_GPL(mpc5200_dma_platform);
+EXPORT_SYMBOL_GPL(mpc5200_audio_dma_platform);
