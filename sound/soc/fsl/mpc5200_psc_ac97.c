@@ -223,20 +223,20 @@ static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
  * psc_ac97_dai_template: template CPU Digital Audio Interface
  */
 static struct snd_soc_dai_ops psc_ac97_analog_ops = {
-	.startup	= mpc5200_dma_startup,
+	.startup	= mpc5200_audio_dma_startup,
 	.hw_params	= psc_ac97_hw_analog_params,
-	.hw_free	= mpc5200_dma_hw_free,
-	.shutdown	= mpc5200_dma_shutdown,
-	.trigger	= mpc5200_dma_trigger,
+	.hw_free	= mpc5200_audio_dma_hw_free,
+	.shutdown	= mpc5200_audio_dma_shutdown,
+	.trigger	= mpc5200_audio_dma_trigger,
 	.set_fmt	= psc_ac97_set_fmt,
 };
 
 static struct snd_soc_dai_ops psc_ac97_digital_ops = {
-	.startup	= mpc5200_dma_startup,
+	.startup	= mpc5200_audio_dma_startup,
 	.hw_params	= psc_ac97_hw_digital_params,
-	.hw_free	= mpc5200_dma_hw_free,
-	.shutdown	= mpc5200_dma_shutdown,
-	.trigger	= mpc5200_dma_trigger,
+	.hw_free	= mpc5200_audio_dma_hw_free,
+	.shutdown	= mpc5200_audio_dma_shutdown,
+	.trigger	= mpc5200_audio_dma_trigger,
 	.set_fmt	= psc_ac97_set_fmt,
 };
 
