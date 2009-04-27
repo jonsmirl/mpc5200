@@ -1,0 +1,41 @@
+Bottom: 671ad61a6b2c300d640e167d6747688fa3b822b8
+Top:    f30e94907f428558f0193b0f70949e21666ac7c6
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-27 12:27:53 -0400
+
+Refresh of mpc5200-ac97
+
+---
+
+diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
+index 5e91163..6d85ef1 100644
+--- a/sound/soc/fsl/mpc5200_psc_ac97.c
++++ b/sound/soc/fsl/mpc5200_psc_ac97.c
+@@ -223,20 +223,20 @@ static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
+  * psc_ac97_dai_template: template CPU Digital Audio Interface
+  */
+ static struct snd_soc_dai_ops psc_ac97_analog_ops = {
+-	.startup	= mpc5200_dma_startup,
++	.startup	= mpc5200_audio_dma_startup,
+ 	.hw_params	= psc_ac97_hw_analog_params,
+-	.hw_free	= mpc5200_dma_hw_free,
+-	.shutdown	= mpc5200_dma_shutdown,
+-	.trigger	= mpc5200_dma_trigger,
++	.hw_free	= mpc5200_audio_dma_hw_free,
++	.shutdown	= mpc5200_audio_dma_shutdown,
++	.trigger	= mpc5200_audio_dma_trigger,
+ 	.set_fmt	= psc_ac97_set_fmt,
+ };
+ 
+ static struct snd_soc_dai_ops psc_ac97_digital_ops = {
+-	.startup	= mpc5200_dma_startup,
++	.startup	= mpc5200_audio_dma_startup,
+ 	.hw_params	= psc_ac97_hw_digital_params,
+-	.hw_free	= mpc5200_dma_hw_free,
+-	.shutdown	= mpc5200_dma_shutdown,
+-	.trigger	= mpc5200_dma_trigger,
++	.hw_free	= mpc5200_audio_dma_hw_free,
++	.shutdown	= mpc5200_audio_dma_shutdown,
++	.trigger	= mpc5200_audio_dma_trigger,
+ 	.set_fmt	= psc_ac97_set_fmt,
+ };
