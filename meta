@@ -1,6 +1,6 @@
 Version: 1
-Previous: 26223740929eda1ca8cb3653d65fe37875647df4
-Head: 4cc1e1524d46627a2348b71e22fedaf824a79b2e
+Previous: 6dd9852c06834e38f9c6e4118ea974dbdc134174
+Head: b4a73980250fd9c59d35566b38e074602c7bab40
 Applied:
   Makefile: 13eaef72cd73c90a6ef7b1a73b7584d1e49f7401
   digispeak: a949241710b09f52efefd1c21a21013754c7391b
@@ -20,6 +20,7 @@ Applied:
   i2s-dma-split: d6f49221890129c896c6130285aaf8e637c43ca9
   is2-dma-rename: e160c63b7486bea859f330a5d873fd525e84fe5f
   dma-module: b4a73980250fd9c59d35566b38e074602c7bab40
+Unapplied:
   i2s-unbreak: 692d026bc151251f97bd447fd4b52f1262fcbf0b
   of-soc-simple-rework: fe3b7faeff687cbd1b83469a0d16fa7b9a148c70
   mpc5200-dma-split: 9fe8229950a2a5ee9aa842f144eb72a19020da64
@@ -31,5 +32,4 @@ Applied:
   i2s-cell-clock: 849f43abd30809f3dba437851c386b249abeb53e
   dspeak-audio: 96b4007f92ed33c9ee800cfd9e5972e959485cb0
   temp: 4cc1e1524d46627a2348b71e22fedaf824a79b2e
-Unapplied:
 Hidden:
