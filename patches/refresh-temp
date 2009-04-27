@@ -1,0 +1,22 @@
+Bottom: 43c00a6c6355d9eec38ffc960d5880aeb54c9c1e
+Top:    ded6496b6ae10d99a6bb95a501242bfdab270821
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-27 11:52:02 -0400
+
+Refresh of temp
+
+---
+
+diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
+index ceb1cf4..2fbbdaa 100644
+--- a/sound/soc/fsl/mpc5200_dma.c
++++ b/sound/soc/fsl/mpc5200_dma.c
+@@ -329,7 +329,7 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
+ 	.periods_min		= 2,
+ 	.periods_max		= 256,
+ 	.buffer_bytes_max	= 2 * 1024 * 1024,
+-	.fifo_size		= 0,
++	.fifo_size		= 512,
+ };
+ 
+ static int psc_dma_pcm_open(struct snd_pcm_substream *substream)
