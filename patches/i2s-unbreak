@@ -1,0 +1,11 @@
+Bottom: fc5adc541e18c6940bef9611c1bbb9c4c809fe57
+Top:    fc5adc541e18c6940bef9611c1bbb9c4c809fe57
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-27 12:22:19 -0400
+
+Unbreak the mpc5200 i2s Kconfig
+
+
+---
+
+
