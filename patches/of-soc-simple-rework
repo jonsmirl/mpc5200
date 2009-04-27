@@ -1,5 +1,5 @@
-Bottom: ca3a6110b7c48397a33bd5a590f1e24c83f64734
-Top:    1d7095261984b9ac5f5a965bdb7d5da3e4ccd343
+Bottom: 46126abf8db8ac5421972c1c95c6a7c63e18949a
+Top:    97ee214072997805827ec533726ecc789d4c754a
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:46 -0400
 
@@ -54,7 +54,7 @@ index a064e19..61d3c29 100644
  #endif
  
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index dc79bdf..8060b95 100644
+index c7339f3..4b4d9b7 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
 @@ -1,5 +1,5 @@
