@@ -1,6 +1,6 @@
 Version: 1
-Previous: 314e11a70445bb1eb99fdf7303fdfdfee17a18fe
-Head: 8973035fc6441c0e105c4d7a43a796105521834b
+Previous: 18d6533ce914d76cd2d356dde9cd1350f2c9d26f
+Head: 51cef59ca1d272bf418713aaaec3c6ee454db6ef
 Applied:
   Makefile: 13eaef72cd73c90a6ef7b1a73b7584d1e49f7401
   digispeak: a949241710b09f52efefd1c21a21013754c7391b
@@ -29,7 +29,7 @@ Applied:
   tas5504-codec: c4553e69c70ac36dd828cd76a33c947fd5efa4b8
   max9485-i2c: cc498be30d468885df8feeadc6e74bf420d74669
   i2s-cell-clock: 8973035fc6441c0e105c4d7a43a796105521834b
+  dspeak-audio: 51cef59ca1d272bf418713aaaec3c6ee454db6ef
 Unapplied:
-  dspeak-audio: c1ea927d4b6b644b873912741f628f092480164c
   temp: c9076626928663442925c9a0bf2265b1c012cc7e
 Hidden:
