@@ -1,0 +1,22 @@
+Bottom: fc5adc541e18c6940bef9611c1bbb9c4c809fe57
+Top:    8b204c93e7e4cb97e2f8286b11bb61001c511312
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-27 12:22:32 -0400
+
+Refresh of i2s-unbreak
+
+---
+
+diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
+index c7339f3..dc79bdf 100644
+--- a/sound/soc/fsl/Kconfig
++++ b/sound/soc/fsl/Kconfig
+@@ -24,7 +24,7 @@ config SND_SOC_MPC8610_HPCD
+ 
+ config SND_SOC_MPC5200_I2S
+ 	tristate "Freescale MPC5200 PSC in I2S mode driver"
+-	depends on PPC_MPC52xx && PPC_BESTCOMM && BROKEN
++	depends on PPC_MPC52xx && PPC_BESTCOMM
+ 	select SND_SOC_OF_SIMPLE
+ 	select SND_MPC52xx_DMA
+ 	select PPC_BESTCOMM_GEN_BD
