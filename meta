@@ -1,6 +1,6 @@
 Version: 1
-Previous: f21a6fe9e4505399156d40843b77ae0ec31a6aec
-Head: e1766620f0037f2e8c9e5b6f6677d53e5a2df8f6
+Previous: f248005b50362ca30d79339948b76d8ed8dac602
+Head: c72ad14d21492683c97585dc6196b54c2b75302b
 Applied:
   Makefile: 1f8ce8871f4d9303e07d24baedbb8cfd44d6f4ab
   digispeak: b002f421c6da238f0d2f5077e0ee5b86e7831e29
@@ -16,6 +16,7 @@ Applied:
   m_1: 505ce6c4dbeb12de4abac1919dd9a22b4c0fca22
   spi-mmc: fd8252fd0f93c2608697034126b8f4b436d0d9b7
   soc-u32-cleanup: c72ad14d21492683c97585dc6196b54c2b75302b
+Unapplied:
   i2s-dma-split: 5db8461d61c99915219a554a8949f9961fd5572d
   is2-dma-rename: 35a4caa5f81e2b2e63418480437f14559be2f6d5
   dma-module: a8318b410c969d55c8555c98e0ee83b6a6e52798
@@ -29,5 +30,4 @@ Applied:
   i2s-cell-clock: ad78ffca63d1c99fb89d551c4b616121e9be99d8
   dspeak-audio: 6e0686a22f1432aab1f7bc2940404ab05ada25cc
   temp: e1766620f0037f2e8c9e5b6f6677d53e5a2df8f6
-Unapplied:
 Hidden:
