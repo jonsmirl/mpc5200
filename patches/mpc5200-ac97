@@ -1,5 +1,5 @@
 Bottom: c6043e0242efdcecf1a26e18a34f34627d190cdf
-Top:    188760ffca3df2765735fb2e35c80d927829a222
+Top:    4f07c907b55d0f3dfc494d9409b323b620794120
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:48 -0400
 
@@ -54,10 +54,10 @@ index 7731ef2..14631a1 100644
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..7666429
+index 0000000..fec7512
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -0,0 +1,528 @@
+@@ -0,0 +1,524 @@
 +/*
 + * linux/sound/mpc5200-ac97.c -- AC97 support for the Freescale MPC52xx chip.
 + *
@@ -284,15 +284,11 @@ index 0000000..7666429
 + */
 +static struct snd_soc_dai_ops psc_ac97_analog_ops = {
 +	.hw_params	= psc_ac97_hw_analog_params,
-+	.hw_free	= mpc5200_audio_dma_hw_free,
-+	.trigger	= mpc5200_audio_dma_trigger,
 +	.set_fmt	= psc_ac97_set_fmt,
 +};
 +
 +static struct snd_soc_dai_ops psc_ac97_digital_ops = {
 +	.hw_params	= psc_ac97_hw_digital_params,
-+	.hw_free	= mpc5200_audio_dma_hw_free,
-+	.trigger	= mpc5200_audio_dma_trigger,
 +	.set_fmt	= psc_ac97_set_fmt,
 +};
 +
