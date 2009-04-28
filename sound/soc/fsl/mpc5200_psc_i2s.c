@@ -141,8 +141,6 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
  */
 static struct snd_soc_dai_ops psc_i2s_dai_ops = {
 	.hw_params	= psc_i2s_hw_params,
-	.hw_free	= mpc5200_audio_dma_hw_free,
-	.trigger	= mpc5200_audio_dma_trigger,
 	.set_sysclk	= psc_i2s_set_sysclk,
 	.set_fmt	= psc_i2s_set_fmt,
 };

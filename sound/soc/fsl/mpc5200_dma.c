@@ -148,7 +148,7 @@ int mpc5200_audio_dma_startup(struct psc_dma *psc_dma)
 }
 EXPORT_SYMBOL_GPL(mpc5200_audio_dma_startup);
 
-int mpc5200_audio_dma_hw_free(struct snd_pcm_substream *substream,
+static int pcm_dma_psc_free(struct snd_pcm_substream *substream,
 			   struct snd_soc_dai *dai)
 {
 	snd_pcm_set_runtime_buffer(substream, NULL);
@@ -163,7 +163,7 @@ EXPORT_SYMBOL_GPL(mpc5200_audio_dma_hw_free);
  * This function is called by ALSA to start, stop, pause, and resume the DMA
  * transfer of data.
  */
-int mpc5200_audio_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+static int pcm_dma_psc_trigger(struct snd_pcm_substream *substream, int cmd,
 			   struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -407,6 +407,7 @@ static struct snd_pcm_ops psc_dma_pcm_ops = {
 	.close		= psc_dma_pcm_close,
 	.ioctl		= snd_pcm_lib_ioctl,
 	.pointer	= psc_dma_pcm_pointer,
+	.trigger	= psc_dma_pcm_trigger
 };
 
 static u64 psc_dma_pcm_dmamask = 0xffffffff;
