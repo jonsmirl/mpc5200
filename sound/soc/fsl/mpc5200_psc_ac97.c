@@ -224,15 +224,11 @@ static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
  */
 static struct snd_soc_dai_ops psc_ac97_analog_ops = {
 	.hw_params	= psc_ac97_hw_analog_params,
-	.hw_free	= mpc5200_audio_dma_hw_free,
-	.trigger	= mpc5200_audio_dma_trigger,
 	.set_fmt	= psc_ac97_set_fmt,
 };
 
 static struct snd_soc_dai_ops psc_ac97_digital_ops = {
 	.hw_params	= psc_ac97_hw_digital_params,
-	.hw_free	= mpc5200_audio_dma_hw_free,
-	.trigger	= mpc5200_audio_dma_trigger,
 	.set_fmt	= psc_ac97_set_fmt,
 };
 
