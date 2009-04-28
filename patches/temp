@@ -1,4 +1,4 @@
-Bottom: 6b31488afe2edcdf1bced14db665e71fb6a340b3
+Bottom: 1542227ecad46d4d354b26adf07077aa848b376a
 Top:    1542227ecad46d4d354b26adf07077aa848b376a
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-25 21:13:53 -0400
@@ -8,44 +8,4 @@ temporary holding patch
 
 ---
 
-diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
-index 6d85ef1..7666429 100644
---- a/sound/soc/fsl/mpc5200_psc_ac97.c
-+++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -223,19 +223,15 @@ static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
-  * psc_ac97_dai_template: template CPU Digital Audio Interface
-  */
- static struct snd_soc_dai_ops psc_ac97_analog_ops = {
--	.startup	= mpc5200_audio_dma_startup,
- 	.hw_params	= psc_ac97_hw_analog_params,
- 	.hw_free	= mpc5200_audio_dma_hw_free,
--	.shutdown	= mpc5200_audio_dma_shutdown,
- 	.trigger	= mpc5200_audio_dma_trigger,
- 	.set_fmt	= psc_ac97_set_fmt,
- };
- 
- static struct snd_soc_dai_ops psc_ac97_digital_ops = {
--	.startup	= mpc5200_audio_dma_startup,
- 	.hw_params	= psc_ac97_hw_digital_params,
- 	.hw_free	= mpc5200_audio_dma_hw_free,
--	.shutdown	= mpc5200_audio_dma_shutdown,
- 	.trigger	= mpc5200_audio_dma_trigger,
- 	.set_fmt	= psc_ac97_set_fmt,
- };
-@@ -474,6 +470,8 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
- 	/* Tell the ASoC OF helpers about it */
- 	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, nDAI);
- 
-+	mpc5200_audio_dma_startup(psc_dma);
-+
- 	return 0;
- }
- 
-@@ -483,6 +481,8 @@ static int __devexit psc_ac97_of_remove(struct of_device *op)
- 
- 	dev_dbg(&op->dev, "psc_ac97_remove()\n");
- 
-+	mpc5200_audio_dma_shutdown(psc_dma);
-+
- 	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
- 	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
+
