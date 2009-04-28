@@ -1,5 +1,5 @@
 Version: 1
-Previous: bdab5105a24d7b0e201741aba21745bc4c93df06
+Previous: 820ab4de33e0594b160321d54fd0dc38d1bfb736
 Head: 6f916014a240abe6cdbc2c81ab520dc1f0b9620a
 Applied:
   Makefile: 13eaef72cd73c90a6ef7b1a73b7584d1e49f7401
@@ -31,5 +31,4 @@ Applied:
   i2s-cell-clock: 90831597490a2f21be7650637257e8a5349764f7
   dspeak-audio: 6f916014a240abe6cdbc2c81ab520dc1f0b9620a
 Unapplied:
-  temp: b637ae9da499861488bdf80de95feda9bd46d4b8
 Hidden:
