@@ -1,5 +1,5 @@
 Bottom: d3340396808a0f2e1d9083cd3d102c12c95873e9
-Top:    f463d040ccc9a7cc12396fd91bb740b7bb9116cf
+Top:    b5058ce8e86744331d78c831592e48543d77c44c
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:46 -0400
 
@@ -9,7 +9,7 @@ Split out the DMA code from the mpc5200 i2s driver
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 621bac8..068e04d 100644
+index 621bac8..64255eb 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -1,10 +1,12 @@
@@ -64,6 +64,24 @@ index 621bac8..068e04d 100644
  	if (!psc_dma->playback.active &&
  	    !psc_dma->capture.active) {
  		/* Setup the IRQs */
+@@ -147,7 +148,7 @@ int mpc5200_audio_dma_startup(struct snd_pcm_substream *substream,
+ }
+ EXPORT_SYMBOL_GPL(mpc5200_audio_dma_startup);
+ 
+-int mpc5200_audio_dma_hw_free(struct snd_pcm_substream *substream,
++static int pcm_dma_psc_free(struct snd_pcm_substream *substream,
+ 			   struct snd_soc_dai *dai)
+ {
+ 	snd_pcm_set_runtime_buffer(substream, NULL);
+@@ -162,7 +163,7 @@ EXPORT_SYMBOL_GPL(mpc5200_audio_dma_hw_free);
+  * This function is called by ALSA to start, stop, pause, and resume the DMA
+  * transfer of data.
+  */
+-int mpc5200_audio_dma_trigger(struct snd_pcm_substream *substream, int cmd,
++static int pcm_dma_psc_trigger(struct snd_pcm_substream *substream, int cmd,
+ 			   struct snd_soc_dai *dai)
+ {
+ 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 @@ -192,14 +193,15 @@ int mpc5200_audio_dma_trigger(struct snd_pcm_substream *substream, int cmd,
  				(s->period_bytes * runtime->periods);
  		s->period_next_pt = s->period_start;
@@ -187,7 +205,15 @@ index 621bac8..068e04d 100644
  }
  
  static struct snd_pcm_ops psc_dma_pcm_ops = {
-@@ -401,6 +414,7 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
+@@ -394,6 +407,7 @@ static struct snd_pcm_ops psc_dma_pcm_ops = {
+ 	.close		= psc_dma_pcm_close,
+ 	.ioctl		= snd_pcm_lib_ioctl,
+ 	.pointer	= psc_dma_pcm_pointer,
++	.trigger	= psc_dma_pcm_trigger
+ };
+ 
+ static u64 psc_dma_pcm_dmamask = 0xffffffff;
+@@ -401,6 +415,7 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
  			   struct snd_pcm *pcm)
  {
  	struct snd_soc_pcm_runtime *rtd = pcm->private_data;
@@ -195,7 +221,7 @@ index 621bac8..068e04d 100644
  	size_t size = psc_dma_pcm_hardware.buffer_bytes_max;
  	int rc = 0;
  
-@@ -413,19 +427,22 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
+@@ -413,19 +428,22 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
  		card->dev->coherent_dma_mask = 0xffffffff;
  
  	if (pcm->streams[0].substream) {
@@ -220,7 +246,7 @@ index 621bac8..068e04d 100644
  	return 0;
  
   capture_alloc_err:
-@@ -461,3 +478,18 @@ struct snd_soc_platform mpc5200_audio_dma_platform = {
+@@ -461,3 +479,18 @@ struct snd_soc_platform mpc5200_audio_dma_platform = {
  	.pcm_free	= &psc_dma_pcm_free,
  };
  EXPORT_SYMBOL_GPL(mpc5200_audio_dma_platform);
@@ -240,7 +266,7 @@ index 621bac8..068e04d 100644
 +module_exit(mpc5200_soc_platform_exit);
 +
 diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
-index c5b9ad7..cf08a6c 100644
+index c5b9ad7..16b4df2 100644
 --- a/sound/soc/fsl/mpc5200_dma.h
 +++ b/sound/soc/fsl/mpc5200_dma.h
 @@ -5,8 +5,12 @@
@@ -278,39 +304,43 @@ index c5b9ad7..cf08a6c 100644
  
  	/* per-stream data */
  	struct psc_dma_stream playback;
-@@ -64,14 +71,12 @@ struct psc_dma {
+@@ -64,17 +71,9 @@ struct psc_dma {
  };
  
  
 -int mpc5200_audio_dma_startup(struct snd_pcm_substream *substream,
 -			   struct snd_soc_dai *dai);
-+int mpc5200_audio_dma_startup(struct psc_dma *psc_dma);
- 
- int mpc5200_audio_dma_hw_free(struct snd_pcm_substream *substream,
- 			   struct snd_soc_dai *dai);
- 
+-
+-int mpc5200_audio_dma_hw_free(struct snd_pcm_substream *substream,
+-			   struct snd_soc_dai *dai);
+-
 -void mpc5200_audio_dma_shutdown(struct snd_pcm_substream *substream,
 -			     struct snd_soc_dai *dai);
++int mpc5200_audio_dma_startup(struct psc_dma *psc_dma);
+ 
+-int mpc5200_audio_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+-			   struct snd_soc_dai *dai);
 +void mpc5200_audio_dma_shutdown(struct psc_dma *psc_dma);
  
- int mpc5200_audio_dma_trigger(struct snd_pcm_substream *substream, int cmd,
- 			   struct snd_soc_dai *dai);
+ extern struct snd_soc_platform mpc5200_audio_dma_platform;
+ 
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index f6b9f6a..d03bf46 100644
+index f6b9f6a..f45d269 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
-@@ -140,10 +140,8 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
+@@ -140,11 +140,7 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
   * psc_i2s_dai_template: template CPU Digital Audio Interface
   */
  static struct snd_soc_dai_ops psc_i2s_dai_ops = {
 -	.startup	= mpc5200_audio_dma_startup,
  	.hw_params	= psc_i2s_hw_params,
- 	.hw_free	= mpc5200_audio_dma_hw_free,
+-	.hw_free	= mpc5200_audio_dma_hw_free,
 -	.shutdown	= mpc5200_audio_dma_shutdown,
- 	.trigger	= mpc5200_audio_dma_trigger,
+-	.trigger	= mpc5200_audio_dma_trigger,
  	.set_sysclk	= psc_i2s_set_sysclk,
  	.set_fmt	= psc_i2s_set_fmt,
-@@ -277,13 +275,13 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+ };
+@@ -277,13 +273,13 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
  	psc_dma->dev = &op->dev;
  	psc_dma->playback.psc_dma = psc_dma;
  	psc_dma->capture.psc_dma = psc_dma;
@@ -329,7 +359,7 @@ index f6b9f6a..d03bf46 100644
  
  	/* Find the address of the fifo data registers and setup the
  	 * DMA tasks */
-@@ -310,9 +308,6 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+@@ -310,9 +306,6 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
  	/* Configure the serial interface mode; defaulting to CODEC8 mode */
  	psc_dma->sicr = MPC52xx_PSC_SICR_DTS1 | MPC52xx_PSC_SICR_I2S |
  			MPC52xx_PSC_SICR_CLKPOL;
@@ -339,7 +369,7 @@ index f6b9f6a..d03bf46 100644
  	out_be32(&psc_dma->psc_regs->sicr,
  		 psc_dma->sicr | MPC52xx_PSC_SICR_SIM_CODEC_8);
  
-@@ -350,11 +345,16 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+@@ -350,11 +343,16 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
  	if (rc)
  		dev_info(psc_dma->dev, "error creating sysfs files\n");
  
@@ -359,7 +389,7 @@ index f6b9f6a..d03bf46 100644
  
  	return 0;
  }
-@@ -365,7 +365,7 @@ static int __devexit psc_i2s_of_remove(struct of_device *op)
+@@ -365,7 +363,7 @@ static int __devexit psc_i2s_of_remove(struct of_device *op)
  
  	dev_dbg(&op->dev, "psc_i2s_remove()\n");
  
