@@ -369,6 +369,15 @@ psc_dma_pointer(struct snd_pcm_substream *substream)
 	return frames + delta;
 }
 
+static int
+psc_dma_hw_params(struct snd_pcm_substream *substream,
+			 struct snd_pcm_hw_params *params)
+{
+  	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
+
+  	return 0;
+}
+
 static struct snd_pcm_ops psc_dma_ops = {
 	.open		= psc_dma_open,
 	.close		= psc_dma_close,
@@ -376,6 +385,8 @@ static struct snd_pcm_ops psc_dma_ops = {
 	.ioctl		= snd_pcm_lib_ioctl,
 	.pointer	= psc_dma_pointer,
 	.trigger	= psc_dma_trigger
+	.trigger	= psc_dma_trigger,
+	.hw_params	= psc_dma_hw_params,
 };
 
 static u64 psc_dma_dmamask = 0xffffffff;
@@ -447,6 +458,30 @@ struct snd_soc_platform mpc5200_audio_dma_platform = {
 	.pcm_free	= &psc_dma_free,
 };
 EXPORT_SYMBOL_GPL(mpc5200_audio_dma_platform);
+
+int mpc5200_audio_dma_create()
+{
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mpc5200_audio_dma_create);
+
+int mpc5200_audio_dma_destroy(struct of_device *op)
+{
+	struct psc_dma *psc_dma = dev_get_drvdata(&op->dev);
+
+	dev_dbg(&op->dev, "psc_ac97_remove()\n");
+
+	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
+	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
+
+	iounmap(psc_dma->psc_regs);
+	iounmap(psc_dma->fifo_regs);
+	kfree(psc_dma);
+	dev_set_drvdata(&op->dev, NULL);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mpc5200_audio_dma_destroy);
 
 static int __init mpc5200_soc_platform_init(void)
 {
