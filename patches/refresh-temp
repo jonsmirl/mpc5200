@@ -1,0 +1,28 @@
+Bottom: 188760ffca3df2765735fb2e35c80d927829a222
+Top:    4f07c907b55d0f3dfc494d9409b323b620794120
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-04-28 13:40:31 -0400
+
+Refresh of mpc5200-ac97
+
+---
+
+diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
+index 7666429..fec7512 100644
+--- a/sound/soc/fsl/mpc5200_psc_ac97.c
++++ b/sound/soc/fsl/mpc5200_psc_ac97.c
+@@ -224,15 +224,11 @@ static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
+  */
+ static struct snd_soc_dai_ops psc_ac97_analog_ops = {
+ 	.hw_params	= psc_ac97_hw_analog_params,
+-	.hw_free	= mpc5200_audio_dma_hw_free,
+-	.trigger	= mpc5200_audio_dma_trigger,
+ 	.set_fmt	= psc_ac97_set_fmt,
+ };
+ 
+ static struct snd_soc_dai_ops psc_ac97_digital_ops = {
+ 	.hw_params	= psc_ac97_hw_digital_params,
+-	.hw_free	= mpc5200_audio_dma_hw_free,
+-	.trigger	= mpc5200_audio_dma_trigger,
+ 	.set_fmt	= psc_ac97_set_fmt,
+ };
