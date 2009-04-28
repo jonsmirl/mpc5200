@@ -400,8 +400,6 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	/* Tell the ASoC OF helpers about it */
 	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, 1);
 
-	mpc5200_audio_dma_startup(psc_dma);
-
 	return 0;
 }
 
@@ -410,8 +408,6 @@ static int __devexit psc_i2s_of_remove(struct of_device *op)
 	struct psc_dma *psc_dma = dev_get_drvdata(&op->dev);
 
 	dev_dbg(&op->dev, "psc_i2s_remove()\n");
-
-	mpc5200_audio_dma_shutdown(psc_dma);
 
 	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
 	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
