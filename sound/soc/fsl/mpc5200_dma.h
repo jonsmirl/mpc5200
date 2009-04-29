@@ -70,7 +70,7 @@ struct psc_dma {
 	} stats;
 };
 
-//int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template, int tsize);
+int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template, int tsize);
 int mpc5200_audio_dma_destroy(struct of_device *op);
 
 extern struct snd_soc_platform mpc5200_audio_dma_platform;

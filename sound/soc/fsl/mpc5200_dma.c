@@ -458,8 +458,184 @@ struct snd_soc_platform mpc5200_audio_dma_platform = {
 };
 EXPORT_SYMBOL_GPL(mpc5200_audio_dma_platform);
 
-int mpc5200_audio_dma_create()
+/* ---------------------------------------------------------------------
+ * Sysfs attributes for debugging
+ */
+
+static ssize_t psc_dma_status_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
 {
+	struct psc_dma *psc_dma = dev_get_drvdata(dev);
+
+	return sprintf(buf, "status=%.4x sicr=%.8x rfnum=%i rfstat=0x%.4x "
+			"tfnum=%i tfstat=0x%.4x\n",
+			in_be16(&psc_dma->psc_regs->sr_csr.status),
+			in_be32(&psc_dma->psc_regs->sicr),
+			in_be16(&psc_dma->fifo_regs->rfnum) & 0x1ff,
+			in_be16(&psc_dma->fifo_regs->rfstat),
+			in_be16(&psc_dma->fifo_regs->tfnum) & 0x1ff,
+			in_be16(&psc_dma->fifo_regs->tfstat));
+}
+
+static int *psc_dma_get_stat_attr(struct psc_dma *psc_dma, const char *name)
+{
+	if (strcmp(name, "playback_underrun") == 0)
+		return &psc_dma->stats.underrun_count;
+	if (strcmp(name, "capture_overrun") == 0)
+		return &psc_dma->stats.overrun_count;
+
+	return NULL;
+}
+
+static ssize_t psc_dma_stat_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
+{
+	struct psc_dma *psc_dma = dev_get_drvdata(dev);
+	int *attrib;
+
+	attrib = psc_dma_get_stat_attr(psc_dma, attr->attr.name);
+	if (!attrib)
+		return 0;
+
+	return sprintf(buf, "%i\n", *attrib);
+}
+
+static ssize_t psc_dma_stat_store(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf,
+				  size_t count)
+{
+	struct psc_dma *psc_dma = dev_get_drvdata(dev);
+	int *attrib;
+
+	attrib = psc_dma_get_stat_attr(psc_dma, attr->attr.name);
+	if (!attrib)
+		return 0;
+
+	*attrib = simple_strtoul(buf, NULL, 0);
+	return count;
+}
+
+static DEVICE_ATTR(status, 0644, psc_dma_status_show, NULL);
+static DEVICE_ATTR(playback_underrun, 0644, psc_dma_stat_show,
+			psc_dma_stat_store);
+static DEVICE_ATTR(capture_overrun, 0644, psc_dma_stat_show,
+			psc_dma_stat_store);
+
+
+int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template, int tsize)
+{
+	phys_addr_t fifo;
+	struct psc_dma *psc_dma;
+	struct resource res;
+	int i, nDAI, size, psc_id, irq, rc;
+	const __be32 *prop;
+	void __iomem *regs;
+
+	/* Get the PSC ID */
+	prop = of_get_property(op->node, "cell-index", &size);
+	if (!prop || size < sizeof *prop)
+		return -ENODEV;
+	psc_id = be32_to_cpu(*prop);
+
+	/* Fetch the registers and IRQ of the PSC */
+	irq = irq_of_parse_and_map(op->node, 0);
+	if (of_address_to_resource(op->node, 0, &res)) {
+		dev_err(&op->dev, "Missing reg property\n");
+		return -ENODEV;
+	}
+	regs = ioremap(res.start, 1 + res.end - res.start);
+	if (!regs) {
+		dev_err(&op->dev, "Could not map registers\n");
+		return -ENODEV;
+	}
+
+	/* Allocate and initialize the driver private data */
+	psc_dma = kzalloc(sizeof *psc_dma, GFP_KERNEL);
+	if (!psc_dma) {
+		iounmap(regs);
+		return -ENOMEM;
+	}
+
+	spin_lock_init(&psc_dma->lock);
+	psc_dma->irq = irq;
+	psc_dma->psc_regs = regs;
+	psc_dma->fifo_regs = regs + sizeof *psc_dma->psc_regs;
+	psc_dma->dev = &op->dev;
+	psc_dma->playback.psc_dma = psc_dma;
+	psc_dma->capture.psc_dma = psc_dma;
+	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u AC97", psc_id+1);
+
+	/* Fill out the CPU DAI structure */
+	nDAI = min(tsize, SOC_OF_SIMPLE_MAX_DAI);
+	for (i = 0; i < nDAI; i++) {
+		memcpy(&psc_dma->dai[i], &template[i], sizeof(struct snd_soc_dai));
+		psc_dma->dai[i].private_data = psc_dma;
+		snprintf(psc_dma->stream_name[i], PSC_STREAM_NAME_LEN, template[i].name, psc_dma->name);
+		psc_dma->dai[i].name = psc_dma->stream_name[i];
+		psc_dma->dai[i].id = psc_id;
+	}
+
+	/* Find the address of the fifo data registers and setup the
+	 * DMA tasks */
+	fifo = res.start + offsetof(struct mpc52xx_psc, buffer.buffer_32);
+	psc_dma->capture.bcom_task =
+		bcom_psc_gen_bd_rx_init(psc_id, 10, fifo, 512);
+	psc_dma->playback.bcom_task =
+		bcom_psc_gen_bd_tx_init(psc_id, 10, fifo);
+	if (!psc_dma->capture.bcom_task ||
+	    !psc_dma->playback.bcom_task) {
+		dev_err(&op->dev, "Could not allocate bestcomm tasks\n");
+		iounmap(regs);
+		kfree(psc_dma);
+		return -ENODEV;
+	}
+
+	/* Disable all interrupts and reset the PSC */
+	out_be16(&psc_dma->psc_regs->isr_imr.imr, 0);
+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_RX); /* reset receiver */
+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_TX); /* reset transmitter */
+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_ERR_STAT); /* reset error */
+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_SEL_MODE_REG_1); /* reset mode */
+
+	/* Set up mode register;
+	 * First write: RxRdy (FIFO Alarm) generates rx FIFO irq
+	 * Second write: register Normal mode for non loopback
+	 */
+	out_8(&psc_dma->psc_regs->mode, 0);
+	out_8(&psc_dma->psc_regs->mode, 0);
+
+	/* Set the TX and RX fifo alarm thresholds */
+	out_be16(&psc_dma->fifo_regs->rfalarm, 0x100);
+	out_8(&psc_dma->fifo_regs->rfcntl, 0x4);
+	out_be16(&psc_dma->fifo_regs->tfalarm, 0x100);
+	out_8(&psc_dma->fifo_regs->tfcntl, 0x7);
+
+	/* Lookup the IRQ numbers */
+	psc_dma->playback.irq =
+		bcom_get_task_irq(psc_dma->playback.bcom_task);
+	psc_dma->capture.irq =
+		bcom_get_task_irq(psc_dma->capture.bcom_task);
+
+	/* Save what we've done so it can be found again later */
+	dev_set_drvdata(&op->dev, psc_dma);
+
+	/* Register the SYSFS files */
+	rc = device_create_file(psc_dma->dev, &dev_attr_status);
+	rc |= device_create_file(psc_dma->dev, &dev_attr_capture_overrun);
+	rc |= device_create_file(psc_dma->dev, &dev_attr_playback_underrun);
+	if (rc)
+		dev_info(psc_dma->dev, "error creating sysfs files\n");
+
+	rc = snd_soc_register_dais(psc_dma->dai, nDAI);
+	if (rc != 0) {
+		printk("Failed to register DAI\n");
+		return 0;
+	}
+
+	/* Tell the ASoC OF helpers about it */
+	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, nDAI);
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mpc5200_audio_dma_create);
@@ -468,7 +644,7 @@ int mpc5200_audio_dma_destroy(struct of_device *op)
 {
 	struct psc_dma *psc_dma = dev_get_drvdata(&op->dev);
 
-	dev_dbg(&op->dev, "psc_ac97_remove()\n");
+	dev_dbg(&op->dev, "mpc5200_audio_dma_destroy()\n");
 
 	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
 	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
