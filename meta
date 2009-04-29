@@ -1,5 +1,5 @@
 Version: 1
-Previous: 2573b89c4a580b1c3bbe0fabcc4de4eb170473e7
+Previous: b243ee5b8535ff25affdd031724d3f4a6d67d5d2
 Head: 5c6bc22943ec07ad826859f3002e132a27ac3766
 Applied:
   Makefile: 13eaef72cd73c90a6ef7b1a73b7584d1e49f7401
@@ -28,8 +28,8 @@ Applied:
   efika-audio: 5b1af9523254bb249f5167b1f26bd63b231abc7a
   tas5504-codec: daec9743599c83b511b346e5e2ef988dfabd6d58
   max9485-i2c: 6f65d1a66960ebae690143f734e4831c652331fc
+  i2s-cell-clock: 5c6bc22943ec07ad826859f3002e132a27ac3766
 Unapplied:
-  i2s-cell-clock: a70f3a1f7ea96232da578bc4ee170ecf65b5da21
   dspeak-audio: 1e86d0b199a8a474e3cb0293b6612914d7d2f6fd
   temp: c6402d4c4aee9eb2c99189418355b87b13146573
 Hidden:
