@@ -111,45 +111,7 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
 	return IRQ_HANDLED;
 }
 
-/**
- * psc_dma_startup: create a new substream
- *
- * This is the first function called when a stream is opened.
- *
- * If this is the first stream open, then grab the IRQ and program most of
- * the PSC registers.
- */
-int mpc5200_audio_dma_startup(struct psc_dma *psc_dma)
-{
-	int rc;
-
-	if (!psc_dma->playback.active &&
-	    !psc_dma->capture.active) {
-		/* Setup the IRQs */
-		rc = request_irq(psc_dma->irq, &psc_dma_status_irq, IRQF_SHARED,
-				 "psc-dma-status", psc_dma);
-		rc |= request_irq(psc_dma->capture.irq,
-				  &psc_dma_bcom_irq, IRQF_SHARED,
-				  "psc-dma-capture", &psc_dma->capture);
-		rc |= request_irq(psc_dma->playback.irq,
-				  &psc_dma_bcom_irq, IRQF_SHARED,
-				  "psc-dma-playback", &psc_dma->playback);
-		if (rc) {
-			free_irq(psc_dma->irq, psc_dma);
-			free_irq(psc_dma->capture.irq,
-				 &psc_dma->capture);
-			free_irq(psc_dma->playback.irq,
-				 &psc_dma->playback);
-			return -ENODEV;
-		}
-	}
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(mpc5200_audio_dma_startup);
-
-static int pcm_dma_psc_free(struct snd_pcm_substream *substream,
-			   struct snd_soc_dai *dai)
+static int psc_dma_pcm_hw_free(struct snd_pcm_substream *substream)
 {
 	snd_pcm_set_runtime_buffer(substream, NULL);
 	return 0;
@@ -162,8 +124,7 @@ static int pcm_dma_psc_free(struct snd_pcm_substream *substream,
  * This function is called by ALSA to start, stop, pause, and resume the DMA
  * transfer of data.
  */
-static int psc_dma_pcm_trigger(struct snd_pcm_substream *substream, int cmd,
-			   struct snd_soc_dai *dai)
+static int psc_dma_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
@@ -276,35 +237,6 @@ static int psc_dma_pcm_trigger(struct snd_pcm_substream *substream, int cmd,
 }
 
 
-/**
- * psc_dma_shutdown: shutdown the data transfer on a stream
- *
- * Shutdown the PSC if there are no other substreams open.
- */
-void mpc5200_audio_dma_shutdown(struct psc_dma *psc_dma)
-{
-	/*
-	 * If this is the last active substream, disable the PSC and release
-	 * the IRQ.
-	 */
-	if (!psc_dma->playback.active &&
-	    !psc_dma->capture.active) {
-
-		/* Disable all interrupts and reset the PSC */
-		out_be16(&psc_dma->psc_regs->isr_imr.imr, 0);
-		out_8(&psc_dma->psc_regs->command, 3 << 4); /* reset tx */
-		out_8(&psc_dma->psc_regs->command, 2 << 4); /* reset rx */
-		out_8(&psc_dma->psc_regs->command, 1 << 4); /* reset mode */
-		out_8(&psc_dma->psc_regs->command, 4 << 4); /* reset error */
-
-		/* Release irqs */
-		free_irq(psc_dma->irq, psc_dma);
-		free_irq(psc_dma->capture.irq, &psc_dma->capture);
-		free_irq(psc_dma->playback.irq, &psc_dma->playback);
-	}
-}
-EXPORT_SYMBOL_GPL(mpc5200_audio_dma_shutdown);
-
 /* ---------------------------------------------------------------------
  * The PSC DMA 'ASoC platform' driver
  *
@@ -336,7 +268,7 @@ static int psc_dma_pcm_open(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
 	struct psc_dma_stream *s;
-	int ret;
+	int rc;
 
 	dev_dbg(psc_dma->dev, "psc_dma_pcm_open(substream=%p)\n", substream);
 
@@ -347,11 +279,32 @@ static int psc_dma_pcm_open(struct snd_pcm_substream *substream)
 
 	snd_soc_set_runtime_hwparams(substream, &psc_dma_pcm_hardware);
 
-	ret = snd_pcm_hw_constraint_integer(runtime,
+	rc = snd_pcm_hw_constraint_integer(runtime,
 		SNDRV_PCM_HW_PARAM_PERIODS);
-	if (ret < 0) {
+	if (rc < 0) {
 		dev_err(substream->pcm->card->dev, "invalid buffer size\n");
-		return ret;
+		return rc;
+	}
+
+	if (!psc_dma->playback.active &&
+	    !psc_dma->capture.active) {
+		/* Setup the IRQs */
+		rc = request_irq(psc_dma->irq, &psc_dma_status_irq, IRQF_SHARED,
+				 "psc-dma-status", psc_dma);
+		rc |= request_irq(psc_dma->capture.irq,
+				  &psc_dma_bcom_irq, IRQF_SHARED,
+				  "psc-dma-capture", &psc_dma->capture);
+		rc |= request_irq(psc_dma->playback.irq,
+				  &psc_dma_bcom_irq, IRQF_SHARED,
+				  "psc-dma-playback", &psc_dma->playback);
+		if (rc) {
+			free_irq(psc_dma->irq, psc_dma);
+			free_irq(psc_dma->capture.irq,
+				 &psc_dma->capture);
+			free_irq(psc_dma->playback.irq,
+				 &psc_dma->playback);
+			return -ENODEV;
+		}
 	}
 
 	s->stream = substream;
@@ -370,6 +323,22 @@ static int psc_dma_pcm_close(struct snd_pcm_substream *substream)
 		s = &psc_dma->capture;
 	else
 		s = &psc_dma->playback;
+
+	if (!psc_dma->playback.active &&
+	    !psc_dma->capture.active) {
+
+		/* Disable all interrupts and reset the PSC */
+		out_be16(&psc_dma->psc_regs->isr_imr.imr, 0);
+		//out_8(&psc_dma->psc_regs->command, 3 << 4); /* reset tx */
+		//out_8(&psc_dma->psc_regs->command, 2 << 4); /* reset rx */
+		out_8(&psc_dma->psc_regs->command, 1 << 4); /* reset mode */
+		out_8(&psc_dma->psc_regs->command, 4 << 4); /* reset error */
+
+		/* Release irqs */
+		free_irq(psc_dma->irq, psc_dma);
+		free_irq(psc_dma->capture.irq, &psc_dma->capture);
+		free_irq(psc_dma->playback.irq, &psc_dma->playback);
+	}
 
 	s->stream = NULL;
 	return 0;
@@ -403,6 +372,7 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
 static struct snd_pcm_ops psc_dma_pcm_ops = {
 	.open		= psc_dma_pcm_open,
 	.close		= psc_dma_pcm_close,
+	.hw_free	= psc_dma_pcm_hw_free,
 	.ioctl		= snd_pcm_lib_ioctl,
 	.pointer	= psc_dma_pcm_pointer,
 	.trigger	= psc_dma_pcm_trigger
