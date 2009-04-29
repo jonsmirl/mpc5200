@@ -3,9 +3,9 @@ Top:    8c650e671d21ed3da5373139d9b51870bbd391bc
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-24 19:55:42 -0400
 
-Rename exports in mpc5200_dma.c
+Move the mpc5200 DMA code into a shared module
 
-Rename the public DMA exports into the global name space so that the DMA code can be built as a module.
+Move the mpc5200 DMA code into a shared module.
 
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
