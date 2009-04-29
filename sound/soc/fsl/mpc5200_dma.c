@@ -385,7 +385,6 @@ static struct snd_pcm_ops psc_dma_ops = {
 	.ioctl		= snd_pcm_lib_ioctl,
 	.pointer	= psc_dma_pointer,
 	.trigger	= psc_dma_trigger
-	.trigger	= psc_dma_trigger,
 	.hw_params	= psc_dma_hw_params,
 };
 
