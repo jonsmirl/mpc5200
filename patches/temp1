@@ -1,5 +1,5 @@
 Bottom: 28c9546869714f48c881206b4d8f78cb86835013
-Top:    99d930254eec97912edf5f76c08e8786bb36f25d
+Top:    c65826557a47314de9efdbf436128ec22315a308
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-28 22:04:21 -0400
 
@@ -9,7 +9,7 @@ temp1
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 7a5ce21..ce45799 100644
+index 7a5ce21..8ffa2fb 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -111,7 +111,7 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
@@ -90,7 +90,7 @@ index 7a5ce21..ce45799 100644
  {
  	struct snd_pcm_runtime *runtime = substream->runtime;
  	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-@@ -369,29 +369,29 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
+@@ -369,29 +369,39 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
  	return frames + delta;
  }
  
@@ -98,6 +98,15 @@ index 7a5ce21..ce45799 100644
 -	.open		= psc_dma_pcm_open,
 -	.close		= psc_dma_pcm_close,
 -	.hw_free	= psc_dma_pcm_hw_free,
++static int
++psc_dma_hw_params(struct snd_pcm_substream *substream,
++			 struct snd_pcm_hw_params *params)
++{
++  	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
++
++  	return 0;
++}
++
 +static struct snd_pcm_ops psc_dma_ops = {
 +	.open		= psc_dma_open,
 +	.close		= psc_dma_close,
@@ -106,7 +115,8 @@ index 7a5ce21..ce45799 100644
 -	.pointer	= psc_dma_pcm_pointer,
 -	.trigger	= psc_dma_pcm_trigger
 +	.pointer	= psc_dma_pointer,
-+	.trigger	= psc_dma_trigger
++	.trigger	= psc_dma_trigger,
++	.hw_params	= psc_dma_hw_params,
  };
  
 -static u64 psc_dma_pcm_dmamask = 0xffffffff;
@@ -131,7 +141,7 @@ index 7a5ce21..ce45799 100644
  	if (!card->dev->coherent_dma_mask)
  		card->dev->coherent_dma_mask = 0xffffffff;
  
-@@ -422,13 +422,13 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
+@@ -422,13 +432,13 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
  	return -ENOMEM;
  }
  
@@ -147,7 +157,7 @@ index 7a5ce21..ce45799 100644
  
  	for (stream = 0; stream < 2; stream++) {
  		substream = pcm->streams[stream].substream;
-@@ -442,9 +442,9 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
+@@ -442,9 +452,9 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
  
  struct snd_soc_platform mpc5200_audio_dma_platform = {
  	.name		= "mpc5200-psc-audio",
@@ -159,3 +169,30 @@ index 7a5ce21..ce45799 100644
 +	.pcm_free	= &psc_dma_free,
  };
  EXPORT_SYMBOL_GPL(mpc5200_audio_dma_platform);
+ 
+diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
+index 5663187..cc383a5 100644
+--- a/sound/soc/fsl/mpc5200_psc_ac97.c
++++ b/sound/soc/fsl/mpc5200_psc_ac97.c
+@@ -181,8 +181,6 @@ static int psc_ac97_hw_analog_params(struct snd_pcm_substream *substream,
+ 	else
+ 		out_be32(&psc_dma->psc_regs->ac97_slots, 0x03000000);
+ 
+-  	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
+-
+ 	return 0;
+ }
+ 
+diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
+index c050a1f..dd74a24 100644
+--- a/sound/soc/fsl/mpc5200_psc_i2s.c
++++ b/sound/soc/fsl/mpc5200_psc_i2s.c
+@@ -107,9 +107,6 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
+ 		out_be32(&psc_dma->psc_regs->ccr, value);
+ 		out_8(&psc_dma->psc_regs->ctur, bits - 1);
+ 	}
+-
+-  	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
+-
+ 	return 0;
+ }
