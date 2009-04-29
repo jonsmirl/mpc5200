@@ -1,7 +1,7 @@
-Bottom: 3d44d42bfe0c18430cfe0e29820d89be80c8a939
-Top:    74d0588b1ef8501b8ceeb84313e561e44f4b450d
+Bottom: dd6973f20c25658e055f833f81d70e8f37b02fa8
+Top:    fd54efe6d994e6c9313a90545d4f2d953fc3c3dd
 Author: Grant Likely <grant.likely@secretlab.ca>
-Date:   2009-04-27 12:06:16 -0400
+Date:   2009-04-28 23:47:57 -0400
 
 powerpc/mpc5200: Add mpc5200-spi (non-PSC) device driver
 

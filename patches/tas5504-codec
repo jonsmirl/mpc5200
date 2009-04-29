@@ -1,7 +1,7 @@
-Bottom: d65fd5044026b96fd479f6c78e040352de63ccc3
-Top:    7afb37ecf34714299beb76c4ac03e85413bdacde
+Bottom: abbee92cf240404d9fe7ad906052d3d60383bbf4
+Top:    8048aa40a4b644913007368befaa48e6b33b45d8
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-04-23 14:07:46 -0400
+Date:   2009-04-28 23:48:03 -0400
 
 jds audio driver
 
@@ -49,7 +49,7 @@ index 5eb8f84..efec4f9 100644
  	tristate
  
 diff --git a/sound/soc/codecs/Makefile b/sound/soc/codecs/Makefile
-index 284857c..81084dc 100644
+index f8b8175..7ed8430 100644
 --- a/sound/soc/codecs/Makefile
 +++ b/sound/soc/codecs/Makefile
 @@ -9,6 +9,7 @@ snd-soc-pcm3008-objs := pcm3008.o

@@ -1,7 +1,7 @@
-Bottom: 8c650e671d21ed3da5373139d9b51870bbd391bc
-Top:    a321bbff74d2a3b2dbfb78bfcd4f521a73da31eb
+Bottom: 6439ec904f04737842f78eae47fec6b677a6583d
+Top:    e071809208699fd48bbdb246ee2c6539c3c6b535
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-04-23 14:07:47 -0400
+Date:   2009-04-28 23:48:03 -0400
 
 Codec for STAC9766 used on the Efika
 
@@ -31,7 +31,7 @@ index b6c7f7a..5eb8f84 100644
  	tristate
  
 diff --git a/sound/soc/codecs/Makefile b/sound/soc/codecs/Makefile
-index 030d245..284857c 100644
+index f265380..f8b8175 100644
 --- a/sound/soc/codecs/Makefile
 +++ b/sound/soc/codecs/Makefile
 @@ -7,6 +7,7 @@ snd-soc-cs4270-objs := cs4270.o
