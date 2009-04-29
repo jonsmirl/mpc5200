@@ -1,6 +1,6 @@
 Version: 1
-Previous: 0ed09b98616e0fc9c0f18610fbbbe76525f6087b
-Head: 7421c6c3c6fd599af4b48b8fb66fac105d16e29a
+Previous: 53aad87cc68880f979420a47709ec1965b5b1b33
+Head: c55fb4012c3e03eba894f3ab4b337f7a79fbda75
 Applied:
   Makefile: 13eaef72cd73c90a6ef7b1a73b7584d1e49f7401
   digispeak: a949241710b09f52efefd1c21a21013754c7391b
@@ -31,5 +31,6 @@ Applied:
   i2s-cell-clock: a70f3a1f7ea96232da578bc4ee170ecf65b5da21
   dspeak-audio: 1e86d0b199a8a474e3cb0293b6612914d7d2f6fd
   temp: 7421c6c3c6fd599af4b48b8fb66fac105d16e29a
+  refresh-temp: c55fb4012c3e03eba894f3ab4b337f7a79fbda75
 Unapplied:
 Hidden:
