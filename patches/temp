@@ -1,5 +1,5 @@
 Bottom: 99d930254eec97912edf5f76c08e8786bb36f25d
-Top:    143a4a56488990744fd684809f19a9b88960905b
+Top:    310bab445c9269c3e0b334cdfee8c8a967de0467
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-28 13:39:29 -0400
 
@@ -9,7 +9,7 @@ Temporary holding patch
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index ce45799..0ee8ab1 100644
+index ce45799..8e120e7 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -369,6 +369,15 @@ psc_dma_pointer(struct snd_pcm_substream *substream)
@@ -28,16 +28,15 @@ index ce45799..0ee8ab1 100644
  static struct snd_pcm_ops psc_dma_ops = {
  	.open		= psc_dma_open,
  	.close		= psc_dma_close,
-@@ -376,6 +385,8 @@ static struct snd_pcm_ops psc_dma_ops = {
+@@ -376,6 +385,7 @@ static struct snd_pcm_ops psc_dma_ops = {
  	.ioctl		= snd_pcm_lib_ioctl,
  	.pointer	= psc_dma_pointer,
  	.trigger	= psc_dma_trigger
-+	.trigger	= psc_dma_trigger,
 +	.hw_params	= psc_dma_hw_params,
  };
  
  static u64 psc_dma_dmamask = 0xffffffff;
-@@ -448,6 +459,30 @@ struct snd_soc_platform mpc5200_audio_dma_platform = {
+@@ -448,6 +458,30 @@ struct snd_soc_platform mpc5200_audio_dma_platform = {
  };
  EXPORT_SYMBOL_GPL(mpc5200_audio_dma_platform);
  
