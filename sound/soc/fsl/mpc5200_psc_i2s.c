@@ -108,8 +108,6 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
 		out_8(&psc_dma->psc_regs->ctur, bits - 1);
 	}
 
-  	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
-
 	return 0;
 }
 
