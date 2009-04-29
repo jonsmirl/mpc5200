@@ -1,5 +1,5 @@
 Bottom: 1ab2fc3f916b34e2842a7bb5240c791ecf71d7fb
-Top:    6a5b3458ed58ed8d526553c756db05e2d838f797
+Top:    28c9546869714f48c881206b4d8f78cb86835013
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-28 13:39:29 -0400
 
@@ -9,10 +9,10 @@ Temporary holding patch
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index edfdd0b..25134b1 100644
+index edfdd0b..7a5ce21 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
-@@ -111,43 +111,6 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
+@@ -111,45 +111,7 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
  	return IRQ_HANDLED;
  }
  
@@ -53,10 +53,23 @@ index edfdd0b..25134b1 100644
 -}
 -EXPORT_SYMBOL_GPL(mpc5200_audio_dma_startup);
 -
- static int pcm_dma_psc_free(struct snd_pcm_substream *substream,
- 			   struct snd_soc_dai *dai)
+-static int pcm_dma_psc_free(struct snd_pcm_substream *substream,
+-			   struct snd_soc_dai *dai)
++static int psc_dma_pcm_hw_free(struct snd_pcm_substream *substream)
  {
-@@ -276,35 +239,6 @@ static int psc_dma_pcm_trigger(struct snd_pcm_substream *substream, int cmd,
+ 	snd_pcm_set_runtime_buffer(substream, NULL);
+ 	return 0;
+@@ -162,8 +124,7 @@ static int pcm_dma_psc_free(struct snd_pcm_substream *substream,
+  * This function is called by ALSA to start, stop, pause, and resume the DMA
+  * transfer of data.
+  */
+-static int psc_dma_pcm_trigger(struct snd_pcm_substream *substream, int cmd,
+-			   struct snd_soc_dai *dai)
++static int psc_dma_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
+ {
+ 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+ 	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
+@@ -276,35 +237,6 @@ static int psc_dma_pcm_trigger(struct snd_pcm_substream *substream, int cmd,
  }
  
  
@@ -92,7 +105,7 @@ index edfdd0b..25134b1 100644
  /* ---------------------------------------------------------------------
   * The PSC DMA 'ASoC platform' driver
   *
-@@ -336,7 +270,7 @@ static int psc_dma_pcm_open(struct snd_pcm_substream *substream)
+@@ -336,7 +268,7 @@ static int psc_dma_pcm_open(struct snd_pcm_substream *substream)
  	struct snd_soc_pcm_runtime *rtd = substream->private_data;
  	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
  	struct psc_dma_stream *s;
@@ -101,7 +114,7 @@ index edfdd0b..25134b1 100644
  
  	dev_dbg(psc_dma->dev, "psc_dma_pcm_open(substream=%p)\n", substream);
  
-@@ -347,11 +281,32 @@ static int psc_dma_pcm_open(struct snd_pcm_substream *substream)
+@@ -347,11 +279,32 @@ static int psc_dma_pcm_open(struct snd_pcm_substream *substream)
  
  	snd_soc_set_runtime_hwparams(substream, &psc_dma_pcm_hardware);
  
@@ -137,7 +150,7 @@ index edfdd0b..25134b1 100644
  	}
  
  	s->stream = substream;
-@@ -371,6 +326,22 @@ static int psc_dma_pcm_close(struct snd_pcm_substream *substream)
+@@ -371,6 +324,22 @@ static int psc_dma_pcm_close(struct snd_pcm_substream *substream)
  	else
  		s = &psc_dma->playback;
  
@@ -146,8 +159,8 @@ index edfdd0b..25134b1 100644
 +
 +		/* Disable all interrupts and reset the PSC */
 +		out_be16(&psc_dma->psc_regs->isr_imr.imr, 0);
-+		out_8(&psc_dma->psc_regs->command, 3 << 4); /* reset tx */
-+		out_8(&psc_dma->psc_regs->command, 2 << 4); /* reset rx */
++		//out_8(&psc_dma->psc_regs->command, 3 << 4); /* reset tx */
++		//out_8(&psc_dma->psc_regs->command, 2 << 4); /* reset rx */
 +		out_8(&psc_dma->psc_regs->command, 1 << 4); /* reset mode */
 +		out_8(&psc_dma->psc_regs->command, 4 << 4); /* reset error */
 +
@@ -160,6 +173,14 @@ index edfdd0b..25134b1 100644
  	s->stream = NULL;
  	return 0;
  }
+@@ -403,6 +372,7 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
+ static struct snd_pcm_ops psc_dma_pcm_ops = {
+ 	.open		= psc_dma_pcm_open,
+ 	.close		= psc_dma_pcm_close,
++	.hw_free	= psc_dma_pcm_hw_free,
+ 	.ioctl		= snd_pcm_lib_ioctl,
+ 	.pointer	= psc_dma_pcm_pointer,
+ 	.trigger	= psc_dma_pcm_trigger
 diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
 index 16b4df2..8ab0a21 100644
 --- a/sound/soc/fsl/mpc5200_dma.h
