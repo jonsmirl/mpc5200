@@ -1,5 +1,5 @@
 Bottom: 75d2fd4de1298ec02b05b68ac244e0545c024f77
-Top:    75d2fd4de1298ec02b05b68ac244e0545c024f77
+Top:    d3340396808a0f2e1d9083cd3d102c12c95873e9
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-24 19:55:42 -0400
 
@@ -12,4 +12,147 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
 ---
 
-
+diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
+index c82ef75..621bac8 100644
+--- a/sound/soc/fsl/mpc5200_dma.c
++++ b/sound/soc/fsl/mpc5200_dma.c
+@@ -113,7 +113,7 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
+  * If this is the first stream open, then grab the IRQ and program most of
+  * the PSC registers.
+  */
+-int psc_dma_startup(struct snd_pcm_substream *substream,
++int mpc5200_audio_dma_startup(struct snd_pcm_substream *substream,
+ 			   struct snd_soc_dai *dai)
+ {
+ 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+@@ -145,13 +145,16 @@ int psc_dma_startup(struct snd_pcm_substream *substream,
+ 
+ 	return 0;
+ }
++EXPORT_SYMBOL_GPL(mpc5200_audio_dma_startup);
+ 
+-int psc_dma_hw_free(struct snd_pcm_substream *substream,
++int mpc5200_audio_dma_hw_free(struct snd_pcm_substream *substream,
+ 			   struct snd_soc_dai *dai)
+ {
+ 	snd_pcm_set_runtime_buffer(substream, NULL);
+ 	return 0;
+ }
++EXPORT_SYMBOL_GPL(mpc5200_audio_dma_hw_free);
++
+ 
+ /**
+  * psc_dma_trigger: start and stop the DMA transfer.
+@@ -159,7 +162,7 @@ int psc_dma_hw_free(struct snd_pcm_substream *substream,
+  * This function is called by ALSA to start, stop, pause, and resume the DMA
+  * transfer of data.
+  */
+-int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
++int mpc5200_audio_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+ 			   struct snd_soc_dai *dai)
+ {
+ 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+@@ -269,13 +272,15 @@ int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+ 
+ 	return 0;
+ }
++EXPORT_SYMBOL_GPL(mpc5200_audio_dma_trigger);
++
+ 
+ /**
+  * psc_dma_shutdown: shutdown the data transfer on a stream
+  *
+  * Shutdown the PSC if there are no other substreams open.
+  */
+-void psc_dma_shutdown(struct snd_pcm_substream *substream,
++void mpc5200_audio_dma_shutdown(struct snd_pcm_substream *substream,
+ 			     struct snd_soc_dai *dai)
+ {
+ 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+@@ -303,6 +308,7 @@ void psc_dma_shutdown(struct snd_pcm_substream *substream,
+ 		free_irq(psc_dma->playback.irq, &psc_dma->playback);
+ 	}
+ }
++EXPORT_SYMBOL_GPL(mpc5200_audio_dma_shutdown);
+ 
+ /* ---------------------------------------------------------------------
+  * The PSC DMA 'ASoC platform' driver
+@@ -448,10 +454,10 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
+ 	}
+ }
+ 
+-struct snd_soc_platform psc_dma_pcm_soc_platform = {
++struct snd_soc_platform mpc5200_audio_dma_platform = {
+ 	.name		= "mpc5200-psc-audio",
+ 	.pcm_ops	= &psc_dma_pcm_ops,
+ 	.pcm_new	= &psc_dma_pcm_new,
+ 	.pcm_free	= &psc_dma_pcm_free,
+ };
+-
++EXPORT_SYMBOL_GPL(mpc5200_audio_dma_platform);
+diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
+index a33232c..c5b9ad7 100644
+--- a/sound/soc/fsl/mpc5200_dma.h
++++ b/sound/soc/fsl/mpc5200_dma.h
+@@ -64,18 +64,18 @@ struct psc_dma {
+ };
+ 
+ 
+-int psc_dma_startup(struct snd_pcm_substream *substream,
++int mpc5200_audio_dma_startup(struct snd_pcm_substream *substream,
+ 			   struct snd_soc_dai *dai);
+ 
+-int psc_dma_hw_free(struct snd_pcm_substream *substream,
++int mpc5200_audio_dma_hw_free(struct snd_pcm_substream *substream,
+ 			   struct snd_soc_dai *dai);
+ 
+-void psc_dma_shutdown(struct snd_pcm_substream *substream,
++void mpc5200_audio_dma_shutdown(struct snd_pcm_substream *substream,
+ 			     struct snd_soc_dai *dai);
+ 
+-int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
++int mpc5200_audio_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+ 			   struct snd_soc_dai *dai);
+ 
+-extern struct snd_soc_platform psc_dma_pcm_soc_platform;
++extern struct snd_soc_platform mpc5200_audio_dma_platform;
+ 
+ #endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
+diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
+index 5dbf1bc..f6b9f6a 100644
+--- a/sound/soc/fsl/mpc5200_psc_i2s.c
++++ b/sound/soc/fsl/mpc5200_psc_i2s.c
+@@ -140,11 +140,11 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
+  * psc_i2s_dai_template: template CPU Digital Audio Interface
+  */
+ static struct snd_soc_dai_ops psc_i2s_dai_ops = {
+-	.startup	= psc_dma_startup,
++	.startup	= mpc5200_audio_dma_startup,
+ 	.hw_params	= psc_i2s_hw_params,
+-	.hw_free	= psc_dma_hw_free,
+-	.shutdown	= psc_dma_shutdown,
+-	.trigger	= psc_dma_trigger,
++	.hw_free	= mpc5200_audio_dma_hw_free,
++	.shutdown	= mpc5200_audio_dma_shutdown,
++	.trigger	= mpc5200_audio_dma_trigger,
+ 	.set_sysclk	= psc_i2s_set_sysclk,
+ 	.set_fmt	= psc_i2s_set_fmt,
+ };
+@@ -350,7 +350,7 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+ 	if (rc)
+ 		dev_info(psc_dma->dev, "error creating sysfs files\n");
+ 
+-	snd_soc_register_platform(&psc_dma_pcm_soc_platform);
++	snd_soc_register_platform(&mpc5200_audio_dma_platform);
+ 
+ 	/* Tell the ASoC OF helpers about it */
+ 	of_snd_soc_register_platform(&mpc5200_audio_dma_platform);
+@@ -365,7 +365,7 @@ static int __devexit psc_i2s_of_remove(struct of_device *op)
+ 
+ 	dev_dbg(&op->dev, "psc_i2s_remove()\n");
+ 
+-	snd_soc_unregister_platform(&psc_dma_pcm_soc_platform);
++	snd_soc_unregister_platform(&mpc5200_audio_dma_platform);
+ 
+ 	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
+ 	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
