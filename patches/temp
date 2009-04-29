@@ -1,5 +1,5 @@
-Bottom: c65826557a47314de9efdbf436128ec22315a308
-Top:    05d513383a1d959b05805838c5f2e77730a466e9
+Bottom: 0689a5a094e8abbda34844d11ad9dc11d7ffc532
+Top:    95ae0fd4dfc8efa15ad7df7bca16ef468a4ff009
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-28 13:39:29 -0400
 
@@ -57,35 +57,10 @@ index 8ab0a21..5c89642 100644
  extern struct snd_soc_platform mpc5200_audio_dma_platform;
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
-index cc383a5..0cc64d2 100644
+index e417582..8e805c9 100644
 --- a/sound/soc/fsl/mpc5200_psc_ac97.c
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -49,7 +49,6 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
- 	unsigned int val;
- 
- 	spin_lock(&psc_dma->lock);
--	//printk("ac97 read: reg %04x\n", reg);
- 
- 	/* Wait for it to be ready */
- 	timeout = 1000;
-@@ -84,8 +83,6 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
- 	}
- 	val = (val >> 8) & 0xffff;
- 
--	//printk("ac97 read ok: reg %04x  val %04x\n", reg, val);
--
- 	spin_unlock(&psc_dma->lock);
- 	return (unsigned short) val;
- }
-@@ -95,7 +92,6 @@ static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned s
- 	struct psc_dma *psc_dma = ac97->private_data;
- 	int timeout;
- 
--	//printk("ac97 write: reg %04x  val %04x\n", reg, val);
- 	spin_lock(&psc_dma->lock);
- 
- 	/* Wait for it to be ready */
-@@ -175,11 +171,12 @@ static int psc_ac97_hw_analog_params(struct snd_pcm_substream *substream,
+@@ -169,11 +169,12 @@ static int psc_ac97_hw_analog_params(struct snd_pcm_substream *substream,
  		params_buffer_size(params), params_buffer_bytes(params),
  		params_channels(params), params_rate(params), params_format(params));
  
@@ -101,7 +76,7 @@ index cc383a5..0cc64d2 100644
  
  	return 0;
  }
-@@ -188,6 +185,13 @@ static int psc_ac97_hw_digital_params(struct snd_pcm_substream *substream,
+@@ -182,6 +183,13 @@ static int psc_ac97_hw_digital_params(struct snd_pcm_substream *substream,
  				 struct snd_pcm_hw_params *params,
  				 struct snd_soc_dai *dai)
  {
@@ -115,7 +90,7 @@ index cc383a5..0cc64d2 100644
  	return 0;
  }
  
-@@ -207,6 +211,7 @@ static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
+@@ -201,6 +209,7 @@ static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
  	struct psc_dma *psc_dma = cpu_dai->private_data;
  	dev_dbg(psc_dma->dev, "psc_ac97_set_fmt(cpu_dai=%p, format=%i)\n",
  				cpu_dai, format);
@@ -123,15 +98,7 @@ index cc383a5..0cc64d2 100644
  	return (format == SND_SOC_DAIFMT_AC97) ? 0 : -EINVAL;
  }
  
-@@ -365,7 +370,6 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
- 		iounmap(regs);
- 		return -ENOMEM;
- 	}
--	printk("psc_dma %p\n", psc_dma);
- 
- 	spin_lock_init(&psc_dma->lock);
- 	psc_dma->irq = irq;
-@@ -469,19 +473,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
+@@ -462,19 +471,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
  
  static int __devexit psc_ac97_of_remove(struct of_device *op)
  {
