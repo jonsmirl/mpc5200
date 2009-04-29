@@ -79,17 +79,25 @@ static const struct snd_kcontrol_new stac9766_snd_ac97_controls[] = {
 	SOC_SINGLE("Mono Playback Volume", AC97_MASTER_MONO, 0, 31, 1),
 	SOC_SINGLE("Mono Playback Switch", AC97_MASTER_MONO, 15, 1, 1),
 	SOC_SINGLE("Mixer PC Beep Volume", AC97_PC_BEEP, 1, 15, 1),
+	SOC_SINGLE("Mixer PC Beep Switch", AC97_PC_BEEP, 15, 1, 1),
 	SOC_SINGLE("PC Beep Frequency", AC97_PC_BEEP, 5, 127, 1),
 	SOC_SINGLE("Mixer Phone Volume", AC97_PHONE, 0, 31, 1),
+	SOC_SINGLE("Mixer Phone Switch", AC97_PHONE, 15, 1, 1),
 	SOC_SINGLE("Mixer Mic Volume", AC97_MIC, 0, 31, 1),
+	SOC_SINGLE("Mixer Mic Switch", AC97_MIC, 15, 1, 1),
 	SOC_SINGLE("Mic Boost", AC97_MIC, 6, 1, 1),
 	SOC_SINGLE("Mic Gain", AC97_STAC_ANALOG_SPECIAL, 2, 1, 1),
 	SOC_SINGLE("Stereo Mic", AC97_STAC_STEREO_MIC, 0, 1, 1),
 	SOC_DOUBLE("Mixer Line Volume", AC97_LINE, 8, 0, 31, 1),
+	SOC_SINGLE("Mixer Line Switch", AC97_LINE, 15, 1, 1),
 	SOC_DOUBLE("Mixer CD Volume", AC97_CD, 8, 0, 31, 1),
+	SOC_SINGLE("Mixer CD Switch", AC97_CD, 15, 1, 1),
 	SOC_DOUBLE("Mixer Video Volume", AC97_VIDEO, 8, 0, 31, 1),
+	SOC_SINGLE("Mixer Video Switch", AC97_VIDEO, 15, 1, 1),
 	SOC_DOUBLE("Mixer AUX Volume", AC97_AUX, 8, 0, 31, 1),
+	SOC_SINGLE("Mixer AUX Switch", AC97_AUX, 15, 1, 1),
 	SOC_DOUBLE("All Analog PCM Volume", AC97_PCM, 8, 0, 31, 1),
+	SOC_SINGLE("All Analog PCM Switch", AC97_PCM, 15, 1, 1),
 	SOC_DOUBLE("Record Gain", AC97_REC_GAIN, 8, 0, 31, 1),
 	SOC_SINGLE("Record Gain Switch", AC97_REC_GAIN, 15, 1, 1),
 	SOC_SINGLE("3D Effect Switch", AC97_GENERAL_PURPOSE, 13, 1, 0),
@@ -250,10 +258,8 @@ unsigned int stac9766_ac97_read(struct snd_soc_codec *codec,
 		reg == AC97_VENDOR_ID1 || reg == AC97_VENDOR_ID2) {
 
 		val = soc_ac97_ops.read(codec->ac97, reg);
-		//printk("stac9766_ac97_read actual reg %02x val %04x\n", reg, val);
 		return val;
 	}
-	//printk("stac9766_ac97_read cache reg %02x val %04x\n", reg, cache[reg / 2]);
 	return cache[reg / 2];
 }
 
@@ -262,7 +268,6 @@ int stac9766_ac97_write(struct snd_soc_codec *codec, unsigned int reg,
 {
 	u16 *cache = codec->reg_cache;
 
-	//printk("stac9766_ac97_write reg %02x val %04x\n", reg, val);
 	if (reg / 2 > ARRAY_SIZE(stac9766_reg))
 		return -EIO;
 
@@ -278,18 +283,18 @@ static int ac97_analog_prepare(struct snd_pcm_substream *substream,
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	unsigned short reg, vra;
 
-	printk("stac9766: ac97_analog_prepare rate %d\n", runtime->rate);
-
 	vra = stac9766_ac97_read(codec, AC97_EXTENDED_STATUS);
+
+	//vra |= 0x4;
+
 	stac9766_ac97_write(codec, AC97_EXTENDED_STATUS, vra | 0x1);
+
+	printk("AC97_EXTENDED_STATUS %x\n", vra);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		reg = AC97_PCM_FRONT_DAC_RATE;
 	else
 		reg = AC97_PCM_LR_ADC_RATE;
-
-	vra = stac9766_ac97_read(codec, reg);
-	printk("rate is %x %x\n", vra, runtime->rate/2);
 
 	return stac9766_ac97_write(codec, reg, runtime->rate);
 }
