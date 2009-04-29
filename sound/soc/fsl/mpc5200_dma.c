@@ -111,8 +111,7 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
 	return IRQ_HANDLED;
 }
 
-static int pcm_dma_psc_free(struct snd_pcm_substream *substream,
-			   struct snd_soc_dai *dai)
+static int psc_dma_pcm_hw_free(struct snd_pcm_substream *substream)
 {
 	snd_pcm_set_runtime_buffer(substream, NULL);
 	return 0;
@@ -125,8 +124,7 @@ static int pcm_dma_psc_free(struct snd_pcm_substream *substream,
  * This function is called by ALSA to start, stop, pause, and resume the DMA
  * transfer of data.
  */
-static int psc_dma_pcm_trigger(struct snd_pcm_substream *substream, int cmd,
-			   struct snd_soc_dai *dai)
+static int psc_dma_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
@@ -331,8 +329,8 @@ static int psc_dma_pcm_close(struct snd_pcm_substream *substream)
 
 		/* Disable all interrupts and reset the PSC */
 		out_be16(&psc_dma->psc_regs->isr_imr.imr, 0);
-		out_8(&psc_dma->psc_regs->command, 3 << 4); /* reset tx */
-		out_8(&psc_dma->psc_regs->command, 2 << 4); /* reset rx */
+		//out_8(&psc_dma->psc_regs->command, 3 << 4); /* reset tx */
+		//out_8(&psc_dma->psc_regs->command, 2 << 4); /* reset rx */
 		out_8(&psc_dma->psc_regs->command, 1 << 4); /* reset mode */
 		out_8(&psc_dma->psc_regs->command, 4 << 4); /* reset error */
 
@@ -374,6 +372,7 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
 static struct snd_pcm_ops psc_dma_pcm_ops = {
 	.open		= psc_dma_pcm_open,
 	.close		= psc_dma_pcm_close,
+	.hw_free	= psc_dma_pcm_hw_free,
 	.ioctl		= snd_pcm_lib_ioctl,
 	.pointer	= psc_dma_pcm_pointer,
 	.trigger	= psc_dma_pcm_trigger
