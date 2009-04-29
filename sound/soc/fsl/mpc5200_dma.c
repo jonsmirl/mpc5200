@@ -458,6 +458,30 @@ struct snd_soc_platform mpc5200_audio_dma_platform = {
 };
 EXPORT_SYMBOL_GPL(mpc5200_audio_dma_platform);
 
+int mpc5200_audio_dma_create()
+{
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mpc5200_audio_dma_create);
+
+int mpc5200_audio_dma_destroy(struct of_device *op)
+{
+	struct psc_dma *psc_dma = dev_get_drvdata(&op->dev);
+
+	dev_dbg(&op->dev, "psc_ac97_remove()\n");
+
+	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
+	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
+
+	iounmap(psc_dma->psc_regs);
+	iounmap(psc_dma->fifo_regs);
+	kfree(psc_dma);
+	dev_set_drvdata(&op->dev, NULL);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mpc5200_audio_dma_destroy);
+
 static int __init mpc5200_soc_platform_init(void)
 {
 	/* Tell the ASoC OF helpers about it */
