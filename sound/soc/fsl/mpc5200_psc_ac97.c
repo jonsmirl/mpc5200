@@ -169,12 +169,11 @@ static int psc_ac97_hw_analog_params(struct snd_pcm_substream *substream,
 		params_buffer_size(params), params_buffer_bytes(params),
 		params_channels(params), params_rate(params), params_format(params));
 
-	spin_lock(&psc_dma->lock);
+	// FIXME, need a spinlock to protect access
 	if (params_channels(params) == 1)
-		out_be32(&psc_dma->psc_regs->ac97_slots, 0x01000300);
+		out_be32(&psc_dma->psc_regs->ac97_slots, 0x01000000);
 	else
-		out_be32(&psc_dma->psc_regs->ac97_slots, 0x03000300);
-	spin_unlock(&psc_dma->lock);
+		out_be32(&psc_dma->psc_regs->ac97_slots, 0x03000000);
 
 	return 0;
 }
@@ -183,13 +182,6 @@ static int psc_ac97_hw_digital_params(struct snd_pcm_substream *substream,
 				 struct snd_pcm_hw_params *params,
 				 struct snd_soc_dai *dai)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
-
-	spin_lock(&psc_dma->lock);
-	out_be32(&psc_dma->psc_regs->ac97_slots, 0x00060000);
-	spin_unlock(&psc_dma->lock);
-
 	return 0;
 }
 
@@ -209,7 +201,6 @@ static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
 	struct psc_dma *psc_dma = cpu_dai->private_data;
 	dev_dbg(psc_dma->dev, "psc_ac97_set_fmt(cpu_dai=%p, format=%i)\n",
 				cpu_dai, format);
-
 	return (format == SND_SOC_DAIFMT_AC97) ? 0 : -EINVAL;
 }
 
@@ -471,7 +462,19 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 
 static int __devexit psc_ac97_of_remove(struct of_device *op)
 {
-	return mpc5200_audio_dma_destroy(op);
+	struct psc_dma *psc_dma = dev_get_drvdata(&op->dev);
+
+	dev_dbg(&op->dev, "psc_ac97_remove()\n");
+
+	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
+	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
+
+	iounmap(psc_dma->psc_regs);
+	iounmap(psc_dma->fifo_regs);
+	kfree(psc_dma);
+	dev_set_drvdata(&op->dev, NULL);
+
+	return 0;
 }
 
 /* Match table for of_platform binding */
