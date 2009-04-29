@@ -181,8 +181,6 @@ static int psc_ac97_hw_analog_params(struct snd_pcm_substream *substream,
 	else
 		out_be32(&psc_dma->psc_regs->ac97_slots, 0x03000000);
 
-  	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
-
 	return 0;
 }
 

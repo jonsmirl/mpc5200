@@ -369,13 +369,23 @@ psc_dma_pointer(struct snd_pcm_substream *substream)
 	return frames + delta;
 }
 
+static int
+psc_dma_hw_params(struct snd_pcm_substream *substream,
+			 struct snd_pcm_hw_params *params)
+{
+  	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
+
+  	return 0;
+}
+
 static struct snd_pcm_ops psc_dma_ops = {
 	.open		= psc_dma_open,
 	.close		= psc_dma_close,
 	.hw_free	= psc_dma_hw_free,
 	.ioctl		= snd_pcm_lib_ioctl,
 	.pointer	= psc_dma_pointer,
-	.trigger	= psc_dma_trigger
+	.trigger	= psc_dma_trigger,
+	.hw_params	= psc_dma_hw_params,
 };
 
 static u64 psc_dma_dmamask = 0xffffffff;
