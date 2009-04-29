@@ -487,7 +487,7 @@ static int aic26_spi_probe(struct spi_device *spi)
 
 #if defined(CONFIG_SND_SOC_OF_SIMPLE)
 	/* Tell the of_soc helper about this codec */
-	of_snd_soc_register_codec(&aic26_soc_codec_dev, aic26, &aic26_dai,
+	of_snd_soc_register_codec(&aic26_soc_codec_dev, aic26, &aic26_dai, 1,
 				  spi->dev.archdata.of_node);
 #endif
 
