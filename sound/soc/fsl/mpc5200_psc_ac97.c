@@ -171,9 +171,9 @@ static int psc_ac97_hw_analog_params(struct snd_pcm_substream *substream,
 
 	spin_lock(&psc_dma->lock);
 	if (params_channels(params) == 1)
-		out_be32(&psc_dma->psc_regs->ac97_slots, 0x01000000);
+		out_be32(&psc_dma->psc_regs->ac97_slots, 0x03000300);
 	else
-		out_be32(&psc_dma->psc_regs->ac97_slots, 0x03000000);
+		out_be32(&psc_dma->psc_regs->ac97_slots, 0x03000300);
 	spin_unlock(&psc_dma->lock);
 
 	return 0;
