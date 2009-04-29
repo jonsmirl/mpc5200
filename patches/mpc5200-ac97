@@ -1,5 +1,5 @@
 Bottom: 1bb73961f909f74f58d5e97cf7aeb17ad4788f50
-Top:    bac6e28b76b7078f3db90b58d7b8742a1c3f2509
+Top:    66ce78f68077e6f58b5a173e33689807f6c98c28
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-23 14:07:48 -0400
 
@@ -54,10 +54,10 @@ index 7731ef2..14631a1 100644
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..fec7512
+index 0000000..5663187
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -0,0 +1,524 @@
+@@ -0,0 +1,520 @@
 +/*
 + * linux/sound/mpc5200-ac97.c -- AC97 support for the Freescale MPC52xx chip.
 + *
@@ -526,8 +526,6 @@ index 0000000..fec7512
 +	/* Tell the ASoC OF helpers about it */
 +	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, nDAI);
 +
-+	mpc5200_audio_dma_startup(psc_dma);
-+
 +	return 0;
 +}
 +
@@ -536,8 +534,6 @@ index 0000000..fec7512
 +	struct psc_dma *psc_dma = dev_get_drvdata(&op->dev);
 +
 +	dev_dbg(&op->dev, "psc_ac97_remove()\n");
-+
-+	mpc5200_audio_dma_shutdown(psc_dma);
 +
 +	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
 +	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
