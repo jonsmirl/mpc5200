@@ -1,5 +1,5 @@
 Bottom: 28c9546869714f48c881206b4d8f78cb86835013
-Top:    c65826557a47314de9efdbf436128ec22315a308
+Top:    0689a5a094e8abbda34844d11ad9dc11d7ffc532
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-04-28 22:04:21 -0400
 
@@ -171,10 +171,44 @@ index 7a5ce21..8ffa2fb 100644
  EXPORT_SYMBOL_GPL(mpc5200_audio_dma_platform);
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
-index 5663187..cc383a5 100644
+index 5663187..e417582 100644
 --- a/sound/soc/fsl/mpc5200_psc_ac97.c
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -181,8 +181,6 @@ static int psc_ac97_hw_analog_params(struct snd_pcm_substream *substream,
+@@ -49,7 +49,6 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+ 	unsigned int val;
+ 
+ 	spin_lock(&psc_dma->lock);
+-	//printk("ac97 read: reg %04x\n", reg);
+ 
+ 	/* Wait for it to be ready */
+ 	timeout = 1000;
+@@ -84,8 +83,6 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+ 	}
+ 	val = (val >> 8) & 0xffff;
+ 
+-	//printk("ac97 read ok: reg %04x  val %04x\n", reg, val);
+-
+ 	spin_unlock(&psc_dma->lock);
+ 	return (unsigned short) val;
+ }
+@@ -95,7 +92,6 @@ static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned s
+ 	struct psc_dma *psc_dma = ac97->private_data;
+ 	int timeout;
+ 
+-	//printk("ac97 write: reg %04x  val %04x\n", reg, val);
+ 	spin_lock(&psc_dma->lock);
+ 
+ 	/* Wait for it to be ready */
+@@ -119,8 +115,6 @@ static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
+ {
+ 	struct psc_dma *psc_dma = ac97->private_data;
+ 
+-	printk("psc_ac97_cold_reset %p\n", ac97);
+-
+ 	/* Do a cold reset */
+ 	out_8(&psc_dma->psc_regs->op1, MPC52xx_PSC_OP_RES);
+ 	udelay(10);
+@@ -181,8 +175,6 @@ static int psc_ac97_hw_analog_params(struct snd_pcm_substream *substream,
  	else
  		out_be32(&psc_dma->psc_regs->ac97_slots, 0x03000000);
  
@@ -183,6 +217,14 @@ index 5663187..cc383a5 100644
  	return 0;
  }
  
+@@ -367,7 +359,6 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
+ 		iounmap(regs);
+ 		return -ENOMEM;
+ 	}
+-	printk("psc_dma %p\n", psc_dma);
+ 
+ 	spin_lock_init(&psc_dma->lock);
+ 	psc_dma->irq = irq;
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
 index c050a1f..dd74a24 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
