@@ -1,6 +1,6 @@
 Version: 1
-Previous: 0ca0a3c939ebdddb8feb43001987a009d2d87ad3
-Head: 50b39c1009837fcb145965b261ac9662efde3acb
+Previous: 6e5dfaacd76dba44ec9d74731f8c6b63f2669354
+Head: fc65fa61fed70c7cc7ce0431539f2f2280c26f4d
 Applied:
   Makefile: 13eaef72cd73c90a6ef7b1a73b7584d1e49f7401
   digispeak: a949241710b09f52efefd1c21a21013754c7391b
@@ -21,8 +21,8 @@ Applied:
   is2-dma-rename: e160c63b7486bea859f330a5d873fd525e84fe5f
   i2s-unbreak: 712d52d399d02f005bf5be2530722af8c498a14e
   of-soc-simple-rework: 50b39c1009837fcb145965b261ac9662efde3acb
-Unapplied:
   dma-module: fc65fa61fed70c7cc7ce0431539f2f2280c26f4d
+Unapplied:
   mpc5200-dma-split: 2dbea4687ee0b82e4da33c73eccf45abb5de7a75
   stac9766-codec: 3ef7a4329064b306c40310072accd3d6c371e668
   mpc5200-ac97: 79cbbfbb1be4540eea2d75cfee2cd1254ddde13e
