@@ -44,7 +44,9 @@ static irqreturn_t psc_dma_status_irq(int irq, void *_psc_dma)
 	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
 	u16 isr;
 
+	printk("psc_dma_status_irq\n");
 	isr = in_be16(&regs->mpc52xx_psc_isr);
+	printk("psc_dma_status_irq isr %x\n", isr);
 
 	/* Playback underrun error */
 	if (psc_dma->playback.active && (isr & MPC52xx_PSC_IMR_TXEMP))
@@ -54,7 +56,7 @@ static irqreturn_t psc_dma_status_irq(int irq, void *_psc_dma)
 	if (psc_dma->capture.active && (isr & MPC52xx_PSC_IMR_ORERR))
 		psc_dma->stats.overrun_count++;
 
-	out_8(&regs->command, 4 << 4);	/* reset the error status */
+	out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
 
 	return IRQ_HANDLED;
 }
@@ -149,6 +151,7 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 		s->period_bytes = frames_to_bytes(runtime,
 						  runtime->period_size);
 		s->period_start = virt_to_phys(runtime->dma_area);
+		printk("runtime->dma_area %p\n", runtime->dma_area);
 		s->period_end = s->period_start +
 				(s->period_bytes * runtime->periods);
 		s->period_next_pt = s->period_start;
@@ -158,11 +161,11 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 
 		/* First; reset everything */
 		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
+			printk("Capture\n");
 			//out_8(&regs->command, MPC52xx_PSC_RST_RX);
-			out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
 		} else {
+			printk("Playback\n");
 			//out_8(&regs->command, MPC52xx_PSC_RST_TX);
-			out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
 		}
 
 		/* Next, fill up the bestcomm bd queue and enable DMA.
@@ -192,7 +195,10 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 		psc_cmd = MPC52xx_PSC_RX_ENABLE;
 		if (substream->pstr->stream == SNDRV_PCM_STREAM_PLAYBACK)
 			psc_cmd |= MPC52xx_PSC_TX_ENABLE;
-		out_8(&regs->command, psc_cmd);
+		//out_8(&regs->command, psc_cmd);
+
+		out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
+
 		spin_unlock_irqrestore(&psc_dma->lock, flags);
 
 		break;
@@ -204,15 +210,18 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 			if (!psc_dma->playback.active) {
 				//out_8(&regs->command, 2 << 4);	/* reset rx */
 				//out_8(&regs->command, 3 << 4);	/* reset tx */
-				out_8(&regs->command, 4 << 4);	/* reset err */
+				//out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
 			}
 		} else {
 			//out_8(&regs->command, 3 << 4);	/* reset tx */
-			out_8(&regs->command, 4 << 4);	/* reset err */
+			//out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
 			if (!psc_dma->capture.active) {
 				//out_8(&regs->command, 2 << 4);	/* reset rx */
 			}
 		}
+		printk("pp\n");
+		udelay(8000000);
+		printk("pp\n");
 
 		bcom_disable(s->bcom_task);
 		while (!bcom_queue_empty(s->bcom_task))
@@ -289,22 +298,6 @@ static int psc_dma_open(struct snd_pcm_substream *substream)
 	if (!psc_dma->playback.active &&
 	    !psc_dma->capture.active) {
 		/* Setup the IRQs */
-		rc = request_irq(psc_dma->irq, &psc_dma_status_irq, IRQF_SHARED,
-				 "psc-dma-status", psc_dma);
-		rc |= request_irq(psc_dma->capture.irq,
-				  &psc_dma_bcom_irq, IRQF_SHARED,
-				  "psc-dma-capture", &psc_dma->capture);
-		rc |= request_irq(psc_dma->playback.irq,
-				  &psc_dma_bcom_irq, IRQF_SHARED,
-				  "psc-dma-playback", &psc_dma->playback);
-		if (rc) {
-			free_irq(psc_dma->irq, psc_dma);
-			free_irq(psc_dma->capture.irq,
-				 &psc_dma->capture);
-			free_irq(psc_dma->playback.irq,
-				 &psc_dma->playback);
-			return -ENODEV;
-		}
 	}
 
 	s->stream = substream;
@@ -331,13 +324,9 @@ static int psc_dma_close(struct snd_pcm_substream *substream)
 		out_be16(&psc_dma->psc_regs->isr_imr.imr, 0);
 		//out_8(&psc_dma->psc_regs->command, 3 << 4); /* reset tx */
 		//out_8(&psc_dma->psc_regs->command, 2 << 4); /* reset rx */
-		out_8(&psc_dma->psc_regs->command, 1 << 4); /* reset mode */
-		out_8(&psc_dma->psc_regs->command, 4 << 4); /* reset error */
+		//out_8(&psc_dma->psc_regs->command, 1 << 4); /* reset mode */
+		//out_8(&psc_dma->psc_regs->command, 4 << 4); /* reset error */
 
-		/* Release irqs */
-		free_irq(psc_dma->irq, psc_dma);
-		free_irq(psc_dma->capture.irq, &psc_dma->capture);
-		free_irq(psc_dma->playback.irq, &psc_dma->playback);
 	}
 
 	s->stream = NULL;
@@ -408,6 +397,7 @@ static int psc_dma_new(struct snd_card *card, struct snd_soc_dai *dai,
 	if (pcm->streams[0].substream) {
 		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
 					&pcm->streams[0].substream->dma_buffer);
+		printk("playback buffer %p\n", pcm->streams[0].substream->dma_buffer.area );
 		if (rc)
 			goto playback_alloc_err;
 	}
@@ -415,6 +405,7 @@ static int psc_dma_new(struct snd_card *card, struct snd_soc_dai *dai,
 	if (pcm->streams[1].substream) {
 		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
 					&pcm->streams[1].substream->dma_buffer);
+		printk("capture %p\n", pcm->streams[1].substream->dma_buffer.area );
 		if (rc)
 			goto capture_alloc_err;
 	}
@@ -617,6 +608,23 @@ int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template,
 	psc_dma->capture.irq =
 		bcom_get_task_irq(psc_dma->capture.bcom_task);
 
+	rc = request_irq(psc_dma->irq, &psc_dma_status_irq, IRQF_SHARED,
+			 "psc-dma-status", psc_dma);
+	rc |= request_irq(psc_dma->capture.irq,
+			  &psc_dma_bcom_irq, IRQF_SHARED,
+			  "psc-dma-capture", &psc_dma->capture);
+	rc |= request_irq(psc_dma->playback.irq,
+			  &psc_dma_bcom_irq, IRQF_SHARED,
+			  "psc-dma-playback", &psc_dma->playback);
+	if (rc) {
+		free_irq(psc_dma->irq, psc_dma);
+		free_irq(psc_dma->capture.irq,
+			 &psc_dma->capture);
+		free_irq(psc_dma->playback.irq,
+			 &psc_dma->playback);
+		return -ENODEV;
+	}
+
 	/* Save what we've done so it can be found again later */
 	dev_set_drvdata(&op->dev, psc_dma);
 
@@ -648,6 +656,11 @@ int mpc5200_audio_dma_destroy(struct of_device *op)
 
 	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
 	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
+
+	/* Release irqs */
+	free_irq(psc_dma->irq, psc_dma);
+	free_irq(psc_dma->capture.irq, &psc_dma->capture);
+	free_irq(psc_dma->playback.irq, &psc_dma->playback);
 
 	iounmap(psc_dma->psc_regs);
 	iounmap(psc_dma->fifo_regs);

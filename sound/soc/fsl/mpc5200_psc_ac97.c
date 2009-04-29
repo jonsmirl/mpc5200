@@ -235,31 +235,31 @@ static struct snd_soc_dai_ops psc_ac97_digital_ops = {
 
 static struct snd_soc_dai psc_ac97_dai_template[] = {
 {
-	.name	= "%s analog",
+	.name   = "%s analog",
 	.suspend = psc_ac97_suspend,
 	.resume = psc_ac97_resume,
 	.playback = {
-		.channels_min	= 1,
-		.channels_max	= 6,
-		.rates		= SNDRV_PCM_RATE_8000_48000,
-		.formats	= SNDRV_PCM_FMTBIT_S32_BE,
+		.channels_min   = 1,
+		.channels_max   = 6,
+		.rates          = SNDRV_PCM_RATE_8000_48000,
+		.formats        = SNDRV_PCM_FMTBIT_S32_BE,
 	},
 	.capture = {
-		.channels_min	= 1,
-		.channels_max	= 2,
-		.rates		= SNDRV_PCM_RATE_8000_48000,
-		.formats	= SNDRV_PCM_FMTBIT_S32_BE,
+		.channels_min   = 1,
+		.channels_max   = 2,
+		.rates          = SNDRV_PCM_RATE_8000_48000,
+		.formats        = SNDRV_PCM_FMTBIT_S32_BE,
 	},
 	.ops = &psc_ac97_analog_ops,
 },
 {
-	.name	= "%s digital",
+	.name   = "%s digital",
 	.playback = {
-		.channels_min	= 1,
-		.channels_max	= 2,
-		.rates		= SNDRV_PCM_RATE_32000 | \
+		.channels_min   = 1,
+		.channels_max   = 2,
+		.rates          = SNDRV_PCM_RATE_32000 | \
 			SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
-		.formats	= SNDRV_PCM_FORMAT_IEC958_SUBFRAME_BE,
+		.formats        = SNDRV_PCM_FORMAT_IEC958_SUBFRAME_BE,
 	},
 	.ops = &psc_ac97_digital_ops,
 }};
