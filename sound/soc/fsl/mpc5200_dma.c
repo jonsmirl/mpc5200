@@ -44,7 +44,9 @@ static irqreturn_t psc_dma_status_irq(int irq, void *_psc_dma)
 	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
 	u16 isr;
 
+	printk("psc_dma_status_irq\n");
 	isr = in_be16(&regs->mpc52xx_psc_isr);
+	printk("psc_dma_status_irq isr %x\n", isr);
 
 	/* Playback underrun error */
 	if (psc_dma->playback.active && (isr & MPC52xx_PSC_IMR_TXEMP))
@@ -90,9 +92,12 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
 {
 	struct psc_dma_stream *s = _psc_dma_stream;
 
+	printk("psc_dma_bcom_irq\n");
+
 	/* For each finished period, dequeue the completed period buffer
 	 * and enqueue a new one in it's place. */
 	while (bcom_buffer_done(s->bcom_task)) {
+		printk("psc_dma_bcom_irq dequeue\n");
 		bcom_retrieve_buffer(s->bcom_task, NULL, NULL);
 		s->period_current_pt += s->period_bytes;
 		if (s->period_current_pt >= s->period_end)
@@ -104,6 +109,7 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
 	/* If the stream is active, then also inform the PCM middle layer
 	 * of the period finished event. */
 	if (s->active) {
+		printk("psc_dma_bcom_irq active\n");
 		s->jiffies = jiffies;
 		snd_pcm_period_elapsed(s->stream);
 	}
@@ -149,6 +155,7 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 		s->period_bytes = frames_to_bytes(runtime,
 						  runtime->period_size);
 		s->period_start = virt_to_phys(runtime->dma_area);
+		printk("runtime->dma_area %p\n", runtime->dma_area);
 		s->period_end = s->period_start +
 				(s->period_bytes * runtime->periods);
 		s->period_next_pt = s->period_start;
@@ -158,12 +165,13 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 
 		/* First; reset everything */
 		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
+			printk("Capture\n");
 			//out_8(&regs->command, MPC52xx_PSC_RST_RX);
-			out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
 		} else {
+			printk("Playback\n");
 			//out_8(&regs->command, MPC52xx_PSC_RST_TX);
-			out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
 		}
+		out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
 
 		/* Next, fill up the bestcomm bd queue and enable DMA.
 		 * This will begin filling the PSC's fifo. */
@@ -204,11 +212,11 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 			if (!psc_dma->playback.active) {
 				//out_8(&regs->command, 2 << 4);	/* reset rx */
 				//out_8(&regs->command, 3 << 4);	/* reset tx */
-				out_8(&regs->command, 4 << 4);	/* reset err */
+				out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
 			}
 		} else {
 			//out_8(&regs->command, 3 << 4);	/* reset tx */
-			out_8(&regs->command, 4 << 4);	/* reset err */
+			out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
 			if (!psc_dma->capture.active) {
 				//out_8(&regs->command, 2 << 4);	/* reset rx */
 			}
@@ -408,6 +416,7 @@ static int psc_dma_new(struct snd_card *card, struct snd_soc_dai *dai,
 	if (pcm->streams[0].substream) {
 		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
 					&pcm->streams[0].substream->dma_buffer);
+		printk("playback buffer %p\n", pcm->streams[0].substream->dma_buffer.area );
 		if (rc)
 			goto playback_alloc_err;
 	}
@@ -415,6 +424,7 @@ static int psc_dma_new(struct snd_card *card, struct snd_soc_dai *dai,
 	if (pcm->streams[1].substream) {
 		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
 					&pcm->streams[1].substream->dma_buffer);
+		printk("capture %p\n", pcm->streams[1].substream->dma_buffer.area );
 		if (rc)
 			goto capture_alloc_err;
 	}
