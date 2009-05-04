@@ -1,6 +1,6 @@
 Version: 1
-Previous: 0a77120509d8f16afe531a1918104e54139d7811
-Head: ca68c6946eaf3ff812f3a371df75adae0448b5ba
+Previous: a002ff7b64b132b1714ccee03e493fdc391e0700
+Head: 176f109fd84953464e66fbafeab8add83414299e
 Applied:
   Makefile: c37a3cca7ec3f611cd7897a09ad798e4f834bf3f
   digispeak: aec09970d5c5e686dece2cf2ea4464f530b9abcd
@@ -18,6 +18,7 @@ Applied:
   soc-u32-cleanup: cb514f200d7df293351ec7a8beeec15a69fc6cae
   is2-broken: f8bb5f3248726fe5e022e60851830d78643a2202
   undo-takai-fix: ca68c6946eaf3ff812f3a371df75adae0448b5ba
+  refresh-temp: 176f109fd84953464e66fbafeab8add83414299e
 Unapplied:
   i2s-dma-split: 11cd37af997cfbef0f59d15d0de5c0f232044a50
   is2-dma-rename: 0c54c2333ac7576180dd7a3a85d14e28487ce840
