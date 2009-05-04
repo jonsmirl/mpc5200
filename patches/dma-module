@@ -1,5 +1,5 @@
-Bottom: f3bff85318de16ada7549b344c2485f12d8a3e7e
-Top:    da5caf84d57b5b891abccbc3a8df25b88cea252d
+Bottom: 3fc7ec6c9c4bf50d182f9baf6d0096adfe80c465
+Top:    df3aa15310301cf5609dd19ac9791a0735e6a779
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-04 08:06:32 -0400
 
@@ -13,7 +13,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index c82ef75..efaf4b8 100644
+index 6850392..65d2b64 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -1,10 +1,12 @@
@@ -194,15 +194,16 @@ index c82ef75..efaf4b8 100644
  
  /* ---------------------------------------------------------------------
   * The PSC DMA 'ASoC platform' driver
-@@ -312,66 +245,115 @@ void psc_dma_shutdown(struct snd_pcm_substream *substream,
+@@ -312,7 +245,7 @@ void psc_dma_shutdown(struct snd_pcm_substream *substream,
   * interaction with the attached codec
   */
  
 -static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
 +static const struct snd_pcm_hardware psc_dma_hardware = {
  	.info = SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
- 		SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER,
- 	.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
+ 		SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
+ 		SNDRV_PCM_INFO_BATCH,
+@@ -320,59 +253,108 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
  		   SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
  	.rate_min = 8000,
  	.rate_max = 48000,
@@ -319,7 +320,7 @@ index c82ef75..efaf4b8 100644
  
  	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
  		s = &psc_dma->capture;
-@@ -380,46 +362,66 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
+@@ -381,46 +363,66 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
  
  	count = s->period_current_pt - s->period_start;
  
@@ -398,7 +399,7 @@ index c82ef75..efaf4b8 100644
  	return 0;
  
   capture_alloc_err:
-@@ -430,13 +432,13 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
+@@ -431,13 +433,13 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
  	return -ENOMEM;
  }
  
@@ -414,7 +415,7 @@ index c82ef75..efaf4b8 100644
  
  	for (stream = 0; stream < 2; stream++) {
  		substream = pcm->streams[stream].substream;
-@@ -448,10 +450,225 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
+@@ -449,10 +451,225 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
  	}
  }
  
