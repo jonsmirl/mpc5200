@@ -63,17 +63,17 @@ static const char *stac9766_boost2[] = {"0dB", "20dB"};
 static const char *stac9766_stereo_mic[] = {"Off", "On"};
 
 static const struct soc_enum stac9766_record_enum =
-	SOC_ENUM_DOUBLE(AC97_REC_SEL, 8, 0, 8, stac9766_record_mux); /* Record Mux 0 */
+	SOC_ENUM_DOUBLE(AC97_REC_SEL, 8, 0, 8, stac9766_record_mux);
 static const struct soc_enum stac9766_mono_enum =
-	SOC_ENUM_SINGLE(AC97_GENERAL_PURPOSE, 9, 2, stac9766_mono_mux); /* Mono Mux 1 */
+	SOC_ENUM_SINGLE(AC97_GENERAL_PURPOSE, 9, 2, stac9766_mono_mux);
 static const struct soc_enum stac9766_mic_enum =
-	SOC_ENUM_SINGLE(AC97_GENERAL_PURPOSE, 8, 2, stac9766_mic_mux); /* Mic1/2 Mux 2 */
+	SOC_ENUM_SINGLE(AC97_GENERAL_PURPOSE, 8, 2, stac9766_mic_mux);
 static const struct soc_enum stac9766_SPDIF_enum =
-	SOC_ENUM_SINGLE(AC97_SENSE_INFO, 1, 2, stac9766_SPDIF_mux); /* SPDIF Mux 3 */
+	SOC_ENUM_SINGLE(AC97_STAC_DA_CONTROL, 1, 2, stac9766_SPDIF_mux);
 static const struct soc_enum stac9766_popbypass_enum =
-	SOC_ENUM_SINGLE(AC97_GENERAL_PURPOSE, 15, 2, stac9766_popbypass_mux); /* Pop Bypass Mux 4 */
+	SOC_ENUM_SINGLE(AC97_GENERAL_PURPOSE, 15, 2, stac9766_popbypass_mux);
 static const struct soc_enum stac9766_record_all_enum =
-	SOC_ENUM_SINGLE(AC97_STAC_ANALOG_SPECIAL, 12, 2, stac9766_record_all_mux); /* Record All Mux 5 */
+	SOC_ENUM_SINGLE(AC97_STAC_ANALOG_SPECIAL, 12, 2, stac9766_record_all_mux);
 static const struct soc_enum stac9766_boost1_enum =
 	SOC_ENUM_SINGLE(AC97_MIC, 6, 2, stac9766_boost1); /* 0/10dB */
 static const struct soc_enum stac9766_boost2_enum =
@@ -94,7 +94,7 @@ static const struct snd_kcontrol_new stac9766_snd_ac97_controls[] = {
 	SOC_SINGLE_TLV("Mono Out Volume", AC97_MASTER_MONO, 0, 31, 1, master_tlv),
 	SOC_SINGLE("Mono Out Switch", AC97_MASTER_MONO, 15, 1, 1),
 
-	SOC_DOUBLE_TLV("Record Volume", AC97_REC_GAIN, 8, 0, 15, 1, record_tlv),
+	SOC_DOUBLE_TLV("Record Volume", AC97_REC_GAIN, 8, 0, 15, 0, record_tlv),
 	SOC_SINGLE("Record Switch", AC97_REC_GAIN, 15, 1, 1),
 
 
@@ -133,35 +133,46 @@ static const struct snd_kcontrol_new stac9766_snd_ac97_controls[] = {
 	SOC_ENUM("Pop Bypass Mux", stac9766_popbypass_enum),
 };
 
-
-unsigned int stac9766_ac97_read(struct snd_soc_codec *codec, unsigned int reg)
-{
-	u16 val = 0, *cache = codec->reg_cache;
-
-	if (reg / 2 > ARRAY_SIZE(stac9766_reg))
-		return -EIO;
-
-	if (reg == AC97_RESET || reg == AC97_GPIO_STATUS || AC97_INT_PAGING || reg
-	                                == AC97_VENDOR_ID1 || reg
-	                                == AC97_VENDOR_ID2) {
-
-		val = soc_ac97_ops.read(codec->ac97, reg);
-		return val;
-	}
-	return cache[reg / 2];
-}
-
 int stac9766_ac97_write(struct snd_soc_codec *codec, unsigned int reg,
                                 unsigned int val)
 {
 	u16 *cache = codec->reg_cache;
 
+	if (reg > AC97_STAC_PAGE0) {
+		stac9766_ac97_write(codec, AC97_INT_PAGING, 0);
+		soc_ac97_ops.write(codec->ac97, reg, val);
+		stac9766_ac97_write(codec, AC97_INT_PAGING, 1);
+		return 0;
+	}
 	if (reg / 2 > ARRAY_SIZE(stac9766_reg))
 		return -EIO;
 
 	soc_ac97_ops.write(codec->ac97, reg, val);
 	cache[reg / 2] = val;
 	return 0;
+}
+
+unsigned int stac9766_ac97_read(struct snd_soc_codec *codec, unsigned int reg)
+{
+	u16 val = 0, *cache = codec->reg_cache;
+
+	if (reg > AC97_STAC_PAGE0) {
+		stac9766_ac97_write(codec, AC97_INT_PAGING, 0);
+		val = soc_ac97_ops.read(codec->ac97, reg - AC97_STAC_PAGE0);
+		stac9766_ac97_write(codec, AC97_INT_PAGING, 1);
+		return val;
+	}
+	if (reg / 2 > ARRAY_SIZE(stac9766_reg))
+		return -EIO;
+
+	if (reg == AC97_RESET || reg == AC97_GPIO_STATUS ||
+		reg == AC97_INT_PAGING || reg == AC97_VENDOR_ID1 ||
+		reg == AC97_VENDOR_ID2) {
+
+		val = soc_ac97_ops.read(codec->ac97, reg);
+		return val;
+	}
+	return cache[reg / 2];
 }
 
 static int ac97_analog_prepare(struct snd_pcm_substream *substream,
@@ -173,11 +184,9 @@ static int ac97_analog_prepare(struct snd_pcm_substream *substream,
 
 	vra = stac9766_ac97_read(codec, AC97_EXTENDED_STATUS);
 
-	//vra |= 0x4;
+	vra |= 0x1; /* enable variable rate audio */
 
-	stac9766_ac97_write(codec, AC97_EXTENDED_STATUS, vra | 0x1);
-
-	printk("AC97_EXTENDED_STATUS %x\n", vra);
+	stac9766_ac97_write(codec, AC97_EXTENDED_STATUS, vra);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		reg = AC97_PCM_FRONT_DAC_RATE;
@@ -190,8 +199,37 @@ static int ac97_analog_prepare(struct snd_pcm_substream *substream,
 static int ac97_digital_prepare(struct snd_pcm_substream *substream,
                                 struct snd_soc_dai *dai)
 {
-	printk("stac9766: ac97_digital_prepare\n");
+	struct snd_soc_codec *codec = dai->codec;
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	unsigned short reg, vra;
 
+	stac9766_ac97_write(codec, AC97_SPDIF, 0x2002);
+
+	vra = stac9766_ac97_read(codec, AC97_EXTENDED_STATUS);
+
+	vra |= 0x5; /* Enable VRA and SPDIF out */
+	printk("var is %x\n", vra);
+
+	stac9766_ac97_write(codec, AC97_EXTENDED_STATUS, vra);
+
+	reg = AC97_PCM_FRONT_DAC_RATE;
+
+	return stac9766_ac97_write(codec, reg, runtime->rate);
+}
+
+static int ac97_digital_trigger(struct snd_pcm_substream *substream,
+								int cmd, struct snd_soc_dai *dai)
+{
+	struct snd_soc_codec *codec = dai->codec;
+	unsigned short vra;
+
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_STOP:
+		vra = stac9766_ac97_read(codec, AC97_EXTENDED_STATUS);
+		vra &= !0x04;
+		//stac9766_ac97_write(codec, AC97_EXTENDED_STATUS, vra);
+		break;
+	}
 	return 0;
 }
 
@@ -256,6 +294,7 @@ static struct snd_soc_dai_ops stac9766_dai_ops_analog =
 static struct snd_soc_dai_ops stac9766_dai_ops_digital =
 {
 	.prepare = ac97_digital_prepare,
+	.trigger = ac97_digital_trigger,
 };
 
 struct snd_soc_dai stac9766_dai[] = {
@@ -285,18 +324,18 @@ struct snd_soc_dai stac9766_dai[] = {
 	.ops = &stac9766_dai_ops_analog,
 },
 {
-	.name = "stac9766 digital",
+	.name = "stac9766 IEC958",
 	.id = 1,
 	.ac97_control = 1,
 
 	/* stream cababilities */
 	.playback = {
-		.stream_name = "stac9766 digital",
+		.stream_name = "stac9766 IEC958",
 		.channels_min = 1,
 		.channels_max = 2,
-		.rates = SNDRV_PCM_RATE_32000 |
+		.rates = SNDRV_PCM_RATE_32000 | \
 			SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
-		.formats = SNDRV_PCM_FMTBIT_IEC958_SUBFRAME,
+		.formats = SNDRV_PCM_FORMAT_IEC958_SUBFRAME_BE,
 	},
 	/* alsa ops */
 	.ops = &stac9766_dai_ops_digital,

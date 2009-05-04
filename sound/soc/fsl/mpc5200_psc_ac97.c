@@ -197,7 +197,10 @@ static int psc_ac97_hw_digital_params(struct snd_pcm_substream *substream,
 	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
 
 	spin_lock(&psc_dma->lock);
-	out_be32(&psc_dma->psc_regs->ac97_slots, 0x00060000);
+	if (params_channels(params) == 1)
+		out_be32(&psc_dma->psc_regs->ac97_slots, 0x01000000);
+	else
+		out_be32(&psc_dma->psc_regs->ac97_slots, 0x03000000);
 	spin_unlock(&psc_dma->lock);
 
 	return 0;
@@ -275,13 +278,15 @@ static struct snd_soc_dai psc_ac97_dai_template[] = {
 		.channels_min   = 1,
 		.channels_max   = 6,
 		.rates          = SNDRV_PCM_RATE_8000_48000,
-		.formats        = SNDRV_PCM_FMTBIT_S32_BE,
+		.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
+			   SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
 	},
 	.capture = {
 		.channels_min   = 1,
 		.channels_max   = 2,
 		.rates          = SNDRV_PCM_RATE_8000_48000,
-		.formats        = SNDRV_PCM_FMTBIT_S32_BE,
+		.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
+			   SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
 	},
 	.ops = &psc_ac97_analog_ops,
 },
@@ -292,7 +297,7 @@ static struct snd_soc_dai psc_ac97_dai_template[] = {
 		.channels_max   = 2,
 		.rates          = SNDRV_PCM_RATE_32000 | \
 			SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
-		.formats        = SNDRV_PCM_FORMAT_IEC958_SUBFRAME_BE,
+		.formats = SNDRV_PCM_FORMAT_IEC958_SUBFRAME_BE,
 	},
 	.ops = &psc_ac97_digital_ops,
 }};
