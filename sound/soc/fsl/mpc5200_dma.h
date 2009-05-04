@@ -31,7 +31,6 @@ struct psc_dma_stream {
 	dma_addr_t period_next_pt;
 	dma_addr_t period_current_pt;
 	int period_bytes;
-	int jiffies;
 };
 
 /**
