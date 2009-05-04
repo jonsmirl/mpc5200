@@ -21,6 +21,9 @@
  * @period_bytes:	size of DMA period in bytes
  */
 struct psc_dma_stream {
+	struct snd_pcm_runtime *runtime;
+	snd_pcm_uframes_t appl_ptr;
+
 	int active;
 	struct psc_dma *psc_dma;
 	struct bcom_task *bcom_task;
@@ -31,7 +34,7 @@ struct psc_dma_stream {
 	dma_addr_t period_next_pt;
 	dma_addr_t period_current_pt;
 	int period_bytes;
-	int jiffies;
+	int period_size;
 };
 
 /**
@@ -58,6 +61,7 @@ struct psc_dma {
 	spinlock_t lock;
 	u32 sicr;
 	uint sysclk;
+	int imr;
 
 	/* per-stream data */
 	struct psc_dma_stream playback;
