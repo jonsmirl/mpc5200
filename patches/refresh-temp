@@ -1,0 +1,62 @@
+Bottom: a57e7c9a8a035156419c8336401542861088f245
+Top:    8e83f9c18028edbee0eeaa7058da91d293921882
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-04 09:36:14 -0400
+
+Refresh of temp
+
+---
+
+diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
+index 8f6b284..01c5b97 100644
+--- a/sound/soc/fsl/mpc5200_dma.c
++++ b/sound/soc/fsl/mpc5200_dma.c
+@@ -106,7 +106,6 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
+ 	/* If the stream is active, then also inform the PCM middle layer
+ 	 * of the period finished event. */
+ 	if (s->active) {
+-		s->jiffies = jiffies;
+ 		snd_pcm_period_elapsed(s->stream);
+ 	}
+ 
+@@ -156,7 +155,6 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
+ 				(s->period_bytes * runtime->periods);
+ 		s->period_next_pt = s->period_start;
+ 		s->period_current_pt = s->period_start;
+-		s->jiffies = jiffies;
+ 		s->active = 1;
+ 
+ 		/* First; reset everything */
+@@ -343,7 +341,6 @@ psc_dma_pointer(struct snd_pcm_substream *substream)
+ 	struct psc_dma_stream *s;
+ 	dma_addr_t count;
+ 	snd_pcm_uframes_t frames;
+-	int delta;
+ 
+ 	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
+ 		s = &psc_dma->capture;
+@@ -352,11 +349,8 @@ psc_dma_pointer(struct snd_pcm_substream *substream)
+ 
+ 	count = s->period_current_pt - s->period_start;
+ 
+-	delta = jiffies - s->jiffies;
+-	delta = delta * runtime->rate / HZ;
+ 	frames = bytes_to_frames(substream->runtime, count);
+-
+-	return frames + delta;
++	return frames;
+ }
+ 
+ static int
+diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
+index 9606859..667d3a1 100644
+--- a/sound/soc/fsl/mpc5200_dma.h
++++ b/sound/soc/fsl/mpc5200_dma.h
+@@ -31,7 +31,6 @@ struct psc_dma_stream {
+ 	dma_addr_t period_next_pt;
+ 	dma_addr_t period_current_pt;
+ 	int period_bytes;
+-	int jiffies;
+ };
+ 
+ /**
