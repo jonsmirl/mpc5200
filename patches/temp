@@ -1,5 +1,5 @@
 Bottom: 1f5920b1e3811cb0679ec3a7b03bd8a058aea050
-Top:    a57e7c9a8a035156419c8336401542861088f245
+Top:    8e83f9c18028edbee0eeaa7058da91d293921882
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-04 08:06:37 -0400
 
@@ -608,7 +608,7 @@ index c3e9da0..4726064 100644
   * This is an example codec initialization for a stac9766 connected to a
   * mpc5200. It is missing logic to detect hp/mic insertions and logic
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 65d2b64..8f6b284 100644
+index 65d2b64..01c5b97 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -44,7 +44,9 @@ static irqreturn_t psc_dma_status_irq(int irq, void *_psc_dma)
@@ -630,7 +630,15 @@ index 65d2b64..8f6b284 100644
  
  	return IRQ_HANDLED;
  }
-@@ -149,6 +151,7 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
+@@ -104,7 +106,6 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
+ 	/* If the stream is active, then also inform the PCM middle layer
+ 	 * of the period finished event. */
+ 	if (s->active) {
+-		s->jiffies = jiffies;
+ 		snd_pcm_period_elapsed(s->stream);
+ 	}
+ 
+@@ -149,20 +150,20 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
  		s->period_bytes = frames_to_bytes(runtime,
  						  runtime->period_size);
  		s->period_start = virt_to_phys(runtime->dma_area);
@@ -638,7 +646,9 @@ index 65d2b64..8f6b284 100644
  		s->period_end = s->period_start +
  				(s->period_bytes * runtime->periods);
  		s->period_next_pt = s->period_start;
-@@ -158,11 +161,11 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
+ 		s->period_current_pt = s->period_start;
+-		s->jiffies = jiffies;
+ 		s->active = 1;
  
  		/* First; reset everything */
  		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
@@ -652,7 +662,7 @@ index 65d2b64..8f6b284 100644
  		}
  
  		/* Next, fill up the bestcomm bd queue and enable DMA.
-@@ -192,7 +195,10 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
+@@ -192,7 +193,10 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
  		psc_cmd = MPC52xx_PSC_RX_ENABLE;
  		if (substream->pstr->stream == SNDRV_PCM_STREAM_PLAYBACK)
  			psc_cmd |= MPC52xx_PSC_TX_ENABLE;
@@ -664,7 +674,7 @@ index 65d2b64..8f6b284 100644
  		spin_unlock_irqrestore(&psc_dma->lock, flags);
  
  		break;
-@@ -204,15 +210,18 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
+@@ -204,15 +208,18 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
  			if (!psc_dma->playback.active) {
  				//out_8(&regs->command, 2 << 4);	/* reset rx */
  				//out_8(&regs->command, 3 << 4);	/* reset tx */
@@ -685,7 +695,7 @@ index 65d2b64..8f6b284 100644
  
  		bcom_disable(s->bcom_task);
  		while (!bcom_queue_empty(s->bcom_task))
-@@ -290,22 +299,6 @@ static int psc_dma_open(struct snd_pcm_substream *substream)
+@@ -290,22 +297,6 @@ static int psc_dma_open(struct snd_pcm_substream *substream)
  	if (!psc_dma->playback.active &&
  	    !psc_dma->capture.active) {
  		/* Setup the IRQs */
@@ -708,7 +718,7 @@ index 65d2b64..8f6b284 100644
  	}
  
  	s->stream = substream;
-@@ -332,13 +325,9 @@ static int psc_dma_close(struct snd_pcm_substream *substream)
+@@ -332,13 +323,9 @@ static int psc_dma_close(struct snd_pcm_substream *substream)
  		out_be16(&psc_dma->psc_regs->isr_imr.imr, 0);
  		//out_8(&psc_dma->psc_regs->command, 3 << 4); /* reset tx */
  		//out_8(&psc_dma->psc_regs->command, 2 << 4); /* reset rx */
@@ -724,7 +734,28 @@ index 65d2b64..8f6b284 100644
  	}
  
  	s->stream = NULL;
-@@ -409,6 +398,7 @@ static int psc_dma_new(struct snd_card *card, struct snd_soc_dai *dai,
+@@ -354,7 +341,6 @@ psc_dma_pointer(struct snd_pcm_substream *substream)
+ 	struct psc_dma_stream *s;
+ 	dma_addr_t count;
+ 	snd_pcm_uframes_t frames;
+-	int delta;
+ 
+ 	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
+ 		s = &psc_dma->capture;
+@@ -363,11 +349,8 @@ psc_dma_pointer(struct snd_pcm_substream *substream)
+ 
+ 	count = s->period_current_pt - s->period_start;
+ 
+-	delta = jiffies - s->jiffies;
+-	delta = delta * runtime->rate / HZ;
+ 	frames = bytes_to_frames(substream->runtime, count);
+-
+-	return frames + delta;
++	return frames;
+ }
+ 
+ static int
+@@ -409,6 +392,7 @@ static int psc_dma_new(struct snd_card *card, struct snd_soc_dai *dai,
  	if (pcm->streams[0].substream) {
  		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
  					&pcm->streams[0].substream->dma_buffer);
@@ -732,7 +763,7 @@ index 65d2b64..8f6b284 100644
  		if (rc)
  			goto playback_alloc_err;
  	}
-@@ -416,6 +406,7 @@ static int psc_dma_new(struct snd_card *card, struct snd_soc_dai *dai,
+@@ -416,6 +400,7 @@ static int psc_dma_new(struct snd_card *card, struct snd_soc_dai *dai,
  	if (pcm->streams[1].substream) {
  		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
  					&pcm->streams[1].substream->dma_buffer);
@@ -740,7 +771,7 @@ index 65d2b64..8f6b284 100644
  		if (rc)
  			goto capture_alloc_err;
  	}
-@@ -618,6 +609,23 @@ int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template,
+@@ -618,6 +603,23 @@ int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template,
  	psc_dma->capture.irq =
  		bcom_get_task_irq(psc_dma->capture.bcom_task);
  
@@ -764,7 +795,7 @@ index 65d2b64..8f6b284 100644
  	/* Save what we've done so it can be found again later */
  	dev_set_drvdata(&op->dev, psc_dma);
  
-@@ -650,6 +658,11 @@ int mpc5200_audio_dma_destroy(struct of_device *op)
+@@ -650,6 +652,11 @@ int mpc5200_audio_dma_destroy(struct of_device *op)
  	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
  	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
  
@@ -776,6 +807,18 @@ index 65d2b64..8f6b284 100644
  	iounmap(psc_dma->psc_regs);
  	iounmap(psc_dma->fifo_regs);
  	kfree(psc_dma);
+diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
+index 9606859..667d3a1 100644
+--- a/sound/soc/fsl/mpc5200_dma.h
++++ b/sound/soc/fsl/mpc5200_dma.h
+@@ -31,7 +31,6 @@ struct psc_dma_stream {
+ 	dma_addr_t period_next_pt;
+ 	dma_addr_t period_current_pt;
+ 	int period_bytes;
+-	int jiffies;
+ };
+ 
+ /**
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 index 6551241..e6742be 100644
 --- a/sound/soc/fsl/mpc5200_psc_ac97.c
