@@ -5,8 +5,12 @@
 #ifndef __SOUND_SOC_FSL_MPC5200_DMA_H__
 #define __SOUND_SOC_FSL_MPC5200_DMA_H__
 
+#include <sound/soc-of-simple.h>
+
+#define PSC_STREAM_NAME_LEN 32
+
 /**
- * psc_dma_stream - Data specific to a single stream (playback or capture)
+ * psc_ac97_stream - Data specific to a single stream (playback or capture)
  * @active:		flag indicating if the stream is active
  * @psc_dma:		pointer back to parent psc_dma data structure
  * @bcom_task:		bestcomm task structure
@@ -27,6 +31,7 @@ struct psc_dma_stream {
 	dma_addr_t period_next_pt;
 	dma_addr_t period_current_pt;
 	int period_bytes;
+	int jiffies;
 };
 
 /**
@@ -48,9 +53,11 @@ struct psc_dma {
 	struct mpc52xx_psc_fifo __iomem *fifo_regs;
 	unsigned int irq;
 	struct device *dev;
-	struct snd_soc_dai dai;
+	struct snd_soc_dai dai[SOC_OF_SIMPLE_MAX_DAI];
+	char stream_name[SOC_OF_SIMPLE_MAX_DAI][PSC_STREAM_NAME_LEN];
 	spinlock_t lock;
 	u32 sicr;
+	uint sysclk;
 
 	/* per-stream data */
 	struct psc_dma_stream playback;
@@ -63,19 +70,9 @@ struct psc_dma {
 	} stats;
 };
 
+int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template, int tsize);
+int mpc5200_audio_dma_destroy(struct of_device *op);
 
-int psc_dma_startup(struct snd_pcm_substream *substream,
-			   struct snd_soc_dai *dai);
-
-int psc_dma_hw_free(struct snd_pcm_substream *substream,
-			   struct snd_soc_dai *dai);
-
-void psc_dma_shutdown(struct snd_pcm_substream *substream,
-			     struct snd_soc_dai *dai);
-
-int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
-			   struct snd_soc_dai *dai);
-
-extern struct snd_soc_platform psc_dma_pcm_soc_platform;
+extern struct snd_soc_platform mpc5200_audio_dma_platform;
 
 #endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
