@@ -1,22 +1,23 @@
 Version: 1
-Previous: 790b56277b47ba6b99d1c1d18efa6c0c7467ad32
-Head: af6788e820eec93cd39543b046ae54918e25c791
+Previous: f30086308bd5eadc0d0abb69b960c7e5f19f76f4
+Head: f8bb5f3248726fe5e022e60851830d78643a2202
 Applied:
-  Makefile: 73652fba83c156b44894d58e10752e28282b1bd2
-  digispeak: dee51b50fada5ee2f8bd8c7271e2c00d966c3065
-  g_spi_4: 48d2e66c1c173cd9689418fce7e5060ac76af261
-  mpc5200-rtc: 8d897d2cb6bfa9f5a464e7453e5df2f1ec21554f
-  lirc: 74973ef1d68d5a751c575d23c8e7b436f1d06cf4
-  jds-lirc-base: 0aac3d0d52d19a3bf5d0c036074f0e354835ad5e
-  jds-lirc-core: b97ba2513755f56c0ae978a311bb8d30f4b2e671
-  jds-lirc-configfs: 8509423071c867eab9d161cc49ed4eb229919469
-  jds-lirc-gpt: 6730b02a5d4811f8dcd9b3500f24e4d5879ad953
-  jds-lirc-device-tree: b94a3135566fe9b4ea4c41d9246a6391e83541f5
-  jds-lirc-mce2: fd87e7580541bf93121fba6c6f258a57d50fcf32
-  m_1: f04600a977865e32e20bedbe0ee6ba7da37c027d
-  spi-mmc: 84ff3f54c305a7d45421a43381040a872958f22a
-  soc-u32-cleanup: 8712705cfd70f9d00686d733ba239942ab4d0c45
-  is2-broken: 370b51ccb53e5aae06491a808941cc0c71ec331e
+  Makefile: c37a3cca7ec3f611cd7897a09ad798e4f834bf3f
+  digispeak: aec09970d5c5e686dece2cf2ea4464f530b9abcd
+  g_spi_4: 0370dfdf5453a6a4c342deb9f4fbdab3eed401c3
+  mpc5200-rtc: 737d91ebd93ce95f0ed4fa2ce509cb1aedb0bbf4
+  lirc: a61079dd1ab630c815f46c81f65def1de06f81ed
+  jds-lirc-base: 0e9c2fca5863f7fa9332a343a1c640a6e4646e5c
+  jds-lirc-core: 3337901acdbdc45164d5db3e23fa217329f9c267
+  jds-lirc-configfs: cdef8639e07c15339ef2adc1397143df24ab3373
+  jds-lirc-gpt: 28d6fd09ecde9dafb6aee64bbfcf8d6f37f62d75
+  jds-lirc-device-tree: c026b06344e5aa59976ee3a316fda94ae50901b7
+  jds-lirc-mce2: 81af02bb3213a870caa713322421874607ebf905
+  m_1: 02d502df9ad47b4cbf4c9b7f5d39e17099548abb
+  spi-mmc: 96351feabdcb9ed652e96f903cd69b575af909ea
+  soc-u32-cleanup: cb514f200d7df293351ec7a8beeec15a69fc6cae
+  is2-broken: f8bb5f3248726fe5e022e60851830d78643a2202
+Unapplied:
   i2s-dma-split: 11cd37af997cfbef0f59d15d0de5c0f232044a50
   is2-dma-rename: 0c54c2333ac7576180dd7a3a85d14e28487ce840
   i2s-unbreak: 1a3df60873e015017e74a11aebc72ff2aba9fae1
@@ -30,5 +31,4 @@ Applied:
   i2s-cell-clock: 5f9ae75b76d1fe616bbe6bcea12d25954914f882
   dspeak-audio: b3d38f53a75c39ae4df477d683f8dc4879c697e2
   temp: af6788e820eec93cd39543b046ae54918e25c791
-Unapplied:
 Hidden:
