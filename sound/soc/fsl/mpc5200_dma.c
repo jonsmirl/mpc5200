@@ -106,7 +106,6 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
 	/* If the stream is active, then also inform the PCM middle layer
 	 * of the period finished event. */
 	if (s->active) {
-		s->jiffies = jiffies;
 		snd_pcm_period_elapsed(s->stream);
 	}
 
@@ -156,7 +155,6 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 				(s->period_bytes * runtime->periods);
 		s->period_next_pt = s->period_start;
 		s->period_current_pt = s->period_start;
-		s->jiffies = jiffies;
 		s->active = 1;
 
 		/* First; reset everything */
@@ -343,7 +341,6 @@ psc_dma_pointer(struct snd_pcm_substream *substream)
 	struct psc_dma_stream *s;
 	dma_addr_t count;
 	snd_pcm_uframes_t frames;
-	int delta;
 
 	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
 		s = &psc_dma->capture;
@@ -352,11 +349,8 @@ psc_dma_pointer(struct snd_pcm_substream *substream)
 
 	count = s->period_current_pt - s->period_start;
 
-	delta = jiffies - s->jiffies;
-	delta = delta * runtime->rate / HZ;
 	frames = bytes_to_frames(substream->runtime, count);
-
-	return frames + delta;
+	return frames;
 }
 
 static int
