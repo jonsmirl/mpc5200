@@ -211,12 +211,18 @@ static int __init efika_probe(void)
 	return 1;
 }
 
+static void __init efika_declare_platform_devices(void)
+{
+	mpc52xx_declare_of_platform_devices();
+	platform_device_register_simple("efika-audio-fabric", 0, NULL, 0);
+}
+
 define_machine(efika)
 {
 	.name			= EFIKA_PLATFORM_NAME,
 	.probe			= efika_probe,
 	.setup_arch		= efika_setup_arch,
-	.init			= mpc52xx_declare_of_platform_devices,
+	.init			= efika_declare_platform_devices,
 	.show_cpuinfo		= efika_show_cpuinfo,
 	.init_IRQ		= mpc52xx_init_irq,
 	.get_irq		= mpc52xx_get_irq,
