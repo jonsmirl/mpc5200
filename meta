@@ -1,6 +1,6 @@
 Version: 1
-Previous: e543b10b09504792701dfbaade85693b26480de1
-Head: 7e64c922b4294361232f66d579650e1054fac321
+Previous: 4706d44920644488d6c3554108d1399370c616ff
+Head: 00699adbb34e0adbf54d620a7a447dc9f50041da
 Applied:
   Makefile: c37a3cca7ec3f611cd7897a09ad798e4f834bf3f
   digispeak: aec09970d5c5e686dece2cf2ea4464f530b9abcd
@@ -20,6 +20,7 @@ Applied:
   undo-takai-fix: bc5f9987a7c4cb124a2665d75bd8ec6beafdb882
   i2s-dma-split: 65755d40ac32d6241ece1baec60d254709127738
   is2-dma-rename: 7e64c922b4294361232f66d579650e1054fac321
+  redo-takai-fix: 00699adbb34e0adbf54d620a7a447dc9f50041da
 Unapplied:
   i2s-unbreak: 1a3df60873e015017e74a11aebc72ff2aba9fae1
   of-soc-simple-rework: 46917ba819f7e06239bac20c049bb8f773c4e9ef
