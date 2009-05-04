@@ -62,6 +62,7 @@ struct psc_dma {
 	u32 sicr;
 	uint sysclk;
 	int imr;
+	unsigned int slots;
 
 	/* per-stream data */
 	struct psc_dma_stream playback;
