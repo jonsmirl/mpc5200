@@ -24,7 +24,6 @@
 #include <sound/initval.h>
 #include <sound/soc.h>
 #include <sound/soc-of-simple.h>
-#include <sound/soc-dapm.h>
 
 #include "mpc5200_dma.h"
 #include "mpc5200_psc_ac97.h"
@@ -39,6 +38,8 @@
 
 #define DRV_NAME "efika-psc-ac97"
 
+#if 0
+
 static int efika_jack_func;
 static int efika_spk_func;
 
@@ -47,7 +48,7 @@ static void efika_ext_control(struct snd_soc_codec *codec)
 	/* set up jack connection */
 	switch (efika_jack_func) {
 	case EFIKA_HP:
-		snd_soc_dapm_disable_pin(codec, "Headset Jack");
+		//snd_soc_dapm_disable_pin(codec, "Headset Jack");
 		snd_soc_dapm_disable_pin(codec, "Mic (Internal)");
 		snd_soc_dapm_enable_pin(codec, "Headphone Jack");
 		break;
@@ -183,6 +184,13 @@ static int efika_init(struct snd_soc_codec *codec)
 
 	return 0;
 }
+
+#else
+static int efika_init(struct snd_soc_codec *codec)
+{
+	return 0;
+}
+#endif
 
 /*
  * This is an example codec initialization for a stac9766 connected to a
