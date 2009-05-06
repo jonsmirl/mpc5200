@@ -21,6 +21,9 @@
  * @period_bytes:	size of DMA period in bytes
  */
 struct psc_dma_stream {
+	char* buffer;
+	struct mpc52xx_psc __iomem *psc_regs;
+
 	int active;
 	struct psc_dma *psc_dma;
 	struct bcom_task *bcom_task;
