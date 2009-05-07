@@ -22,7 +22,8 @@
  */
 struct psc_dma_stream {
 	char* buffer;
-	struct mpc52xx_psc __iomem *psc_regs;
+	struct snd_pcm_runtime *runtime;
+	snd_pcm_uframes_t appl_ptr;
 
 	int active;
 	struct psc_dma *psc_dma;
@@ -34,6 +35,7 @@ struct psc_dma_stream {
 	dma_addr_t period_next_pt;
 	dma_addr_t period_current_pt;
 	int period_bytes;
+	int period_size;
 };
 
 /**

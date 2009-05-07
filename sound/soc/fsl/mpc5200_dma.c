@@ -46,7 +46,6 @@ static irqreturn_t psc_dma_status_irq(int irq, void *_psc_dma)
 	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
 	u16 isr;
 
-	printk("psc_dma_status_irq\n");
 	isr = in_be16(&regs->mpc52xx_psc_isr);
 	printk("psc_dma_status_irq isr %x\n", isr);
 
@@ -77,20 +76,26 @@ static void psc_dma_bcom_enqueue_next_buffer(struct psc_dma_stream *s)
 {
 	struct bcom_bd *bd;
 
-	printk("enqueue %x\n", s->period_next_pt);
-	/* Prepare and enqueue the next buffer descriptor */
-	bd = bcom_prepare_next_buffer(s->bcom_task);
-	bd->status = s->period_bytes;
-	bd->data[0] = s->period_next_pt;
-	bcom_submit_next_buffer(s->bcom_task, NULL);
+	while (s->appl_ptr < s->runtime->control->appl_ptr) {
 
-	/* Update for next period */
-	s->period_next_pt += s->period_bytes;
-	if (s->period_next_pt >= s->period_end)
-		s->period_next_pt = s->period_start;
+		if (bcom_queue_full(s->bcom_task))
+			return;
+
+		s->appl_ptr += s->period_size;
+
+		/* Prepare and enqueue the next buffer descriptor */
+		bd = bcom_prepare_next_buffer(s->bcom_task);
+		bd->status = s->period_bytes;
+		bd->data[0] = s->period_next_pt;
+		bcom_submit_next_buffer(s->bcom_task, NULL);
+
+		/* Update for next period */
+		s->period_next_pt += s->period_bytes;
+		if (s->period_next_pt >= s->period_end)
+			s->period_next_pt = s->period_start;
+	}
+	return 0;
 }
-
-static int c = 20;
 
 /* Bestcomm DMA irq handler */
 static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
@@ -101,29 +106,12 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
 	 * and enqueue a new one in it's place. */
 	while (bcom_buffer_done(s->bcom_task)) {
 		bcom_retrieve_buffer(s->bcom_task, NULL, NULL);
-		printk("dequeue %x %d\n", s->period_current_pt, c);
-
-		memset(s->buffer + s->period_current_pt - s->period_start, 0, s->period_bytes);
 
 		s->period_current_pt += s->period_bytes;
 		if (s->period_current_pt >= s->period_end)
 			s->period_current_pt = s->period_start;
-
-		psc_dma_bcom_enqueue_next_buffer(s);
-		if (c == 0) {
-			//out_8(&s->psc_regs->command, 0x22);	/* disable tx */
-
-	//		bcom_disable(s->bcom_task);
-		//	bcom_gen_bd_tx_reset(s->bcom_task);
-			//while (!bcom_queue_empty(s->bcom_task)) {
-				//printk("Retrieve\n");
-				//bcom_retrieve_buffer(s->bcom_task, NULL, NULL);
-			//}
-		}
-
-		c--;
-		//bcom_enable(s->bcom_task);
 	}
+	psc_dma_bcom_enqueue_next_buffer(s);
 
 	/* If the stream is active, then also inform the PCM middle layer
 	 * of the period finished event. */
@@ -177,10 +165,14 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 				(s->period_bytes * runtime->periods);
 		s->period_next_pt = s->period_start;
 		s->period_current_pt = s->period_start;
+		s->period_size = runtime->period_size;
 		s->active = 1;
 
 		s->buffer = runtime->dma_area;
-		s->psc_regs = regs;
+		s->runtime = runtime;
+		s->appl_ptr = s->runtime->control->appl_ptr - (runtime->period_size * runtime->periods);
+		printk("Initial pointer %ld\n", s->appl_ptr);
+
 
 		/* First; reset everything */
 		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
@@ -190,7 +182,6 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 			printk("Playback\n");
 			//out_8(&regs->command, MPC52xx_PSC_RST_TX);
 		}
-		c = 20;
 
 		/* Next, fill up the bestcomm bd queue and enable DMA.
 		 * This will begin filling the PSC's fifo. */
@@ -198,9 +189,8 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 			bcom_gen_bd_rx_reset(s->bcom_task);
 		else
 			bcom_gen_bd_tx_reset(s->bcom_task);
-		//while (!bcom_queue_full(s->bcom_task))
-			psc_dma_bcom_enqueue_next_buffer(s);
-			psc_dma_bcom_enqueue_next_buffer(s);
+
+		psc_dma_bcom_enqueue_next_buffer(s);
 		bcom_enable(s->bcom_task);
 
 		/* Due to errata in the dma mode; need to line up enabling
