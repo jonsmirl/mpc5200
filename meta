@@ -1,6 +1,6 @@
 Version: 1
-Previous: 78a10a730d02eea9be5751c0147253701690c7bd
-Head: cd1cc0f951af06873b3ff43eb5c83ddb537ae237
+Previous: 1b69f5bc62ba3446661768aa27b08152bb5b2463
+Head: a28a11039321394e0d3d4ccf7ca07be716c280f3
 Applied:
   Makefile: c37a3cca7ec3f611cd7897a09ad798e4f834bf3f
   digispeak: aec09970d5c5e686dece2cf2ea4464f530b9abcd
@@ -25,12 +25,12 @@ Applied:
   of-soc-simple-rework: bde811f0b7e87ed14d7145240a61218bdbcdaa87
   dma-module: 8dad01b3a834f14ef1da8824a3af9260e3735eaa
   stac9766-codec: cd1cc0f951af06873b3ff43eb5c83ddb537ae237
+  mpc5200-ac97: b4ac7e5c5e5a30be9362436ab5e98503eedffca2
+  efika-audio: 6a73e5500d4905009cc11640b6ae567e5ab9626a
+  tas5504-codec: f39ac3b6baa5c504184c104babd132101f62f6d5
+  max9485-i2c: 9ec97f82a66952d39c2d77def2afe9ee101e6ad6
+  i2s-cell-clock: 404b5e89e0ea06069c1d05edde5aec485db6876a
+  dspeak-audio: 4955d22c0c9ab08f303ac2c15ae91c06be4a6823
+  temp: a28a11039321394e0d3d4ccf7ca07be716c280f3
 Unapplied:
-  mpc5200-ac97: 35422ce6365ec8ba42f3a2a3d388b3633a674f5a
-  efika-audio: c11e6cdea173932d2e2082b469740482733799b5
-  tas5504-codec: 68f6f5e43292492ebc2ed07e26bbdf0abfd97d97
-  max9485-i2c: ebf1a02f649a8e51d561e1cac2946175677cdcb7
-  i2s-cell-clock: d71fcddc00dd1c151d577d0291698140d26a73e2
-  dspeak-audio: 6211cba94a48de62fe5909894d3875a49fc79a71
-  temp: 2356ccdae0a5dc7b33d84cd79ac10a0f0f27412f
 Hidden:
