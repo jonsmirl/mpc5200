@@ -1,6 +1,6 @@
 Version: 1
-Previous: a34828bff3ca67f6f58fff254f5068ef058bc8e6
-Head: b9bf86b88c731d3239ef05212546526cf5b3fb6f
+Previous: 87bf69a6c898d6197a293a97c41038478a175293
+Head: f7588b93c65af1c3034ce231d959bb864ffcad3c
 Applied:
   Makefile: c37a3cca7ec3f611cd7897a09ad798e4f834bf3f
   digispeak: aec09970d5c5e686dece2cf2ea4464f530b9abcd
@@ -23,6 +23,7 @@ Applied:
   redo-takai-fix: d8ee366af9347c87bd7bc9c975569ca874dc771e
   i2s-unbreak: 3899942ffb3a1fee1bc46ee6eb3b7b392329cc53
   add-psc-defines: b9bf86b88c731d3239ef05212546526cf5b3fb6f
+  refresh-temp: f7588b93c65af1c3034ce231d959bb864ffcad3c
 Unapplied:
   of-soc-simple-rework: adcb84dd066693eecfc1e5f7b9f8322562be701d
   dma-module: 3c254aba38f998279b294db6db39365b2fc03778
