@@ -1,5 +1,5 @@
 Bottom: 50923439a544a2ee880f70b1671761416df5e193
-Top:    ab759b1f7adec99033615c7c9968187fbdef2112
+Top:    3a8db62a6ed76e0c2e0468bc3fb80ebc786e2534
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-07 21:50:15 -0400
 
@@ -9,10 +9,21 @@ Add a few more mpc5200 PSC defines
 ---
 
 diff --git a/arch/powerpc/include/asm/mpc52xx_psc.h b/arch/powerpc/include/asm/mpc52xx_psc.h
-index a218da6..a7704f6 100644
+index a218da6..c323f4f 100644
 --- a/arch/powerpc/include/asm/mpc52xx_psc.h
 +++ b/arch/powerpc/include/asm/mpc52xx_psc.h
-@@ -61,6 +61,12 @@
+@@ -28,6 +28,10 @@
+ #define MPC52xx_PSC_MAXNUM	6
+ 
+ /* Programmable Serial Controller (PSC) status register bits */
++#define MPC52xx_PSC_SR_UNEX_RX	0x0001
++#define MPC52xx_PSC_SR_DATA_VAL	0x0002
++#define MPC52xx_PSC_SR_DATA_OVR	0x0004
++#define MPC52xx_PSC_SR_CMDSEND	0x0008
+ #define MPC52xx_PSC_SR_CDE	0x0080
+ #define MPC52xx_PSC_SR_RXRDY	0x0100
+ #define MPC52xx_PSC_SR_RXFULL	0x0200
+@@ -61,6 +65,12 @@
  #define MPC52xx_PSC_RXTX_FIFO_EMPTY	0x0001
  
  /* PSC interrupt status/mask bits */
