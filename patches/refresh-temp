@@ -1,0 +1,26 @@
+Bottom: 50923439a544a2ee880f70b1671761416df5e193
+Top:    ab759b1f7adec99033615c7c9968187fbdef2112
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-07 21:50:48 -0400
+
+Refresh of add-psc-defines
+
+---
+
+diff --git a/arch/powerpc/include/asm/mpc52xx_psc.h b/arch/powerpc/include/asm/mpc52xx_psc.h
+index a218da6..a7704f6 100644
+--- a/arch/powerpc/include/asm/mpc52xx_psc.h
++++ b/arch/powerpc/include/asm/mpc52xx_psc.h
+@@ -61,6 +61,12 @@
+ #define MPC52xx_PSC_RXTX_FIFO_EMPTY	0x0001
+ 
+ /* PSC interrupt status/mask bits */
++#define MPC52xx_PSC_IMR_UNEX_RX_SLOT 0x0001
++#define MPC52xx_PSC_IMR_DATA_VALID	0x0002
++#define MPC52xx_PSC_IMR_DATA_OVR	0x0004
++#define MPC52xx_PSC_IMR_CMD_SEND	0x0008
++#define MPC52xx_PSC_IMR_ERROR		0x0040
++#define MPC52xx_PSC_IMR_DEOF		0x0080
+ #define MPC52xx_PSC_IMR_TXRDY		0x0100
+ #define MPC52xx_PSC_IMR_RXRDY		0x0200
+ #define MPC52xx_PSC_IMR_DB		0x0400
