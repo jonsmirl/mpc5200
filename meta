@@ -1,6 +1,6 @@
 Version: 1
-Previous: 098f6ff7f0588c7c4565e5be02dbd31d4e78c927
-Head: ef43259a2962371cf15f5e3690392e347d60aadb
+Previous: a34828bff3ca67f6f58fff254f5068ef058bc8e6
+Head: b9bf86b88c731d3239ef05212546526cf5b3fb6f
 Applied:
   Makefile: c37a3cca7ec3f611cd7897a09ad798e4f834bf3f
   digispeak: aec09970d5c5e686dece2cf2ea4464f530b9abcd
@@ -23,6 +23,7 @@ Applied:
   redo-takai-fix: d8ee366af9347c87bd7bc9c975569ca874dc771e
   i2s-unbreak: 3899942ffb3a1fee1bc46ee6eb3b7b392329cc53
   add-psc-defines: b9bf86b88c731d3239ef05212546526cf5b3fb6f
+Unapplied:
   of-soc-simple-rework: adcb84dd066693eecfc1e5f7b9f8322562be701d
   dma-module: 3c254aba38f998279b294db6db39365b2fc03778
   stac9766-codec: 2212ae607502da0cae3c415a286b20e5f079f3d4
@@ -33,5 +34,4 @@ Applied:
   i2s-cell-clock: 43c6d90c91b1aa84bed9785d5bd6f0b38425500d
   dspeak-audio: acef302356c187723b61202d4736d059c1bcbc5b
   temp: ef43259a2962371cf15f5e3690392e347d60aadb
-Unapplied:
 Hidden:
