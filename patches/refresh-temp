@@ -1,0 +1,138 @@
+Bottom: 89cb4518a840e6cade0370175ab9cd19ffc9034b
+Top:    5b2041c8367118faa592947e12c4843c77cba4da
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-07 21:47:10 -0400
+
+Refresh of temp
+
+---
+
+diff --git a/arch/powerpc/include/asm/mpc52xx_psc.h b/arch/powerpc/include/asm/mpc52xx_psc.h
+index 11abc69..c323f4f 100644
+--- a/arch/powerpc/include/asm/mpc52xx_psc.h
++++ b/arch/powerpc/include/asm/mpc52xx_psc.h
+@@ -65,6 +65,12 @@
+ #define MPC52xx_PSC_RXTX_FIFO_EMPTY	0x0001
+ 
+ /* PSC interrupt status/mask bits */
++#define MPC52xx_PSC_IMR_UNEX_RX_SLOT 0x0001
++#define MPC52xx_PSC_IMR_DATA_VALID	0x0002
++#define MPC52xx_PSC_IMR_DATA_OVR	0x0004
++#define MPC52xx_PSC_IMR_CMD_SEND	0x0008
++#define MPC52xx_PSC_IMR_ERROR		0x0040
++#define MPC52xx_PSC_IMR_DEOF		0x0080
+ #define MPC52xx_PSC_IMR_TXRDY		0x0100
+ #define MPC52xx_PSC_IMR_RXRDY		0x0200
+ #define MPC52xx_PSC_IMR_DB		0x0400
+diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
+index 30f0b51..6d4b8b8 100644
+--- a/sound/soc/fsl/mpc5200_dma.c
++++ b/sound/soc/fsl/mpc5200_dma.c
+@@ -42,6 +42,7 @@ static int stop = 0;
+  */
+ static irqreturn_t psc_dma_status_irq(int irq, void *_psc_dma)
+ {
++	unsigned int val;
+ 	struct psc_dma *psc_dma = _psc_dma;
+ 	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
+ 	u16 isr;
+@@ -94,7 +95,6 @@ static void psc_dma_bcom_enqueue_next_buffer(struct psc_dma_stream *s)
+ 		if (s->period_next_pt >= s->period_end)
+ 			s->period_next_pt = s->period_start;
+ 	}
+-	return 0;
+ }
+ 
+ /* Bestcomm DMA irq handler */
+@@ -115,9 +115,8 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
+ 
+ 	/* If the stream is active, then also inform the PCM middle layer
+ 	 * of the period finished event. */
+-	if (s->active) {
++	if (s->active)
+ 		snd_pcm_period_elapsed(s->stream);
+-	}
+ 
+ 	return IRQ_HANDLED;
+ }
+@@ -128,7 +127,6 @@ static int psc_dma_hw_free(struct snd_pcm_substream *substream)
+ 	return 0;
+ }
+ 
+-
+ /**
+  * psc_dma_trigger: start and stop the DMA transfer.
+  *
+@@ -168,11 +166,8 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
+ 		s->period_size = runtime->period_size;
+ 		s->active = 1;
+ 
+-		s->buffer = runtime->dma_area;
+ 		s->runtime = runtime;
+ 		s->appl_ptr = s->runtime->control->appl_ptr - (runtime->period_size * runtime->periods);
+-		printk("Initial pointer %ld\n", s->appl_ptr);
+-
+ 
+ 		/* First; reset everything */
+ 		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
+@@ -263,7 +258,7 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
+ 		imr |= MPC52xx_PSC_IMR_TXEMP;
+ 	if (psc_dma->capture.active)
+ 		imr |= MPC52xx_PSC_IMR_ORERR;
+-	//out_be16(&regs->isr_imr.imr, imr);
++	out_be16(&regs->isr_imr.imr, psc_dma->imr | imr);
+ 
+ 	return 0;
+ }
+@@ -345,7 +340,7 @@ static int psc_dma_close(struct snd_pcm_substream *substream)
+ 	    !psc_dma->capture.active) {
+ 
+ 		/* Disable all interrupts and reset the PSC */
+-		out_be16(&psc_dma->psc_regs->isr_imr.imr, 0);
++		out_be16(&psc_dma->psc_regs->isr_imr.imr, psc_dma->imr);
+ 		//out_8(&psc_dma->psc_regs->command, 3 << 4); /* reset tx */
+ 		//out_8(&psc_dma->psc_regs->command, 2 << 4); /* reset rx */
+ 		//out_8(&psc_dma->psc_regs->command, 1 << 4); /* reset mode */
+@@ -619,7 +614,7 @@ int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template,
+ 	}
+ 
+ 	/* Disable all interrupts and reset the PSC */
+-	out_be16(&psc_dma->psc_regs->isr_imr.imr, 0);
++	out_be16(&psc_dma->psc_regs->isr_imr.imr, psc_dma->imr);
+ 	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_RX); /* reset receiver */
+ 	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_TX); /* reset transmitter */
+ 	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_ERR_STAT); /* reset error */
+diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
+index 77f45cc..4af4aa4 100644
+--- a/sound/soc/fsl/mpc5200_dma.h
++++ b/sound/soc/fsl/mpc5200_dma.h
+@@ -21,7 +21,6 @@
+  * @period_bytes:	size of DMA period in bytes
+  */
+ struct psc_dma_stream {
+-	char* buffer;
+ 	struct snd_pcm_runtime *runtime;
+ 	snd_pcm_uframes_t appl_ptr;
+ 
+@@ -62,6 +61,7 @@ struct psc_dma {
+ 	spinlock_t lock;
+ 	u32 sicr;
+ 	uint sysclk;
++	int imr;
+ 
+ 	/* per-stream data */
+ 	struct psc_dma_stream playback;
+diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
+index e6742be..55ab310 100644
+--- a/sound/soc/fsl/mpc5200_psc_ac97.c
++++ b/sound/soc/fsl/mpc5200_psc_ac97.c
+@@ -282,6 +282,9 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
+ 
+ 	psc_dma = dev_get_drvdata(&op->dev);
+ 
++	psc_dma->imr = 0;
++	out_be16(&psc_dma->psc_regs->isr_imr.imr, psc_dma->imr);
++
+ 	out_8(&psc_dma->psc_regs->op1, MPC52xx_PSC_OP_RES);
+ 	udelay(10);
+ 	out_8(&psc_dma->psc_regs->op0, MPC52xx_PSC_OP_RES);
