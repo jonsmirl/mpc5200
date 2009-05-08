@@ -1,4 +1,4 @@
-Bottom: 7c59aa79918152079580049bdf5b6b27f39cb09b
+Bottom: a8208b252bef8d74a0a3de80c48a7f7b6995956e
 Top:    5b2041c8367118faa592947e12c4843c77cba4da
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-04 08:06:37 -0400
@@ -8,23 +8,6 @@ Temporary holding patch
 
 ---
 
-diff --git a/arch/powerpc/include/asm/mpc52xx_psc.h b/arch/powerpc/include/asm/mpc52xx_psc.h
-index 11abc69..c323f4f 100644
---- a/arch/powerpc/include/asm/mpc52xx_psc.h
-+++ b/arch/powerpc/include/asm/mpc52xx_psc.h
-@@ -65,6 +65,12 @@
- #define MPC52xx_PSC_RXTX_FIFO_EMPTY	0x0001
- 
- /* PSC interrupt status/mask bits */
-+#define MPC52xx_PSC_IMR_UNEX_RX_SLOT 0x0001
-+#define MPC52xx_PSC_IMR_DATA_VALID	0x0002
-+#define MPC52xx_PSC_IMR_DATA_OVR	0x0004
-+#define MPC52xx_PSC_IMR_CMD_SEND	0x0008
-+#define MPC52xx_PSC_IMR_ERROR		0x0040
-+#define MPC52xx_PSC_IMR_DEOF		0x0080
- #define MPC52xx_PSC_IMR_TXRDY		0x0100
- #define MPC52xx_PSC_IMR_RXRDY		0x0200
- #define MPC52xx_PSC_IMR_DB		0x0400
 diff --git a/sound/soc/fsl/efika-audio-fabric.c b/sound/soc/fsl/efika-audio-fabric.c
 index c3e9da0..4726064 100644
 --- a/sound/soc/fsl/efika-audio-fabric.c

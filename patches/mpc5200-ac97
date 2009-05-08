@@ -1,5 +1,5 @@
-Bottom: e9cf444959870a68f1d2789308774302cee09772
-Top:    0585f042937c66d29ea9ef70fc8a6658c47dd3a6
+Bottom: 90f05ce54412abed45d935134d3143d0063c73ba
+Top:    5434695df3de2fdcd2fe5b5d99f330b3d8d2c563
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-04 08:06:32 -0400
 
@@ -9,7 +9,7 @@ AC97 driver for mpc5200
 ---
 
 diff --git a/arch/powerpc/include/asm/mpc52xx_psc.h b/arch/powerpc/include/asm/mpc52xx_psc.h
-index a218da6..11abc69 100644
+index a7704f6..c323f4f 100644
 --- a/arch/powerpc/include/asm/mpc52xx_psc.h
 +++ b/arch/powerpc/include/asm/mpc52xx_psc.h
 @@ -28,6 +28,10 @@
