@@ -1,4 +1,4 @@
-Bottom: a8208b252bef8d74a0a3de80c48a7f7b6995956e
+Bottom: 3a4460e364bb367b51d1512f04dd41eb6935a662
 Top:    5b2041c8367118faa592947e12c4843c77cba4da
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-04 08:06:37 -0400
@@ -8,50 +8,6 @@ Temporary holding patch
 
 ---
 
-diff --git a/sound/soc/fsl/efika-audio-fabric.c b/sound/soc/fsl/efika-audio-fabric.c
-index c3e9da0..4726064 100644
---- a/sound/soc/fsl/efika-audio-fabric.c
-+++ b/sound/soc/fsl/efika-audio-fabric.c
-@@ -24,7 +24,6 @@
- #include <sound/initval.h>
- #include <sound/soc.h>
- #include <sound/soc-of-simple.h>
--#include <sound/soc-dapm.h>
- 
- #include "mpc5200_dma.h"
- #include "mpc5200_psc_ac97.h"
-@@ -39,6 +38,8 @@
- 
- #define DRV_NAME "efika-psc-ac97"
- 
-+#if 0
-+
- static int efika_jack_func;
- static int efika_spk_func;
- 
-@@ -47,7 +48,7 @@ static void efika_ext_control(struct snd_soc_codec *codec)
- 	/* set up jack connection */
- 	switch (efika_jack_func) {
- 	case EFIKA_HP:
--		snd_soc_dapm_disable_pin(codec, "Headset Jack");
-+		//snd_soc_dapm_disable_pin(codec, "Headset Jack");
- 		snd_soc_dapm_disable_pin(codec, "Mic (Internal)");
- 		snd_soc_dapm_enable_pin(codec, "Headphone Jack");
- 		break;
-@@ -184,6 +185,13 @@ static int efika_init(struct snd_soc_codec *codec)
- 	return 0;
- }
- 
-+#else
-+static int efika_init(struct snd_soc_codec *codec)
-+{
-+	return 0;
-+}
-+#endif
-+
- /*
-  * This is an example codec initialization for a stac9766 connected to a
-  * mpc5200. It is missing logic to detect hp/mic insertions and logic
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
 index 65d2b64..6d4b8b8 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
