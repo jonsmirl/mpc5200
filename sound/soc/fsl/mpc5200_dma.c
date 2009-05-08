@@ -35,8 +35,6 @@ MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
 MODULE_DESCRIPTION("Freescale MPC5200 PSC in DMA mode ASoC Driver");
 MODULE_LICENSE("GPL");
 
-static int stop = 0;
-
 /*
  * Interrupt handlers
  */
@@ -209,7 +207,6 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 
 		out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
 
-		stop = 0;
 		spin_unlock_irqrestore(&psc_dma->lock, flags);
 
 		break;
