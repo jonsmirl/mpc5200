@@ -282,6 +282,9 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 
 	psc_dma = dev_get_drvdata(&op->dev);
 
+	psc_dma->imr = 0;
+	out_be16(&psc_dma->psc_regs->isr_imr.imr, psc_dma->imr);
+
 	out_8(&psc_dma->psc_regs->op1, MPC52xx_PSC_OP_RES);
 	udelay(10);
 	out_8(&psc_dma->psc_regs->op0, MPC52xx_PSC_OP_RES);

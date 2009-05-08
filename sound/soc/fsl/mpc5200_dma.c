@@ -42,6 +42,7 @@ static int stop = 0;
  */
 static irqreturn_t psc_dma_status_irq(int irq, void *_psc_dma)
 {
+	unsigned int val;
 	struct psc_dma *psc_dma = _psc_dma;
 	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
 	u16 isr;
@@ -94,7 +95,6 @@ static void psc_dma_bcom_enqueue_next_buffer(struct psc_dma_stream *s)
 		if (s->period_next_pt >= s->period_end)
 			s->period_next_pt = s->period_start;
 	}
-	return 0;
 }
 
 /* Bestcomm DMA irq handler */
@@ -115,9 +115,8 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
 
 	/* If the stream is active, then also inform the PCM middle layer
 	 * of the period finished event. */
-	if (s->active) {
+	if (s->active)
 		snd_pcm_period_elapsed(s->stream);
-	}
 
 	return IRQ_HANDLED;
 }
@@ -127,7 +126,6 @@ static int psc_dma_hw_free(struct snd_pcm_substream *substream)
 	snd_pcm_set_runtime_buffer(substream, NULL);
 	return 0;
 }
-
 
 /**
  * psc_dma_trigger: start and stop the DMA transfer.
@@ -168,11 +166,8 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 		s->period_size = runtime->period_size;
 		s->active = 1;
 
-		s->buffer = runtime->dma_area;
 		s->runtime = runtime;
 		s->appl_ptr = s->runtime->control->appl_ptr - (runtime->period_size * runtime->periods);
-		printk("Initial pointer %ld\n", s->appl_ptr);
-
 
 		/* First; reset everything */
 		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
@@ -263,7 +258,7 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 		imr |= MPC52xx_PSC_IMR_TXEMP;
 	if (psc_dma->capture.active)
 		imr |= MPC52xx_PSC_IMR_ORERR;
-	//out_be16(&regs->isr_imr.imr, imr);
+	out_be16(&regs->isr_imr.imr, psc_dma->imr | imr);
 
 	return 0;
 }
@@ -345,7 +340,7 @@ static int psc_dma_close(struct snd_pcm_substream *substream)
 	    !psc_dma->capture.active) {
 
 		/* Disable all interrupts and reset the PSC */
-		out_be16(&psc_dma->psc_regs->isr_imr.imr, 0);
+		out_be16(&psc_dma->psc_regs->isr_imr.imr, psc_dma->imr);
 		//out_8(&psc_dma->psc_regs->command, 3 << 4); /* reset tx */
 		//out_8(&psc_dma->psc_regs->command, 2 << 4); /* reset rx */
 		//out_8(&psc_dma->psc_regs->command, 1 << 4); /* reset mode */
@@ -619,7 +614,7 @@ int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template,
 	}
 
 	/* Disable all interrupts and reset the PSC */
-	out_be16(&psc_dma->psc_regs->isr_imr.imr, 0);
+	out_be16(&psc_dma->psc_regs->isr_imr.imr, psc_dma->imr);
 	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_RX); /* reset receiver */
 	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_TX); /* reset transmitter */
 	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_ERR_STAT); /* reset error */
