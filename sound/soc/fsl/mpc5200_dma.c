@@ -1,5 +1,5 @@
 /*
- * Freescale MPC5200 Audio DMA
+ * Freescale MPC5200 PSC DMA
  * ALSA SoC Platform driver
  *
  * Copyright (C) 2008 Secret Lab Technologies Ltd.
