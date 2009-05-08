@@ -1,6 +1,6 @@
 Version: 1
-Previous: 437b3108f1953d89e31b4cd2d71f8231cbccc06b
-Head: 3899942ffb3a1fee1bc46ee6eb3b7b392329cc53
+Previous: 35e05c08213ec7d7339c0a2c592fc2220ac6f8ec
+Head: 498d7ea228d8f2b1c41eb807b4ae1e824255a3b2
 Applied:
   Makefile: c37a3cca7ec3f611cd7897a09ad798e4f834bf3f
   digispeak: aec09970d5c5e686dece2cf2ea4464f530b9abcd
@@ -22,6 +22,7 @@ Applied:
   is2-dma-rename: 7e64c922b4294361232f66d579650e1054fac321
   redo-takai-fix: d8ee366af9347c87bd7bc9c975569ca874dc771e
   i2s-unbreak: 3899942ffb3a1fee1bc46ee6eb3b7b392329cc53
+  add-psc-defines: 498d7ea228d8f2b1c41eb807b4ae1e824255a3b2
 Unapplied:
   of-soc-simple-rework: bde811f0b7e87ed14d7145240a61218bdbcdaa87
   dma-module: 8dad01b3a834f14ef1da8824a3af9260e3735eaa
