@@ -1,4 +1,4 @@
-Bottom: 398c18d123becbaf3225b437da8575333a06ac47
+Bottom: eb806d77531c7c90e9c8ed2f1c73346e76ce7aa9
 Top:    611bb77e319a7c4e8b9f71c0855da5290f5aa2ae
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-04 08:06:32 -0400
@@ -8,21 +8,6 @@ AC97 driver for mpc5200
 
 ---
 
-diff --git a/arch/powerpc/include/asm/mpc52xx_psc.h b/arch/powerpc/include/asm/mpc52xx_psc.h
-index a7704f6..c323f4f 100644
---- a/arch/powerpc/include/asm/mpc52xx_psc.h
-+++ b/arch/powerpc/include/asm/mpc52xx_psc.h
-@@ -28,6 +28,10 @@
- #define MPC52xx_PSC_MAXNUM	6
- 
- /* Programmable Serial Controller (PSC) status register bits */
-+#define MPC52xx_PSC_SR_UNEX_RX	0x0001
-+#define MPC52xx_PSC_SR_DATA_VAL	0x0002
-+#define MPC52xx_PSC_SR_DATA_OVR	0x0004
-+#define MPC52xx_PSC_SR_CMDSEND	0x0008
- #define MPC52xx_PSC_SR_CDE	0x0080
- #define MPC52xx_PSC_SR_RXRDY	0x0100
- #define MPC52xx_PSC_SR_RXFULL	0x0200
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
 index 8060b95..d8f63f5 100644
 --- a/sound/soc/fsl/Kconfig
