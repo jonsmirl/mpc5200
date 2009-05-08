@@ -1,5 +1,5 @@
 Bottom: 5434695df3de2fdcd2fe5b5d99f330b3d8d2c563
-Top:    a587bd5583d1a6e7d66435816e66f5ca7402ed21
+Top:    41807b5e8cb9907bb39049625776af868ce482d6
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-04 08:06:33 -0400
 
@@ -62,10 +62,10 @@ index 14631a1..f406470 100644
 +
 diff --git a/sound/soc/fsl/efika-audio-fabric.c b/sound/soc/fsl/efika-audio-fabric.c
 new file mode 100644
-index 0000000..c3e9da0
+index 0000000..4726064
 --- /dev/null
 +++ b/sound/soc/fsl/efika-audio-fabric.c
-@@ -0,0 +1,241 @@
+@@ -0,0 +1,249 @@
 +/*
 + * Efika driver for the PSC of the Freescale MPC52xx configured as AC97 interface
 + *
@@ -92,7 +92,6 @@ index 0000000..c3e9da0
 +#include <sound/initval.h>
 +#include <sound/soc.h>
 +#include <sound/soc-of-simple.h>
-+#include <sound/soc-dapm.h>
 +
 +#include "mpc5200_dma.h"
 +#include "mpc5200_psc_ac97.h"
@@ -107,6 +106,8 @@ index 0000000..c3e9da0
 +
 +#define DRV_NAME "efika-psc-ac97"
 +
++#if 0
++
 +static int efika_jack_func;
 +static int efika_spk_func;
 +
@@ -115,7 +116,7 @@ index 0000000..c3e9da0
 +	/* set up jack connection */
 +	switch (efika_jack_func) {
 +	case EFIKA_HP:
-+		snd_soc_dapm_disable_pin(codec, "Headset Jack");
++		//snd_soc_dapm_disable_pin(codec, "Headset Jack");
 +		snd_soc_dapm_disable_pin(codec, "Mic (Internal)");
 +		snd_soc_dapm_enable_pin(codec, "Headphone Jack");
 +		break;
@@ -251,6 +252,13 @@ index 0000000..c3e9da0
 +
 +	return 0;
 +}
++
++#else
++static int efika_init(struct snd_soc_codec *codec)
++{
++	return 0;
++}
++#endif
 +
 +/*
 + * This is an example codec initialization for a stac9766 connected to a
