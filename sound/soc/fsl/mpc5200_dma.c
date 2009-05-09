@@ -40,7 +40,6 @@ MODULE_LICENSE("GPL");
  */
 static irqreturn_t psc_dma_status_irq(int irq, void *_psc_dma)
 {
-	unsigned int val;
 	struct psc_dma *psc_dma = _psc_dma;
 	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
 	u16 isr;
@@ -57,6 +56,8 @@ static irqreturn_t psc_dma_status_irq(int irq, void *_psc_dma)
 		psc_dma->stats.overrun_count++;
 
 	out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
+	isr = in_be16(&regs->mpc52xx_psc_isr);
+	printk("psc_dma_status_irq-1 isr %x\n", isr);
 
 	return IRQ_HANDLED;
 }
@@ -75,6 +76,20 @@ static void psc_dma_bcom_enqueue_next_buffer(struct psc_dma_stream *s)
 {
 	struct bcom_bd *bd;
 
+	/* Prepare and enqueue the next buffer descriptor */
+	bd = bcom_prepare_next_buffer(s->bcom_task);
+	bd->status = s->period_bytes;
+	bd->data[0] = s->period_next_pt;
+	bcom_submit_next_buffer(s->bcom_task, NULL);
+
+	/* Update for next period */
+	s->period_next_pt += s->period_bytes;
+	if (s->period_next_pt >= s->period_end)
+		s->period_next_pt = s->period_start;
+}
+
+static void psc_dma_bcom_enqueue_tx(struct psc_dma_stream *s)
+{
 	while (s->appl_ptr < s->runtime->control->appl_ptr) {
 
 		if (bcom_queue_full(s->bcom_task))
@@ -82,21 +97,12 @@ static void psc_dma_bcom_enqueue_next_buffer(struct psc_dma_stream *s)
 
 		s->appl_ptr += s->period_size;
 
-		/* Prepare and enqueue the next buffer descriptor */
-		bd = bcom_prepare_next_buffer(s->bcom_task);
-		bd->status = s->period_bytes;
-		bd->data[0] = s->period_next_pt;
-		bcom_submit_next_buffer(s->bcom_task, NULL);
-
-		/* Update for next period */
-		s->period_next_pt += s->period_bytes;
-		if (s->period_next_pt >= s->period_end)
-			s->period_next_pt = s->period_start;
+		psc_dma_bcom_enqueue_next_buffer(s);
 	}
 }
 
 /* Bestcomm DMA irq handler */
-static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
+static irqreturn_t psc_dma_bcom_irq_tx(int irq, void *_psc_dma_stream)
 {
 	struct psc_dma_stream *s = _psc_dma_stream;
 
@@ -109,7 +115,31 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
 		if (s->period_current_pt >= s->period_end)
 			s->period_current_pt = s->period_start;
 	}
-	psc_dma_bcom_enqueue_next_buffer(s);
+	psc_dma_bcom_enqueue_tx(s);
+
+	/* If the stream is active, then also inform the PCM middle layer
+	 * of the period finished event. */
+	if (s->active)
+		snd_pcm_period_elapsed(s->stream);
+
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t psc_dma_bcom_irq_rx(int irq, void *_psc_dma_stream)
+{
+	struct psc_dma_stream *s = _psc_dma_stream;
+
+	/* For each finished period, dequeue the completed period buffer
+	 * and enqueue a new one in it's place. */
+	while (bcom_buffer_done(s->bcom_task)) {
+		bcom_retrieve_buffer(s->bcom_task, NULL, NULL);
+
+		s->period_current_pt += s->period_bytes;
+		if (s->period_current_pt >= s->period_end)
+			s->period_current_pt = s->period_start;
+
+		psc_dma_bcom_enqueue_next_buffer(s);
+	}
 
 	/* If the stream is active, then also inform the PCM middle layer
 	 * of the period finished event. */
@@ -141,6 +171,7 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 	u16 imr;
 	u8 psc_cmd;
 	unsigned long flags;
+	int i;
 
 	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
 		s = &psc_dma->capture;
@@ -156,7 +187,6 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 		s->period_bytes = frames_to_bytes(runtime,
 						  runtime->period_size);
 		s->period_start = virt_to_phys(runtime->dma_area);
-		printk("runtime->dma_area %p\n", runtime->dma_area);
 		s->period_end = s->period_start +
 				(s->period_bytes * runtime->periods);
 		s->period_next_pt = s->period_start;
@@ -167,23 +197,20 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 		s->runtime = runtime;
 		s->appl_ptr = s->runtime->control->appl_ptr - (runtime->period_size * runtime->periods);
 
-		/* First; reset everything */
+		/* Fill up the bestcomm bd queue and enable DMA.
+		 * This will begin filling the PSC's fifo. */
 		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
 			printk("Capture\n");
-			//out_8(&regs->command, MPC52xx_PSC_RST_RX);
+			bcom_gen_bd_rx_reset(s->bcom_task);
+			for (i = 0; i < runtime->periods; i++)
+				if (!bcom_queue_full(s->bcom_task))
+					psc_dma_bcom_enqueue_next_buffer(s);
 		} else {
 			printk("Playback\n");
-			//out_8(&regs->command, MPC52xx_PSC_RST_TX);
+			bcom_gen_bd_tx_reset(s->bcom_task);
+			psc_dma_bcom_enqueue_tx(s);
 		}
 
-		/* Next, fill up the bestcomm bd queue and enable DMA.
-		 * This will begin filling the PSC's fifo. */
-		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
-			bcom_gen_bd_rx_reset(s->bcom_task);
-		else
-			bcom_gen_bd_tx_reset(s->bcom_task);
-
-		psc_dma_bcom_enqueue_next_buffer(s);
 		bcom_enable(s->bcom_task);
 
 		/* Due to errata in the dma mode; need to line up enabling
@@ -212,35 +239,13 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 		break;
 
 	case SNDRV_PCM_TRIGGER_STOP:
-		/* Turn off the PSC */
 		s->active = 0;
 
-
-		//out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_RX | MPC52xx_PSC_RST_TX);
-
-		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
-			if (!psc_dma->playback.active) {
-				//out_8(&regs->command, 2 << 4);	/* reset rx */
-				//out_8(&regs->command, 3 << 4);	/* reset tx */
-				//out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
-			}
-		} else {
-			//out_8(&regs->command, 3 << 4);	/* reset tx */
-			//out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
-			if (!psc_dma->capture.active) {
-				//out_8(&regs->command, 2 << 4);	/* reset rx */
-			}
-		}
-
-		//out_8(&regs->command, 0x22);	/* disable tx */
 		bcom_disable(s->bcom_task);
-		bcom_gen_bd_tx_reset(s->bcom_task);
-
-		//bcom_disable(s->bcom_task);
-		//while (!bcom_queue_empty(s->bcom_task)) {
-			//printk("Retrieve\n");
-			//bcom_retrieve_buffer(s->bcom_task, NULL, NULL);
-		//}
+		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
+			bcom_gen_bd_rx_reset(s->bcom_task);
+		else
+			bcom_gen_bd_tx_reset(s->bcom_task);
 
 		break;
 
@@ -639,10 +644,10 @@ int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template,
 	rc = request_irq(psc_dma->irq, &psc_dma_status_irq, IRQF_SHARED,
 			 "psc-dma-status", psc_dma);
 	rc |= request_irq(psc_dma->capture.irq,
-			  &psc_dma_bcom_irq, IRQF_SHARED,
+			  &psc_dma_bcom_irq_rx, IRQF_SHARED,
 			  "psc-dma-capture", &psc_dma->capture);
 	rc |= request_irq(psc_dma->playback.irq,
-			  &psc_dma_bcom_irq, IRQF_SHARED,
+			  &psc_dma_bcom_irq_tx, IRQF_SHARED,
 			  "psc-dma-playback", &psc_dma->playback);
 	if (rc) {
 		free_irq(psc_dma->irq, psc_dma);

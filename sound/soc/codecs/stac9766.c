@@ -88,7 +88,7 @@ static const struct snd_kcontrol_new stac9766_snd_ac97_controls[] = {
 	SOC_SINGLE("Mono Out Volume", AC97_MASTER_MONO, 0, 31, 1),
 	SOC_SINGLE("Mono Out Switch", AC97_MASTER_MONO, 15, 1, 1),
 
-	SOC_DOUBLE("Record Volume", AC97_REC_GAIN, 8, 0, 31, 1),
+	SOC_DOUBLE("Record Volume", AC97_REC_GAIN, 8, 0, 15, 1),
 	SOC_SINGLE("Record Switch", AC97_REC_GAIN, 15, 1, 1),
 
 
