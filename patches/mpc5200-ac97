@@ -1,5 +1,5 @@
 Bottom: 68c8a49f409c193cd7d4f56c400950af49a32821
-Top:    bc60ade3024bf1d3bf07c8fab818463fbafb08ea
+Top:    4e6d74d114f9f3f06ce9ddf88a0047f34770778b
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-04 08:06:32 -0400
 
@@ -39,10 +39,10 @@ index 7731ef2..14631a1 100644
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..55ab310
+index 0000000..86320ae
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -0,0 +1,343 @@
+@@ -0,0 +1,376 @@
 +/*
 + * linux/sound/mpc5200-ac97.c -- AC97 support for the Freescale MPC52xx chip.
 + *
@@ -214,11 +214,21 @@ index 0000000..55ab310
 +		params_buffer_size(params), params_buffer_bytes(params),
 +		params_channels(params), params_rate(params), params_format(params));
 +
++
++	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
++		if (params_channels(params) == 1)
++			psc_dma->slots |= 0x00000100;
++		else
++			psc_dma->slots |= 0x00000300;
++	} else {
++		if (params_channels(params) == 1)
++			psc_dma->slots |= 0x01000000;
++		else
++			psc_dma->slots |= 0x03000000;
++	}
++
 +	spin_lock(&psc_dma->lock);
-+	if (params_channels(params) == 1)
-+		out_be32(&psc_dma->psc_regs->ac97_slots, 0x01000000);
-+	else
-+		out_be32(&psc_dma->psc_regs->ac97_slots, 0x03000000);
++	out_be32(&psc_dma->psc_regs->ac97_slots, psc_dma->slots);
 +	spin_unlock(&psc_dma->lock);
 +
 +	return 0;
@@ -235,6 +245,28 @@ index 0000000..55ab310
 +	out_be32(&psc_dma->psc_regs->ac97_slots, 0x00060000);
 +	spin_unlock(&psc_dma->lock);
 +
++	return 0;
++}
++
++static int psc_ac97_trigger(struct snd_pcm_substream *substream, int cmd,
++								 struct snd_soc_dai *dai)
++{
++	struct snd_soc_pcm_runtime *rtd = substream->private_data;
++	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
++
++	switch (cmd) {
++	case SNDRV_PCM_TRIGGER_STOP:
++		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
++			psc_dma->slots &= 0xFFFF0000;
++		else
++			psc_dma->slots &= 0x0000FFFF;
++
++		printk("Clearing slots %x\n", psc_dma->slots);
++		spin_lock(&psc_dma->lock);
++		out_be32(&psc_dma->psc_regs->ac97_slots, psc_dma->slots);
++		spin_unlock(&psc_dma->lock);
++		break;
++	}
 +	return 0;
 +}
 +
@@ -271,6 +303,7 @@ index 0000000..55ab310
 +static struct snd_soc_dai_ops psc_ac97_analog_ops = {
 +	.hw_params	= psc_ac97_hw_analog_params,
 +	.set_fmt	= psc_ac97_set_fmt,
++	.trigger	= psc_ac97_trigger,
 +};
 +
 +static struct snd_soc_dai_ops psc_ac97_digital_ops = {
