@@ -1,4 +1,4 @@
-Bottom: 45ad339781118529fc9268ba4314c9176e04466b
+Bottom: b086adb5467a5a9e2d2b5f30db33ead901448574
 Top:    4cfe18f2068208b6484029ce93f606a687d2fff8
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-04 08:06:37 -0400
@@ -8,19 +8,6 @@ Temporary holding patch
 
 ---
 
-diff --git a/sound/soc/codecs/stac9766.c b/sound/soc/codecs/stac9766.c
-index 9d85f34..b32b7bf 100644
---- a/sound/soc/codecs/stac9766.c
-+++ b/sound/soc/codecs/stac9766.c
-@@ -88,7 +88,7 @@ static const struct snd_kcontrol_new stac9766_snd_ac97_controls[] = {
- 	SOC_SINGLE("Mono Out Volume", AC97_MASTER_MONO, 0, 31, 1),
- 	SOC_SINGLE("Mono Out Switch", AC97_MASTER_MONO, 15, 1, 1),
- 
--	SOC_DOUBLE("Record Volume", AC97_REC_GAIN, 8, 0, 31, 1),
-+	SOC_DOUBLE("Record Volume", AC97_REC_GAIN, 8, 0, 15, 1),
- 	SOC_SINGLE("Record Switch", AC97_REC_GAIN, 15, 1, 1),
- 
- 
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
 index 763be11..4928260 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
