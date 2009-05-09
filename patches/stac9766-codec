@@ -1,5 +1,5 @@
 Bottom: b91a15df11d9bdd99579ac310aaee0333a21af9f
-Top:    1dc720c20d05beab39231824f38fafc5f03d27cb
+Top:    62cf049d1dd65a19827bd47aa8c4b563aab2befe
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-04 08:06:32 -0400
 
@@ -52,7 +52,7 @@ index f265380..f8b8175 100644
  obj-$(CONFIG_SND_SOC_TLV320AIC3X)	+= snd-soc-tlv320aic3x.o
 diff --git a/sound/soc/codecs/stac9766.c b/sound/soc/codecs/stac9766.c
 new file mode 100644
-index 0000000..9d85f34
+index 0000000..b32b7bf
 --- /dev/null
 +++ b/sound/soc/codecs/stac9766.c
 @@ -0,0 +1,446 @@
@@ -146,7 +146,7 @@ index 0000000..9d85f34
 +	SOC_SINGLE("Mono Out Volume", AC97_MASTER_MONO, 0, 31, 1),
 +	SOC_SINGLE("Mono Out Switch", AC97_MASTER_MONO, 15, 1, 1),
 +
-+	SOC_DOUBLE("Record Volume", AC97_REC_GAIN, 8, 0, 31, 1),
++	SOC_DOUBLE("Record Volume", AC97_REC_GAIN, 8, 0, 15, 1),
 +	SOC_SINGLE("Record Switch", AC97_REC_GAIN, 15, 1, 1),
 +
 +
