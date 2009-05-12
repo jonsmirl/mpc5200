@@ -1,4 +1,4 @@
-Bottom: 5353668c5dd43e0296baa610d5671fadedb76437
+Bottom: b0565f1d57bfceba716a483fb016d3f4bc554ac7
 Top:    b0d62ba83e74114cb1f30066b9a116cc3d644f41
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-04 08:06:37 -0400
@@ -8,51 +8,6 @@ Temporary holding patch
 
 ---
 
-diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 4928260..08e48af 100644
---- a/sound/soc/fsl/mpc5200_dma.c
-+++ b/sound/soc/fsl/mpc5200_dma.c
-@@ -278,8 +278,7 @@ static const struct snd_pcm_hardware psc_dma_hardware = {
- 	.info = SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
- 		SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
- 		SNDRV_PCM_INFO_BATCH,
--	.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
--		   SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
-+	.formats = SNDRV_PCM_FMTBIT_S32_BE,
- 	.rate_min = 8000,
- 	.rate_max = 48000,
- 	.channels_min = 1,
-@@ -375,21 +374,6 @@ psc_dma_pointer(struct snd_pcm_substream *substream)
- }
- 
- static int
--psc_dma_ack(struct snd_pcm_substream *substream)
--{
--	printk("ack\n");
--	return 0;
--}
--
--static int psc_dma_copy(struct snd_pcm_substream *substream, int channel,
--	    snd_pcm_uframes_t pos,
--	    void __user *buf, snd_pcm_uframes_t count)
--{
--	printk("copy\n");
--	return 0;
--}
--
--static int
- psc_dma_hw_params(struct snd_pcm_substream *substream,
- 			 struct snd_pcm_hw_params *params)
- {
-@@ -406,8 +390,6 @@ static struct snd_pcm_ops psc_dma_ops = {
- 	.pointer	= psc_dma_pointer,
- 	.trigger	= psc_dma_trigger,
- 	.hw_params	= psc_dma_hw_params,
--	.ack		= psc_dma_ack,
--	.copy		= psc_dma_copy,
- };
- 
- static u64 psc_dma_dmamask = 0xffffffff;
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 index 86320ae..382d28f 100644
 --- a/sound/soc/fsl/mpc5200_psc_ac97.c
