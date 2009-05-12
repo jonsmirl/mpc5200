@@ -1,6 +1,6 @@
 Version: 1
-Previous: 185846bffecb38c0fbf675264e9cd5515acbc540
-Head: 434a6dc9e3ddc338e4bf66d0dfd723369ca47c55
+Previous: ad2f359035a46550bb1948468d354302ed7a5bf5
+Head: 7ebf20c7606433ac89352ab67b7223e6e127c2fb
 Applied:
   Makefile: c37a3cca7ec3f611cd7897a09ad798e4f834bf3f
   digispeak: aec09970d5c5e686dece2cf2ea4464f530b9abcd
@@ -24,8 +24,7 @@ Applied:
   i2s-unbreak: 3899942ffb3a1fee1bc46ee6eb3b7b392329cc53
   add-psc-defines: 9a77f3cf6eef29a86cd025deb7da0f644d4b9de3
   of-soc-simple-rework: 1cb6fde98b434607c798d98dad68c5679197625c
-  dma-module: 529630cb631e36f0e0cf2c5f3363725e3a435d31
-  refresh-temp: 434a6dc9e3ddc338e4bf66d0dfd723369ca47c55
+  dma-module: 7ebf20c7606433ac89352ab67b7223e6e127c2fb
 Unapplied:
   stac9766-codec: 3a43d3388b15a8a27dd0aa99a70571ed27164dbe
   mpc5200-ac97: 252406ecc009e5fa90aa24d09d93e2c4da35c77e

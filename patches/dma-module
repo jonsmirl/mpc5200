@@ -1,5 +1,5 @@
 Bottom: 4696e4a7a8243df9bbf24e147379432581bbad15
-Top:    83fea157d9015ed488ef2f5368a046d34941036a
+Top:    3dd4a73c72041501339da5214a27ff08c772b7e7
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-04 08:06:32 -0400
 
@@ -13,7 +13,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 6850392..4928260 100644
+index 6850392..08e48af 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -5,6 +5,8 @@
@@ -302,7 +302,7 @@ index 6850392..4928260 100644
  
  /* ---------------------------------------------------------------------
   * The PSC DMA 'ASoC platform' driver
-@@ -312,7 +274,7 @@ void psc_dma_shutdown(struct snd_pcm_substream *substream,
+@@ -312,67 +274,93 @@ void psc_dma_shutdown(struct snd_pcm_substream *substream,
   * interaction with the attached codec
   */
  
@@ -311,8 +311,9 @@ index 6850392..4928260 100644
  	.info = SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
  		SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
  		SNDRV_PCM_INFO_BATCH,
-@@ -320,59 +282,86 @@ static const struct snd_pcm_hardware psc_dma_pcm_hardware = {
- 		   SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
+-	.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
+-		   SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
++	.formats = SNDRV_PCM_FMTBIT_S32_BE,
  	.rate_min = 8000,
  	.rate_max = 48000,
 -	.channels_min = 2,
@@ -406,28 +407,13 @@ index 6850392..4928260 100644
  
  	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
  		s = &psc_dma->capture;
-@@ -381,46 +370,82 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
+@@ -381,46 +369,65 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
  
  	count = s->period_current_pt - s->period_start;
  
 -	return bytes_to_frames(substream->runtime, count);
 +	frames = bytes_to_frames(substream->runtime, count);
 +	return frames;
-+}
-+
-+static int
-+psc_dma_ack(struct snd_pcm_substream *substream)
-+{
-+	printk("ack\n");
-+	return 0;
-+}
-+
-+static int psc_dma_copy(struct snd_pcm_substream *substream, int channel,
-+	    snd_pcm_uframes_t pos,
-+	    void __user *buf, snd_pcm_uframes_t count)
-+{
-+	printk("copy\n");
-+	return 0;
 +}
 +
 +static int
@@ -451,8 +437,6 @@ index 6850392..4928260 100644
 +	.pointer	= psc_dma_pointer,
 +	.trigger	= psc_dma_trigger,
 +	.hw_params	= psc_dma_hw_params,
-+	.ack		= psc_dma_ack,
-+	.copy		= psc_dma_copy,
  };
  
 -static u64 psc_dma_pcm_dmamask = 0xffffffff;
@@ -501,7 +485,7 @@ index 6850392..4928260 100644
  	return 0;
  
   capture_alloc_err:
-@@ -431,13 +456,13 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
+@@ -431,13 +438,13 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
  	return -ENOMEM;
  }
  
@@ -517,7 +501,7 @@ index 6850392..4928260 100644
  
  	for (stream = 0; stream < 2; stream++) {
  		substream = pcm->streams[stream].substream;
-@@ -449,10 +474,247 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
+@@ -449,10 +456,247 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
  	}
  }
  
