@@ -5,6 +5,8 @@ Date:   2009-05-13 14:12:25 -0400
 
 AC97 driver for mpc5200
 
+AC97 driver for mpc5200
+
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
 
