@@ -5,6 +5,8 @@ Date:   2009-05-13 14:12:27 -0400
 
 Support for AC97 on Phytec pmc030 base board.
 
+Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
+
 
 ---
 
