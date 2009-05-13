@@ -353,8 +353,8 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	snd_soc_register_platform(&psc_dma_pcm_soc_platform);
 
 	/* Tell the ASoC OF helpers about it */
-	of_snd_soc_register_platform(&psc_dma_pcm_soc_platform, op->node,
-				     &psc_dma->dai);
+	of_snd_soc_register_platform(&mpc5200_audio_dma_platform);
+	of_snd_soc_register_cpu_dai(op->node, &psc_dma->dai, 1);
 
 	return 0;
 }
