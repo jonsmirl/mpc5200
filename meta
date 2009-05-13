@@ -1,6 +1,6 @@
 Version: 1
-Previous: 5f3985f97abb009f853d8d4d727248153c210819
-Head: ff2ecae18635c209e43a04fa9c917c0a6d9a4eba
+Previous: 4eaa91c107dfbda1c63dc395264089b356bcac95
+Head: f4318c0e85173388dd24d9b68e26d0992b53ea01
 Applied:
   Makefile: c1d59638630d44c8321dfc0f92dc57560f081073
   digispeak: eb9a52959e959450b02793771a4812b83e0039f4
@@ -22,6 +22,7 @@ Applied:
   redo-takai-fix: 27749e3bebe12fd2e8b89159a6d0f68450efb7e3
   add-psc-defines: c7c28e0ef855b0b6b8f0c6c4b05067c864ed86b1
   of-soc-simple-rework: f4318c0e85173388dd24d9b68e26d0992b53ea01
+Unapplied:
   dma-module: 5f49ee1262430e017d3815bdc1ce988d35661694
   stac9766-codec: db081967524ea72e474b0de8b8a8b7f8a9f0e2f3
   mpc5200-ac97: 5ddc1e063fa10ce50e84248a1b33d5ef62a7b715
@@ -33,6 +34,5 @@ Applied:
   add-s32be-ac97: 18cd9ec5f537c4b080f410ab4e0c427fceaf9c03
   wm9712-self-register: fefddaf5494b63741ec318221e19f053cd884917
   phytec: ff2ecae18635c209e43a04fa9c917c0a6d9a4eba
-Unapplied:
   temp: 9121e3aba9330aa62290b35ac0b40d281323a1e6
 Hidden:
