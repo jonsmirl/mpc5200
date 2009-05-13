@@ -1,4 +1,4 @@
-Bottom: 5d1db49ff48cda5d62bb9d298fa8b4d1f5b6ddf0
+Bottom: b4c4afbebe8cc52a71a9d15f1064bacd91ac4d66
 Top:    f0acc353a30ccb60c982a6a730634b97d50500e8
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-13 14:12:27 -0400
@@ -110,27 +110,6 @@ index 7ad85d2..c3ec163 100644
 +	  Say Y if you want to add support for sound on the Phytec pcm030 baseboard.
 +
  
-diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
-index 382d28f..340739c 100644
---- a/sound/soc/fsl/mpc5200_psc_ac97.c
-+++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -297,7 +297,7 @@ static struct snd_soc_dai psc_ac97_dai_template[] = {
- 		.channels_max   = 2,
- 		.rates          = SNDRV_PCM_RATE_32000 | \
- 			SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
--		.formats = SNDRV_PCM_FORMAT_IEC958_SUBFRAME_BE,
-+		.formats = SNDRV_PCM_FMTBIT_IEC958_SUBFRAME_BE,
- 	},
- 	.ops = &psc_ac97_digital_ops,
- }};
-@@ -350,6 +350,7 @@ static int __devexit psc_ac97_of_remove(struct of_device *op)
- /* Match table for of_platform binding */
- static struct of_device_id psc_ac97_match[] __devinitdata = {
- 	{ .compatible = "fsl,mpc5200-psc-ac97", },
-+	{ .compatible = "fsl,mpc5200b-psc-ac97", },
- 	{}
- };
- MODULE_DEVICE_TABLE(of, psc_ac97_match);
 diff --git a/sound/soc/fsl/soc-of-simple.c b/sound/soc/fsl/soc-of-simple.c
 index 5f859a8..84c2d75 100644
 --- a/sound/soc/fsl/soc-of-simple.c
