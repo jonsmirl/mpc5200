@@ -1,5 +1,5 @@
-Bottom: e7eaff884816b34f65fc49959d745566f03ca7d6
-Top:    de5ebb612817d8f110e0850006d90ecc94bad8bb
+Bottom: ff4617c171196a2dc2adbb23cdf4b71e262434a7
+Top:    3484515363d56fee96061d4a51bb3e88d6b93972
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-13 14:12:25 -0400
 
@@ -33,7 +33,7 @@ index a2068fa..c7a6a48 100644
  	.init_IRQ		= mpc52xx_init_irq,
  	.get_irq		= mpc52xx_get_irq,
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index b3ef381..d13e5f1 100644
+index d8f63f5..266c6b7 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
 @@ -40,4 +40,12 @@ config SND_SOC_MPC5200_AC97

@@ -1,5 +1,5 @@
-Bottom: 65cd2796a9eab143441d32534be133d7748b7938
-Top:    ce08be6092353ffe38dc3c041054d01bbb7604a4
+Bottom: b556464f8465e2cb1585d9e59242a3bef9786717
+Top:    da92df89b99f1e86dbd64282945ef159668b41d8
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-13 14:12:24 -0400
 
@@ -13,7 +13,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index e7dd79a..c7339f3 100644
+index 9fc9082..dc79bdf 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
 @@ -1,5 +1,8 @@
@@ -27,7 +27,7 @@ index e7dd79a..c7339f3 100644
  # for the SSI and the Elo DMA controller.  You will still need to select
 @@ -23,6 +26,7 @@ config SND_SOC_MPC5200_I2S
  	tristate "Freescale MPC5200 PSC in I2S mode driver"
- 	depends on PPC_MPC52xx && PPC_BESTCOMM && BROKEN
+ 	depends on PPC_MPC52xx && PPC_BESTCOMM
  	select SND_SOC_OF_SIMPLE
 +	select SND_MPC52xx_DMA
  	select PPC_BESTCOMM_GEN_BD
