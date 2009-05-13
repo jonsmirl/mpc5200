@@ -3,9 +3,9 @@ Top:    79f45046c2eb34acfdb42a761d559ef942b90280
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-13 14:12:25 -0400
 
-Move the mpc5200 DMA code into a shared module
+Main rewite of the mpc5200 audio DMA code
 
-Move the mpc5200 DMA code into a shared module.
+Rewrite the mpc5200 audio DMA code to support both I2S and AC97. Make it more robust.
 
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
