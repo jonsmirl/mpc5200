@@ -194,10 +194,10 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 
-			codec@0 {
+			/*codec@0 {
 				compatible = "wlf,wm9712";
 				reg = <0x0>;
-			};
+			}; */
 		};
 
 		/* PSC2 port is used by CAN1/2 */

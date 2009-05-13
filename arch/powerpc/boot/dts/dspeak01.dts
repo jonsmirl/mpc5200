@@ -157,7 +157,7 @@
 			#gpio-cells = <2>;
 		};
 
-		spi@f00 {
+	/*	spi@f00 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			compatible = "fsl,mpc5200b-spi","fsl,mpc5200-spi";
@@ -168,20 +168,20 @@
 			mmc-slot@0 {
 				compatible = "linux,mmc-spi";
 				reg = <0>;
-				spi-max-frequency = <20000000>;
+				spi-max-frequency = <20000000>; */
 				/* Unregulated slot. */
-				voltage-range = <3300 3300>;
+/*				voltage-range = <3300 3300>; */
 				/*gpios = <&sdcsr_pio 1 0   /*  WP */
 				/*		 &sdcsr_pio 0 1>; /* nCD */
-			};
-		};
+/*			};
+		}; 
 
 		usb@1000 {
 			compatible = "fsl,mpc5200b-ohci","fsl,mpc5200-ohci","ohci-be";
 			reg = <0x1000 0xff>;
 			interrupts = <0x2 0x6 0x0>;
 			interrupt-parent = <&mpc5200_pic>;
-		};
+		};*/
 
 		dma-controller@1200 {
 			device_type = "dma-controller";
@@ -216,7 +216,7 @@
 			codec-handle = <&tas0>;
 		};
 
-		serial@2400 { /* PSC3 in UART mode */
+		serial@2400 {  /* PSC3 in UART mode */ 
 			device_type = "serial";
 			compatible = "fsl,mpc5200b-psc-uart","fsl,mpc5200-psc-uart";
 			port-number = <0>;
@@ -224,21 +224,28 @@
 			reg = <0x2400 0x100>;
 			interrupts = <0x2 0x3 0x0>;
 			interrupt-parent = <&mpc5200_pic>;
-		};
+		}; 
 
-		/* PSC4 is ??? */
+		serial@2600 {		// PSC4
+			compatible = "fsl,mpc5200b-psc-uart","fsl,mpc5200-psc-uart";
+			cell-index = <3>;
+			port-number = <1>;
+			reg = <0x2600 0x100>;
+			interrupts = <0x2 0x11 0x0>;
+			interrupt-parent = <&mpc5200_pic>;
+		};
 
 		/* PSC5 is ??? */
 
-		serial@2c00 { /* PSC6 in UART mode */
-			device_type = "serial";
+	/*	serial@2c00 { *//* PSC6 in UART mode */
+/*			device_type = "serial";
 			compatible = "fsl,mpc5200b-psc-uart","fsl,mpc5200-psc-uart";
 			port-number = <1>;
 			cell-index = <5>;
 			reg = <0x2c00 0x100>;
 			interrupts = <0x2 0x4 0x0>;
 			interrupt-parent = <&mpc5200_pic>;
-		};
+		}; */
 
 		ethernet@3000 {
 			device_type = "network";
@@ -264,13 +271,13 @@
 			};
 		};
 
-		ata@3a00 {
+	/*	ata@3a00 {
 			device_type = "ata";
 			compatible = "fsl,mpc5200b-ata","fsl,mpc5200-ata";
 			reg = <0x3a00 0x100>;
 			interrupts = <0x2 0x7 0x0>;
 			interrupt-parent = <&mpc5200_pic>;
-		};
+		}; */
 
 		i2c@3d00 {
 			#address-cells = <1>;
@@ -323,13 +330,13 @@
 			clock-handle = <&clock0>;
 		};
 
-		ir0@670 { /* General Purpose Timer 6 in Input mode */
+	/*	ir0@670 { */ /* General Purpose Timer 6 in Input mode */ /*
 			compatible = "gpt-ir";
 			cell-index = <7>;
 			reg = <0x670 0x10>;
 			interrupts = <0x1 0x10 0x0>;
 			interrupt-parent = <&mpc5200_pic>;
-		};
+		}; */
 
 		/* This is only an example device to show the usage of gpios. It maps all available
 		 * gpios to the "gpio-provider" device.
