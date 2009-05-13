@@ -5,6 +5,8 @@ Date:   2009-05-13 16:45:58 -0400
 
 Add SNDRV_PCM_FMTBIT_S32_BE as a valid AC97 format
 
+Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
+
 
 ---
 
