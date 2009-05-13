@@ -1,4 +1,4 @@
-Bottom: ff64097f08ed3207d087a8ddf5b7a9c337bb8b69
+Bottom: a2ea467f44b28aa532294fee1a50a79afc8dbc90
 Top:    8ba1b39feeda7e1740ab91bf57e72c9fc4a3da30
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-13 14:12:27 -0400
@@ -27,58 +27,6 @@ index 8958347..001c8ef 100644
  		};
  
  		/* PSC2 port is used by CAN1/2 */
-diff --git a/sound/soc/codecs/wm9712.c b/sound/soc/codecs/wm9712.c
-index 550c903..cb0e679 100644
---- a/sound/soc/codecs/wm9712.c
-+++ b/sound/soc/codecs/wm9712.c
-@@ -20,6 +20,7 @@
- #include <sound/initval.h>
- #include <sound/soc.h>
- #include <sound/soc-dapm.h>
-+#include <sound/soc-of-simple.h>
- #include "wm9712.h"
- 
- #define WM9712_VERSION "0.4"
-@@ -740,6 +741,39 @@ struct snd_soc_codec_device soc_codec_dev_wm9712 = {
- };
- EXPORT_SYMBOL_GPL(soc_codec_dev_wm9712);
- 
-+static int __init wm9712_probe(struct platform_device *pdev)
-+{
-+	snd_soc_register_dais(wm9712_dai, ARRAY_SIZE(wm9712_dai));
-+#if defined(CONFIG_SND_SOC_OF_SIMPLE)
-+	/* Tell the of_soc helper about this codec */
-+	of_snd_soc_register_codec(&soc_codec_dev_wm9712, pdev->dev.archdata.of_node,
-+									wm9712_dai, ARRAY_SIZE(wm9712_dai),
-+									pdev->dev.archdata.of_node);
-+#endif
-+	return 0;
-+}
-+
-+static struct platform_driver wm9712_driver =
-+{
-+	.probe = wm9712_probe,
-+	.driver = {
-+			.name = "wm9712",
-+	},
-+};
-+
-+static __init int wm9712_driver_init(void)
-+{
-+	return platform_driver_register(&wm9712_driver);
-+}
-+
-+static __exit void wm9712_driver_exit(void)
-+{
-+}
-+
-+module_init(wm9712_driver_init);
-+module_exit(wm9712_driver_exit);
-+
-+
- MODULE_DESCRIPTION("ASoC WM9711/WM9712 driver");
- MODULE_AUTHOR("Liam Girdwood");
- MODULE_LICENSE("GPL");
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
 index 7ad85d2..c3ec163 100644
 --- a/sound/soc/fsl/Kconfig
