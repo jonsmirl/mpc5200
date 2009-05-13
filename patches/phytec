@@ -1,4 +1,4 @@
-Bottom: b4c4afbebe8cc52a71a9d15f1064bacd91ac4d66
+Bottom: 7974311e8b53831fef14e8285b08d0cb524271c5
 Top:    f0acc353a30ccb60c982a6a730634b97d50500e8
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-13 14:12:27 -0400
@@ -109,31 +109,3 @@ index 7ad85d2..c3ec163 100644
 +	help
 +	  Say Y if you want to add support for sound on the Phytec pcm030 baseboard.
 +
- 
-diff --git a/sound/soc/fsl/soc-of-simple.c b/sound/soc/fsl/soc-of-simple.c
-index 5f859a8..84c2d75 100644
---- a/sound/soc/fsl/soc-of-simple.c
-+++ b/sound/soc/fsl/soc-of-simple.c
-@@ -40,7 +40,7 @@ struct of_snd_soc_device {
- 
- /* template values */
- struct snd_soc_platform *template_platform;
--char *template_name;
-+char *template_name = NULL;
- struct snd_soc_ops *template_ops;
- int (*template_init)(struct snd_soc_codec *codec);
- 
-@@ -257,3 +257,13 @@ int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops,
- 	return 0;
- }
- EXPORT_SYMBOL_GPL(of_snd_soc_register_fabric);
-+
-+/* If no board specific fabric driver has been registered, register a default one */
-+int register_default_fabric(void)
-+{
-+	if (template_name == NULL)
-+		return of_snd_soc_register_fabric("Default Fabric", NULL, NULL);
-+	return 0;
-+}
-+
-+late_initcall(register_default_fabric);
