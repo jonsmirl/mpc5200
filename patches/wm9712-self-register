@@ -5,6 +5,8 @@ Date:   2009-05-13 16:47:33 -0400
 
 Have the WM9712 driver self register itself
 
+Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
+
 
 ---
 
