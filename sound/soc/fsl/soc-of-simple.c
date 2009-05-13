@@ -40,7 +40,7 @@ struct of_snd_soc_device {
 
 /* template values */
 struct snd_soc_platform *template_platform;
-char *template_name;
+char *template_name = NULL;
 struct snd_soc_ops *template_ops;
 int (*template_init)(struct snd_soc_codec *codec);
 
@@ -257,3 +257,13 @@ int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(of_snd_soc_register_fabric);
+
+/* If no board specific fabric driver has been registered, register a default one */
+int register_default_fabric(void)
+{
+	if (template_name == NULL)
+		return of_snd_soc_register_fabric("Default Fabric", NULL, NULL);
+	return 0;
+}
+
+late_initcall(register_default_fabric);
