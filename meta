@@ -1,6 +1,6 @@
 Version: 1
-Previous: 7a27d7dcaa1c00cc170ef7370a8496fd688959e2
-Head: ae52207dd686bd9c07f6877ac77f6d5f698ea61d
+Previous: 05efecbe80e1f027888898ccb7a167a117800e1f
+Head: 70933ebe327abd2b1a7d09c4be61d5001768f772
 Applied:
   Makefile: c1d59638630d44c8321dfc0f92dc57560f081073
   digispeak: eb9a52959e959450b02793771a4812b83e0039f4
@@ -24,6 +24,7 @@ Applied:
   i2s-unbreak: 29f44f9e0b62aa8bd3668c46706c82d1c97c3b70
   add-psc-defines: 188a7c53888e6d3f66bb8be023db16da08375cba
   of-soc-simple-rework: 70933ebe327abd2b1a7d09c4be61d5001768f772
+Unapplied:
   dma-module: 59eb27a4bb90b0ce478044f2018346a3dc33c100
   stac9766-codec: 79c7f1013a5b5dc95baca984f45ce5a07bceffe2
   mpc5200-ac97: 6a84e5bbec9a80803745127a5431a61f6ff66a68
@@ -34,5 +35,4 @@ Applied:
   dspeak-audio: 09408abde3d1fa0e05e6f852b2217de90b3b5e5f
   temp: 8f025d63654b9ff22e399f0cb439e04f0685eb7e
   phytec: ae52207dd686bd9c07f6877ac77f6d5f698ea61d
-Unapplied:
 Hidden:
