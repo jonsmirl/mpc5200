@@ -5,6 +5,8 @@ Date:   2009-05-13 16:47:33 -0400
 
 Have the WM9712 driver self register itself
 
+Have the WM9712 driver self register itself. This is needed to support device tree driver binding via the soc_of_simple code.
+
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
 
