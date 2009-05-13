@@ -5,6 +5,8 @@ Date:   2009-05-13 14:12:24 -0400
 
 Temporarily undo 2008f137e92220b98120c4803499cdddb2b0fb06 in sound/soc/fsl/mpc5200_psc_i2s.c so that it won't interfere with following patches that split mpc5200_psc_i2s.c.
 
+Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
+
 
 ---
 
