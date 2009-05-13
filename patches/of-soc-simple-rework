@@ -3,9 +3,9 @@ Top:    16c7abee2cc853e381f67a430e86e4d6cfaf3d53
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-13 14:12:25 -0400
 
-Allow a custom ASOC machine driver with soc-of-simple
+Allow a custom ASOC fabric driver with soc-of-simple
 
-Allow a custom ASOC machine driver with soc-of-simple
+Allow a custom ASOC fabric driver with soc-of-simple. Register multiple DAIs. If no custom fabric driver, supply a default one so that ASOC binding will complete.
 
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
