@@ -40,7 +40,7 @@ struct of_snd_soc_device {
 
 /* template values */
 struct snd_soc_platform *template_platform;
-char *template_name = NULL;
+const char *template_name = NULL;
 struct snd_soc_ops *template_ops;
 int (*template_init)(struct snd_soc_codec *codec);
 
@@ -70,7 +70,7 @@ of_snd_soc_get_device(struct device_node *codec_node)
 		of_soc->dai_link[i].ops = template_ops;
 		of_soc->dai_link[i].init = template_init;
 	}
-	of_soc->card.name = template_name;
+	of_soc->card.name = (char *)template_name;
 	of_soc->card.platform = template_platform;
 
 	list_add(&of_soc->list, &of_snd_soc_device_list);
@@ -233,7 +233,7 @@ int of_snd_soc_register_platform(struct snd_soc_platform *platform)
 }
 EXPORT_SYMBOL_GPL(of_snd_soc_register_platform);
 
-int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops,
+int of_snd_soc_register_fabric(const char *name, struct snd_soc_ops *ops,
 								int (*init)(struct snd_soc_codec *codec))
 {
 	int i;
@@ -250,7 +250,7 @@ int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops,
 			of_soc->dai_link[i].ops = ops;
 			of_soc->dai_link[i].init = init;
 		}
-		of_soc->card.name = name;
+		of_soc->card.name = (char *)name;
 		of_snd_soc_register_device(of_soc);
 	}
 	mutex_unlock(&of_snd_soc_mutex);
@@ -259,11 +259,19 @@ int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops,
 EXPORT_SYMBOL_GPL(of_snd_soc_register_fabric);
 
 /* If no board specific fabric driver has been registered, register a default one */
-int register_default_fabric(void)
+int of_snd_soc_register_default_fabric(void)
 {
-	if (template_name == NULL)
-		return of_snd_soc_register_fabric("Default Fabric", NULL, NULL);
-	return 0;
-}
+	struct device_node *root;
+	const char *model = "";
 
-late_initcall(register_default_fabric);
+	if (template_name != NULL)
+		return 0;
+
+	root = of_find_node_by_path("/");
+	if (root)
+		model = of_get_property(root, "model", NULL);
+
+	return of_snd_soc_register_fabric(model, NULL, NULL);
+}
+EXPORT_SYMBOL_GPL(of_snd_soc_register_default_fabric);
+
