@@ -1,0 +1,23 @@
+Bottom: b4e2d106cb6ca8c1c1e31e3da23e9e86166c327e
+Top:    ff64097f08ed3207d087a8ddf5b7a9c337bb8b69
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-13 16:46:45 -0400
+
+Refresh of add-s32be-ac97
+
+---
+
+diff --git a/include/sound/soc-dai.h b/include/sound/soc-dai.h
+index 496dc30..352d7ee 100644
+--- a/include/sound/soc-dai.h
++++ b/include/sound/soc-dai.h
+@@ -79,7 +79,8 @@ struct snd_pcm_substream;
+ #define SND_SOC_CLOCK_OUT		1
+ 
+ #define SND_SOC_STD_AC97_FMTS (SNDRV_PCM_FMTBIT_S16_LE |\
+-                               SNDRV_PCM_FMTBIT_S32_LE)
++                               SNDRV_PCM_FMTBIT_S32_LE |\
++                               SNDRV_PCM_FMTBIT_S32_BE)
+ 
+ struct snd_soc_dai_ops;
+ struct snd_soc_dai;
