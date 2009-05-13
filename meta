@@ -1,6 +1,6 @@
 Version: 1
-Previous: 165a0ada34d971d82f0af3baabb8424e4f8c1aaa
-Head: 03efcc24883d7f2c19ae9dfa4185443555f19c5a
+Previous: 4c18ea97e2fc9a315fb39df6919feb0ba481f859
+Head: 51aea07fd0a2cc484beaa51a8eab31e3369b3ddf
 Applied:
   Makefile: c1d59638630d44c8321dfc0f92dc57560f081073
   digispeak: eb9a52959e959450b02793771a4812b83e0039f4
@@ -25,6 +25,7 @@ Applied:
   add-s32be-ac97: 8836c65280c0486a831feb08e62e845f2c88c7f7
   wm9712-self-register: bab56b0b267a39d6f356d2728af69260e382a881
   mpc5200-dma: 51aea07fd0a2cc484beaa51a8eab31e3369b3ddf
+Unapplied:
   stac9766-codec: e83947e0db6b78f5b35cd92d89bd1d6d20e2a5a4
   mpc5200-ac97: bcac41b1245cfb7f0b6b60017b084ca89878098b
   efika-audio: 3e7a092680ccb73961cadf90cdebd29610ae5881
@@ -34,5 +35,4 @@ Applied:
   i2s-cell-clock: 1652f3eb31062e9d2bf2719d56023be226f038f5
   dspeak-audio: 69a35d0195656370604ee716cd7b2df7d91ef5e9
   temp: 03efcc24883d7f2c19ae9dfa4185443555f19c5a
-Unapplied:
 Hidden:
