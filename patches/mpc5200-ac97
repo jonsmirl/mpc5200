@@ -1,5 +1,5 @@
 Bottom: 5484351ee81531ac6a3c6f7b5bbee84498f36c05
-Top:    8cd19786528f6ad2f3f891d4d36554ee65a2fa2b
+Top:    3b45f348511d2eedefff255f39c22c8a16af9665
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-13 14:12:25 -0400
 
@@ -43,10 +43,10 @@ index 7731ef2..14631a1 100644
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..340739c
+index 0000000..385f697
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -0,0 +1,382 @@
+@@ -0,0 +1,380 @@
 +/*
 + * linux/sound/mpc5200-ac97.c -- AC97 support for the Freescale MPC52xx chip.
 + *
@@ -57,8 +57,6 @@ index 0000000..340739c
 + * it under the terms of the GNU General Public License version 2 as
 + * published by the Free Software Foundation.
 + */
-+
-+#define DEBUG
 +
 +#include <linux/init.h>
 +#include <linux/module.h>
