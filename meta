@@ -1,5 +1,5 @@
 Version: 1
-Previous: fa757ee45b8cec23752b8bdf8f74c593c6391f7a
+Previous: 5f3985f97abb009f853d8d4d727248153c210819
 Head: ff2ecae18635c209e43a04fa9c917c0a6d9a4eba
 Applied:
   Makefile: c1d59638630d44c8321dfc0f92dc57560f081073
@@ -34,7 +34,5 @@ Applied:
   wm9712-self-register: fefddaf5494b63741ec318221e19f053cd884917
   phytec: ff2ecae18635c209e43a04fa9c917c0a6d9a4eba
 Unapplied:
-  is2-broken: 72495400727f7243eb79e56c7ebc3b944087c41e
-  i2s-unbreak: 29f44f9e0b62aa8bd3668c46706c82d1c97c3b70
   temp: 9121e3aba9330aa62290b35ac0b40d281323a1e6
 Hidden:
