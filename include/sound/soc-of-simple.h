@@ -23,8 +23,10 @@ int of_snd_soc_register_cpu_dai(struct device_node *node,
 
 int of_snd_soc_register_platform(struct snd_soc_platform *platform);
 
-int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops,
+int of_snd_soc_register_fabric(const char *name, struct snd_soc_ops *ops,
 								int (*init)(struct snd_soc_codec *codec));
+
+int of_snd_soc_register_default_fabric(void);
 
 #endif
 
