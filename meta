@@ -1,5 +1,5 @@
 Version: 1
-Previous: 48914cee6bbbebabc5a52758f57e7ec1c8a2ab46
+Previous: 92cf7b5dae6be242bc80d3c0d5d3614d9bbd2c07
 Head: dfde172bbd9d0f80eb73cf83c34f5ce954069a25
 Applied:
   Makefile: c1d59638630d44c8321dfc0f92dc57560f081073
@@ -24,7 +24,7 @@ Applied:
   of-soc-simple-rework: f4318c0e85173388dd24d9b68e26d0992b53ea01
   add-s32be-ac97: 0a9fe8b7c1710a9d46b952cc2911262c56b5ed50
   wm9712-self-register: b1f4fb788bee0cd5b7576c87c63cbb4c5e60ca21
-  dma-module: e1eb62b8f0b0503656fa5211280ce2adca379334
+  mpc5200-dma-module: e1eb62b8f0b0503656fa5211280ce2adca379334
   stac9766-codec: ee434f13610179aea7237d0dc99ddaba96dcc0db
   mpc5200-ac97: cd3bc7a37f2b246530cbdd688fdff64c7032030c
   efika-audio: e1acd875d7b882927fc9f97f25a8c2cc3e601bdc
