@@ -1,6 +1,6 @@
 Version: 1
-Previous: 0001d72ce0c7c4028e5ce7e44f22086a8a576ef3
-Head: 0a9fe8b7c1710a9d46b952cc2911262c56b5ed50
+Previous: 7746fb6ad909df3d8d9e966aba0e2fb71476b77c
+Head: b1f4fb788bee0cd5b7576c87c63cbb4c5e60ca21
 Applied:
   Makefile: c1d59638630d44c8321dfc0f92dc57560f081073
   digispeak: eb9a52959e959450b02793771a4812b83e0039f4
@@ -23,6 +23,7 @@ Applied:
   add-psc-defines: c7c28e0ef855b0b6b8f0c6c4b05067c864ed86b1
   of-soc-simple-rework: f4318c0e85173388dd24d9b68e26d0992b53ea01
   add-s32be-ac97: 0a9fe8b7c1710a9d46b952cc2911262c56b5ed50
+  wm9712-self-register: b1f4fb788bee0cd5b7576c87c63cbb4c5e60ca21
 Unapplied:
   dma-module: 5f49ee1262430e017d3815bdc1ce988d35661694
   stac9766-codec: db081967524ea72e474b0de8b8a8b7f8a9f0e2f3
@@ -32,7 +33,6 @@ Unapplied:
   max9485-i2c: d185c799f8b60e8d7264466fe2622e08dfe17057
   i2s-cell-clock: 1a83c5178ea6bdfe2cca44caebd32c56f2cff44b
   dspeak-audio: 17651b5d93a191025e716b86dd131d6386c8ddb7
-  wm9712-self-register: fefddaf5494b63741ec318221e19f053cd884917
   phytec: ff2ecae18635c209e43a04fa9c917c0a6d9a4eba
   temp: 9121e3aba9330aa62290b35ac0b40d281323a1e6
 Hidden:
