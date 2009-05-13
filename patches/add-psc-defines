@@ -5,6 +5,8 @@ Date:   2009-05-13 14:12:24 -0400
 
 Add a few more mpc5200 PSC defines
 
+Add a few more mpc5200 PSC defines. More bit fields defines for mpc5200 PSC registers
+
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
 
