@@ -1,6 +1,6 @@
 Version: 1
-Previous: c44d6e6cf192bfd385e0485d849af792cf1979cc
-Head: a5793fdd1fcfc26aefe30199390312f3139f8112
+Previous: 74f73cb67a8ecc355bf46ef736464986aa4784d0
+Head: 0363e011478e02ed6bf23d65afabfc7c930bf2df
 Applied:
   Makefile: c1d59638630d44c8321dfc0f92dc57560f081073
   digispeak: eb9a52959e959450b02793771a4812b83e0039f4
@@ -34,7 +34,7 @@ Applied:
   dspeak-audio: 4208668a65779bfd6dd027f6f81d9f14c08d1bde
   add-s32be-ac97: 134fa6e4319dae1dceabc3fe53b25fa9e3320090
   phytec: 0363e011478e02ed6bf23d65afabfc7c930bf2df
-  wm9712-self-register: a5793fdd1fcfc26aefe30199390312f3139f8112
 Unapplied:
+  wm9712-self-register: a5793fdd1fcfc26aefe30199390312f3139f8112
   temp: 9121e3aba9330aa62290b35ac0b40d281323a1e6
 Hidden:
