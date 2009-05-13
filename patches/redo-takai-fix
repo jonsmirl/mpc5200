@@ -5,6 +5,8 @@ Date:   2009-05-13 14:12:24 -0400
 
 redo 2008f137e92220b98120c4803499cdddb2b0fb06
 
+Reapply the changes from 2008f137e92220b98120c4803499cdddb2b0fb06 to mpc5200_dma.c since the code effected by this change moved to a different file.
+
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
 
