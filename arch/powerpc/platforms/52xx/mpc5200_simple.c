@@ -72,15 +72,21 @@ static int __init mpc5200_simple_probe(void)
 			break;
 		i++;
 	}
-	
+
 	return (board[i] != NULL);
+}
+
+static void __init mpc5200_simple_declare_platform_devices(void)
+{
+	mpc52xx_declare_of_platform_devices();
+	platform_device_register_simple("pcm030-audio-fabric", 0, NULL, 0);
 }
 
 define_machine(mpc5200_simple_platform) {
 	.name		= "mpc5200-simple-platform",
 	.probe		= mpc5200_simple_probe,
 	.setup_arch	= mpc5200_simple_setup_arch,
-	.init		= mpc52xx_declare_of_platform_devices,
+	.init		= mpc5200_simple_declare_platform_devices,
 	.init_IRQ	= mpc52xx_init_irq,
 	.get_irq	= mpc52xx_get_irq,
 	.restart	= mpc52xx_restart,
