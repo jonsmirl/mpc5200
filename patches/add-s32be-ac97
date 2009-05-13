@@ -1,0 +1,11 @@
+Bottom: 8ba1b39feeda7e1740ab91bf57e72c9fc4a3da30
+Top:    8ba1b39feeda7e1740ab91bf57e72c9fc4a3da30
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-13 16:45:58 -0400
+
+Add SNDRV_PCM_FMTBIT_S32_BE as a valid AC97 format
+
+
+---
+
+
