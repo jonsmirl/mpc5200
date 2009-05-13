@@ -297,7 +297,7 @@ static struct snd_soc_dai psc_ac97_dai_template[] = {
 		.channels_max   = 2,
 		.rates          = SNDRV_PCM_RATE_32000 | \
 			SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
-		.formats = SNDRV_PCM_FORMAT_IEC958_SUBFRAME_BE,
+		.formats = SNDRV_PCM_FMTBIT_IEC958_SUBFRAME_BE,
 	},
 	.ops = &psc_ac97_digital_ops,
 }};
@@ -350,6 +350,7 @@ static int __devexit psc_ac97_of_remove(struct of_device *op)
 /* Match table for of_platform binding */
 static struct of_device_id psc_ac97_match[] __devinitdata = {
 	{ .compatible = "fsl,mpc5200-psc-ac97", },
+	{ .compatible = "fsl,mpc5200b-psc-ac97", },
 	{}
 };
 MODULE_DEVICE_TABLE(of, psc_ac97_match);
