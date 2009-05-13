@@ -22,11 +22,15 @@
 #define SNDRV_MAIN_OBJECT_FILE
 #include <linux/init.h>
 #include <sound/core.h>
+#include <sound/soc-of-simple.h>
 
 static int __init alsa_sound_last_init(void)
 {
 	int idx, ok = 0;
-	
+
+#if defined(CONFIG_SND_SOC_OF_SIMPLE)
+	of_snd_soc_register_default_fabric();
+#endif 	
 	printk(KERN_INFO "ALSA device list:\n");
 	for (idx = 0; idx < SNDRV_CARDS; idx++)
 		if (snd_cards[idx] != NULL) {
