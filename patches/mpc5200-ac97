@@ -1,5 +1,5 @@
-Bottom: 801aeaa7e164ec10d974b63fbad31c2e84ffb653
-Top:    ff4617c171196a2dc2adbb23cdf4b71e262434a7
+Bottom: f23f2655b43d073cd7e14b1cff0ad3875be7df85
+Top:    e7eaff884816b34f65fc49959d745566f03ca7d6
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-13 14:12:25 -0400
 
@@ -9,7 +9,7 @@ AC97 driver for mpc5200
 ---
 
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index 8060b95..d8f63f5 100644
+index 4b4d9b7..b3ef381 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
 @@ -30,3 +30,14 @@ config SND_SOC_MPC5200_I2S
