@@ -1,5 +1,5 @@
 Bottom: 508647edb21094b463d0060830b90e4a2c9a6ff5
-Top:    240a368820392e81cedefbc63ac10403d0c992b8
+Top:    8f3aa6af1e3fc632e0d76ac7a50207a28d22bbff
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-13 14:12:25 -0400
 
@@ -39,10 +39,10 @@ index 7731ef2..14631a1 100644
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..382d28f
+index 0000000..340739c
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -0,0 +1,381 @@
+@@ -0,0 +1,382 @@
 +/*
 + * linux/sound/mpc5200-ac97.c -- AC97 support for the Freescale MPC52xx chip.
 + *
@@ -342,7 +342,7 @@ index 0000000..382d28f
 +		.channels_max   = 2,
 +		.rates          = SNDRV_PCM_RATE_32000 | \
 +			SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
-+		.formats = SNDRV_PCM_FORMAT_IEC958_SUBFRAME_BE,
++		.formats = SNDRV_PCM_FMTBIT_IEC958_SUBFRAME_BE,
 +	},
 +	.ops = &psc_ac97_digital_ops,
 +}};
@@ -395,6 +395,7 @@ index 0000000..382d28f
 +/* Match table for of_platform binding */
 +static struct of_device_id psc_ac97_match[] __devinitdata = {
 +	{ .compatible = "fsl,mpc5200-psc-ac97", },
++	{ .compatible = "fsl,mpc5200b-psc-ac97", },
 +	{}
 +};
 +MODULE_DEVICE_TABLE(of, psc_ac97_match);
