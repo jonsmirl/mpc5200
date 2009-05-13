@@ -1,0 +1,77 @@
+Bottom: 79f45046c2eb34acfdb42a761d559ef942b90280
+Top:    664d05fcc84bb30f9d5286e8310a0aaed1ec6577
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-13 17:32:46 -0400
+
+Refresh of mpc5200-dma
+
+---
+
+diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
+index 08e48af..5ac2693 100644
+--- a/sound/soc/fsl/mpc5200_dma.c
++++ b/sound/soc/fsl/mpc5200_dma.c
+@@ -5,8 +5,6 @@
+  * Copyright (C) 2008 Secret Lab Technologies Ltd.
+  */
+ 
+-#define DEBUG
+-
+ #include <linux/init.h>
+ #include <linux/module.h>
+ #include <linux/interrupt.h>
+@@ -45,7 +43,6 @@ static irqreturn_t psc_dma_status_irq(int irq, void *_psc_dma)
+ 	u16 isr;
+ 
+ 	isr = in_be16(&regs->mpc52xx_psc_isr);
+-	printk("psc_dma_status_irq isr %x\n", isr);
+ 
+ 	/* Playback underrun error */
+ 	if (psc_dma->playback.active && (isr & MPC52xx_PSC_IMR_TXEMP))
+@@ -56,8 +53,6 @@ static irqreturn_t psc_dma_status_irq(int irq, void *_psc_dma)
+ 		psc_dma->stats.overrun_count++;
+ 
+ 	out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
+-	isr = in_be16(&regs->mpc52xx_psc_isr);
+-	printk("psc_dma_status_irq-1 isr %x\n", isr);
+ 
+ 	return IRQ_HANDLED;
+ }
+@@ -200,13 +195,11 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
+ 		/* Fill up the bestcomm bd queue and enable DMA.
+ 		 * This will begin filling the PSC's fifo. */
+ 		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
+-			printk("Capture\n");
+ 			bcom_gen_bd_rx_reset(s->bcom_task);
+ 			for (i = 0; i < runtime->periods; i++)
+ 				if (!bcom_queue_full(s->bcom_task))
+ 					psc_dma_bcom_enqueue_next_buffer(s);
+ 		} else {
+-			printk("Playback\n");
+ 			bcom_gen_bd_tx_reset(s->bcom_task);
+ 			psc_dma_bcom_enqueue_tx(s);
+ 		}
+@@ -412,7 +405,6 @@ static int psc_dma_new(struct snd_card *card, struct snd_soc_dai *dai,
+ 	if (pcm->streams[0].substream) {
+ 		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
+ 					&pcm->streams[0].substream->dma_buffer);
+-		printk("playback buffer %p\n", pcm->streams[0].substream->dma_buffer.area );
+ 		if (rc)
+ 			goto playback_alloc_err;
+ 	}
+@@ -420,7 +412,6 @@ static int psc_dma_new(struct snd_card *card, struct snd_soc_dai *dai,
+ 	if (pcm->streams[1].substream) {
+ 		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
+ 					&pcm->streams[1].substream->dma_buffer);
+-		printk("capture %p\n", pcm->streams[1].substream->dma_buffer.area );
+ 		if (rc)
+ 			goto capture_alloc_err;
+ 	}
+@@ -652,7 +643,7 @@ int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template,
+ 
+ 	rc = snd_soc_register_dais(psc_dma->dai, nDAI);
+ 	if (rc != 0) {
+-		printk("Failed to register DAI\n");
++		pr_err("Failed to register DAI\n");
+ 		return 0;
+ 	}
