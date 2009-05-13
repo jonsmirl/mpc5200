@@ -1,0 +1,36 @@
+Bottom: 02e6bf4bb314fc90cd64c08ede313ca702b5d537
+Top:    55bdc901f96c07142f16d2437e43f4bfbcb46547
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-13 15:43:41 -0400
+
+Refresh of of-soc-simple-rework
+
+---
+
+diff --git a/sound/soc/fsl/soc-of-simple.c b/sound/soc/fsl/soc-of-simple.c
+index 5f859a8..84c2d75 100644
+--- a/sound/soc/fsl/soc-of-simple.c
++++ b/sound/soc/fsl/soc-of-simple.c
+@@ -40,7 +40,7 @@ struct of_snd_soc_device {
+ 
+ /* template values */
+ struct snd_soc_platform *template_platform;
+-char *template_name;
++char *template_name = NULL;
+ struct snd_soc_ops *template_ops;
+ int (*template_init)(struct snd_soc_codec *codec);
+ 
+@@ -257,3 +257,13 @@ int of_snd_soc_register_fabric(char *name, struct snd_soc_ops *ops,
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(of_snd_soc_register_fabric);
++
++/* If no board specific fabric driver has been registered, register a default one */
++int register_default_fabric(void)
++{
++	if (template_name == NULL)
++		return of_snd_soc_register_fabric("Default Fabric", NULL, NULL);
++	return 0;
++}
++
++late_initcall(register_default_fabric);
