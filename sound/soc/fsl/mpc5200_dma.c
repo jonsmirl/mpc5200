@@ -561,7 +561,7 @@ int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template,
 	psc_dma->dev = &op->dev;
 	psc_dma->playback.psc_dma = psc_dma;
 	psc_dma->capture.psc_dma = psc_dma;
-	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u AC97", psc_id+1);
+	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u", psc_id+1);
 
 	/* Fill out the CPU DAI structure */
 	nDAI = min(tsize, SOC_OF_SIMPLE_MAX_DAI);
