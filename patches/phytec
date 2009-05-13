@@ -1,5 +1,5 @@
-Bottom: a2ea467f44b28aa532294fee1a50a79afc8dbc90
-Top:    8ba1b39feeda7e1740ab91bf57e72c9fc4a3da30
+Bottom: 0da5f9c3cb580b2db0235c9740c4c9673bdf8435
+Top:    0da5f9c3cb580b2db0235c9740c4c9673bdf8435
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-13 14:12:27 -0400
 
@@ -8,38 +8,4 @@ Support for AC97 on Phytec pmc030 base board.
 
 ---
 
-diff --git a/arch/powerpc/boot/dts/pcm030.dts b/arch/powerpc/boot/dts/pcm030.dts
-index 8958347..001c8ef 100644
---- a/arch/powerpc/boot/dts/pcm030.dts
-+++ b/arch/powerpc/boot/dts/pcm030.dts
-@@ -190,6 +190,14 @@
- 			cell-index = <0>;
- 			reg = <0x2000 0x100>;
- 			interrupts = <2 1 0>;
-+
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			codec@0 {
-+				compatible = "wlf,wm9712";
-+				reg = <0x0>;
-+			};
- 		};
- 
- 		/* PSC2 port is used by CAN1/2 */
-diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index 7ad85d2..c3ec163 100644
---- a/sound/soc/fsl/Kconfig
-+++ b/sound/soc/fsl/Kconfig
-@@ -57,4 +57,12 @@ config SND_MPC52xx_SOC_DSPEAK01
- 	help
- 	  Say Y if you want to add support for sound on Digispeaker DSPEAK01.
- 
-+config SND_MPC52xx_SOC_PCM030
-+	tristate "SoC AC97 Audio support for Phytec pcm030 and WM9712"
-+	depends on PPC_MPC5200_SIMPLE
-+	select SND_SOC_MPC5200_AC97
-+	select SND_SOC_WM9712
-+	help
-+	  Say Y if you want to add support for sound on the Phytec pcm030 baseboard.
-+
+
