@@ -1,0 +1,22 @@
+Bottom: 64750e6a85a6127bee598f5a763f17669cd99b97
+Top:    f69e381dad59c36e9e59c4dd4f2b467d40c376f6
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-13 17:21:51 -0400
+
+Refresh of temp
+
+---
+
+diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
+index 340739c..385f697 100644
+--- a/sound/soc/fsl/mpc5200_psc_ac97.c
++++ b/sound/soc/fsl/mpc5200_psc_ac97.c
+@@ -9,8 +9,6 @@
+  * published by the Free Software Foundation.
+  */
+ 
+-#define DEBUG
+-
+ #include <linux/init.h>
+ #include <linux/module.h>
+ #include <linux/interrupt.h>
