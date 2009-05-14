@@ -3,7 +3,9 @@ Top:    83aa53b66c26e2a169fe9a1038c00c9c59dea747
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-14 13:11:06 -0400
 
-new rename
+Rename the PSC functions to DMA
+
+Rename the functions in the mpc5200 DMA file from i2s based names to dma ones to reflect the file they are in.
 
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
