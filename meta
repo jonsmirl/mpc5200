@@ -1,5 +1,5 @@
 Version: 1
-Previous: dce9b296f5173b66ff533cac8a27e56cd01d729b
+Previous: dc927a37af843e2424f31b0f6fd9019dc2517fd8
 Head: d528843f1a32a10bd8b04fb485087963134a9849
 Applied:
   Makefile: c1d59638630d44c8321dfc0f92dc57560f081073
@@ -33,8 +33,4 @@ Applied:
   dspeak-audio: 275ce5902b4a5372fdac5ad03c99ed54babd6b9e
   temp: d528843f1a32a10bd8b04fb485087963134a9849
 Unapplied:
-  undo-takai-fix: 0c49716684cf8e4e1bba01dad4079c819f073aa1
-  i2s-dma-split: 970b4aa4c56573f7c517c63cea8bcb085a110d3e
-  is2-dma-rename: 645b91f45da60ef9c1ce83757507b932f3886f34
-  redo-takai-fix: 0a8181eb7a1a62ec2a89450735da7bcfffcf45e8
 Hidden:
