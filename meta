@@ -1,6 +1,6 @@
 Version: 1
-Previous: b6478b2959d264f05a9299d2c7eef2049cc01420
-Head: 4dd5029b0478f23c44d88376c3317dcc583380f9
+Previous: 03c05b07b3a3c628f7b4ef521a574f95ba3a56cf
+Head: 1dbeeeab931cc287972a5418059891ab4c6ea3a4
 Applied:
   Makefile: c1d59638630d44c8321dfc0f92dc57560f081073
   digispeak: eb9a52959e959450b02793771a4812b83e0039f4
@@ -17,21 +17,21 @@ Applied:
   spi-mmc: 34b7dc09b977f4c2dd0d4352bdfe8bbb538e674f
   soc-u32-cleanup: ac8bca23aba3d0a55a33e62ad593fc09fd6d8c9a
   i2s-dma-split-1: f43d2c4ad9161e1eab208bbd2da56ae68ff7bd4d
-  is2-dma-rename-1: e4864401e57eb1d3af8cd127be5997fcbf328984
-  add-psc-defines: 7f0f2d210820eb2ed6e7f125f584f234e9965492
-  of-soc-simple-rework: 148973d61b1a87d365149dbcd640c890094b1faa
-  add-s32be-ac97: 2659383ebd2eb49f76cb3b9e957d5b10662a00de
-  wm9712-self-register: 8832bf78e252ebc27f1b93487a773fce9dfb7935
-  mpc5200-dma: 8a06d9fc1b8613d4bbba606bcbe083ab36565ebd
-  stac9766-codec: b6d781b159c39142cc27c57fcde28a0daa6888e6
-  mpc5200-ac97: 70e46f9993b521720efc2b5d7cfe5db70dd3e5da
-  efika-audio: ad24e40727fe3fbc4ba8f35fda6605357afc8a98
-  phytec: 6c6fc69c681017ed63b3a8e85054cee4c5744225
-  tas5504-codec: 20ef5db113fc541522947da20f1b02cb60b38e52
-  max9485-i2c: fed6ae44a052ced484d08a23fb42695f825f9191
-  i2s-cell-clock: 00377b03bcc4950cb6dac8a89fdc9c27bf4f0476
-  dspeak-audio: 3b55163050c262c686a59fbd9e9cd11ed2cff8dd
-  temp: 4dd5029b0478f23c44d88376c3317dcc583380f9
+  is2-dma-rename-1: e7e6fbd5cfe845d77cfafbca0cf60e19dda31e5f
+  add-psc-defines: 1673a3d862df29e7d37bc4e59cdc024301e63bb3
+  of-soc-simple-rework: 682f1727cdbb8cdd0959c981f8ee579572bca3a4
+  add-s32be-ac97: 2e1619af0fed8244a053e83b07635597a72b0ed6
+  wm9712-self-register: 275d9a187277b1d778ea38a7e2077a424fcc0d81
+  mpc5200-dma: 351a11884ad3c93ef9f7d3c74c051d639fa4a428
+  stac9766-codec: b06b0834bd5247abb78bda359d174610e5c925f6
+  mpc5200-ac97: ca23bda8886bd46878822e8019fa234a8cccbec7
+  efika-audio: 76a6f9e1e36736df5da2eff0a57dd50311d2f848
+  phytec: 3e3a2849195a32d475385ff56252f31532aa8580
+  tas5504-codec: c8f48ccd8c750e3c4ca0d615e2fd8a0197871b0b
+  max9485-i2c: d58b450f3dfb48b4cc7aa947bad3ea6f80969ccd
+  i2s-cell-clock: 34a9ffdb062c8a1187e6a0455d9f011f938da643
+  dspeak-audio: 3ad3d453287e722e79da5aaa9c056281b9106ea8
+  temp: 1dbeeeab931cc287972a5418059891ab4c6ea3a4
 Unapplied:
   undo-takai-fix: 0c49716684cf8e4e1bba01dad4079c819f073aa1
   i2s-dma-split: 970b4aa4c56573f7c517c63cea8bcb085a110d3e
