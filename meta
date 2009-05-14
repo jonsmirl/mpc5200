@@ -1,6 +1,6 @@
 Version: 1
-Previous: ef012680cea613b040008acd9a819901099304f7
-Head: aa18de6f176460f7be63d5be7116f655299fd097
+Previous: 7c5722ceb7b86a0b6a83c9bfcb96d519721b8021
+Head: d537fb0a5c8f69e867a3b015d666f505f4b1dd7f
 Applied:
   Makefile: c1d59638630d44c8321dfc0f92dc57560f081073
   digispeak: eb9a52959e959450b02793771a4812b83e0039f4
@@ -17,8 +17,7 @@ Applied:
   spi-mmc: 34b7dc09b977f4c2dd0d4352bdfe8bbb538e674f
   soc-u32-cleanup: ac8bca23aba3d0a55a33e62ad593fc09fd6d8c9a
   i2s-dma-split-1: 5aa4890571b4bd3208206c892a373c17392ace50
-  is2-dma-rename-1: b90b0e80cdc86c61ba62be75cc78843304e29212
-  refresh-temp: aa18de6f176460f7be63d5be7116f655299fd097
+  is2-dma-rename-1: d537fb0a5c8f69e867a3b015d666f505f4b1dd7f
 Unapplied:
   undo-takai-fix: 0c49716684cf8e4e1bba01dad4079c819f073aa1
   i2s-dma-split: 970b4aa4c56573f7c517c63cea8bcb085a110d3e
