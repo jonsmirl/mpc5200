@@ -1,4 +1,4 @@
-Bottom: 207717d943f51ffc9ab408264021324d42307766
+Bottom: 4782072a2361dd161b666fecc59cdf44588dd9e3
 Top:    428b35e7e640eb3dfcb747e928657e00404c9d54
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-13 14:12:26 -0400
@@ -8,19 +8,6 @@ Temporary holding patch
 
 ---
 
-diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 5ac2693..2c42f29 100644
---- a/sound/soc/fsl/mpc5200_dma.c
-+++ b/sound/soc/fsl/mpc5200_dma.c
-@@ -561,7 +561,7 @@ int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template,
- 	psc_dma->dev = &op->dev;
- 	psc_dma->playback.psc_dma = psc_dma;
- 	psc_dma->capture.psc_dma = psc_dma;
--	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u AC97", psc_id+1);
-+	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u", psc_id+1);
- 
- 	/* Fill out the CPU DAI structure */
- 	nDAI = min(tsize, SOC_OF_SIMPLE_MAX_DAI);
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 index aa37c8d..5077294 100644
 --- a/sound/soc/fsl/mpc5200_psc_ac97.c
@@ -78,15 +65,3 @@ index aa37c8d..5077294 100644
  	.playback = {
  		.channels_min   = 1,
  		.channels_max   = 2,
-diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index ad023d6..9d92c83 100644
---- a/sound/soc/fsl/mpc5200_psc_i2s.c
-+++ b/sound/soc/fsl/mpc5200_psc_i2s.c
-@@ -192,6 +192,7 @@ static struct snd_soc_dai_ops psc_i2s_dai_ops = {
- };
- 
- static struct snd_soc_dai psc_i2s_dai_template = {
-+	.name   = "%s I2S",
- 	.playback = {
- 		.channels_min = 2,
- 		.channels_max = 2,
