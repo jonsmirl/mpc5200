@@ -1,5 +1,5 @@
 Bottom: ed4c4836b1e980a998860dffe3ce79d5270a1622
-Top:    393f283839548ad55924f930ca4ace62f7420565
+Top:    2b21fab004b34197e2197d4cccdec0e1430a8ee2
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-13 14:12:25 -0400
 
@@ -43,7 +43,7 @@ index 7731ef2..14631a1 100644
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..aa37c8d
+index 0000000..5077294
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
 @@ -0,0 +1,379 @@
@@ -104,7 +104,7 @@ index 0000000..aa37c8d
 +		udelay(10);
 +
 +	if (!timeout) {
-+		pr_err(timeout on ac97 bus (rdy)\n");
++		pr_err("timeout on ac97 bus (rdy)\n");
 +		return 0xffff;
 +	}
 +
@@ -118,14 +118,14 @@ index 0000000..aa37c8d
 +		udelay(10);
 +
 +	if (!timeout) {
-+		pr_err(timeout on ac97 read (val) %x\n", in_be16(&psc_dma->psc_regs->sr_csr.status));
++		pr_err("timeout on ac97 read (val) %x\n", in_be16(&psc_dma->psc_regs->sr_csr.status));
 +		return 0xffff;
 +	}
 +
 +	/* Get the data */
 +	val = in_be32(&psc_dma->psc_regs->ac97_data);
 +	if ( ((val>>24) & 0x7f) != reg ) {
-+		pr_err(reg echo error on ac97 read\n");
++		pr_err("reg echo error on ac97 read\n");
 +		return 0xffff;
 +	}
 +	val = (val >> 8) & 0xffff;
@@ -148,7 +148,7 @@ index 0000000..aa37c8d
 +		udelay(10);
 +
 +	if (!timeout) {
-+		pr_err(timeout on ac97 write\n");
++		pr_err("timeout on ac97 write\n");
 +		return;
 +	}
 +
@@ -317,7 +317,7 @@ index 0000000..aa37c8d
 +
 +static struct snd_soc_dai psc_ac97_dai_template[] = {
 +{
-+	.name   = "%s analog",
++	.name   = "%s AC97",
 +	.suspend = psc_ac97_suspend,
 +	.resume = psc_ac97_resume,
 +	.playback = {
@@ -337,7 +337,7 @@ index 0000000..aa37c8d
 +	.ops = &psc_ac97_analog_ops,
 +},
 +{
-+	.name   = "%s digital",
++	.name   = "%s AC97",
 +	.playback = {
 +		.channels_min   = 1,
 +		.channels_max   = 2,
