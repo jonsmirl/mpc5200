@@ -55,7 +55,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 		udelay(10);
 
 	if (!timeout) {
-		pr_err(timeout on ac97 bus (rdy)\n");
+		pr_err("timeout on ac97 bus (rdy)\n");
 		return 0xffff;
 	}
 
@@ -69,14 +69,14 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 		udelay(10);
 
 	if (!timeout) {
-		pr_err(timeout on ac97 read (val) %x\n", in_be16(&psc_dma->psc_regs->sr_csr.status));
+		pr_err("timeout on ac97 read (val) %x\n", in_be16(&psc_dma->psc_regs->sr_csr.status));
 		return 0xffff;
 	}
 
 	/* Get the data */
 	val = in_be32(&psc_dma->psc_regs->ac97_data);
 	if ( ((val>>24) & 0x7f) != reg ) {
-		pr_err(reg echo error on ac97 read\n");
+		pr_err("reg echo error on ac97 read\n");
 		return 0xffff;
 	}
 	val = (val >> 8) & 0xffff;
@@ -99,7 +99,7 @@ static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned s
 		udelay(10);
 
 	if (!timeout) {
-		pr_err(timeout on ac97 write\n");
+		pr_err("timeout on ac97 write\n");
 		return;
 	}
 
@@ -268,7 +268,7 @@ static struct snd_soc_dai_ops psc_ac97_digital_ops = {
 
 static struct snd_soc_dai psc_ac97_dai_template[] = {
 {
-	.name   = "%s analog",
+	.name   = "%s AC97",
 	.suspend = psc_ac97_suspend,
 	.resume = psc_ac97_resume,
 	.playback = {
@@ -288,7 +288,7 @@ static struct snd_soc_dai psc_ac97_dai_template[] = {
 	.ops = &psc_ac97_analog_ops,
 },
 {
-	.name   = "%s digital",
+	.name   = "%s AC97",
 	.playback = {
 		.channels_min   = 1,
 		.channels_max   = 2,
