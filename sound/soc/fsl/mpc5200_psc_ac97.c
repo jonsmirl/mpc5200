@@ -55,7 +55,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 		udelay(10);
 
 	if (!timeout) {
-		printk(KERN_ERR DRV_NAME ": timeout on ac97 bus (rdy)\n");
+		pr_err(timeout on ac97 bus (rdy)\n");
 		return 0xffff;
 	}
 
@@ -69,14 +69,14 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 		udelay(10);
 
 	if (!timeout) {
-		printk(KERN_ERR DRV_NAME ": timeout on ac97 read (val) %x\n", in_be16(&psc_dma->psc_regs->sr_csr.status));
+		pr_err(timeout on ac97 read (val) %x\n", in_be16(&psc_dma->psc_regs->sr_csr.status));
 		return 0xffff;
 	}
 
 	/* Get the data */
 	val = in_be32(&psc_dma->psc_regs->ac97_data);
 	if ( ((val>>24) & 0x7f) != reg ) {
-		printk(KERN_ERR DRV_NAME ": reg echo error on ac97 read\n");
+		pr_err(reg echo error on ac97 read\n");
 		return 0xffff;
 	}
 	val = (val >> 8) & 0xffff;
@@ -99,7 +99,7 @@ static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned s
 		udelay(10);
 
 	if (!timeout) {
-		printk(KERN_ERR DRV_NAME ": timeout on ac97 write\n");
+		pr_err(timeout on ac97 write\n");
 		return;
 	}
 
@@ -125,7 +125,7 @@ static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
 
 static void psc_ac97_warm_reset(struct snd_ac97 *ac97)
 {
-	printk("psc_ac97_warm_reset\n");
+	pr_info("psc_ac97_warm_reset\n");
 }
 
 struct snd_ac97_bus_ops soc_ac97_ops = {
@@ -217,7 +217,6 @@ static int psc_ac97_trigger(struct snd_pcm_substream *substream, int cmd,
 		else
 			psc_dma->slots &= 0x0000FFFF;
 
-		printk("Clearing slots %x\n", psc_dma->slots);
 		spin_lock(&psc_dma->lock);
 		out_be32(&psc_dma->psc_regs->ac97_slots, psc_dma->slots);
 		spin_unlock(&psc_dma->lock);
