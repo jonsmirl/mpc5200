@@ -1,5 +1,5 @@
 Bottom: 5cad25da0716889e3c3688c3f33571efe27051ce
-Top:    23ecef29429cd866aa0f0cb031e44bb5303ca36e
+Top:    0d443b549a094b2455e3d79668badce3ca128599
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-13 14:12:25 -0400
 
@@ -43,10 +43,10 @@ index 7731ef2..14631a1 100644
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..385f697
+index 0000000..aa37c8d
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -0,0 +1,380 @@
+@@ -0,0 +1,379 @@
 +/*
 + * linux/sound/mpc5200-ac97.c -- AC97 support for the Freescale MPC52xx chip.
 + *
@@ -104,7 +104,7 @@ index 0000000..385f697
 +		udelay(10);
 +
 +	if (!timeout) {
-+		printk(KERN_ERR DRV_NAME ": timeout on ac97 bus (rdy)\n");
++		pr_err(timeout on ac97 bus (rdy)\n");
 +		return 0xffff;
 +	}
 +
@@ -118,14 +118,14 @@ index 0000000..385f697
 +		udelay(10);
 +
 +	if (!timeout) {
-+		printk(KERN_ERR DRV_NAME ": timeout on ac97 read (val) %x\n", in_be16(&psc_dma->psc_regs->sr_csr.status));
++		pr_err(timeout on ac97 read (val) %x\n", in_be16(&psc_dma->psc_regs->sr_csr.status));
 +		return 0xffff;
 +	}
 +
 +	/* Get the data */
 +	val = in_be32(&psc_dma->psc_regs->ac97_data);
 +	if ( ((val>>24) & 0x7f) != reg ) {
-+		printk(KERN_ERR DRV_NAME ": reg echo error on ac97 read\n");
++		pr_err(reg echo error on ac97 read\n");
 +		return 0xffff;
 +	}
 +	val = (val >> 8) & 0xffff;
@@ -148,7 +148,7 @@ index 0000000..385f697
 +		udelay(10);
 +
 +	if (!timeout) {
-+		printk(KERN_ERR DRV_NAME ": timeout on ac97 write\n");
++		pr_err(timeout on ac97 write\n");
 +		return;
 +	}
 +
@@ -174,7 +174,7 @@ index 0000000..385f697
 +
 +static void psc_ac97_warm_reset(struct snd_ac97 *ac97)
 +{
-+	printk("psc_ac97_warm_reset\n");
++	pr_info("psc_ac97_warm_reset\n");
 +}
 +
 +struct snd_ac97_bus_ops soc_ac97_ops = {
@@ -266,7 +266,6 @@ index 0000000..385f697
 +		else
 +			psc_dma->slots &= 0x0000FFFF;
 +
-+		printk("Clearing slots %x\n", psc_dma->slots);
 +		spin_lock(&psc_dma->lock);
 +		out_be32(&psc_dma->psc_regs->ac97_slots, psc_dma->slots);
 +		spin_unlock(&psc_dma->lock);
