@@ -3,7 +3,9 @@ Top:    ea27702bb69b662a25fa9946d87c37503fa127ef
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-14 13:08:45 -0400
 
-new slipt
+Basic split of mpc5200 DMA code out from mpc5200_psc_i2s
+
+Basic split of mpc5200 DMA code out from i2s into a standalone file.
 
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
