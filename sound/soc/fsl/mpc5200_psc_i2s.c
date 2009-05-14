@@ -144,6 +144,7 @@ static struct snd_soc_dai_ops psc_i2s_dai_ops = {
 };
 
 static struct snd_soc_dai psc_i2s_dai_template = {
+	.name   = "%s I2S",
 	.playback = {
 		.channels_min = 2,
 		.channels_max = 2,
