@@ -1,6 +1,6 @@
 Version: 1
-Previous: 1f377a137d2517ac567d70e135307014892e1da7
-Head: 02ec5bc0885fb64a4add68bbe44e95b3fa19ae77
+Previous: f7bb9b3aa02adcd318feb1d31b36c87525096558
+Head: 4492bcf4c8e6692ebf57d321f14a0d06770189c2
 Applied:
   Makefile: c1d59638630d44c8321dfc0f92dc57560f081073
   digispeak: eb9a52959e959450b02793771a4812b83e0039f4
@@ -20,12 +20,12 @@ Applied:
   is2-dma-rename-1: d537fb0a5c8f69e867a3b015d666f505f4b1dd7f
   add-psc-defines: fa48dcb3f4179ebee83e1da01bad6fe9134ad5fb
   of-soc-simple-rework: 02ec5bc0885fb64a4add68bbe44e95b3fa19ae77
+  add-s32be-ac97: 4492bcf4c8e6692ebf57d321f14a0d06770189c2
 Unapplied:
   undo-takai-fix: 0c49716684cf8e4e1bba01dad4079c819f073aa1
   i2s-dma-split: 970b4aa4c56573f7c517c63cea8bcb085a110d3e
   is2-dma-rename: 645b91f45da60ef9c1ce83757507b932f3886f34
   redo-takai-fix: 0a8181eb7a1a62ec2a89450735da7bcfffcf45e8
-  add-s32be-ac97: 8836c65280c0486a831feb08e62e845f2c88c7f7
   wm9712-self-register: bab56b0b267a39d6f356d2728af69260e382a881
   mpc5200-dma: a2eb96d9067e704f1205835660ec42b758bb6ad7
   stac9766-codec: 143786b7a8aab19e5d15f952cbdf57373798e010
