@@ -1,6 +1,6 @@
 Version: 1
-Previous: ac12edffa91a6fb8a7274ba79e737d6aa5957d7f
-Head: 0f4721aca38d9e2e86d2bcfc563173e03e63a7b8
+Previous: a418d30e11b2cb5d18160e05e0ad60048573cb95
+Head: ea72078c989644e20e9a0babfc6ab7aefa010afb
 Applied:
   Makefile: c1d59638630d44c8321dfc0f92dc57560f081073
   digispeak: eb9a52959e959450b02793771a4812b83e0039f4
@@ -27,6 +27,7 @@ Applied:
   mpc5200-dma: a2eb96d9067e704f1205835660ec42b758bb6ad7
   stac9766-codec: 143786b7a8aab19e5d15f952cbdf57373798e010
   mpc5200-ac97: ea72078c989644e20e9a0babfc6ab7aefa010afb
+Unapplied:
   efika-audio: 6763ab327a2264d54aca8a5efb6155bb0f0ac5ac
   phytec: 1b7972e5afd8100696891765001718ed5a587cc9
   tas5504-codec: b4eecea56bc3342cc68ea1985d5678bd8f1bb825
@@ -34,5 +35,4 @@ Applied:
   i2s-cell-clock: 4a0f851a49114591d41be6d373ba5aa1b482b8e6
   dspeak-audio: 972c08572ac22b83c61003a5bcd6a04e76dea411
   temp: 0f4721aca38d9e2e86d2bcfc563173e03e63a7b8
-Unapplied:
 Hidden:
