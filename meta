@@ -1,6 +1,6 @@
 Version: 1
-Previous: f8c2658b365e231044b8ca7a2eac7991e28a93c4
-Head: 9ae975d5c10e9b7ffd283331e3cc4a22d1118dde
+Previous: 0eb2f4ea2e8ec301a1a9aa30fff07ec98b209f1d
+Head: a2eb96d9067e704f1205835660ec42b758bb6ad7
 Applied:
   Makefile: c1d59638630d44c8321dfc0f92dc57560f081073
   digispeak: eb9a52959e959450b02793771a4812b83e0039f4
@@ -24,8 +24,7 @@ Applied:
   of-soc-simple-rework: f869dff47bed2a738e47e02e5fb92ad00a017ef5
   add-s32be-ac97: 8836c65280c0486a831feb08e62e845f2c88c7f7
   wm9712-self-register: bab56b0b267a39d6f356d2728af69260e382a881
-  mpc5200-dma: 47bbd8475a50e5638be31ee6d1a92a5fea71e98d
-  refresh-temp: 9ae975d5c10e9b7ffd283331e3cc4a22d1118dde
+  mpc5200-dma: a2eb96d9067e704f1205835660ec42b758bb6ad7
 Unapplied:
   stac9766-codec: a97cd3426837a94a9e6631a9b478aec624b744ac
   mpc5200-ac97: 9b62f0504e2c4b5387dcf2d4b7a41f88fffdab94

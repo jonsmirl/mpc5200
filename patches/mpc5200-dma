@@ -1,5 +1,5 @@
 Bottom: 3d05d27d172989ad8af74601114aa016a6dfeea6
-Top:    664d05fcc84bb30f9d5286e8310a0aaed1ec6577
+Top:    7c7b66cabaecae46d374eabe0d462d38d0d4aa89
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-13 14:12:25 -0400
 
@@ -13,7 +13,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 6850392..5ac2693 100644
+index 6850392..2c42f29 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -23,6 +23,8 @@
@@ -600,7 +600,7 @@ index 6850392..5ac2693 100644
 +	psc_dma->dev = &op->dev;
 +	psc_dma->playback.psc_dma = psc_dma;
 +	psc_dma->capture.psc_dma = psc_dma;
-+	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u AC97", psc_id+1);
++	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u", psc_id+1);
 +
 +	/* Fill out the CPU DAI structure */
 +	nDAI = min(tsize, SOC_OF_SIMPLE_MAX_DAI);
@@ -805,7 +805,7 @@ index a33232c..d71e503 100644
  
  #endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 5dbf1bc..513d68d 100644
+index 5dbf1bc..3f76f6a 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
 @@ -82,8 +82,6 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
@@ -817,7 +817,7 @@ index 5dbf1bc..513d68d 100644
  	return 0;
  }
  
-@@ -140,11 +138,7 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
+@@ -140,16 +138,13 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
   * psc_i2s_dai_template: template CPU Digital Audio Interface
   */
  static struct snd_soc_dai_ops psc_i2s_dai_ops = {
@@ -829,7 +829,13 @@ index 5dbf1bc..513d68d 100644
  	.set_sysclk	= psc_i2s_set_sysclk,
  	.set_fmt	= psc_i2s_set_fmt,
  };
-@@ -166,70 +160,6 @@ static struct snd_soc_dai psc_i2s_dai_template = {
+ 
+ static struct snd_soc_dai psc_i2s_dai_template = {
++	.name   = "%s I2S",
+ 	.playback = {
+ 		.channels_min = 2,
+ 		.channels_max = 2,
+@@ -166,70 +161,6 @@ static struct snd_soc_dai psc_i2s_dai_template = {
  };
  
  /* ---------------------------------------------------------------------
@@ -900,7 +906,7 @@ index 5dbf1bc..513d68d 100644
   * OF platform bus binding code:
   * - Probe/remove operations
   * - OF device match table
-@@ -237,82 +167,18 @@ static DEVICE_ATTR(capture_overrun, 0644, psc_i2s_stat_show,
+@@ -237,82 +168,18 @@ static DEVICE_ATTR(capture_overrun, 0644, psc_i2s_stat_show,
  static int __devinit psc_i2s_of_probe(struct of_device *op,
  				      const struct of_device_id *match)
  {
@@ -988,7 +994,7 @@ index 5dbf1bc..513d68d 100644
  	out_be32(&psc_dma->psc_regs->sicr,
  		 psc_dma->sicr | MPC52xx_PSC_SICR_SIM_CODEC_8);
  
-@@ -321,61 +187,17 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+@@ -321,61 +188,17 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
  	if (!of_get_property(op->node, "codec-handle", NULL))
  		return 0;
  
