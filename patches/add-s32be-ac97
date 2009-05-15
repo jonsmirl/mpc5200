@@ -1,7 +1,7 @@
-Bottom: 16c7abee2cc853e381f67a430e86e4d6cfaf3d53
-Top:    9d4d3935bbb22c83f00af03bb2ddc1fa3ee17777
+Bottom: c72f27a7e0008d040020f8976dad98a21df54ca8
+Top:    c72f27a7e0008d040020f8976dad98a21df54ca8
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-05-13 16:45:58 -0400
+Date:   2009-05-14 22:33:34 -0400
 
 Add SNDRV_PCM_FMTBIT_S32_BE as a valid AC97 format
 
@@ -12,17 +12,4 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
 ---
 
-diff --git a/include/sound/soc-dai.h b/include/sound/soc-dai.h
-index 496dc30..352d7ee 100644
---- a/include/sound/soc-dai.h
-+++ b/include/sound/soc-dai.h
-@@ -79,7 +79,8 @@ struct snd_pcm_substream;
- #define SND_SOC_CLOCK_OUT		1
- 
- #define SND_SOC_STD_AC97_FMTS (SNDRV_PCM_FMTBIT_S16_LE |\
--                               SNDRV_PCM_FMTBIT_S32_LE)
-+                               SNDRV_PCM_FMTBIT_S32_LE |\
-+                               SNDRV_PCM_FMTBIT_S32_BE)
- 
- struct snd_soc_dai_ops;
- struct snd_soc_dai;
+

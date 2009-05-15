@@ -1,7 +1,7 @@
-Bottom: 7ce454762e1cbcf0113a2dc863f73144e52b39c8
-Top:    5494e4b6538867e8fa660fb984d620fbca2079e0
+Bottom: bdf5b3c4e609a818ed76d9e3d0ca642925b7499f
+Top:    4e8a0e4e66ab7ece63b7f4fc20c6eb4241954b69
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-05-13 14:12:27 -0400
+Date:   2009-05-14 22:33:35 -0400
 
 Support for AC97 on Phytec pmc030 base board.
 
