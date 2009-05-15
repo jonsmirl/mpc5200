@@ -20,6 +20,7 @@
 #include <sound/initval.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
+#include <sound/soc-of-simple.h>
 #include "wm9712.h"
 
 #define WM9712_VERSION "0.4"
@@ -741,6 +742,39 @@ struct snd_soc_codec_device soc_codec_dev_wm9712 = {
 	.resume =	wm9712_soc_resume,
 };
 EXPORT_SYMBOL_GPL(soc_codec_dev_wm9712);
+
+static int __init wm9712_probe(struct platform_device *pdev)
+{
+	snd_soc_register_dais(wm9712_dai, ARRAY_SIZE(wm9712_dai));
+#if defined(CONFIG_SND_SOC_OF_SIMPLE)
+	/* Tell the of_soc helper about this codec */
+	of_snd_soc_register_codec(&soc_codec_dev_wm9712, pdev->dev.archdata.of_node,
+									wm9712_dai, ARRAY_SIZE(wm9712_dai),
+									pdev->dev.archdata.of_node);
+#endif
+	return 0;
+}
+
+static struct platform_driver wm9712_driver =
+{
+	.probe = wm9712_probe,
+	.driver = {
+			.name = "wm9712",
+	},
+};
+
+static __init int wm9712_driver_init(void)
+{
+	return platform_driver_register(&wm9712_driver);
+}
+
+static __exit void wm9712_driver_exit(void)
+{
+}
+
+module_init(wm9712_driver_init);
+module_exit(wm9712_driver_exit);
+
 
 MODULE_DESCRIPTION("ASoC WM9711/WM9712 driver");
 MODULE_AUTHOR("Liam Girdwood");
