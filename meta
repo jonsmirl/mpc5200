@@ -1,6 +1,6 @@
 Version: 1
-Previous: 4efb6f4a630826f217034e89b4916a08cc87b4cc
-Head: 93c57928bc6b72fe46e4d564c6f0c5533a1d9d09
+Previous: f33db8cb85101d6bccfeffe6721aa443850781ac
+Head: e2444ff858ea07936903aba6bf8a34925545cf82
 Applied:
   Makefile: ff76a7b0d4b92b6185df6f6261977ae0b3f58ed5
   digispeak: a01c8ca531cb8124af98f54c0f4c58edd262797b
@@ -20,17 +20,16 @@ Applied:
   is2-dma-rename: a0c0619e0b9d9fefef1515480b887d540bdfe8cc
   add-psc-defines: cc507385cc98f47ebe65fe6fefd05d276c2c0eb9
   of-soc-simple-rework: 3b4e65d9cc7a793028fb14982881423287f536d1
-  add-s32be-ac97: 5f0883a565939da7487d036c09f4ee1d7f09665a
-  wm9712-self-register: 63564d6b3698171befc17649f2410c233fae0b2f
-  mpc5200-dma: 585b588a92679e2c754d1e6173a68b7785ec38f6
-  stac9766-codec: bd9c440115a44732d55ece1959624303ccba171e
-  mpc5200-ac97: 5c4865cd90c9de79d61ac7067f887d01f89fadad
-  efika-audio: ec34cf5a9df04ae3e52273fcd96ee328cb6f6b8a
-  phytec: eff5ecf953e6fcd280b5bc3815323cfbab5e2c4c
-  tas5504-codec: f91a068c29f428151b10327615e3166eccb1ad4a
-  max9485-i2c: ba3e96212ee8d18983addee85f3d83c1aa121f59
-  i2s-cell-clock: 4ef46db6f1f98c5b4cecee48444817cd4071372b
-  dspeak-audio: 5c860cb9ededb3dc2243cbdc04c0bae47a8909af
-  temp: 93c57928bc6b72fe46e4d564c6f0c5533a1d9d09
+  wm9712-self-register: 03a59cf1a7bd1b739f64c8c4ca73b7b7963c460a
+  mpc5200-dma: 348777e92075ede290d7a4df0fb7cf44c1ed6373
+  stac9766-codec: e294a2a3abb0dd5f69a72376a92b5a743b8e2baa
+  mpc5200-ac97: 50afccdc177d97bdf0addb392dae453bab8e03f5
+  efika-audio: c9a5fd8c3de25ae8d2eb9d74bc1244ae6335e569
+  phytec: 2c42ffa41e066ccd83fbd09964be6d685fb0bfb3
+  tas5504-codec: 56f48997f1b61a6a36b8be1fb516b45bd762dac7
+  max9485-i2c: 05ae99c5e6c16eb9f084d6328fc09c50ef591d6f
+  i2s-cell-clock: 30e201f66d0f7bb71c58703170bfa5ec9bb07437
+  dspeak-audio: 2b1362d5d82f1d07dee73c97e6e2daf96280aa34
+  temp: e2444ff858ea07936903aba6bf8a34925545cf82
 Unapplied:
 Hidden:
