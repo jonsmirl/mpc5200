@@ -1,7 +1,7 @@
-Bottom: 53d5b650fa86c658e3d27bbfec155755f6a9eda5
-Top:    733a3cde0745f63a8d0a1942af82265139b78c7c
+Bottom: 3e2137eef2f5a30fd468b95d4437f7d5977789d5
+Top:    857b2528b62e9cd612b00fb54c62e8484f28da11
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-05-14 22:33:31 -0400
+Date:   2009-05-19 11:24:09 -0400
 
 Core IR module
 
@@ -43,7 +43,7 @@ index 99e2b5e..fec8972 100644
  obj-$(CONFIG_INPUT_APMPOWER)	+= apm-power.o
  
 diff --git a/drivers/input/input.c b/drivers/input/input.c
-index baa3ba1..7cfa392 100644
+index 5cfb1be..4c9876a 100644
 --- a/drivers/input/input.c
 +++ b/drivers/input/input.c
 @@ -23,6 +23,8 @@
@@ -55,7 +55,7 @@ index baa3ba1..7cfa392 100644
  MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
  MODULE_DESCRIPTION("Input core");
  MODULE_LICENSE("GPL");
-@@ -1140,6 +1142,7 @@ static void input_dev_release(struct device *device)
+@@ -1166,6 +1168,7 @@ static void input_dev_release(struct device *device)
  	struct input_dev *dev = to_input_dev(device);
  
  	input_ff_destroy(dev);
@@ -909,10 +909,10 @@ index 0000000..d0cdc9e
 +
 +
 diff --git a/include/linux/input.h b/include/linux/input.h
-index da4de16..6bc7fbb 100644
+index 4868454..da69af6 100644
 --- a/include/linux/input.h
 +++ b/include/linux/input.h
-@@ -1453,9 +1453,10 @@ typedef int (*send_func)(void *private, unsigned int *buffer, unsigned int count
+@@ -1477,9 +1477,10 @@ typedef int (*send_func)(void *private, unsigned int *buffer, unsigned int count
  		unsigned int frequency, unsigned int xmitters);
  
  int input_ir_create(struct input_dev *dev, void *private, send_func send);

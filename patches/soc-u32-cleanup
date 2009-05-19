@@ -1,7 +1,7 @@
-Bottom: 318b8b5313cc8d80fdfe2dfb3929d93375a6608e
-Top:    5e06f2699486bdbb6ac30c86a972ead8fe7a90a0
+Bottom: 83138c36dd1b7ddcd4f4f8532a5cb20c564add16
+Top:    d8882a545870f93547433113cce235763638cd65
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-05-14 22:33:33 -0400
+Date:   2009-05-19 11:24:12 -0400
 
 Clean up ASOC functions to support 32b values instead of 16b
 
@@ -26,7 +26,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/include/sound/soc.h b/include/sound/soc.h
-index 6ab80bf..a4f2280 100644
+index 2af3213..f3b590f 100644
 --- a/include/sound/soc.h
 +++ b/include/sound/soc.h
 @@ -219,10 +219,10 @@ void snd_soc_jack_free_gpios(struct snd_soc_jack *jack, int count,
@@ -44,7 +44,7 @@ index 6ab80bf..a4f2280 100644
  
  int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
  	struct snd_ac97_bus_ops *ops, int num);
-@@ -362,8 +362,8 @@ struct snd_soc_codec {
+@@ -363,8 +363,8 @@ struct snd_soc_codec {
  	hw_write_t hw_write;
  	hw_read_t hw_read;
  	void *reg_cache;
@@ -55,7 +55,7 @@ index 6ab80bf..a4f2280 100644
  
  	/* dapm */
  	u32 pop_time;
-@@ -493,10 +493,10 @@ struct soc_mixer_control {
+@@ -496,10 +496,10 @@ struct soc_mixer_control {
  
  /* enumerated kcontrol */
  struct soc_enum {
@@ -71,10 +71,10 @@ index 6ab80bf..a4f2280 100644
  	unsigned int mask;
  	const char **texts;
 diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
-index c0e7066..9c3f8bf 100644
+index 4aa8e2d..bad9d88 100644
 --- a/sound/soc/soc-core.c
 +++ b/sound/soc/soc-core.c
-@@ -1299,11 +1299,11 @@ EXPORT_SYMBOL_GPL(snd_soc_free_ac97_codec);
+@@ -1257,11 +1257,11 @@ EXPORT_SYMBOL_GPL(snd_soc_free_ac97_codec);
   *
   * Returns 1 for change else 0.
   */
@@ -89,7 +89,7 @@ index c0e7066..9c3f8bf 100644
  
  	mutex_lock(&io_mutex);
  	old = snd_soc_read(codec, reg);
-@@ -1329,11 +1329,11 @@ EXPORT_SYMBOL_GPL(snd_soc_update_bits);
+@@ -1287,11 +1287,11 @@ EXPORT_SYMBOL_GPL(snd_soc_update_bits);
   *
   * Returns 1 for change else 0.
   */
@@ -104,7 +104,7 @@ index c0e7066..9c3f8bf 100644
  
  	mutex_lock(&io_mutex);
  	old = snd_soc_read(codec, reg);
-@@ -1618,7 +1618,7 @@ int snd_soc_get_enum_double(struct snd_kcontrol *kcontrol,
+@@ -1577,7 +1577,7 @@ int snd_soc_get_enum_double(struct snd_kcontrol *kcontrol,
  {
  	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
  	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
@@ -113,7 +113,7 @@ index c0e7066..9c3f8bf 100644
  
  	for (bitmask = 1; bitmask < e->max; bitmask <<= 1)
  		;
-@@ -1647,8 +1647,7 @@ int snd_soc_put_enum_double(struct snd_kcontrol *kcontrol,
+@@ -1606,8 +1606,7 @@ int snd_soc_put_enum_double(struct snd_kcontrol *kcontrol,
  {
  	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
  	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
@@ -123,7 +123,7 @@ index c0e7066..9c3f8bf 100644
  
  	for (bitmask = 1; bitmask < e->max; bitmask <<= 1)
  		;
-@@ -1990,7 +1989,7 @@ int snd_soc_put_volsw_2r(struct snd_kcontrol *kcontrol,
+@@ -1949,7 +1948,7 @@ int snd_soc_put_volsw_2r(struct snd_kcontrol *kcontrol,
  	unsigned int mask = (1 << fls(max)) - 1;
  	unsigned int invert = mc->invert;
  	int err;
@@ -132,7 +132,7 @@ index c0e7066..9c3f8bf 100644
  
  	val_mask = mask << shift;
  	val = (ucontrol->value.integer.value[0] & mask);
-@@ -2055,12 +2054,12 @@ int snd_soc_get_volsw_s8(struct snd_kcontrol *kcontrol,
+@@ -2014,12 +2013,12 @@ int snd_soc_get_volsw_s8(struct snd_kcontrol *kcontrol,
  	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
  	unsigned int reg = mc->reg;
  	int min = mc->min;
@@ -148,7 +148,7 @@ index c0e7066..9c3f8bf 100644
  	return 0;
  }
  EXPORT_SYMBOL_GPL(snd_soc_get_volsw_s8);
-@@ -2082,10 +2081,10 @@ int snd_soc_put_volsw_s8(struct snd_kcontrol *kcontrol,
+@@ -2041,10 +2040,10 @@ int snd_soc_put_volsw_s8(struct snd_kcontrol *kcontrol,
  	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
  	unsigned int reg = mc->reg;
  	int min = mc->min;
@@ -163,10 +163,10 @@ index c0e7066..9c3f8bf 100644
  	return snd_soc_update_bits(codec, reg, 0xffff, val);
  }
 diff --git a/sound/soc/soc-dapm.c b/sound/soc/soc-dapm.c
-index 7847f80..d1cd8b7 100644
+index 39a63f9..c1222fa 100644
 --- a/sound/soc/soc-dapm.c
 +++ b/sound/soc/soc-dapm.c
-@@ -126,7 +126,7 @@ static void dapm_set_path_status(struct snd_soc_dapm_widget *w,
+@@ -164,7 +164,7 @@ static void dapm_set_path_status(struct snd_soc_dapm_widget *w,
  	break;
  	case snd_soc_dapm_mux: {
  		struct soc_enum *e = (struct soc_enum *)w->kcontrols[i].private_value;
@@ -175,7 +175,7 @@ index 7847f80..d1cd8b7 100644
  
  		for (bitmask = 1; bitmask < e->max; bitmask <<= 1)
  		;
-@@ -229,8 +229,8 @@ static int dapm_connect_mixer(struct snd_soc_codec *codec,
+@@ -267,8 +267,8 @@ static int dapm_connect_mixer(struct snd_soc_codec *codec,
  /* update dapm codec register bits */
  static int dapm_update_bits(struct snd_soc_dapm_widget *widget)
  {
@@ -186,7 +186,7 @@ index 7847f80..d1cd8b7 100644
  	struct snd_soc_codec *codec = widget->codec;
  
  	/* check for valid widgets */
-@@ -244,7 +244,7 @@ static int dapm_update_bits(struct snd_soc_dapm_widget *widget)
+@@ -282,7 +282,7 @@ static int dapm_update_bits(struct snd_soc_dapm_widget *widget)
  
  	power = widget->power;
  	if (widget->invert)
@@ -195,7 +195,7 @@ index 7847f80..d1cd8b7 100644
  
  	old = snd_soc_read(codec, widget->reg);
  	new = (old & ~(0x1 << widget->shift)) | (power << widget->shift);
-@@ -517,7 +517,7 @@ static int is_connected_input_ep(struct snd_soc_dapm_widget *widget)
+@@ -555,7 +555,7 @@ static int is_connected_input_ep(struct snd_soc_dapm_widget *widget)
  int dapm_reg_event(struct snd_soc_dapm_widget *w,
  		   struct snd_kcontrol *kcontrol, int event)
  {
@@ -204,7 +204,7 @@ index 7847f80..d1cd8b7 100644
  
  	if (SND_SOC_DAPM_EVENT_ON(event))
  		val = w->on_val;
-@@ -848,8 +848,8 @@ static int dapm_mux_update_power(struct snd_soc_dapm_widget *widget,
+@@ -947,8 +947,8 @@ static int dapm_mux_update_power(struct snd_soc_dapm_widget *widget,
  
  /* test and update the power status of a mixer or switch widget */
  static int dapm_mixer_update_power(struct snd_soc_dapm_widget *widget,
@@ -215,7 +215,7 @@ index 7847f80..d1cd8b7 100644
  {
  	struct snd_soc_dapm_path *path;
  	int found = 0;
-@@ -871,10 +871,10 @@ static int dapm_mixer_update_power(struct snd_soc_dapm_widget *widget,
+@@ -970,10 +970,10 @@ static int dapm_mixer_update_power(struct snd_soc_dapm_widget *widget,
  		found = 1;
  		if (val)
  			/* new connection */
@@ -228,7 +228,7 @@ index 7847f80..d1cd8b7 100644
  		break;
  	}
  
-@@ -1341,7 +1341,7 @@ int snd_soc_dapm_get_enum_double(struct snd_kcontrol *kcontrol,
+@@ -1436,7 +1436,7 @@ int snd_soc_dapm_get_enum_double(struct snd_kcontrol *kcontrol,
  {
  	struct snd_soc_dapm_widget *widget = snd_kcontrol_chip(kcontrol);
  	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
@@ -237,7 +237,7 @@ index 7847f80..d1cd8b7 100644
  
  	for (bitmask = 1; bitmask < e->max; bitmask <<= 1)
  		;
-@@ -1369,8 +1369,8 @@ int snd_soc_dapm_put_enum_double(struct snd_kcontrol *kcontrol,
+@@ -1464,8 +1464,8 @@ int snd_soc_dapm_put_enum_double(struct snd_kcontrol *kcontrol,
  {
  	struct snd_soc_dapm_widget *widget = snd_kcontrol_chip(kcontrol);
  	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;

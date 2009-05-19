@@ -1,7 +1,7 @@
-Bottom: 20d8ced1d13b6295a339dedadbc163365593fc7c
-Top:    53d5b650fa86c658e3d27bbfec155755f6a9eda5
+Bottom: 3cc719143f500e184e24e27c91a0da29904963e6
+Top:    3e2137eef2f5a30fd468b95d4437f7d5977789d5
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-05-14 22:33:31 -0400
+Date:   2009-05-19 11:24:08 -0400
 
 Minimal changes to the core input system
 
@@ -32,10 +32,10 @@ Jon Smirl
 ---
 
 diff --git a/drivers/input/input.c b/drivers/input/input.c
-index 935a183..baa3ba1 100644
+index e54e002..5cfb1be 100644
 --- a/drivers/input/input.c
 +++ b/drivers/input/input.c
-@@ -247,6 +247,10 @@ static void input_handle_event(struct input_dev *dev,
+@@ -273,6 +273,10 @@ static void input_handle_event(struct input_dev *dev,
  	case EV_PWR:
  		disposition = INPUT_PASS_TO_ALL;
  		break;
@@ -46,7 +46,7 @@ index 935a183..baa3ba1 100644
  	}
  
  	if (disposition != INPUT_IGNORE_EVENT && type != EV_SYN)
-@@ -700,6 +704,7 @@ static const struct input_device_id *input_match_device(const struct input_devic
+@@ -726,6 +730,7 @@ static const struct input_device_id *input_match_device(const struct input_devic
  		MATCH_BIT(sndbit, SND_MAX);
  		MATCH_BIT(ffbit,  FF_MAX);
  		MATCH_BIT(swbit,  SW_MAX);
@@ -54,7 +54,7 @@ index 935a183..baa3ba1 100644
  
  		return id;
  	}
-@@ -822,6 +827,8 @@ static int input_devices_seq_show(struct seq_file *seq, void *v)
+@@ -848,6 +853,8 @@ static int input_devices_seq_show(struct seq_file *seq, void *v)
  		input_seq_print_bitmap(seq, "FF", dev->ffbit, FF_MAX);
  	if (test_bit(EV_SW, dev->evbit))
  		input_seq_print_bitmap(seq, "SW", dev->swbit, SW_MAX);
@@ -63,7 +63,7 @@ index 935a183..baa3ba1 100644
  
  	seq_putc(seq, '\n');
  
-@@ -997,6 +1004,8 @@ static int input_print_modalias(char *buf, int size, struct input_dev *id,
+@@ -1023,6 +1030,8 @@ static int input_print_modalias(char *buf, int size, struct input_dev *id,
  				'f', id->ffbit, 0, FF_MAX);
  	len += input_print_modalias_bits(buf + len, size - len,
  				'w', id->swbit, 0, SW_MAX);
@@ -72,7 +72,7 @@ index 935a183..baa3ba1 100644
  
  	if (add_cr)
  		len += snprintf(buf + len, max(size - len, 0), "\n");
-@@ -1098,6 +1107,7 @@ INPUT_DEV_CAP_ATTR(LED, led);
+@@ -1124,6 +1133,7 @@ INPUT_DEV_CAP_ATTR(LED, led);
  INPUT_DEV_CAP_ATTR(SND, snd);
  INPUT_DEV_CAP_ATTR(FF, ff);
  INPUT_DEV_CAP_ATTR(SW, sw);
@@ -80,7 +80,7 @@ index 935a183..baa3ba1 100644
  
  static struct attribute *input_dev_caps_attrs[] = {
  	&dev_attr_ev.attr,
-@@ -1109,6 +1119,7 @@ static struct attribute *input_dev_caps_attrs[] = {
+@@ -1135,6 +1145,7 @@ static struct attribute *input_dev_caps_attrs[] = {
  	&dev_attr_snd.attr,
  	&dev_attr_ff.attr,
  	&dev_attr_sw.attr,
@@ -88,7 +88,7 @@ index 935a183..baa3ba1 100644
  	NULL
  };
  
-@@ -1226,6 +1237,8 @@ static int input_dev_uevent(struct device *device, struct kobj_uevent_env *env)
+@@ -1252,6 +1263,8 @@ static int input_dev_uevent(struct device *device, struct kobj_uevent_env *env)
  		INPUT_ADD_HOTPLUG_BM_VAR("FF=", dev->ffbit, FF_MAX);
  	if (test_bit(EV_SW, dev->evbit))
  		INPUT_ADD_HOTPLUG_BM_VAR("SW=", dev->swbit, SW_MAX);
@@ -97,7 +97,7 @@ index 935a183..baa3ba1 100644
  
  	INPUT_ADD_HOTPLUG_MODALIAS_VAR(dev);
  
-@@ -1338,6 +1351,10 @@ void input_set_capability(struct input_dev *dev, unsigned int type, unsigned int
+@@ -1364,6 +1377,10 @@ void input_set_capability(struct input_dev *dev, unsigned int type, unsigned int
  		__set_bit(code, dev->ffbit);
  		break;
  
@@ -109,7 +109,7 @@ index 935a183..baa3ba1 100644
  		/* do nothing */
  		break;
 diff --git a/include/linux/input.h b/include/linux/input.h
-index 6b28048..da4de16 100644
+index 0e6ff5d..4868454 100644
 --- a/include/linux/input.h
 +++ b/include/linux/input.h
 @@ -79,6 +79,8 @@ struct input_absinfo {
@@ -129,7 +129,7 @@ index 6b28048..da4de16 100644
  #define EV_MAX			0x1f
  #define EV_CNT			(EV_MAX+1)
  
-@@ -964,6 +967,56 @@ struct ff_effect {
+@@ -983,6 +986,56 @@ struct ff_effect {
  #define FF_MAX		0x7f
  #define FF_CNT		(FF_MAX+1)
  
@@ -186,7 +186,7 @@ index 6b28048..da4de16 100644
  #ifdef __KERNEL__
  
  /*
-@@ -991,6 +1044,7 @@ struct ff_effect {
+@@ -1010,6 +1063,7 @@ struct ff_effect {
   * @sndbit: bitmap of sound effects supported by the device
   * @ffbit: bitmap of force feedback effects supported by the device
   * @swbit: bitmap of switches present on the device
@@ -194,7 +194,7 @@ index 6b28048..da4de16 100644
   * @keycodemax: size of keycode table
   * @keycodesize: size of elements in keycode table
   * @keycode: map of scancodes to keycodes for this device
-@@ -1063,6 +1117,7 @@ struct input_dev {
+@@ -1082,6 +1136,7 @@ struct input_dev {
  	unsigned long sndbit[BITS_TO_LONGS(SND_CNT)];
  	unsigned long ffbit[BITS_TO_LONGS(FF_CNT)];
  	unsigned long swbit[BITS_TO_LONGS(SW_CNT)];
@@ -202,7 +202,7 @@ index 6b28048..da4de16 100644
  
  	unsigned int keycodemax;
  	unsigned int keycodesize;
-@@ -1071,6 +1126,7 @@ struct input_dev {
+@@ -1090,6 +1145,7 @@ struct input_dev {
  	int (*getkeycode)(struct input_dev *dev, int scancode, int *keycode);
  
  	struct ff_device *ff;
@@ -210,7 +210,7 @@ index 6b28048..da4de16 100644
  
  	unsigned int repeat_key;
  	struct timer_list timer;
-@@ -1306,6 +1362,11 @@ static inline void input_report_switch(struct input_dev *dev, unsigned int code,
+@@ -1325,6 +1381,11 @@ static inline void input_report_switch(struct input_dev *dev, unsigned int code,
  	input_event(dev, EV_SW, code, !!value);
  }
  
@@ -222,7 +222,7 @@ index 6b28048..da4de16 100644
  static inline void input_sync(struct input_dev *dev)
  {
  	input_event(dev, EV_SYN, SYN_REPORT, 0);
-@@ -1384,5 +1445,19 @@ int input_ff_erase(struct input_dev *dev, int effect_id, struct file *file);
+@@ -1408,5 +1469,19 @@ int input_ff_erase(struct input_dev *dev, int effect_id, struct file *file);
  int input_ff_create_memless(struct input_dev *dev, void *data,
  		int (*play_effect)(struct input_dev *, void *, struct ff_effect *));
  
