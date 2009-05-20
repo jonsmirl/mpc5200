@@ -1,5 +1,5 @@
 Bottom: 115d0afd9256ae7cc3a17427f5789147ebea238e
-Top:    51ec1c05604af58de996bc9b00e83f14a2c07c7d
+Top:    060be3c9fcf41f432237c1875bae1d9a6a6c43a0
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-19 11:24:17 -0400
 
@@ -8,6 +8,21 @@ Temporary holding patch
 
 ---
 
+diff --git a/arch/powerpc/boot/dts/dspeak01.dts b/arch/powerpc/boot/dts/dspeak01.dts
+index c50e9c6..336e50e 100644
+--- a/arch/powerpc/boot/dts/dspeak01.dts
++++ b/arch/powerpc/boot/dts/dspeak01.dts
+@@ -231,9 +231,7 @@
+ 		/* PSC5 is ??? */
+ 
+ 		serial@2c00 { /* PSC6 in UART mode */
+-			device_type = "serial";
+-			compatible = "fsl,mpc5200b-psc-uart","fsl,mpc5200-psc-uart";
+-			port-number = <1>;
++			compatible = "fsl,mpc5200-psc-spi";
+ 			cell-index = <5>;
+ 			reg = <0x2c00 0x100>;
+ 			interrupts = <0x2 0x4 0x0>;
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
 index 2c42f29..220c01f 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
