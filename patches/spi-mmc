@@ -1,5 +1,5 @@
-Bottom: 56ff25f33d297c4c20979c2ab931070f1dc0f5fb
-Top:    83138c36dd1b7ddcd4f4f8532a5cb20c564add16
+Bottom: a83e2ae0e883992d367a64c9493c214ecc1ef177
+Top:    a83e2ae0e883992d367a64c9493c214ecc1ef177
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-19 11:24:11 -0400
 
@@ -18,53 +18,4 @@ Fix ups to make mmc over spi work
 
 ---
 
-diff --git a/arch/powerpc/boot/dts/dspeak01.dts b/arch/powerpc/boot/dts/dspeak01.dts
-index 398a949..c50e9c6 100644
---- a/arch/powerpc/boot/dts/dspeak01.dts
-+++ b/arch/powerpc/boot/dts/dspeak01.dts
-@@ -166,9 +166,9 @@
- 			interrupt-parent = <&mpc5200_pic>;
- 
- 			mmc-slot@0 {
--				compatible = "mmc-spi";
-+				compatible = "linux,mmc-spi";
- 				reg = <0>;
--				max-speed = <50000000>;
-+				spi-max-frequency = <20000000>;
- 				/* Unregulated slot. */
- 				voltage-range = <3300 3300>;
- 				/*gpios = <&sdcsr_pio 1 0   /*  WP */
-diff --git a/drivers/mmc/host/mmc_spi.c b/drivers/mmc/host/mmc_spi.c
-index f48349d..5f5df73 100644
---- a/drivers/mmc/host/mmc_spi.c
-+++ b/drivers/mmc/host/mmc_spi.c
-@@ -1516,7 +1516,7 @@ static int __devexit mmc_spi_remove(struct spi_device *spi)
- 
- static struct spi_driver mmc_spi_driver = {
- 	.driver = {
--		.name =		"mmc_spi",
-+		.name =		"mmc-spi",
- 		.bus =		&spi_bus_type,
- 		.owner =	THIS_MODULE,
- 	},
-diff --git a/drivers/of/of_mmc_spi.c b/drivers/of/of_mmc_spi.c
-index f556266..8911af5 100644
---- a/drivers/of/of_mmc_spi.c
-+++ b/drivers/of/of_mmc_spi.c
-@@ -95,7 +95,7 @@ static int of_mmc_spi_add(struct device *dev)
- 	const u32 *voltage_range;
- 	int size;
- 
--	if (!np || !of_device_is_compatible(np, "mmc-spi"))
-+	if (!np || !of_device_is_compatible(np, "linux,mmc-spi"))
- 		return NOTIFY_DONE;
- 
- 	oms = kzalloc(sizeof(*oms), GFP_KERNEL);
-@@ -152,7 +152,7 @@ static int of_mmc_spi_del(struct device *dev)
- 	struct device_node *np = dev->archdata.of_node;
- 	struct of_mmc_spi *oms;
- 
--	if (!np || !of_device_is_compatible(np, "mmc-spi") ||
-+	if (!np || !of_device_is_compatible(np, "linux,mmc-spi") ||
- 			!dev->platform_data)
- 		return NOTIFY_DONE;
+
