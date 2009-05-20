@@ -1,5 +1,5 @@
-Bottom: 115d0afd9256ae7cc3a17427f5789147ebea238e
-Top:    060be3c9fcf41f432237c1875bae1d9a6a6c43a0
+Bottom: 4e998c3193c14e95f10f0e22fe51709bfb214caf
+Top:    ee63c34a3512289c54f9387fbf7d9dd064cf2596
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-19 11:24:17 -0400
 
@@ -9,7 +9,7 @@ Temporary holding patch
 ---
 
 diff --git a/arch/powerpc/boot/dts/dspeak01.dts b/arch/powerpc/boot/dts/dspeak01.dts
-index c50e9c6..336e50e 100644
+index 398a949..eb00f77 100644
 --- a/arch/powerpc/boot/dts/dspeak01.dts
 +++ b/arch/powerpc/boot/dts/dspeak01.dts
 @@ -231,9 +231,7 @@
