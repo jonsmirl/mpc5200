@@ -1,5 +1,5 @@
 Bottom: a5b5a0dfe7f97f3ae0f665780f3bd1dddc80d3f2
-Top:    329da3443867774481acbb315dc29cc24346c659
+Top:    a8b9408b2d62f1c031159c691cd2ea2260dbc640
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-19 11:24:17 -0400
 
@@ -9,20 +9,134 @@ Temporary holding patch
 ---
 
 diff --git a/arch/powerpc/boot/dts/dspeak01.dts b/arch/powerpc/boot/dts/dspeak01.dts
-index 398a949..eb00f77 100644
+index 398a949..5ffa69b 100644
 --- a/arch/powerpc/boot/dts/dspeak01.dts
 +++ b/arch/powerpc/boot/dts/dspeak01.dts
-@@ -231,9 +231,7 @@
+@@ -157,25 +157,6 @@
+ 			#gpio-cells = <2>;
+ 		};
+ 
+-		spi@f00 {
+-			#address-cells = <1>;
+-			#size-cells = <0>;
+-			compatible = "fsl,mpc5200b-spi","fsl,mpc5200-spi";
+-			reg = <0xf00 0x20>;
+-			interrupts = <0x2 0xd 0x0 0x2 0xe 0x0>;
+-			interrupt-parent = <&mpc5200_pic>;
+-
+-			mmc-slot@0 {
+-				compatible = "mmc-spi";
+-				reg = <0>;
+-				max-speed = <50000000>;
+-				/* Unregulated slot. */
+-				voltage-range = <3300 3300>;
+-				/*gpios = <&sdcsr_pio 1 0   /*  WP */
+-				/*		 &sdcsr_pio 0 1>; /* nCD */
+-			};
+-		};
+-
+ 		usb@1000 {
+ 			compatible = "fsl,mpc5200b-ohci","fsl,mpc5200-ohci","ohci-be";
+ 			reg = <0x1000 0xff>;
+@@ -230,14 +211,25 @@
+ 
  		/* PSC5 is ??? */
  
- 		serial@2c00 { /* PSC6 in UART mode */
+-		serial@2c00 { /* PSC6 in UART mode */
 -			device_type = "serial";
 -			compatible = "fsl,mpc5200b-psc-uart","fsl,mpc5200-psc-uart";
 -			port-number = <1>;
++		spi@2c00 { /* PSC6 in SPI mode */
 +			compatible = "fsl,mpc5200-psc-spi";
  			cell-index = <5>;
  			reg = <0x2c00 0x100>;
  			interrupts = <0x2 0x4 0x0>;
+ 			interrupt-parent = <&mpc5200_pic>;
++
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			mmc-slot@0 {
++				compatible = "mmc-spi-slot";
++				reg = <0>;
++				spi-max-frequency = <50000000>;
++				/* Unregulated slot. */
++				voltage-range = <3300 3300>;
++				/*gpios = <&sdcsr_pio 1 0   /*  WP */
++				/*		 &sdcsr_pio 0 1>; /* nCD */
++			};
+ 		};
+ 
+ 		ethernet@3000 {
+diff --git a/drivers/spi/mpc52xx_psc_spi.c b/drivers/spi/mpc52xx_psc_spi.c
+index 68c77a9..fe0658a 100644
+--- a/drivers/spi/mpc52xx_psc_spi.c
++++ b/drivers/spi/mpc52xx_psc_spi.c
+@@ -22,6 +22,7 @@
+ #include <linux/delay.h>
+ #include <linux/spi/spi.h>
+ #include <linux/fsl_devices.h>
++#include <linux/of_spi.h>
+ 
+ #include <asm/mpc52xx.h>
+ #include <asm/mpc52xx_psc.h>
+@@ -370,24 +371,24 @@ static irqreturn_t mpc52xx_psc_spi_isr(int irq, void *dev_id)
+ }
+ 
+ /* bus_num is used only for the case dev->platform_data == NULL */
+-static int __init mpc52xx_psc_spi_do_probe(struct device *dev, u32 regaddr,
++static int __init mpc52xx_psc_spi_do_probe(struct of_device *op, u32 regaddr,
+ 				u32 size, unsigned int irq, s16 bus_num)
+ {
+-	struct fsl_spi_platform_data *pdata = dev->platform_data;
++	struct fsl_spi_platform_data *pdata = op->dev.platform_data;
+ 	struct mpc52xx_psc_spi *mps;
+ 	struct spi_master *master;
+ 	int ret;
+ 
+-	master = spi_alloc_master(dev, sizeof *mps);
++	master = spi_alloc_master(&op->dev, sizeof *mps);
+ 	if (master == NULL)
+ 		return -ENOMEM;
+ 
+-	dev_set_drvdata(dev, master);
++	dev_set_drvdata(&op->dev, master);
+ 	mps = spi_master_get_devdata(master);
+ 
+ 	mps->irq = irq;
+ 	if (pdata == NULL) {
+-		dev_warn(dev, "probe called without platform data, no "
++		dev_warn(&op->dev, "probe called without platform data, no "
+ 				"(de)activate_cs function will be called\n");
+ 		mps->activate_cs = NULL;
+ 		mps->deactivate_cs = NULL;
+@@ -407,7 +408,7 @@ static int __init mpc52xx_psc_spi_do_probe(struct device *dev, u32 regaddr,
+ 
+ 	mps->psc = ioremap(regaddr, size);
+ 	if (!mps->psc) {
+-		dev_err(dev, "could not ioremap I/O port range\n");
++		dev_err(&op->dev, "could not ioremap I/O port range\n");
+ 		ret = -EFAULT;
+ 		goto free_master;
+ 	}
+@@ -439,6 +440,8 @@ static int __init mpc52xx_psc_spi_do_probe(struct device *dev, u32 regaddr,
+ 	if (ret < 0)
+ 		goto unreg_master;
+ 
++	of_register_spi_devices(master, op->node);
++
+ 	return ret;
+ 
+ unreg_master:
+@@ -495,7 +498,7 @@ static int __init mpc52xx_psc_spi_of_probe(struct of_device *op,
+ 		id = *psc_nump + 1;
+ 	}
+ 
+-	return mpc52xx_psc_spi_do_probe(&op->dev, (u32)regaddr64, (u32)size64,
++	return mpc52xx_psc_spi_do_probe(op, (u32)regaddr64, (u32)size64,
+ 					irq_of_parse_and_map(op->node, 0), id);
+ }
+ 
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
 index 2c42f29..220c01f 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
