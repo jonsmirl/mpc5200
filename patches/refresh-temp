@@ -1,0 +1,38 @@
+Bottom: a8b9408b2d62f1c031159c691cd2ea2260dbc640
+Top:    a60e2ed6e3c527198414d6a1a406b2fded47f50c
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-20 01:09:32 -0400
+
+Refresh of gitignore
+
+---
+
+diff --git a/arch/powerpc/boot/.gitignore b/arch/powerpc/boot/.gitignore
+index d57aa5c..dab1b41 100644
+--- a/arch/powerpc/boot/.gitignore
++++ b/arch/powerpc/boot/.gitignore
+@@ -37,3 +37,13 @@ zImage.pseries
+ zconf.h
+ zlib.h
+ zutil.h
++fdt.c
++fdt.h
++fdt_ro.c
++fdt_rw.c
++fdt_strerror.c
++fdt_sw.c
++fdt_wip.c
++libfdt.h
++libfdt_internal.h
++
+diff --git a/scripts/dtc/.gitignore b/scripts/dtc/.gitignore
+new file mode 100644
+index 0000000..095acb4
+--- /dev/null
++++ b/scripts/dtc/.gitignore
+@@ -0,0 +1,5 @@
++dtc
++dtc-lexer.lex.c
++dtc-parser.tab.c
++dtc-parser.tab.h
++

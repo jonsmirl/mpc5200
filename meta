@@ -1,6 +1,6 @@
 Version: 1
-Previous: 4676aad5e55e14bbc09957760815a17e303d0514
-Head: 27dba736a01cec870b1fa612b3e0eb5bb339f21c
+Previous: 51272dd99deb78a258ae97b390b2334d32b0ce2a
+Head: d587074d93b72027959ef628ca2ac86ee6abffa5
 Applied:
   Makefile: 3ee0747cd437602152b3000db31f7b9df81a780d
   digispeak: 06dbd7ed158c503e0a6ff177852b8bb7387c0862
@@ -30,6 +30,7 @@ Applied:
   mmc-spi: 5f20aee55e166097da449df8790de2920bfcf755
   temp: 8ec1358ac7531e3fde07d467c10977af3478cdcc
   gitignore: 27dba736a01cec870b1fa612b3e0eb5bb339f21c
+  refresh-temp: d587074d93b72027959ef628ca2ac86ee6abffa5
 Unapplied:
   g_spi_4: bb1648ba7508e387324563a4320767a1099e256b
   m_1: 9da5a7d7a77fcb6b640a63626b2a81e282ad25e2
