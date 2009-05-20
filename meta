@@ -1,6 +1,6 @@
 Version: 1
-Previous: c00c9f49e3e5092a2fb905f24246a04be9d43bea
-Head: 6f7d16eaa173b0b2db394766b828c77131ddcf7f
+Previous: dcf3a4cdd002dadcf3e2053247a4b9bea7612915
+Head: 99630ec9d25c3e31e2cc5cc69bd54661316b4287
 Applied:
   Makefile: 3ee0747cd437602152b3000db31f7b9df81a780d
   digispeak: 06dbd7ed158c503e0a6ff177852b8bb7387c0862
@@ -33,5 +33,6 @@ Applied:
   g_spi_4: c3ea77a7da10c6db5947f31170064e8b1aea948e
   m_1: c7ebe6bf4e69d0d16f41d23b204caa55ce5d621a
   spi-mmc: 6f7d16eaa173b0b2db394766b828c77131ddcf7f
+  refresh-temp: 99630ec9d25c3e31e2cc5cc69bd54661316b4287
 Unapplied:
 Hidden:
