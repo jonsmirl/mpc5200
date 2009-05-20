@@ -49,8 +49,7 @@ MODULE_LICENSE("GPL");
  * PSC_I2S_FORMATS: audio formats supported by the PSC I2S mode
  */
 #define PSC_I2S_FORMATS (SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE | \
-			 SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S24_BE | \
-			 SNDRV_PCM_FMTBIT_S32_BE)
+			 SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE)
 
 
 static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
