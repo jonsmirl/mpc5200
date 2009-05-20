@@ -1,5 +1,5 @@
 Version: 1
-Previous: 60d5d7e36c980db48a76c68f080a7291d87e6850
+Previous: c4ea2c23bb0c72ca298b1494c4f48f9f7f2f2174
 Head: c3ea77a7da10c6db5947f31170064e8b1aea948e
 Applied:
   Makefile: 3ee0747cd437602152b3000db31f7b9df81a780d
@@ -32,6 +32,4 @@ Applied:
   gitignore: 16b2a16a22c786631119646d45bd0d025a0db88b
   g_spi_4: c3ea77a7da10c6db5947f31170064e8b1aea948e
 Unapplied:
-  m_1: c7ebe6bf4e69d0d16f41d23b204caa55ce5d621a
-  spi-mmc: 6d7fb26baf5108416b920cb2d537417f104e8da9
 Hidden:
