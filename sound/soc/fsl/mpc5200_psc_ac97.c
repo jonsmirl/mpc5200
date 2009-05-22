@@ -281,15 +281,13 @@ static struct snd_soc_dai psc_ac97_dai_template[] = {
 		.channels_min   = 1,
 		.channels_max   = 6,
 		.rates          = SNDRV_PCM_RATE_8000_48000,
-		.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
-			   SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
+		.formats = SNDRV_PCM_FMTBIT_S32_BE,
 	},
 	.capture = {
 		.channels_min   = 1,
 		.channels_max   = 2,
 		.rates          = SNDRV_PCM_RATE_8000_48000,
-		.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
-			   SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
+		.formats = SNDRV_PCM_FMTBIT_S32_BE,
 	},
 	.ops = &psc_ac97_analog_ops,
 },
