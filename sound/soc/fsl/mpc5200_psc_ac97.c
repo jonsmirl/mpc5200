@@ -322,6 +322,9 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	if (rc != 0)
 		return rc;
 
+	for (i = 0; i < ARRAY_SIZE(psc_ac97_dai); i++)
+		psc_ac97_dai[i].dev = &op->dev;
+
 	rc = snd_soc_register_dais(psc_ac97_dai, ARRAY_SIZE(psc_ac97_dai));
 	if (rc != 0) {
 		pr_err("Failed to register DAI\n");
