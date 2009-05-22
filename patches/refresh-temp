@@ -1,0 +1,20 @@
+Bottom: 127fbb5eab188e8254ade9cb4cdeded580471975
+Top:    59c95a9276d03ff5f1a7657c6943a5bbfec60309
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-22 16:46:57 -0400
+
+Refresh of dspeak-audio
+
+---
+
+diff --git a/sound/soc/fsl/dspeak01_fabric.c b/sound/soc/fsl/dspeak01_fabric.c
+index c6c7890..8021d6a 100644
+--- a/sound/soc/fsl/dspeak01_fabric.c
++++ b/sound/soc/fsl/dspeak01_fabric.c
+@@ -113,7 +113,6 @@ static int __devinit dspeak01_fabric_probe(struct of_device *op,
+ 	if (!fabric.clock)
+ 		return -ENODEV;
+ 
+-	of_snd_soc_register_fabric("DSPEAK01", &dspeak01_fabric_ops, NULL);
+ 	return 0;
+ }
