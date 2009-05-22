@@ -5,8 +5,6 @@
 #ifndef __SOUND_SOC_FSL_MPC5200_DMA_H__
 #define __SOUND_SOC_FSL_MPC5200_DMA_H__
 
-#include <sound/soc-of-simple.h>
-
 #define PSC_STREAM_NAME_LEN 32
 
 /**
