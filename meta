@@ -1,6 +1,6 @@
 Version: 1
-Previous: de3d22eaed0eb9f24b807fc88a736c68423d08a0
-Head: 4e6c88af5755c33635804cd240d00a3890ffeee0
+Previous: cf073d4274b1ace854982f386192375a4c76ab29
+Head: 51f0c588bd1611301189f307d6b7eb0ea8fbb0d0
 Applied:
   Makefile: 3ee0747cd437602152b3000db31f7b9df81a780d
   digispeak: 2dbdf8f69597213ceb300b7337af613aca6e6e06
@@ -18,6 +18,7 @@ Applied:
   i2s-dma-split: da77c4966038f8ae9c9b7c8df611612324f7d146
   is2-dma-rename: f6ae983a37a1e65f80b9fca3c66dbaa5145a90a5
   add-psc-defines: 4e6c88af5755c33635804cd240d00a3890ffeee0
+  refresh-temp: 51f0c588bd1611301189f307d6b7eb0ea8fbb0d0
 Unapplied:
   of-soc-simple-rework: 9236ee829d4fe883e496671d6331f3fe37cc5c0b
   wm9712-self-register: 8190c0bd25c6e5066508ba662b4812fda26f82eb
