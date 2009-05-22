@@ -40,9 +40,11 @@ MODULE_LICENSE("GPL");
 
 #define DRV_NAME "mpc5200-psc-ac97"
 
+/* ALSA only supports a single AC97 device so static is recommend here */
+static struct psc_dma *psc_dma;
+
 static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 {
-	struct psc_dma *psc_dma = ac97->private_data;
 	int timeout;
 	unsigned int val;
 
@@ -87,7 +89,6 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 
 static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned short val)
 {
-	struct psc_dma *psc_dma = ac97->private_data;
 	int timeout;
 
 	spin_lock(&psc_dma->lock);
@@ -111,7 +112,6 @@ static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned s
 
 static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
 {
-	struct psc_dma *psc_dma = ac97->private_data;
 	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
 
 	/* Do a cold reset */
@@ -126,7 +126,6 @@ static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
 
 static void psc_ac97_warm_reset(struct snd_ac97 *ac97)
 {
-	struct psc_dma *psc_dma = ac97->private_data;
 	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
 
 	out_be32(&regs->sicr, psc_dma->sicr | MPC52xx_PSC_SICR_AWR);
@@ -245,6 +244,7 @@ static int psc_ac97_trigger(struct snd_pcm_substream *substream, int cmd,
 static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
 {
 	struct psc_dma *psc_dma = cpu_dai->private_data;
+
 	dev_dbg(psc_dma->dev, "psc_ac97_set_fmt(cpu_dai=%p, format=%i)\n",
 				cpu_dai, format);
 
@@ -272,9 +272,9 @@ static struct snd_soc_dai_ops psc_ac97_digital_ops = {
 	.set_fmt	= psc_ac97_set_fmt,
 };
 
-static struct snd_soc_dai psc_ac97_dai_template[] = {
+struct snd_soc_dai psc_ac97_dai[] = {
 {
-	.name   = "%s AC97",
+	.name   = "AC97",
 	.suspend = psc_ac97_suspend,
 	.resume = psc_ac97_resume,
 	.playback = {
@@ -292,7 +292,7 @@ static struct snd_soc_dai psc_ac97_dai_template[] = {
 	.ops = &psc_ac97_analog_ops,
 },
 {
-	.name   = "%s AC97",
+	.name   = "SPDIF",
 	.playback = {
 		.channels_min   = 1,
 		.channels_max   = 2,
@@ -302,6 +302,8 @@ static struct snd_soc_dai psc_ac97_dai_template[] = {
 	},
 	.ops = &psc_ac97_digital_ops,
 }};
+EXPORT_SYMBOL_GPL(psc_ac97_dai);
+
 
 
 /* ---------------------------------------------------------------------
@@ -312,18 +314,26 @@ static struct snd_soc_dai psc_ac97_dai_template[] = {
 static int __devinit psc_ac97_of_probe(struct of_device *op,
 				      const struct of_device_id *match)
 {
-	int rc, id1, id2, timeout, max_reset;
-	struct psc_dma *psc_dma;
+	int rc, i, id1, id2, timeout, max_reset;
 	struct snd_ac97 ac97;
 	struct mpc52xx_psc __iomem *regs;
 
-	rc = mpc5200_audio_dma_create(op, psc_ac97_dai_template, ARRAY_SIZE(psc_ac97_dai_template));
+	rc = mpc5200_audio_dma_create(op);
 	if (rc != 0)
 		return rc;
+
+	rc = snd_soc_register_dais(psc_ac97_dai, ARRAY_SIZE(psc_ac97_dai));
+	if (rc != 0) {
+		pr_err("Failed to register DAI\n");
+		return 0;
+	}
 
 	psc_dma = dev_get_drvdata(&op->dev);
 	regs = psc_dma->psc_regs;
 	ac97.private_data = psc_dma;
+
+	for (i = 0; i < ARRAY_SIZE(psc_ac97_dai); i++)
+		psc_ac97_dai[i].private_data = psc_dma;
 
 	psc_dma->imr = 0;
 	out_be16(&psc_dma->psc_regs->isr_imr.imr, psc_dma->imr);
