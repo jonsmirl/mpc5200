@@ -1,5 +1,5 @@
 Bottom: 29c5acb80833f1401ab2cf379de8728e8e170be6
-Top:    56d38b27617c6a854264e33a36dce4320ce00d53
+Top:    c9e17d8620db66b01693ddf8db69fc71e6bd7cbc
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-19 23:53:20 -0400
 
@@ -149,8 +149,22 @@ index 68c77a9..fe0658a 100644
  					irq_of_parse_and_map(op->node, 0), id);
  }
  
+diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
+index 2c42f29..220c01f 100644
+--- a/sound/soc/fsl/mpc5200_dma.c
++++ b/sound/soc/fsl/mpc5200_dma.c
+@@ -271,7 +271,8 @@ static const struct snd_pcm_hardware psc_dma_hardware = {
+ 	.info = SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
+ 		SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
+ 		SNDRV_PCM_INFO_BATCH,
+-	.formats = SNDRV_PCM_FMTBIT_S32_BE,
++	.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
++		SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
+ 	.rate_min = 8000,
+ 	.rate_max = 48000,
+ 	.channels_min = 1,
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
-index 5077294..60c13c3 100644
+index 5077294..6230c09 100644
 --- a/sound/soc/fsl/mpc5200_psc_ac97.c
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
 @@ -112,20 +112,26 @@ static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned s
@@ -184,7 +198,25 @@ index 5077294..60c13c3 100644
  }
  
  struct snd_ac97_bus_ops soc_ac97_ops = {
-@@ -308,33 +314,64 @@ static struct snd_soc_dai psc_ac97_dai_template[] = {
+@@ -275,15 +281,13 @@ static struct snd_soc_dai psc_ac97_dai_template[] = {
+ 		.channels_min   = 1,
+ 		.channels_max   = 6,
+ 		.rates          = SNDRV_PCM_RATE_8000_48000,
+-		.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
+-			   SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
++		.formats = SNDRV_PCM_FMTBIT_S32_BE,
+ 	},
+ 	.capture = {
+ 		.channels_min   = 1,
+ 		.channels_max   = 2,
+ 		.rates          = SNDRV_PCM_RATE_8000_48000,
+-		.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
+-			   SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
++		.formats = SNDRV_PCM_FMTBIT_S32_BE,
+ 	},
+ 	.ops = &psc_ac97_analog_ops,
+ },
+@@ -308,33 +312,64 @@ static struct snd_soc_dai psc_ac97_dai_template[] = {
  static int __devinit psc_ac97_of_probe(struct of_device *op,
  				      const struct of_device_id *match)
  {
@@ -259,3 +291,17 @@ index 5077294..60c13c3 100644
  
  	return 0;
  }
+diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
+index 9d92c83..da988ef 100644
+--- a/sound/soc/fsl/mpc5200_psc_i2s.c
++++ b/sound/soc/fsl/mpc5200_psc_i2s.c
+@@ -49,8 +49,7 @@ MODULE_LICENSE("GPL");
+  * PSC_I2S_FORMATS: audio formats supported by the PSC I2S mode
+  */
+ #define PSC_I2S_FORMATS (SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE | \
+-			 SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S24_BE | \
+-			 SNDRV_PCM_FMTBIT_S32_BE)
++			 SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE)
+ 
+ 
+ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
