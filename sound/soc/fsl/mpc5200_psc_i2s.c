@@ -149,7 +149,7 @@ static int psc_i2s_set_sysclk(struct snd_soc_dai *cpu_dai,
 			dev_dbg(psc_dma->dev, "psc_i2s_set_sysclk(clkdiv %d freq error=%ldHz)\n",
 					clkdiv, (ppc_proc_freq / clkdiv - freq));
 
-			return mpc52xx_set_psc_clkdiv(psc_dma->dai[0].id + 1, clkdiv);
+			return mpc52xx_set_psc_clkdiv(psc_dma->id + 1, clkdiv);
 		}
 	}
 	return 0;
