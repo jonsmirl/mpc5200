@@ -55,8 +55,6 @@ static __init int efika_fabric_init(void)
 	if (!machine_is_compatible("bplan,efika"))
 		return -ENODEV;
 
-
-	printk("Initializing Efika audio\n");
 	card.platform = &mpc5200_audio_dma_platform;
 	card.name = "Efika";
 	card.dai_link = efika_fabric_dai;

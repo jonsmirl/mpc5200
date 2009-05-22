@@ -55,8 +55,6 @@ static __init int pcm030_fabric_init(void)
 	if (!machine_is_compatible("phytec,pcm030"))
 		return -ENODEV;
 
-
-	printk("Initializing Phytec audio\n");
 	card.platform = &mpc5200_audio_dma_platform;
 	card.name = "pcm030";
 	card.dai_link = pcm030_fabric_dai;
