@@ -1,0 +1,33 @@
+Bottom: 71bb64272769d04f5ba23f16ff222ccf7d5df2df
+Top:    684a0769848aa93b0c6f6f166b07a32aec734d7f
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-22 12:17:10 -0400
+
+Refresh of efika-audio
+
+---
+
+diff --git a/arch/powerpc/platforms/52xx/efika.c b/arch/powerpc/platforms/52xx/efika.c
+index c7a6a48..a2068fa 100644
+--- a/arch/powerpc/platforms/52xx/efika.c
++++ b/arch/powerpc/platforms/52xx/efika.c
+@@ -211,18 +211,12 @@ static int __init efika_probe(void)
+ 	return 1;
+ }
+ 
+-static void __init efika_declare_platform_devices(void)
+-{
+-	mpc52xx_declare_of_platform_devices();
+-	platform_device_register_simple("efika-audio-fabric", 0, NULL, 0);
+-}
+-
+ define_machine(efika)
+ {
+ 	.name			= EFIKA_PLATFORM_NAME,
+ 	.probe			= efika_probe,
+ 	.setup_arch		= efika_setup_arch,
+-	.init			= efika_declare_platform_devices,
++	.init			= mpc52xx_declare_of_platform_devices,
+ 	.show_cpuinfo		= efika_show_cpuinfo,
+ 	.init_IRQ		= mpc52xx_init_irq,
+ 	.get_irq		= mpc52xx_get_irq,
