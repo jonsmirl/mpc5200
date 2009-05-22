@@ -1,5 +1,5 @@
 Bottom: 5c22dccd9a4dd18f2e748e6ab9fe5e8593c6b500
-Top:    182bd1fa512fae210f379b908daa72d366639f15
+Top:    12aa9f439735ec9e0e8e3f7f6340b0af278c4fb1
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 11:28:23 -0400
 
@@ -57,10 +57,10 @@ index 3d31b6b..c6998e4 100644
  obj-$(CONFIG_SND_SOC_TLV320AIC3X)	+= snd-soc-tlv320aic3x.o
 diff --git a/sound/soc/codecs/stac9766.c b/sound/soc/codecs/stac9766.c
 new file mode 100644
-index 0000000..9f9dfa8
+index 0000000..31ffee3
 --- /dev/null
 +++ b/sound/soc/codecs/stac9766.c
-@@ -0,0 +1,491 @@
+@@ -0,0 +1,471 @@
 +/*
 + * stac9766.c  --  ALSA SoC STAC9766 codec support
 + *
@@ -517,37 +517,17 @@ index 0000000..9f9dfa8
 +};
 +EXPORT_SYMBOL_GPL(soc_codec_dev_stac9766);
 +
-+static int __init stac9766_probe(struct platform_device *pdev)
++static int __init stac9766_modinit(void)
 +{
-+	snd_soc_register_dais(stac9766_dai, ARRAY_SIZE(stac9766_dai));
-+#if defined(CONFIG_SND_SOC_OF_SIMPLE)
-+	/* Tell the of_soc helper about this codec */
-+	of_snd_soc_register_codec(&soc_codec_dev_stac9766, pdev->dev.archdata.of_node,
-+									stac9766_dai, ARRAY_SIZE(stac9766_dai),
-+									pdev->dev.archdata.of_node);
-+#endif
-+	return 0;
++	return snd_soc_register_dais(stac9766_dai, ARRAY_SIZE(stac9766_dai));
 +}
++module_init(stac9766_modinit);
 +
-+static struct platform_driver stac9766_driver =
++static void __exit stac9766_exit(void)
 +{
-+	.probe = stac9766_probe,
-+	.driver = {
-+			.name = "stac9766",
-+	},
-+};
-+
-+static __init int stac9766_driver_init(void)
-+{
-+	return platform_driver_register(&stac9766_driver);
++	snd_soc_unregister_dais(stac9766_dai, ARRAY_SIZE(stac9766_dai));
 +}
-+
-+static __exit void stac9766_driver_exit(void)
-+{
-+}
-+
-+module_init(stac9766_driver_init);
-+module_exit(stac9766_driver_exit);
++module_exit(stac9766_exit);
 +
 +MODULE_DESCRIPTION("ASoC stac9766 driver");
 +MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
