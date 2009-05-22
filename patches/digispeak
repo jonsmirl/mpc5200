@@ -1,5 +1,5 @@
 Bottom: 0d26409f91f8369bd616c7699c654ea115f1a6d5
-Top:    d11e3968fb5fc0cd7f190e23f074667d8f0b5b61
+Top:    267a01db0653665b1354707934a8cc215cb9b45d
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-19 11:24:07 -0400
 
@@ -16,10 +16,10 @@ The Digispeaker platform
 
 diff --git a/arch/powerpc/boot/dts/dspeak01.dts b/arch/powerpc/boot/dts/dspeak01.dts
 new file mode 100644
-index 0000000..7107d45
+index 0000000..863c61a
 --- /dev/null
 +++ b/arch/powerpc/boot/dts/dspeak01.dts
-@@ -0,0 +1,421 @@
+@@ -0,0 +1,413 @@
 +/*
 + * phyCORE-MPC5200B-tiny (pcm030) board Device Tree Source
 + *
@@ -189,25 +189,6 @@ index 0000000..7107d45
 +			#gpio-cells = <2>;
 +		};
 +
-+		spi@f00 {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+			compatible = "fsl,mpc5200b-spi","fsl,mpc5200-spi";
-+			reg = <0xf00 0x20>;
-+			interrupts = <0x2 0xd 0x0 0x2 0xe 0x0>;
-+			interrupt-parent = <&mpc5200_pic>;
-+
-+			mmc-slot@0 {
-+				compatible = "mmc-spi";
-+				reg = <0>;
-+				max-speed = <50000000>;
-+				/* Unregulated slot. */
-+				voltage-range = <3300 3300>;
-+				/*gpios = <&sdcsr_pio 1 0   /*  WP */
-+				/*		 &sdcsr_pio 0 1>; /* nCD */
-+			};
-+		};
-+
 +		usb@1000 {
 +			compatible = "fsl,mpc5200b-ohci","fsl,mpc5200-ohci","ohci-be";
 +			reg = <0x1000 0xff>;
@@ -262,14 +243,25 @@ index 0000000..7107d45
 +
 +		/* PSC5 is ??? */
 +
-+		serial@2c00 { /* PSC6 in UART mode */
-+			device_type = "serial";
-+			compatible = "fsl,mpc5200b-psc-uart","fsl,mpc5200-psc-uart";
-+			port-number = <1>;
++		spi@2c00 { /* PSC6 in SPI mode */
++			compatible = "fsl,mpc5200-psc-spi";
 +			cell-index = <5>;
 +			reg = <0x2c00 0x100>;
 +			interrupts = <0x2 0x4 0x0>;
 +			interrupt-parent = <&mpc5200_pic>;
++
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			mmc-slot@0 {
++				compatible = "mmc-spi-slot";
++				reg = <0>;
++				spi-max-frequency = <50000000>;
++				/* Unregulated slot. */
++				voltage-range = <3300 3300>;
++				/*gpios = <&sdcsr_pio 1 0   /*  WP */
++				/*		 &sdcsr_pio 0 1>; /* nCD */
++			};
 +		};
 +
 +		ethernet@3000 {
