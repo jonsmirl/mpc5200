@@ -29,8 +29,8 @@
 #include "mpc5200_psc_ac97.h"
 #include "../codecs/stac9766.h"
 
-struct snd_soc_device device;
-struct snd_soc_card card;
+static struct snd_soc_device device;
+static struct snd_soc_card card;
 
 static struct snd_soc_dai_link efika_fabric_dai[] = {
 {
