@@ -187,9 +187,46 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	if (!of_get_property(op->node, "codec-handle", NULL))
 		return 0;
 
+<<<<<<< current:sound/soc/fsl/mpc5200_psc_i2s.c
 	/* Go */
 	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_TX_ENABLE);
 	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RX_ENABLE);
+=======
+	/* Set up mode register;
+	 * First write: RxRdy (FIFO Alarm) generates rx FIFO irq
+	 * Second write: register Normal mode for non loopback
+	 */
+	out_8(&psc_dma->psc_regs->mode, 0);
+	out_8(&psc_dma->psc_regs->mode, 0);
+
+	/* Set the TX and RX fifo alarm thresholds */
+	out_be16(&psc_dma->fifo_regs->rfalarm, 0x100);
+	out_8(&psc_dma->fifo_regs->rfcntl, 0x4);
+	out_be16(&psc_dma->fifo_regs->tfalarm, 0x100);
+	out_8(&psc_dma->fifo_regs->tfcntl, 0x7);
+
+	/* Lookup the IRQ numbers */
+	psc_dma->playback.irq =
+		bcom_get_task_irq(psc_dma->playback.bcom_task);
+	psc_dma->capture.irq =
+		bcom_get_task_irq(psc_dma->capture.bcom_task);
+
+	/* Save what we've done so it can be found again later */
+	dev_set_drvdata(&op->dev, psc_dma);
+
+	/* Register the SYSFS files */
+	rc = device_create_file(psc_dma->dev, &dev_attr_status);
+	rc |= device_create_file(psc_dma->dev, &dev_attr_capture_overrun);
+	rc |= device_create_file(psc_dma->dev, &dev_attr_playback_underrun);
+	if (rc)
+		dev_info(psc_dma->dev, "error creating sysfs files\n");
+
+	snd_soc_register_platform(&psc_dma_pcm_soc_platform);
+
+	/* Tell the ASoC OF helpers about it */
+	of_snd_soc_register_platform(&mpc5200_audio_dma_platform);
+	of_snd_soc_register_cpu_dai(op->node, &psc_dma->dai, 1);
+>>>>>>> patched:sound/soc/fsl/mpc5200_psc_i2s.c
 
 	return 0;
 
