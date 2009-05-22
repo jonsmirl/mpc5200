@@ -1,6 +1,6 @@
 Version: 1
-Previous: 2d845f4a7c9efd9b7105961c2714654aceee92f1
-Head: bf4ed8e44905ae68a90d2c0ac201b10d3d53bdf9
+Previous: 34c791790dcce39df5c1ae0499acbb62309e7de9
+Head: aaa4083adb385c8ea45ce778ad31f32775b5b599
 Applied:
   Makefile: e035fa451e09f5e3bca454f0acf18e851fc368a4
   digispeak: be2db1434bd7cb60244f50dab2bf4b42246ec916
@@ -20,6 +20,7 @@ Applied:
   add-psc-defines: cbc21b25ec4a62e06b80814cbf99c58b54e781e4
   mpc5200-dma: c0c2c2b147a9acf5cc3f6a0310f8c4500a9b870c
   of-soc-simple-rework: bf4ed8e44905ae68a90d2c0ac201b10d3d53bdf9
+  refresh-temp: aaa4083adb385c8ea45ce778ad31f32775b5b599
 Unapplied:
   stac9766-codec: 094488bb0bbcd45e3f8077bf6224f0e445120241
   mpc5200-ac97: 34b695d44e4ce2f6b7b5e4882e4823f10b57bd1d
