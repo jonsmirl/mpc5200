@@ -1,5 +1,5 @@
 Bottom: b17e21744fcaa0c88bff67597f8256d5cec5006e
-Top:    0c9e92c01dec881ae4134d4536b2dad8e0b89d04
+Top:    2d3d4f9fc2a8f11e10a67f7971746ad8ecb1c6fd
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-19 11:24:14 -0400
 
@@ -13,7 +13,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 6850392..2c42f29 100644
+index 6850392..220c01f 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -23,6 +23,8 @@
@@ -281,7 +281,7 @@ index 6850392..2c42f29 100644
  
  /* ---------------------------------------------------------------------
   * The PSC DMA 'ASoC platform' driver
-@@ -312,67 +267,93 @@ void psc_dma_shutdown(struct snd_pcm_substream *substream,
+@@ -312,67 +267,94 @@ void psc_dma_shutdown(struct snd_pcm_substream *substream,
   * interaction with the attached codec
   */
  
@@ -290,9 +290,9 @@ index 6850392..2c42f29 100644
  	.info = SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
  		SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
  		SNDRV_PCM_INFO_BATCH,
--	.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
+ 	.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
 -		   SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
-+	.formats = SNDRV_PCM_FMTBIT_S32_BE,
++		SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
  	.rate_min = 8000,
  	.rate_max = 48000,
 -	.channels_min = 2,
@@ -386,7 +386,7 @@ index 6850392..2c42f29 100644
  
  	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
  		s = &psc_dma->capture;
-@@ -381,46 +362,63 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
+@@ -381,46 +363,63 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
  
  	count = s->period_current_pt - s->period_start;
  
@@ -462,7 +462,7 @@ index 6850392..2c42f29 100644
  	return 0;
  
   capture_alloc_err:
-@@ -431,13 +429,13 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
+@@ -431,13 +430,13 @@ static int psc_dma_pcm_new(struct snd_card *card, struct snd_soc_dai *dai,
  	return -ENOMEM;
  }
  
@@ -478,7 +478,7 @@ index 6850392..2c42f29 100644
  
  	for (stream = 0; stream < 2; stream++) {
  		substream = pcm->streams[stream].substream;
-@@ -449,10 +447,247 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
+@@ -449,10 +448,247 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
  	}
  }
  
@@ -805,10 +805,20 @@ index a33232c..d71e503 100644
  
  #endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 5dbf1bc..3f76f6a 100644
+index 5dbf1bc..aa5432f 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
-@@ -82,8 +82,6 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
+@@ -46,8 +46,7 @@ MODULE_LICENSE("GPL");
+  * PSC_I2S_FORMATS: audio formats supported by the PSC I2S mode
+  */
+ #define PSC_I2S_FORMATS (SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE | \
+-			 SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S24_BE | \
+-			 SNDRV_PCM_FMTBIT_S32_BE)
++			 SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE)
+ 
+ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
+ 				 struct snd_pcm_hw_params *params,
+@@ -82,8 +81,6 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
  	}
  	out_be32(&psc_dma->psc_regs->sicr, psc_dma->sicr | mode);
  
@@ -817,7 +827,7 @@ index 5dbf1bc..3f76f6a 100644
  	return 0;
  }
  
-@@ -140,16 +138,13 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
+@@ -140,16 +137,13 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
   * psc_i2s_dai_template: template CPU Digital Audio Interface
   */
  static struct snd_soc_dai_ops psc_i2s_dai_ops = {
@@ -835,7 +845,7 @@ index 5dbf1bc..3f76f6a 100644
  	.playback = {
  		.channels_min = 2,
  		.channels_max = 2,
-@@ -166,70 +161,6 @@ static struct snd_soc_dai psc_i2s_dai_template = {
+@@ -166,70 +160,6 @@ static struct snd_soc_dai psc_i2s_dai_template = {
  };
  
  /* ---------------------------------------------------------------------
@@ -906,7 +916,7 @@ index 5dbf1bc..3f76f6a 100644
   * OF platform bus binding code:
   * - Probe/remove operations
   * - OF device match table
-@@ -237,82 +168,18 @@ static DEVICE_ATTR(capture_overrun, 0644, psc_i2s_stat_show,
+@@ -237,82 +167,18 @@ static DEVICE_ATTR(capture_overrun, 0644, psc_i2s_stat_show,
  static int __devinit psc_i2s_of_probe(struct of_device *op,
  				      const struct of_device_id *match)
  {
@@ -994,7 +1004,7 @@ index 5dbf1bc..3f76f6a 100644
  	out_be32(&psc_dma->psc_regs->sicr,
  		 psc_dma->sicr | MPC52xx_PSC_SICR_SIM_CODEC_8);
  
-@@ -321,61 +188,17 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+@@ -321,61 +187,17 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
  	if (!of_get_property(op->node, "codec-handle", NULL))
  		return 0;
  
