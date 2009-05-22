@@ -29,56 +29,57 @@
 #include "mpc5200_psc_ac97.h"
 #include "../codecs/stac9766.h"
 
-static int efika_init(struct snd_soc_codec *codec)
+struct snd_soc_device device;
+struct snd_soc_card card;
+
+static struct snd_soc_dai_link efika_fabric_dai[] = {
 {
-	/* Skeleton driver showing framework for setting
-	 * up board specific fabric drivers.
-	 *
-	 * set up Efika specific controls here
-	 *
-	 * Loading of this driver is trigger by
-	 * platform_device_register_simple("efika-audio-fabric", 0, NULL, 0);
-	 * in arch/powerpc/platforms/52xx/efika.c
-	 */
-	return 0;
-}
-
-static int efika_stac9766_probe(struct platform_device *pdev)
+	.name = "AC97",
+	.stream_name = "AC97 Analog",
+	.codec_dai = &stac9766_dai[STAC9766_DAI_AC97_ANALOG],
+	.cpu_dai = &psc_ac97_dai[MPC5200_AC97_NORMAL],
+},
 {
-	of_snd_soc_register_fabric("Efika", NULL, efika_init);
-	return 0;
-}
-
-#ifdef CONFIG_PM
-
-static int efika_stac9766_suspend(struct platform_device *pdev,
-	pm_message_t state)
-{
-	return 0;
-}
-
-static int efika_stac9766_resume(struct platform_device *pdev)
-{
-	return 0;
-}
-
-#else
-#define efika_stac9766_suspend NULL
-#define efika_stac9766_resume  NULL
-#endif
-
-static struct platform_driver efika_fabric = {
-	.probe	= efika_stac9766_probe,
-	.suspend = efika_stac9766_suspend,
- 	.resume = efika_stac9766_resume,
-	.driver	= {
-		.name	= "efika-audio-fabric",
-	},
+	.name = "AC97",
+	.stream_name = "AC97 IEC958",
+	.codec_dai = &stac9766_dai[STAC9766_DAI_AC97_DIGITAL],
+	.cpu_dai = &psc_ac97_dai[MPC5200_AC97_SPDIF],
+},
 };
 
 static __init int efika_fabric_init(void)
 {
-	return platform_driver_register(&efika_fabric);
+	struct platform_device *pdev;
+	int rc;
+
+	if (!machine_is_compatible("bplan,efika"))
+		return -ENODEV;
+
+
+	printk("Initializing Efika audio\n");
+	card.platform = &mpc5200_audio_dma_platform;
+	card.name = "Efika";
+	card.dai_link = efika_fabric_dai;
+	card.num_links = ARRAY_SIZE(efika_fabric_dai);
+
+	device.card = &card;
+	device.codec_dev = &soc_codec_dev_stac9766;
+
+	pdev = platform_device_alloc("soc-audio", 1);
+	if (!pdev) {
+		pr_err("efika_fabric_init: platform_device_alloc() failed\n");
+		return -ENODEV;
+	}
+
+	platform_set_drvdata(pdev, &device);
+	device.dev = &pdev->dev;
+
+	rc = platform_device_add(pdev);
+	if (rc) {
+		pr_err("efika_fabric_init: platform_device_add() failed\n");
+		return -ENODEV;
+	}
+	return 0;
 }
 
 static __exit void efika_fabric_exit(void)

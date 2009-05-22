@@ -299,6 +299,7 @@ static int psc_dma_open(struct snd_pcm_substream *substream)
 		s = &psc_dma->capture;
 	else
 		s = &psc_dma->playback;
+	printk("1\n");
 
 	snd_soc_set_runtime_hwparams(substream, &psc_dma_hardware);
 
@@ -307,11 +308,6 @@ static int psc_dma_open(struct snd_pcm_substream *substream)
 	if (rc < 0) {
 		dev_err(substream->pcm->card->dev, "invalid buffer size\n");
 		return rc;
-	}
-
-	if (!psc_dma->playback.active &&
-	    !psc_dma->capture.active) {
-		/* Setup the IRQs */
 	}
 
 	s->stream = substream;
@@ -521,20 +517,14 @@ static DEVICE_ATTR(capture_overrun, 0644, psc_dma_stat_show,
 			psc_dma_stat_store);
 
 
-int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template, int tsize)
+int mpc5200_audio_dma_create(struct of_device *op)
 {
 	phys_addr_t fifo;
 	struct psc_dma *psc_dma;
 	struct resource res;
-	int i, nDAI, size, psc_id, irq, rc;
+	int size, irq, rc;
 	const __be32 *prop;
 	void __iomem *regs;
-
-	/* Get the PSC ID */
-	prop = of_get_property(op->node, "cell-index", &size);
-	if (!prop || size < sizeof *prop)
-		return -ENODEV;
-	psc_id = be32_to_cpu(*prop);
 
 	/* Fetch the registers and IRQ of the PSC */
 	irq = irq_of_parse_and_map(op->node, 0);
@@ -555,32 +545,28 @@ int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template,
 		return -ENOMEM;
 	}
 
+	/* Get the PSC ID */
+	prop = of_get_property(op->node, "cell-index", &size);
+	if (!prop || size < sizeof *prop)
+		return -ENODEV;
+
 	spin_lock_init(&psc_dma->lock);
+	psc_dma->id = be32_to_cpu(*prop);
 	psc_dma->irq = irq;
 	psc_dma->psc_regs = regs;
 	psc_dma->fifo_regs = regs + sizeof *psc_dma->psc_regs;
 	psc_dma->dev = &op->dev;
 	psc_dma->playback.psc_dma = psc_dma;
 	psc_dma->capture.psc_dma = psc_dma;
-	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u", psc_id+1);
-
-	/* Fill out the CPU DAI structure */
-	nDAI = min(tsize, SOC_OF_SIMPLE_MAX_DAI);
-	for (i = 0; i < nDAI; i++) {
-		memcpy(&psc_dma->dai[i], &template[i], sizeof(struct snd_soc_dai));
-		psc_dma->dai[i].private_data = psc_dma;
-		snprintf(psc_dma->stream_name[i], PSC_STREAM_NAME_LEN, template[i].name, psc_dma->name);
-		psc_dma->dai[i].name = psc_dma->stream_name[i];
-		psc_dma->dai[i].id = psc_id;
-	}
+	snprintf(psc_dma->name, sizeof psc_dma->name, "PSC%u", psc_dma->id);
 
 	/* Find the address of the fifo data registers and setup the
 	 * DMA tasks */
 	fifo = res.start + offsetof(struct mpc52xx_psc, buffer.buffer_32);
 	psc_dma->capture.bcom_task =
-		bcom_psc_gen_bd_rx_init(psc_id, 10, fifo, 512);
+		bcom_psc_gen_bd_rx_init(psc_dma->id, 10, fifo, 512);
 	psc_dma->playback.bcom_task =
-		bcom_psc_gen_bd_tx_init(psc_id, 10, fifo);
+		bcom_psc_gen_bd_tx_init(psc_dma->id, 10, fifo);
 	if (!psc_dma->capture.bcom_task ||
 	    !psc_dma->playback.bcom_task) {
 		dev_err(&op->dev, "Could not allocate bestcomm tasks\n");
@@ -642,15 +628,6 @@ int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template,
 	if (rc)
 		dev_info(psc_dma->dev, "error creating sysfs files\n");
 
-	rc = snd_soc_register_dais(psc_dma->dai, nDAI);
-	if (rc != 0) {
-		pr_err("Failed to register DAI\n");
-		return 0;
-	}
-
-	/* Tell the ASoC OF helpers about it */
-	of_snd_soc_register_cpu_dai(op->node, psc_dma->dai, nDAI);
-
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mpc5200_audio_dma_create);
@@ -681,7 +658,6 @@ EXPORT_SYMBOL_GPL(mpc5200_audio_dma_destroy);
 static int __init mpc5200_soc_platform_init(void)
 {
 	/* Tell the ASoC OF helpers about it */
-	of_snd_soc_register_platform(&mpc5200_audio_dma_platform);
 	return snd_soc_register_platform(&mpc5200_audio_dma_platform);
 }
 module_init(mpc5200_soc_platform_init);

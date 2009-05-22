@@ -56,12 +56,11 @@ struct psc_dma {
 	struct mpc52xx_psc_fifo __iomem *fifo_regs;
 	unsigned int irq;
 	struct device *dev;
-	struct snd_soc_dai dai[SOC_OF_SIMPLE_MAX_DAI];
-	char stream_name[SOC_OF_SIMPLE_MAX_DAI][PSC_STREAM_NAME_LEN];
 	spinlock_t lock;
 	u32 sicr;
 	uint sysclk;
 	int imr;
+	int id;
 	unsigned int slots;
 
 	/* per-stream data */
@@ -75,7 +74,7 @@ struct psc_dma {
 	} stats;
 };
 
-int mpc5200_audio_dma_create(struct of_device *op, struct snd_soc_dai *template, int tsize);
+int mpc5200_audio_dma_create(struct of_device *op);
 int mpc5200_audio_dma_destroy(struct of_device *op);
 
 extern struct snd_soc_platform mpc5200_audio_dma_platform;
