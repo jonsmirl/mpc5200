@@ -1,5 +1,5 @@
 Bottom: 75a5cffbd339b38684fea3764a4a0d30e3536d5b
-Top:    d02b040c5844f45411d084681595e9da849b10c6
+Top:    30fbaade5ac6ae1f1c3a73200a98f8e7e7d1b1f5
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 11:28:24 -0400
 
@@ -27,7 +27,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 473d920..b76426c 100644
+index 473d920..35dbb18 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
 @@ -23,9 +23,12 @@
@@ -130,7 +130,7 @@ index 473d920..b76426c 100644
 +			dev_dbg(psc_dma->dev, "psc_i2s_set_sysclk(clkdiv %d freq error=%ldHz)\n",
 +					clkdiv, (ppc_proc_freq / clkdiv - freq));
 +
-+			return mpc52xx_set_psc_clkdiv(psc_dma->dai[0].id + 1, clkdiv);
++			return mpc52xx_set_psc_clkdiv(psc_dma->id + 1, clkdiv);
 +		}
 +	}
 +	return 0;
