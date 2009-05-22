@@ -1,7 +1,7 @@
-Bottom: 690072cfe6dccd0aba6f724bce2a72b0aa1fed90
-Top:    274ca115c0846879002e7dbdca2cabbc683b1bf2
+Bottom: 712e50cffa0ff77879540eb82922c62d31493ebd
+Top:    70e3db855cfd244e68490bd8e3efadb5acb5ab4a
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-05-19 11:24:12 -0400
+Date:   2009-05-22 11:28:21 -0400
 
 Clean up ASOC functions to support 32b values instead of 16b
 
@@ -26,11 +26,11 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/include/sound/soc.h b/include/sound/soc.h
-index 2af3213..f3b590f 100644
+index cf6111d..0477e99 100644
 --- a/include/sound/soc.h
 +++ b/include/sound/soc.h
-@@ -219,10 +219,10 @@ void snd_soc_jack_free_gpios(struct snd_soc_jack *jack, int count,
- #define snd_soc_write(codec, reg, value) codec->write(codec, reg, value)
+@@ -215,10 +215,10 @@ void snd_soc_jack_free_gpios(struct snd_soc_jack *jack, int count,
+ #endif
  
  /* codec register bit access */
 -int snd_soc_update_bits(struct snd_soc_codec *codec, unsigned short reg,
@@ -44,7 +44,7 @@ index 2af3213..f3b590f 100644
  
  int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
  	struct snd_ac97_bus_ops *ops, int num);
-@@ -363,8 +363,8 @@ struct snd_soc_codec {
+@@ -359,8 +359,8 @@ struct snd_soc_codec {
  	hw_write_t hw_write;
  	hw_read_t hw_read;
  	void *reg_cache;
@@ -55,7 +55,7 @@ index 2af3213..f3b590f 100644
  
  	/* dapm */
  	u32 pop_time;
-@@ -496,10 +496,10 @@ struct soc_mixer_control {
+@@ -492,10 +492,10 @@ struct soc_mixer_control {
  
  /* enumerated kcontrol */
  struct soc_enum {
