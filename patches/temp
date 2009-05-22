@@ -1,4 +1,4 @@
-Bottom: 809e8c7f7c2c9efed1a8c36603e9ab500560eaae
+Bottom: 97d1b3cfa4e1382fb682e56f3931710b9212640b
 Top:    6d9e4df293cc2419a8206ca886b9396426eaa7df
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 11:28:25 -0400
@@ -8,29 +8,6 @@ Temporary holding patch
 
 ---
 
-diff --git a/sound/soc/codecs/wm9712.c b/sound/soc/codecs/wm9712.c
-index 1fd4e88..49ad987 100644
---- a/sound/soc/codecs/wm9712.c
-+++ b/sound/soc/codecs/wm9712.c
-@@ -742,6 +742,18 @@ struct snd_soc_codec_device soc_codec_dev_wm9712 = {
- };
- EXPORT_SYMBOL_GPL(soc_codec_dev_wm9712);
- 
-+static int __init wm9712_modinit(void)
-+{
-+	return snd_soc_register_dais(wm9712_dai, ARRAY_SIZE(wm9712_dai));
-+}
-+module_init(wm9712_modinit);
-+
-+static void __exit wm9712_exit(void)
-+{
-+	snd_soc_unregister_dais(wm9712_dai, ARRAY_SIZE(wm9712_dai));
-+}
-+module_exit(wm9712_exit);
-+
- MODULE_DESCRIPTION("ASoC WM9711/WM9712 driver");
- MODULE_AUTHOR("Liam Girdwood");
- MODULE_LICENSE("GPL");
 diff --git a/sound/soc/fsl/dspeak01_fabric.c b/sound/soc/fsl/dspeak01_fabric.c
 index c6c7890..8021d6a 100644
 --- a/sound/soc/fsl/dspeak01_fabric.c
