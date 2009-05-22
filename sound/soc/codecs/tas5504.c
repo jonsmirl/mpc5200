@@ -820,12 +820,6 @@ static int tas5504_i2c_probe(struct i2c_client *client,
 	INIT_LIST_HEAD(&priv->codec.dapm_widgets);
 	INIT_LIST_HEAD(&priv->codec.dapm_paths);
 
-#if defined(CONFIG_SND_SOC_OF_SIMPLE)
-	/* Tell the of_soc helper about this codec */
-	of_snd_soc_register_codec(&tas5504_soc_codec_dev, priv, &tas5504_dai, 1,
-				  client->dev.archdata.of_node);
-#endif
-
 	dev_dbg(&client->dev, "I2C device initialized\n");
 	return 0;
 }

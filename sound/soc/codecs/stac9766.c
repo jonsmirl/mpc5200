@@ -454,37 +454,17 @@ struct snd_soc_codec_device soc_codec_dev_stac9766 =
 };
 EXPORT_SYMBOL_GPL(soc_codec_dev_stac9766);
 
-static int __init stac9766_probe(struct platform_device *pdev)
+static int __init stac9766_modinit(void)
 {
-	snd_soc_register_dais(stac9766_dai, ARRAY_SIZE(stac9766_dai));
-#if defined(CONFIG_SND_SOC_OF_SIMPLE)
-	/* Tell the of_soc helper about this codec */
-	of_snd_soc_register_codec(&soc_codec_dev_stac9766, pdev->dev.archdata.of_node,
-									stac9766_dai, ARRAY_SIZE(stac9766_dai),
-									pdev->dev.archdata.of_node);
-#endif
-	return 0;
+	return snd_soc_register_dais(stac9766_dai, ARRAY_SIZE(stac9766_dai));
 }
+module_init(stac9766_modinit);
 
-static struct platform_driver stac9766_driver =
+static void __exit stac9766_exit(void)
 {
-	.probe = stac9766_probe,
-	.driver = {
-			.name = "stac9766",
-	},
-};
-
-static __init int stac9766_driver_init(void)
-{
-	return platform_driver_register(&stac9766_driver);
+	snd_soc_unregister_dais(stac9766_dai, ARRAY_SIZE(stac9766_dai));
 }
-
-static __exit void stac9766_driver_exit(void)
-{
-}
-
-module_init(stac9766_driver_init);
-module_exit(stac9766_driver_exit);
+module_exit(stac9766_exit);
 
 MODULE_DESCRIPTION("ASoC stac9766 driver");
 MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
