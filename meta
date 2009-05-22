@@ -1,6 +1,6 @@
 Version: 1
-Previous: 2de775e63eabb748e9d74f66b9cbeb312ffcf9eb
-Head: 4f419ef31193c32f9bcff8f6b08fffbc55e13dee
+Previous: de3d22eaed0eb9f24b807fc88a736c68423d08a0
+Head: 4e6c88af5755c33635804cd240d00a3890ffeee0
 Applied:
   Makefile: 3ee0747cd437602152b3000db31f7b9df81a780d
   digispeak: 2dbdf8f69597213ceb300b7337af613aca6e6e06
@@ -18,6 +18,7 @@ Applied:
   i2s-dma-split: da77c4966038f8ae9c9b7c8df611612324f7d146
   is2-dma-rename: f6ae983a37a1e65f80b9fca3c66dbaa5145a90a5
   add-psc-defines: 4e6c88af5755c33635804cd240d00a3890ffeee0
+Unapplied:
   of-soc-simple-rework: 9236ee829d4fe883e496671d6331f3fe37cc5c0b
   wm9712-self-register: 8190c0bd25c6e5066508ba662b4812fda26f82eb
   mpc5200-dma: c504b7c6e6b5db08db636ad67335ba8bad68f230
@@ -31,5 +32,4 @@ Applied:
   dspeak-audio: 129762f9d39309e68e318feb7b65bd4e44bcb62f
   temp: 0bc688ac44d7f3f8f0f0aebdb522eed3cef3f5f1
   mmc-spi: 4f419ef31193c32f9bcff8f6b08fffbc55e13dee
-Unapplied:
 Hidden:
