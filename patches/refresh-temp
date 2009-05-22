@@ -1,0 +1,26 @@
+Bottom: 4ba1f50c39043d5b5cd831cbf2281fe3064a7f90
+Top:    12a58b28f7c58fe85438f1d21d1e6cb6f3311b27
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-22 16:44:51 -0400
+
+Refresh of tas5504-codec
+
+---
+
+diff --git a/sound/soc/codecs/tas5504.c b/sound/soc/codecs/tas5504.c
+index 90f299a..87d6f69 100644
+--- a/sound/soc/codecs/tas5504.c
++++ b/sound/soc/codecs/tas5504.c
+@@ -820,12 +820,6 @@ static int tas5504_i2c_probe(struct i2c_client *client,
+ 	INIT_LIST_HEAD(&priv->codec.dapm_widgets);
+ 	INIT_LIST_HEAD(&priv->codec.dapm_paths);
+ 
+-#if defined(CONFIG_SND_SOC_OF_SIMPLE)
+-	/* Tell the of_soc helper about this codec */
+-	of_snd_soc_register_codec(&tas5504_soc_codec_dev, priv, &tas5504_dai, 1,
+-				  client->dev.archdata.of_node);
+-#endif
+-
+ 	dev_dbg(&client->dev, "I2C device initialized\n");
+ 	return 0;
+ }
