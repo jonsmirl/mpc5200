@@ -1,4 +1,4 @@
-Bottom: 97d1b3cfa4e1382fb682e56f3931710b9212640b
+Bottom: 80a67e43d86df135bf8e0c6b7965f3bccc0ffed0
 Top:    6d9e4df293cc2419a8206ca886b9396426eaa7df
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 11:28:25 -0400
@@ -8,18 +8,6 @@ Temporary holding patch
 
 ---
 
-diff --git a/sound/soc/fsl/dspeak01_fabric.c b/sound/soc/fsl/dspeak01_fabric.c
-index c6c7890..8021d6a 100644
---- a/sound/soc/fsl/dspeak01_fabric.c
-+++ b/sound/soc/fsl/dspeak01_fabric.c
-@@ -113,7 +113,6 @@ static int __devinit dspeak01_fabric_probe(struct of_device *op,
- 	if (!fabric.clock)
- 		return -ENODEV;
- 
--	of_snd_soc_register_fabric("DSPEAK01", &dspeak01_fabric_ops, NULL);
- 	return 0;
- }
- 
 diff --git a/sound/soc/fsl/efika-audio-fabric.c b/sound/soc/fsl/efika-audio-fabric.c
 index 56ae471..13c329f 100644
 --- a/sound/soc/fsl/efika-audio-fabric.c
