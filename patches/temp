@@ -1,4 +1,4 @@
-Bottom: 93126bca4d869f631b4c5d5c6bdb33c12030a06e
+Bottom: e38c3a0c338f1374ef4509ee268863836414d4f9
 Top:    6d9e4df293cc2419a8206ca886b9396426eaa7df
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 11:28:25 -0400
@@ -134,19 +134,6 @@ index d028c55..4bc18c3 100644
 +#define MPC5200_AC97_SPDIF 1
  
  #endif /* __SOUND_SOC_FSL_MPC52xx_PSC_AC97_H__ */
-diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index b76426c..35dbb18 100644
---- a/sound/soc/fsl/mpc5200_psc_i2s.c
-+++ b/sound/soc/fsl/mpc5200_psc_i2s.c
-@@ -149,7 +149,7 @@ static int psc_i2s_set_sysclk(struct snd_soc_dai *cpu_dai,
- 			dev_dbg(psc_dma->dev, "psc_i2s_set_sysclk(clkdiv %d freq error=%ldHz)\n",
- 					clkdiv, (ppc_proc_freq / clkdiv - freq));
- 
--			return mpc52xx_set_psc_clkdiv(psc_dma->dai[0].id + 1, clkdiv);
-+			return mpc52xx_set_psc_clkdiv(psc_dma->id + 1, clkdiv);
- 		}
- 	}
- 	return 0;
 diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
 index bad9d88..cc1e618 100644
 --- a/sound/soc/soc-core.c
