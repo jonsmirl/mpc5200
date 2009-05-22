@@ -1,4 +1,4 @@
-Bottom: abb90d73c7e16fbca067222196bca9872ed9f67c
+Bottom: c9e17d8620db66b01693ddf8db69fc71e6bd7cbc
 Top:    c9e17d8620db66b01693ddf8db69fc71e6bd7cbc
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-19 23:53:20 -0400
@@ -8,31 +8,4 @@ Temporary holding patch
 
 ---
 
-diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 2c42f29..220c01f 100644
---- a/sound/soc/fsl/mpc5200_dma.c
-+++ b/sound/soc/fsl/mpc5200_dma.c
-@@ -271,7 +271,8 @@ static const struct snd_pcm_hardware psc_dma_hardware = {
- 	.info = SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
- 		SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
- 		SNDRV_PCM_INFO_BATCH,
--	.formats = SNDRV_PCM_FMTBIT_S32_BE,
-+	.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
-+		SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
- 	.rate_min = 8000,
- 	.rate_max = 48000,
- 	.channels_min = 1,
-diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 9d92c83..da988ef 100644
---- a/sound/soc/fsl/mpc5200_psc_i2s.c
-+++ b/sound/soc/fsl/mpc5200_psc_i2s.c
-@@ -49,8 +49,7 @@ MODULE_LICENSE("GPL");
-  * PSC_I2S_FORMATS: audio formats supported by the PSC I2S mode
-  */
- #define PSC_I2S_FORMATS (SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE | \
--			 SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S24_BE | \
--			 SNDRV_PCM_FMTBIT_S32_BE)
-+			 SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE)
- 
- 
- static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
+
