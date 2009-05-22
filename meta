@@ -1,9 +1,10 @@
 Version: 1
-Previous: 4f3b09fa14026980ba0d5b027aac3be5493398cf
-Head: 06dbd7ed158c503e0a6ff177852b8bb7387c0862
+Previous: 2d05ffcd03b41833eeb8a82f9aa9e7371e94e2f1
+Head: 6a193c9c83bd2fcb506934bba831e66312c9b3f9
 Applied:
   Makefile: 3ee0747cd437602152b3000db31f7b9df81a780d
   digispeak: 06dbd7ed158c503e0a6ff177852b8bb7387c0862
+  refresh-temp: 6a193c9c83bd2fcb506934bba831e66312c9b3f9
 Unapplied:
   mpc5200-rtc: 9a09fe88a3d330b91addafb933a81c9accc5d4f3
   g_spi_4: 3f1667ebb2dd86e094cdea5e1b3d0480538cb8fa
