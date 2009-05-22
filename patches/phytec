@@ -1,5 +1,5 @@
-Bottom: 71bb64272769d04f5ba23f16ff222ccf7d5df2df
-Top:    d8cfe87b0c65af09a2335fe2d2c8a28d81f7dd8f
+Bottom: e2a61b40b4d1d9e2dd106d3d371240f4abe4bf36
+Top:    f82f9f1dc9d0cdee86ebc4707777d232351d0732
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 11:28:23 -0400
 
@@ -32,7 +32,7 @@ index 8958347..001c8ef 100644
  
  		/* PSC2 port is used by CAN1/2 */
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index 266c6b7..11735e4 100644
+index a16c7d6..18a19bf 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
 @@ -48,4 +48,11 @@ config SND_MPC52xx_SOC_EFIKA

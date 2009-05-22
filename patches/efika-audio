@@ -1,5 +1,5 @@
-Bottom: 201a38afb5451f31b3f2c570b0a9ea80c767da99
-Top:    ab7bebbd8d379749546e39d7af8bde4be5a2d516
+Bottom: ca06cea2c3d4603031e0bc4ff918db2f41ee53d6
+Top:    e2a61b40b4d1d9e2dd106d3d371240f4abe4bf36
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 11:28:23 -0400
 
@@ -13,7 +13,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index d8f63f5..266c6b7 100644
+index efc13d1..a16c7d6 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
 @@ -40,4 +40,12 @@ config SND_SOC_MPC5200_AC97
