@@ -357,24 +357,21 @@ reset:
 	}
 
 	psc_ac97_cold_reset(&ac97);
+	psc_ac97_warm_reset(&ac97);
 
 	/* first make sure it is low */
 	timeout = 0;
 	while ((in_8(&regs->ipcr_acr.ipcr) & 0x80) != 0) {
 		udelay(1);
-		if (timeout++ > 1000) {
-			psc_ac97_warm_reset(&ac97);
+		if (timeout++ > 1000)
 			goto reset;
-		}
 	}
 	/* then wait for the transition to high */
 	timeout = 0;
 	while ((in_8(&regs->ipcr_acr.ipcr) & 0x80) == 0) {
 		udelay(1);
-		if (timeout++ > 1000) {
+		if (timeout++ > 1000)
 			psc_ac97_warm_reset(&ac97);
-			goto reset;
-		}
 	}
 
 	out_8(&regs->command, MPC52xx_PSC_TX_ENABLE | MPC52xx_PSC_RX_ENABLE);
