@@ -1,7 +1,7 @@
-Bottom: e205fffedab565c740b2688400ca272317ab89b7
-Top:    63688c8425ea6ed16ab6de045e934fcfad14caff
+Bottom: 95278e62e440233429c82c18ced4e78e1880b2bc
+Top:    874243e41ca1ea858e5f579150dab6bd12f2b323
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-05-22 11:28:23 -0400
+Date:   2009-05-22 16:52:13 -0400
 
 jds audio driver
 
@@ -27,7 +27,7 @@ jds audio driver
 ---
 
 diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
-index d86b0de..43afc3d 100644
+index 1142cdb..0e73821 100644
 --- a/sound/soc/codecs/Kconfig
 +++ b/sound/soc/codecs/Kconfig
 @@ -20,6 +20,7 @@ config SND_SOC_ALL_CODECS
@@ -38,7 +38,7 @@ index d86b0de..43afc3d 100644
  	select SND_SOC_TLV320AIC23 if I2C
  	select SND_SOC_TLV320AIC26 if SPI_MASTER
  	select SND_SOC_TLV320AIC3X if I2C
-@@ -96,6 +97,9 @@ config SND_SOC_SSM2602
+@@ -97,6 +98,9 @@ config SND_SOC_SSM2602
  config SND_SOC_STAC9766
  	tristate
  
@@ -49,7 +49,7 @@ index d86b0de..43afc3d 100644
  	tristate
  
 diff --git a/sound/soc/codecs/Makefile b/sound/soc/codecs/Makefile
-index c6998e4..af8a49e 100644
+index 46c007c..d0d74b1 100644
 --- a/sound/soc/codecs/Makefile
 +++ b/sound/soc/codecs/Makefile
 @@ -9,6 +9,7 @@ snd-soc-pcm3008-objs := pcm3008.o
@@ -60,7 +60,7 @@ index c6998e4..af8a49e 100644
  snd-soc-tlv320aic26-objs := tlv320aic26.o
  snd-soc-tlv320aic3x-objs := tlv320aic3x.o
  snd-soc-twl4030-objs := twl4030.o
-@@ -43,6 +44,7 @@ obj-$(CONFIG_SND_SOC_L3)	+= snd-soc-l3.o
+@@ -44,6 +45,7 @@ obj-$(CONFIG_SND_SOC_L3)	+= snd-soc-l3.o
  obj-$(CONFIG_SND_SOC_PCM3008)	+= snd-soc-pcm3008.o
  obj-$(CONFIG_SND_SOC_SSM2602)	+= snd-soc-ssm2602.o
  obj-$(CONFIG_SND_SOC_STAC9766)	+= snd-soc-stac9766.o

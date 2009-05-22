@@ -1,7 +1,7 @@
-Bottom: 0e30668ab005534fb23c7ea8ad9d1efbc139d1b8
-Top:    9f94150b30e016d4995b2bbf7be3e2bab9eb6557
+Bottom: f5cec2fb9ea153aab4b057cbca5f6b366b1a2f88
+Top:    6232b21aea133c7a278620bbf89c988740a6bff9
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-05-22 16:45:38 -0400
+Date:   2009-05-22 16:52:14 -0400
 
 Register the wm9712 DAIs on module load
 
