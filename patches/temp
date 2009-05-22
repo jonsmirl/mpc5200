@@ -1,4 +1,4 @@
-Bottom: 71890965149e22e399a5873588bbe46f4f4043a0
+Bottom: 82b80212b0b3207a77add2c5e94431da8f8c8aac
 Top:    c9e17d8620db66b01693ddf8db69fc71e6bd7cbc
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-19 23:53:20 -0400
@@ -8,18 +8,6 @@ Temporary holding patch
 
 ---
 
-diff --git a/arch/powerpc/include/asm/mpc52xx_psc.h b/arch/powerpc/include/asm/mpc52xx_psc.h
-index c323f4f..fb84120 100644
---- a/arch/powerpc/include/asm/mpc52xx_psc.h
-+++ b/arch/powerpc/include/asm/mpc52xx_psc.h
-@@ -127,6 +127,7 @@
- #define MPC52xx_PSC_SICR_SIM_FIR		(0x6 << 24)
- #define MPC52xx_PSC_SICR_SIM_CODEC_24		(0x7 << 24)
- #define MPC52xx_PSC_SICR_SIM_CODEC_32		(0xf << 24)
-+#define MPC52xx_PSC_SICR_AWR			(1 << 30)
- #define MPC52xx_PSC_SICR_GENCLK			(1 << 23)
- #define MPC52xx_PSC_SICR_I2S			(1 << 22)
- #define MPC52xx_PSC_SICR_CLKPOL			(1 << 21)
 diff --git a/drivers/spi/mpc52xx_psc_spi.c b/drivers/spi/mpc52xx_psc_spi.c
 index 68c77a9..fe0658a 100644
 --- a/drivers/spi/mpc52xx_psc_spi.c

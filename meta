@@ -1,6 +1,6 @@
 Version: 1
-Previous: bb8bc6ec07277ef388d58bc65454a72fbe6926a5
-Head: 49d5d5bcb8719dd71a38e6af3ec2b2f1af2ebe35
+Previous: 050076efe1151e515a8cb1448c156c29cf245858
+Head: 54babc59627bf2638651693383fc66b6deffbd11
 Applied:
   Makefile: 3ee0747cd437602152b3000db31f7b9df81a780d
   digispeak: 2dbdf8f69597213ceb300b7337af613aca6e6e06
@@ -18,18 +18,18 @@ Applied:
   i2s-dma-split: da77c4966038f8ae9c9b7c8df611612324f7d146
   is2-dma-rename: f6ae983a37a1e65f80b9fca3c66dbaa5145a90a5
   add-psc-defines: 49d5d5bcb8719dd71a38e6af3ec2b2f1af2ebe35
+  of-soc-simple-rework: f40ab9cef1fad78b4272f924772cdfd9d45c8856
+  wm9712-self-register: dd729c0a9ef32be7c4d2154c8d652cd16aa11f04
+  mpc5200-dma: 06c30ed01b5ea34607e5eb9a4b391cdb9f6c2c86
+  stac9766-codec: 6efa359029cee90965e6e6e5dd50d4b6333feb86
+  mpc5200-ac97: 1209f25a49a38c64fd322a295c3a2035228f32bd
+  efika-audio: f578ecfc4eb4cf860595c8ff7efbf4e0dc449880
+  phytec: 5a7dcdbc8417caf3bea8a1af4066e02449821f05
+  tas5504-codec: 05b2766051080ec25b5f1b1aede4622a22362803
+  max9485-i2c: 83dc116cba95579fba6519b5ca188cc26db4ae05
+  i2s-cell-clock: ea4afb2ce1925a0da3a59d3e312c332eaae98cc6
+  dspeak-audio: e1ef81a9ba0bcf071b415db916d519671539d6e6
+  temp: 2c540351df01447a9a7d37d7b0b893844417def0
+  mmc-spi: 54babc59627bf2638651693383fc66b6deffbd11
 Unapplied:
-  of-soc-simple-rework: 9236ee829d4fe883e496671d6331f3fe37cc5c0b
-  wm9712-self-register: 8190c0bd25c6e5066508ba662b4812fda26f82eb
-  mpc5200-dma: c504b7c6e6b5db08db636ad67335ba8bad68f230
-  stac9766-codec: 253446472612ebbf7a8fad46d4bc96308ff98f71
-  mpc5200-ac97: f685161d7fdbbdb5fcb1860fac9798cc7fbb6df1
-  efika-audio: 66993cef6dadd5bdb75b8f743f0a3e309c929a76
-  phytec: 7f08e04a86a79bdb1d5cdc506483ca702de00d0b
-  tas5504-codec: e264cbd4ff35a92358828a986575da7689eaaa25
-  max9485-i2c: 7c64c6a4dd22b868b6fdad4d46bc3f8a4ab83f93
-  i2s-cell-clock: 1bd997bae849d5e8a05cbfcb303c0c66bcf4b297
-  dspeak-audio: 129762f9d39309e68e318feb7b65bd4e44bcb62f
-  temp: 0bc688ac44d7f3f8f0f0aebdb522eed3cef3f5f1
-  mmc-spi: 4f419ef31193c32f9bcff8f6b08fffbc55e13dee
 Hidden:
