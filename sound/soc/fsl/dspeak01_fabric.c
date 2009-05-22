@@ -113,7 +113,6 @@ static int __devinit dspeak01_fabric_probe(struct of_device *op,
 	if (!fabric.clock)
 		return -ENODEV;
 
-	of_snd_soc_register_fabric("DSPEAK01", &dspeak01_fabric_ops, NULL);
 	return 0;
 }
 
