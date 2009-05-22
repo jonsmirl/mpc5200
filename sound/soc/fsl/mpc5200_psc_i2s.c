@@ -142,8 +142,8 @@ static struct snd_soc_dai_ops psc_i2s_dai_ops = {
 	.set_fmt	= psc_i2s_set_fmt,
 };
 
-static struct snd_soc_dai psc_i2s_dai_template = {
-	.name   = "%s I2S",
+static struct snd_soc_dai psc_i2s_dai[] = {{
+	.name   = "I2S",
 	.playback = {
 		.channels_min = 2,
 		.channels_max = 2,
@@ -157,7 +157,7 @@ static struct snd_soc_dai psc_i2s_dai_template = {
 		.formats = PSC_I2S_FORMATS,
 	},
 	.ops = &psc_i2s_dai_ops,
-};
+}};
 
 /* ---------------------------------------------------------------------
  * OF platform bus binding code:
@@ -170,9 +170,15 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	int rc;
 	struct psc_dma *psc_dma;
 
-	rc = mpc5200_audio_dma_create(op, &psc_i2s_dai_template, 1);
+	rc = mpc5200_audio_dma_create(op);
 	if (rc != 0)
 		return rc;
+
+	rc = snd_soc_register_dais(psc_i2s_dai, ARRAY_SIZE(psc_i2s_dai));
+	if (rc != 0) {
+		pr_err("Failed to register DAI\n");
+		return 0;
+	}
 
 	psc_dma = dev_get_drvdata(&op->dev);
 
