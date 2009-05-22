@@ -18,6 +18,8 @@
 #include <sound/soc.h>
 #include <sound/soc-of-simple.h>
 
+#include "../codecs/tas5504.h"
+#include "mpc5200_dma.h"
 #include "mpc5200_psc_i2s.h"
 
 static struct dspeak01_fabric {
@@ -122,55 +124,60 @@ static int __exit dspeak01_fabric_remove(struct of_device *op)
 	return 0;
 }
 
-#ifdef CONFIG_PM
 
-static int dspeak01_fabric_suspend(struct of_device *op,
-	pm_message_t state)
+static struct snd_soc_device device;
+static struct snd_soc_card card;
+
+static struct snd_soc_dai_link dspeak01_fabric_dai[] = {
 {
+	.name = "I2S",
+	.stream_name = "I2S Out",
+	.codec_dai = &tas5504_dai,
+	.cpu_dai = psc_i2s_dai,
+},
+};
+
+static __init int dspeak01_fabric_init(void)
+{
+	struct platform_device *pdev;
+	int rc;
+
+	if (!machine_is_compatible("digispeaker,dspeak01"))
+		return -ENODEV;
+
+	printk("Initializing Digispeaker audio\n");
+	card.platform = &mpc5200_audio_dma_platform;
+	card.name = "Efika";
+	card.dai_link = dspeak01_fabric_dai;
+	card.num_links = ARRAY_SIZE(dspeak01_fabric_dai);
+
+	device.card = &card;
+	device.codec_dev = &tas5504_soc_codec_dev;
+
+	pdev = platform_device_alloc("soc-audio", 1);
+	if (!pdev) {
+		pr_err("dspeak01_fabric_init: platform_device_alloc() failed\n");
+		return -ENODEV;
+	}
+
+	platform_set_drvdata(pdev, &device);
+	device.dev = &pdev->dev;
+
+	rc = platform_device_add(pdev);
+	if (rc) {
+		pr_err("dspeak01_fabric_init: platform_device_add() failed\n");
+		return -ENODEV;
+	}
 	return 0;
 }
 
-static int dspeak01_fabric_resume(struct of_device *op)
+static __exit void dspeak01_fabric_exit(void)
 {
-	return 0;
 }
 
-#else
-#define dspeak01_fabric_suspend NULL
-#define dspeak01_fabric_resume  NULL
-#endif
+module_init(dspeak01_fabric_init);
+module_exit(dspeak01_fabric_exit);
 
-/* Match table for of_platform binding */
-static struct of_device_id dspeak_fabric_match[] __devinitdata = {
-	{ .compatible = "dspeak01-fabric", },
-	{}
-};
-MODULE_DEVICE_TABLE(of, dspeak_fabric_match);
-
-static struct of_platform_driver dspeak01_fabric_driver = {
-	.match_table = dspeak_fabric_match,
-	.probe		= dspeak01_fabric_probe,
-	.remove		= __devexit_p(dspeak01_fabric_remove),
-	.suspend	= dspeak01_fabric_suspend,
-	.resume		= dspeak01_fabric_resume,
-	.driver		= {
-		.name		= "dspeak01-fabric",
-		.owner		= THIS_MODULE,
-	},
-};
-
-static int __init dspeak01_driver_init(void)
-{
-	return of_register_platform_driver(&dspeak01_fabric_driver);
-}
-
-static void __exit dspeak01_driver_exit(void)
-{
-	of_unregister_platform_driver(&dspeak01_fabric_driver);
-}
-
-module_init(dspeak01_driver_init);
-module_exit(dspeak01_driver_exit);
 
 /* Module information */
 MODULE_AUTHOR("Jon Smirl");
