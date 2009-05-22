@@ -1,5 +1,5 @@
 Bottom: 2981dfc5da759bca42d1ebae95e43809f11a43a1
-Top:    c57ece8bc7a52900c4b8dc6343d1f6fee4774021
+Top:    7e220ce08108e49f40a0048e6731f1d84002165c
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:12 -0400
 
@@ -42,7 +42,7 @@ index 14631a1..f406470 100644
 +
 diff --git a/sound/soc/fsl/efika-audio-fabric.c b/sound/soc/fsl/efika-audio-fabric.c
 new file mode 100644
-index 0000000..13c329f
+index 0000000..58121a5
 --- /dev/null
 +++ b/sound/soc/fsl/efika-audio-fabric.c
 @@ -0,0 +1,96 @@
@@ -77,8 +77,8 @@ index 0000000..13c329f
 +#include "mpc5200_psc_ac97.h"
 +#include "../codecs/stac9766.h"
 +
-+struct snd_soc_device device;
-+struct snd_soc_card card;
++static struct snd_soc_device device;
++static struct snd_soc_card card;
 +
 +static struct snd_soc_dai_link efika_fabric_dai[] = {
 +{
