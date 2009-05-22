@@ -1,35 +1,35 @@
 Version: 1
-Previous: 6a06d5609616ccc0c79547cd16b8224ae02f8b81
-Head: 2dbdf8f69597213ceb300b7337af613aca6e6e06
+Previous: 2de775e63eabb748e9d74f66b9cbeb312ffcf9eb
+Head: 4f419ef31193c32f9bcff8f6b08fffbc55e13dee
 Applied:
   Makefile: 3ee0747cd437602152b3000db31f7b9df81a780d
   digispeak: 2dbdf8f69597213ceb300b7337af613aca6e6e06
+  mpc5200-rtc: 95f90231118d28015843b789cedf182c7336ac6c
+  g_spi_4: 124fce16b1803d652d210c52ba9a45c85c0b1a76
+  gitignore: 9b8e3fd4451ad6a0e841d9248128b4c24df65eb3
+  lirc: 610d4179f704c53867a55a20f99bc2f600926e73
+  jds-lirc-base: 046abdde398b230421eca7e927109d205eae3b34
+  jds-lirc-core: ca24e71e4211648e0fae1c71a655e22490f9dac8
+  jds-lirc-configfs: 855f763c8483dbebec684df5e7da0e6c897f866c
+  jds-lirc-gpt: 429672d12e57f818c4b81caed16029003e0bef54
+  jds-lirc-device-tree: 8c50a8446af5fdd98b4c7e6cb30e63d8f5b1902b
+  jds-lirc-mce2: 13e1af1a73f2aba7a26ac46c6d5931912ea0f379
+  soc-u32-cleanup: 68f7de4fd6d6967f7950ce84d8766b7c927e420a
+  i2s-dma-split: da77c4966038f8ae9c9b7c8df611612324f7d146
+  is2-dma-rename: f6ae983a37a1e65f80b9fca3c66dbaa5145a90a5
+  add-psc-defines: 4e6c88af5755c33635804cd240d00a3890ffeee0
+  of-soc-simple-rework: 9236ee829d4fe883e496671d6331f3fe37cc5c0b
+  wm9712-self-register: 8190c0bd25c6e5066508ba662b4812fda26f82eb
+  mpc5200-dma: c504b7c6e6b5db08db636ad67335ba8bad68f230
+  stac9766-codec: 253446472612ebbf7a8fad46d4bc96308ff98f71
+  mpc5200-ac97: f685161d7fdbbdb5fcb1860fac9798cc7fbb6df1
+  efika-audio: 66993cef6dadd5bdb75b8f743f0a3e309c929a76
+  phytec: 7f08e04a86a79bdb1d5cdc506483ca702de00d0b
+  tas5504-codec: e264cbd4ff35a92358828a986575da7689eaaa25
+  max9485-i2c: 7c64c6a4dd22b868b6fdad4d46bc3f8a4ab83f93
+  i2s-cell-clock: 1bd997bae849d5e8a05cbfcb303c0c66bcf4b297
+  dspeak-audio: 129762f9d39309e68e318feb7b65bd4e44bcb62f
+  temp: 0bc688ac44d7f3f8f0f0aebdb522eed3cef3f5f1
+  mmc-spi: 4f419ef31193c32f9bcff8f6b08fffbc55e13dee
 Unapplied:
-  mpc5200-rtc: 9a09fe88a3d330b91addafb933a81c9accc5d4f3
-  g_spi_4: 3f1667ebb2dd86e094cdea5e1b3d0480538cb8fa
-  gitignore: abbfc7bec287f32edba9eca01918704060f286c1
-  lirc: 89c394fe28b6bb42ad1dce7f569fae352bc08c07
-  jds-lirc-base: 60dc6c9ee4915aceb74f88e2b640e0b748e56eb3
-  jds-lirc-core: 376fae0465b463ecd31a9edee5721e1c5afc080e
-  jds-lirc-configfs: 72b9104b52bfb05322211359aeba5da4fd63e660
-  jds-lirc-gpt: 6f3a4eeaa6450d030b0e2f46959a8111730b939a
-  jds-lirc-device-tree: 6599684c6c24622fe338f14b3f9f77a2ae05930a
-  jds-lirc-mce2: c577e06beaf098b328b3e4d87bc0990f27eace19
-  soc-u32-cleanup: db7abf77e98059bda9464e7872f0939377fb3038
-  i2s-dma-split: 49479fb7970d3ec340157ab497b68a5d4933ef0d
-  is2-dma-rename: 0cad9d751c23338bcab03bf31d64b6ce08eea030
-  add-psc-defines: 74f1ec078854e99667f1bcfe98f2be48e6dc12e9
-  of-soc-simple-rework: c42c662f1622698014cac3688e948bbe2c59bec3
-  wm9712-self-register: ae5eec2ec99d870afee38c44fb5c83402a42efc0
-  mpc5200-dma: c1ab0107b214bd8aed346f1648e47143afd8f93b
-  stac9766-codec: a22d8ac7231508f37fe8b3ddd9c0945360e9301a
-  mpc5200-ac97: 9c20d3533b9d3b595dc0dc7eb9a1529ca34c51ff
-  efika-audio: ddbe5342e3bad70ec9d9d0059fe740c3acb96ee4
-  phytec: 7bb3bf4764b5622f837d8f5960df6e00b689c1a5
-  tas5504-codec: bec6bfa70798a49e9c9f96d6eec01138162d3eae
-  max9485-i2c: fc95e86b19c76f6d077c2ec1ccbd31735ae2d28a
-  i2s-cell-clock: beadac287ddf79e6f014a6efa1f4d3051ede5384
-  dspeak-audio: 9e08eaea0cf5474d9429a1504e4c61a537bf95cf
-  temp: 9bef486002b2d7ffe36d47ec3a08cc7c28bfbd82
-  mmc-spi: 83c9a8399ddf0214d26669701a1bd63ec8169a53
 Hidden:

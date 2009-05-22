@@ -1,5 +1,5 @@
-Bottom: 41861f944dd182ca89619dfb0dd6f0dd5b6dad04
-Top:    f2fe9b897ceaf5c60dc81e338b618278e510fda5
+Bottom: 3a82c17af150a6f66248a9830b30a73c04e5c008
+Top:    3615a6dd1a5f58b1c6a7de95099aafc032e969b5
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-19 11:24:11 -0400
 
@@ -31,7 +31,7 @@ Example of PowerPC device tree support for GPT based IR
 ---
 
 diff --git a/arch/powerpc/boot/dts/dspeak01.dts b/arch/powerpc/boot/dts/dspeak01.dts
-index 7107d45..398a949 100644
+index 863c61a..5ffa69b 100644
 --- a/arch/powerpc/boot/dts/dspeak01.dts
 +++ b/arch/powerpc/boot/dts/dspeak01.dts
 @@ -131,16 +131,6 @@
@@ -51,7 +51,7 @@ index 7107d45..398a949 100644
  		rtc@800 {	// Real time clock
  			compatible = "fsl,mpc5200b-rtc","fsl,mpc5200-rtc";
  			device_type = "rtc";
-@@ -333,6 +323,14 @@
+@@ -325,6 +315,14 @@
  			clock-handle = <&clock0>;
  		};
  
@@ -66,7 +66,7 @@ index 7107d45..398a949 100644
  		/* This is only an example device to show the usage of gpios. It maps all available
  		 * gpios to the "gpio-provider" device.
  		 */
-@@ -350,7 +348,6 @@
+@@ -342,7 +340,6 @@
  				 &gpt4		0 0 /* timer4		61c		x2-16	   */
  				 &gpt5		0 0 /* timer5		44c		x7-11	   */
  				 &gpt6		0 0 /* timer6		60c		x8-15	   */
