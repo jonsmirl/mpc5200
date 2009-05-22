@@ -1,5 +1,5 @@
-Bottom: be6b622978740fc42254d09bd8674ddc5c992eb9
-Top:    c9e17d8620db66b01693ddf8db69fc71e6bd7cbc
+Bottom: 29c5acb80833f1401ab2cf379de8728e8e170be6
+Top:    56d38b27617c6a854264e33a36dce4320ce00d53
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-19 23:53:20 -0400
 
@@ -150,7 +150,7 @@ index 68c77a9..fe0658a 100644
  }
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
-index e6a77ab..6230c09 100644
+index 5077294..60c13c3 100644
 --- a/sound/soc/fsl/mpc5200_psc_ac97.c
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
 @@ -112,20 +112,26 @@ static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned s
@@ -184,7 +184,7 @@ index e6a77ab..6230c09 100644
  }
  
  struct snd_ac97_bus_ops soc_ac97_ops = {
-@@ -306,33 +312,64 @@ static struct snd_soc_dai psc_ac97_dai_template[] = {
+@@ -308,33 +314,64 @@ static struct snd_soc_dai psc_ac97_dai_template[] = {
  static int __devinit psc_ac97_of_probe(struct of_device *op,
  				      const struct of_device_id *match)
  {
