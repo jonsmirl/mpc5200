@@ -1,5 +1,5 @@
 Bottom: dae62562f0260cea80405e57cb55f68d4785db15
-Top:    21f033fdc8bc9d51821d302752d78002828f79d0
+Top:    dba8345b024bfd8b0ad4fd3796cc710429de1ec3
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:48 -0400
 
@@ -57,7 +57,7 @@ index 70c55fa..46c007c 100644
  obj-$(CONFIG_SND_SOC_TLV320AIC3X)	+= snd-soc-tlv320aic3x.o
 diff --git a/sound/soc/codecs/stac9766.c b/sound/soc/codecs/stac9766.c
 new file mode 100644
-index 0000000..ee2a710
+index 0000000..7740cd5
 --- /dev/null
 +++ b/sound/soc/codecs/stac9766.c
 @@ -0,0 +1,470 @@
@@ -312,6 +312,22 @@ index 0000000..ee2a710
 +	return 0;
 +}
 +
++int stac9766_reset(struct snd_soc_codec *codec, int try_warm)
++{
++	if (try_warm && soc_ac97_ops.warm_reset) {
++		soc_ac97_ops.warm_reset(codec->ac97);
++		if (stac9766_ac97_read(codec, 0) == stac9766_reg[0])
++			return 1;
++	}
++
++	soc_ac97_ops.reset(codec->ac97);
++	if (soc_ac97_ops.warm_reset)
++		soc_ac97_ops.warm_reset(codec->ac97);
++	if (stac9766_ac97_read(codec, 0) != stac9766_reg[0])
++		return -EIO;
++	return 0;
++}
++
 +static int stac9766_codec_suspend(struct platform_device *pdev,
 +                                pm_message_t state)
 +{
@@ -403,22 +419,6 @@ index 0000000..ee2a710
 +	.ops = &stac9766_dai_ops_digital,
 +}};
 +EXPORT_SYMBOL_GPL(stac9766_dai);
-+
-+int stac9766_reset(struct snd_soc_codec *codec, int try_warm)
-+{
-+	if (try_warm && soc_ac97_ops.warm_reset) {
-+		soc_ac97_ops.warm_reset(codec->ac97);
-+		if (stac9766_ac97_read(codec, 0) == stac9766_reg[0])
-+			return 1;
-+	}
-+
-+	soc_ac97_ops.reset(codec->ac97);
-+	if (soc_ac97_ops.warm_reset)
-+		soc_ac97_ops.warm_reset(codec->ac97);
-+	if (stac9766_ac97_read(codec, 0) != stac9766_reg[0])
-+		return -EIO;
-+	return 0;
-+}
 +
 +static int stac9766_codec_probe(struct platform_device *pdev)
 +{
