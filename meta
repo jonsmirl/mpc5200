@@ -1,6 +1,6 @@
 Version: 1
-Previous: 92283a591044b05b9190c2bd89122ffb3d96c210
-Head: 3eeeb79e4208cf66e230abc1093eefc82723749f
+Previous: d300bff78359e02d208412dcf70015563b453687
+Head: 6e27be9ab30e36d7a5efbb3f307f37b9e57a35cf
 Applied:
   Makefile: a41f56e4f750df46c914b6e80131f8182930d37f
   digispeak: db4b8ad7d303cb436f0e7fda91e989e9cac40ab0
@@ -30,5 +30,6 @@ Applied:
   phytec: 4037ee7fee091cbc6d9879e9b9ed97fe15576dcf
   mmc-spi: 6fe94670c4521ebdbef1ed38da225aaec8e37f08
   temp: 3eeeb79e4208cf66e230abc1093eefc82723749f
+  refresh-temp: 6e27be9ab30e36d7a5efbb3f307f37b9e57a35cf
 Unapplied:
 Hidden:
