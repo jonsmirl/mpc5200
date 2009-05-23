@@ -1,0 +1,21 @@
+Bottom: 2e697e8c7e178227435b9042a0f5b8e8afe5564d
+Top:    43567c0763dae6d2453ce018f8ae82150330f4af
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-22 20:56:27 -0400
+
+Refresh of dspeak-audio
+
+---
+
+diff --git a/sound/soc/fsl/dspeak01-audio-fabric.c b/sound/soc/fsl/dspeak01-audio-fabric.c
+index 491100e..07b44b1 100644
+--- a/sound/soc/fsl/dspeak01-audio-fabric.c
++++ b/sound/soc/fsl/dspeak01-audio-fabric.c
+@@ -145,7 +145,6 @@ static __init int dspeak01_fabric_init(void)
+ 	if (!machine_is_compatible("digispeaker,dspeak01"))
+ 		return -ENODEV;
+ 
+-	printk("Initializing Digispeaker audio\n");
+ 	card.platform = &mpc5200_audio_dma_platform;
+ 	card.name = "Efika";
+ 	card.dai_link = dspeak01_fabric_dai;
