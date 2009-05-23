@@ -1,5 +1,5 @@
-Bottom: 8c24594b57dddb3f0e0383822741a15f77bb79b0
-Top:    36d9f876882b4c1a4eba407c21eefcebdecec2f2
+Bottom: c2f03a0550b4cd8b00bc5a4ff407c8b82a441919
+Top:    cc26e3bcdd01b377f10e0b1800340c2d21f8307b
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:14 -0400
 
@@ -31,19 +31,6 @@ index 1fd4e88..49ad987 100644
  MODULE_DESCRIPTION("ASoC WM9711/WM9712 driver");
  MODULE_AUTHOR("Liam Girdwood");
  MODULE_LICENSE("GPL");
-diff --git a/sound/soc/fsl/efika-audio-fabric.c b/sound/soc/fsl/efika-audio-fabric.c
-index 58121a5..5126a81 100644
---- a/sound/soc/fsl/efika-audio-fabric.c
-+++ b/sound/soc/fsl/efika-audio-fabric.c
-@@ -55,8 +55,6 @@ static __init int efika_fabric_init(void)
- 	if (!machine_is_compatible("bplan,efika"))
- 		return -ENODEV;
- 
--
--	printk("Initializing Efika audio\n");
- 	card.platform = &mpc5200_audio_dma_platform;
- 	card.name = "Efika";
- 	card.dai_link = efika_fabric_dai;
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 index 00e832f..ba8e114 100644
 --- a/sound/soc/fsl/mpc5200_psc_ac97.c
