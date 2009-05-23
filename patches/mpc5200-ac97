@@ -1,5 +1,5 @@
 Bottom: 1c7138748b5a2fd84cbcb09ead60cf58598f7e41
-Top:    43dda453f9f1db191fad4fbf43e9e1316d2aa76f
+Top:    948a4c019ff549062edd463edf09dd778fd6fdbc
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:12 -0400
 
@@ -43,10 +43,10 @@ index 7731ef2..14631a1 100644
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..00e832f
+index 0000000..ba8e114
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -0,0 +1,425 @@
+@@ -0,0 +1,428 @@
 +/*
 + * linux/sound/mpc5200-ac97.c -- AC97 support for the Freescale MPC52xx chip.
 + *
@@ -370,6 +370,9 @@ index 0000000..00e832f
 +	rc = mpc5200_audio_dma_create(op);
 +	if (rc != 0)
 +		return rc;
++
++	for (i = 0; i < ARRAY_SIZE(psc_ac97_dai); i++)
++		psc_ac97_dai[i].dev = &op->dev;
 +
 +	rc = snd_soc_register_dais(psc_ac97_dai, ARRAY_SIZE(psc_ac97_dai));
 +	if (rc != 0) {
