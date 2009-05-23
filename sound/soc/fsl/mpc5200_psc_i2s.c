@@ -5,26 +5,19 @@
  * Copyright (C) 2008 Secret Lab Technologies Ltd.
  */
 
-#include <linux/init.h>
 #include <linux/module.h>
-#include <linux/interrupt.h>
-#include <linux/device.h>
-#include <linux/delay.h>
 #include <linux/of_device.h>
 #include <linux/of_platform.h>
-#include <linux/dma-mapping.h>
 
-#include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
-#include <sound/initval.h>
 #include <sound/soc.h>
-#include <sound/soc-of-simple.h>
 
 #include <sysdev/bestcomm/bestcomm.h>
 #include <sysdev/bestcomm/gen_bd.h>
 #include <asm/mpc52xx_psc.h>
 
+#include "mpc5200_psc_i2s.h"
 #include "mpc5200_dma.h"
 
 MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
@@ -170,6 +163,7 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 {
 	int rc;
 	struct psc_dma *psc_dma;
+	struct mpc52xx_psc __iomem *regs;
 
 	rc = mpc5200_audio_dma_create(op);
 	if (rc != 0)
@@ -182,6 +176,7 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	}
 
 	psc_dma = dev_get_drvdata(&op->dev);
+	regs = psc_dma->psc_regs;
 
 	/* Configure the serial interface mode; defaulting to CODEC8 mode */
 	psc_dma->sicr = MPC52xx_PSC_SICR_DTS1 | MPC52xx_PSC_SICR_I2S |
@@ -194,9 +189,22 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	if (!of_get_property(op->node, "codec-handle", NULL))
 		return 0;
 
+	/* Due to errata in the dma mode; need to line up enabling
+	 * the transmitter with a transition on the frame sync
+	 * line */
+
+	/* first make sure it is low */
+	while ((in_8(&regs->ipcr_acr.ipcr) & 0x80) != 0)
+		;
+	/* then wait for the transition to high */
+	while ((in_8(&regs->ipcr_acr.ipcr) & 0x80) == 0)
+		;
+	/* Finally, enable the PSC.
+	 * Receiver must always be enabled; even when we only want
+	 * transmit.  (see 15.3.2.3 of MPC5200B User's Guide) */
+
 	/* Go */
-	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_TX_ENABLE);
-	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RX_ENABLE);
+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_TX_ENABLE | MPC52xx_PSC_RX_ENABLE);
 
 	return 0;
 
