@@ -190,7 +190,7 @@ static struct snd_soc_dai_ops psc_i2s_dai_ops = {
 	.set_fmt	= psc_i2s_set_fmt,
 };
 
-static struct snd_soc_dai psc_i2s_dai[] = {{
+struct snd_soc_dai psc_i2s_dai[] = {{
 	.name   = "I2S",
 	.playback = {
 		.channels_min = 2,
@@ -206,6 +206,7 @@ static struct snd_soc_dai psc_i2s_dai[] = {{
 	},
 	.ops = &psc_i2s_dai_ops,
 }};
+EXPORT_SYMBOL_GPL(psc_i2s_dai);
 
 /* ---------------------------------------------------------------------
  * OF platform bus binding code:
