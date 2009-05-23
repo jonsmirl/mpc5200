@@ -1,6 +1,6 @@
 Version: 1
-Previous: 4e1284accf976aad627a64cdf18f9d7fd2c830f7
-Head: 2dc272d039f710d9faeec4c1396053afb0dcd5bc
+Previous: d565cd0e708529f253c5fd4dc3451629f5e69b89
+Head: d8a33ee4763b4f87e4aa8f729a41973919a3a37e
 Applied:
   Makefile: c62bc0748950ed1dda2738173d1f56dca229033f
   digispeak: a2f10b2eacbc447d46a2f4b1f257ff5b17c2c03c
@@ -28,7 +28,7 @@ Applied:
   dspeak-audio: d3c1be33b25dc927762871e4f9490c49980e9bc4
   phytec: 0dced4f1240f3339253925c2aceb2298d8139b99
   mmc-spi: e5fbe228aba3f38e2a41054b87c519fd76ae757b
-  wm9712-register: 4482d09701ef5a04f993ad6c4b922caf133d3a92
-  temp: 2dc272d039f710d9faeec4c1396053afb0dcd5bc
+  wm9712-register: 7f309c403576688c6c4f6497a1e1df269fe501a3
+  temp: d8a33ee4763b4f87e4aa8f729a41973919a3a37e
 Unapplied:
 Hidden:

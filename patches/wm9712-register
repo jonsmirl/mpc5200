@@ -5,6 +5,8 @@ Date:   2009-05-22 16:52:14 -0400
 
 Register the wm9712 DAIs on module load
 
+Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
+
 
 ---
 
