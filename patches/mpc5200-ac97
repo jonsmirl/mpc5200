@@ -1,5 +1,5 @@
 Bottom: 989f79b8f53de94138d2643cb8580b9a9d899438
-Top:    a1a2fda701cd9c88f7c28bca41f36da725c2dce5
+Top:    8439553a7d6bd549644cda8dd2450d4e73d1a6e1
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:49 -0400
 
@@ -13,7 +13,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index dc79bdf..efc13d1 100644
+index dc79bdf..cad7bec 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
 @@ -30,3 +30,14 @@ config SND_SOC_MPC5200_I2S
@@ -24,7 +24,7 @@ index dc79bdf..efc13d1 100644
 +config SND_SOC_MPC5200_AC97
 +	tristate "Freescale MPC5200 PSC in AC97 mode driver"
 +	depends on PPC_MPC52xx && PPC_BESTCOMM
-+	select SND_SOC_OF_SIMPLE
++	select AC97_BUS
 +	select SND_MPC52xx_DMA
 +	select PPC_BESTCOMM_GEN_BD
 +	help
