@@ -1,0 +1,33 @@
+Bottom: 40e52b9cb06727038c58a6df829907a85ce69a79
+Top:    d571b36b3901d5273ed83f1529d098f7d3123481
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-23 13:31:36 -0400
+
+Refresh of mpc5200-ac97
+
+---
+
+diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
+index 94570ca..67a13c2 100644
+--- a/sound/soc/fsl/mpc5200_psc_ac97.c
++++ b/sound/soc/fsl/mpc5200_psc_ac97.c
+@@ -22,10 +22,6 @@
+ #include "mpc5200_dma.h"
+ #include "mpc5200_psc_ac97.h"
+ 
+-MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
+-MODULE_DESCRIPTION("mpc5200 AC97 module");
+-MODULE_LICENSE("GPL");
+-
+ #define DRV_NAME "mpc5200-psc-ac97"
+ 
+ /* ALSA only supports a single AC97 device so static is recommend here */
+@@ -414,3 +410,8 @@ static void __exit psc_ac97_exit(void)
+ 	of_unregister_platform_driver(&psc_ac97_driver);
+ }
+ module_exit(psc_ac97_exit);
++
++MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
++MODULE_DESCRIPTION("mpc5200 AC97 module");
++MODULE_LICENSE("GPL");
++
