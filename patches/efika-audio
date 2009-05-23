@@ -5,7 +5,7 @@ Date:   2009-05-22 16:52:12 -0400
 
 Fabric bindings for STAC9766 on the Efika
 
-Fabric bindings for STAC9766 on the Efika. This includes an example of a custom fabric driver.
+Fabric bindings for STAC9766 AC97 codec on the Efika.
 
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
