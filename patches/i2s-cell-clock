@@ -1,5 +1,5 @@
-Bottom: da645eee0b0d801f9b970659fbe2ee95293f4e17
-Top:    1c39c25dc192e3c39eca20fcbf9492bad5b8a496
+Bottom: 655cfe47a63cf0a15d2f01f8c0d03923b4f0ce2c
+Top:    0d7312624d6d50b232127bbfd674485ed97085d2
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:13 -0400
 
@@ -27,10 +27,10 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 0ac6a84..44761a3 100644
+index d09f0ec..566a7c4 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
-@@ -23,9 +23,12 @@
+@@ -15,10 +15,13 @@
  
  #include <sysdev/bestcomm/bestcomm.h>
  #include <sysdev/bestcomm/gen_bd.h>
@@ -38,12 +38,13 @@ index 0ac6a84..44761a3 100644
 +#include <asm/mpc52xx.h>
  #include <asm/mpc52xx_psc.h>
  
+ #include "mpc5200_psc_i2s.h"
  #include "mpc5200_dma.h"
 +#include "mpc5200_psc_i2s.h"
  
  MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
  MODULE_DESCRIPTION("Freescale MPC5200 PSC in I2S mode ASoC Driver");
-@@ -48,12 +51,14 @@ MODULE_LICENSE("GPL");
+@@ -41,12 +44,14 @@ MODULE_LICENSE("GPL");
  #define PSC_I2S_FORMATS (SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE | \
  			 SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE)
  
@@ -58,7 +59,7 @@ index 0ac6a84..44761a3 100644
  	u32 mode;
  
  	dev_dbg(psc_dma->dev, "%s(substream=%p) p_size=%i p_bytes=%i"
-@@ -65,15 +70,19 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
+@@ -58,15 +63,19 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
  	switch (params_format(params)) {
  	case SNDRV_PCM_FORMAT_S8:
  		mode = MPC52xx_PSC_SICR_SIM_CODEC_8;
@@ -78,7 +79,7 @@ index 0ac6a84..44761a3 100644
  		break;
  	default:
  		dev_dbg(psc_dma->dev, "invalid format\n");
-@@ -81,6 +90,23 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
+@@ -74,6 +83,23 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
  	}
  	out_be32(&psc_dma->psc_regs->sicr, psc_dma->sicr | mode);
  
@@ -102,7 +103,7 @@ index 0ac6a84..44761a3 100644
  	return 0;
  }
  
-@@ -102,9 +128,31 @@ static int psc_i2s_set_sysclk(struct snd_soc_dai *cpu_dai,
+@@ -95,9 +121,31 @@ static int psc_i2s_set_sysclk(struct snd_soc_dai *cpu_dai,
  			      int clk_id, unsigned int freq, int dir)
  {
  	struct psc_dma *psc_dma = cpu_dai->private_data;
