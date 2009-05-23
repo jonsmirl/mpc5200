@@ -1,0 +1,22 @@
+Bottom: 9b0c143fb48e1ba1f522721beca9f62f1a8ffd1d
+Top:    5f06c0f50830a0a7d29d47e646d43af8eef00467
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-22 20:58:43 -0400
+
+Refresh of efika-audio
+
+---
+
+diff --git a/sound/soc/fsl/efika-audio-fabric.c b/sound/soc/fsl/efika-audio-fabric.c
+index 58121a5..5126a81 100644
+--- a/sound/soc/fsl/efika-audio-fabric.c
++++ b/sound/soc/fsl/efika-audio-fabric.c
+@@ -55,8 +55,6 @@ static __init int efika_fabric_init(void)
+ 	if (!machine_is_compatible("bplan,efika"))
+ 		return -ENODEV;
+ 
+-
+-	printk("Initializing Efika audio\n");
+ 	card.platform = &mpc5200_audio_dma_platform;
+ 	card.name = "Efika";
+ 	card.dai_link = efika_fabric_dai;
