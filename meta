@@ -1,6 +1,6 @@
 Version: 1
-Previous: 87493f6a6281a8ad19d995d9df3c44b9cbaa45e3
-Head: 63ab6aa55578767950c014d067005ce19d85f07c
+Previous: 46685dc2a7f0c5dcd12a3d76ad93be5363069013
+Head: 61749205a42ea4ffac59bfad6f59b3558d57576e
 Applied:
   Makefile: c62bc0748950ed1dda2738173d1f56dca229033f
   digispeak: a2f10b2eacbc447d46a2f4b1f257ff5b17c2c03c
@@ -15,6 +15,7 @@ Applied:
   jds-lirc-device-tree: 58f205bf17c311613509cfe2be7dfaafd85ead25
   jds-lirc-mce2: fe4a6c8a5831c63c5c06b4822e41e75cad5d6ae0
   soc-u32-cleanup: 63ab6aa55578767950c014d067005ce19d85f07c
+  wm9712-register: 61749205a42ea4ffac59bfad6f59b3558d57576e
 Unapplied:
   i2s-dma-split: 30780ae458b390acac175b2cb7014342614ab595
   is2-dma-rename: 250f3346d84f92c66c7b0974bc08c264f4613baa
@@ -29,6 +30,5 @@ Unapplied:
   dspeak-audio: 24eb3d72ad38b97a59c72b2174fd61ddc0452b48
   phytec: 3eaaf90760148f48657d26a736642fad44bdf550
   mmc-spi: d0660655aa7d0d4e08825b44b85aa198f7df4bfb
-  wm9712-register: 6115b08ef8f6559e09884ea434428bf846b592ed
   temp: 279bab2cd1d0e3bcbc1617a5db76e55d8399decf
 Hidden:
