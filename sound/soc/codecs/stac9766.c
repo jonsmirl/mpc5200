@@ -249,6 +249,22 @@ static int stac9766_set_bias_level(struct snd_soc_codec *codec,
 	return 0;
 }
 
+int stac9766_reset(struct snd_soc_codec *codec, int try_warm)
+{
+	if (try_warm && soc_ac97_ops.warm_reset) {
+		soc_ac97_ops.warm_reset(codec->ac97);
+		if (stac9766_ac97_read(codec, 0) == stac9766_reg[0])
+			return 1;
+	}
+
+	soc_ac97_ops.reset(codec->ac97);
+	if (soc_ac97_ops.warm_reset)
+		soc_ac97_ops.warm_reset(codec->ac97);
+	if (stac9766_ac97_read(codec, 0) != stac9766_reg[0])
+		return -EIO;
+	return 0;
+}
+
 static int stac9766_codec_suspend(struct platform_device *pdev,
                                 pm_message_t state)
 {
@@ -340,22 +356,6 @@ struct snd_soc_dai stac9766_dai[] = {
 	.ops = &stac9766_dai_ops_digital,
 }};
 EXPORT_SYMBOL_GPL(stac9766_dai);
-
-int stac9766_reset(struct snd_soc_codec *codec, int try_warm)
-{
-	if (try_warm && soc_ac97_ops.warm_reset) {
-		soc_ac97_ops.warm_reset(codec->ac97);
-		if (stac9766_ac97_read(codec, 0) == stac9766_reg[0])
-			return 1;
-	}
-
-	soc_ac97_ops.reset(codec->ac97);
-	if (soc_ac97_ops.warm_reset)
-		soc_ac97_ops.warm_reset(codec->ac97);
-	if (stac9766_ac97_read(codec, 0) != stac9766_reg[0])
-		return -EIO;
-	return 0;
-}
 
 static int stac9766_codec_probe(struct platform_device *pdev)
 {
