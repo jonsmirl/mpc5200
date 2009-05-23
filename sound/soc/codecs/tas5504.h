@@ -164,3 +164,5 @@
 				SNDRV_PCM_RATE_176400 | SNDRV_PCM_RATE_192000)
 #define TAS5504_FORMATS SNDRV_PCM_FMTBIT_S32
 
+extern struct snd_soc_dai tas5504_dai;
+extern struct snd_soc_codec_device tas5504_soc_codec_dev;

@@ -330,7 +330,6 @@ static struct snd_soc_dai_ops tas5504_dai_ops = {
 	.digital_mute = tas5504_mute,
 };
 
-
 struct snd_soc_dai tas5504_dai = {
 	.name = "tas5504",
 	.playback = {
@@ -748,10 +747,11 @@ static int tas5504_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct snd_soc_codec_device tas5504_soc_codec_dev = {
+struct snd_soc_codec_device tas5504_soc_codec_dev = {
 	.probe = tas5504_probe,
 	.remove = tas5504_remove,
 };
+EXPORT_SYMBOL_GPL(tas5504_soc_codec_dev);
 
 int tas5504_display_register(struct snd_soc_codec *codec, char *buffer, unsigned int limit, unsigned int reg)
 {
