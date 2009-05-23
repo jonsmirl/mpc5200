@@ -22,10 +22,6 @@
 #include "mpc5200_dma.h"
 #include "mpc5200_psc_ac97.h"
 
-MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
-MODULE_DESCRIPTION("mpc5200 AC97 module");
-MODULE_LICENSE("GPL");
-
 #define DRV_NAME "mpc5200-psc-ac97"
 
 /* ALSA only supports a single AC97 device so static is recommend here */
@@ -414,3 +410,8 @@ static void __exit psc_ac97_exit(void)
 	of_unregister_platform_driver(&psc_ac97_driver);
 }
 module_exit(psc_ac97_exit);
+
+MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
+MODULE_DESCRIPTION("mpc5200 AC97 module");
+MODULE_LICENSE("GPL");
+
