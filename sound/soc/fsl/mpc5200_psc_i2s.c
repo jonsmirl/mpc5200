@@ -261,6 +261,7 @@ static int __devexit psc_i2s_of_remove(struct of_device *op)
 /* Match table for of_platform binding */
 static struct of_device_id psc_i2s_match[] __devinitdata = {
 	{ .compatible = "fsl,mpc5200-psc-i2s", },
+	{ .compatible = "fsl,mpc5200b-psc-i2s", },
 	{}
 };
 MODULE_DEVICE_TABLE(of, psc_i2s_match);
