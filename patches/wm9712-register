@@ -1,4 +1,4 @@
-Bottom: 9625aac6a5f1a3f1b7f386c8ccc2cb307495ae60
+Bottom: dd968019f0958a02862c7a18280816a7762e4418
 Top:    cc26e3bcdd01b377f10e0b1800340c2d21f8307b
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:14 -0400
@@ -31,16 +31,3 @@ index 1fd4e88..49ad987 100644
  MODULE_DESCRIPTION("ASoC WM9711/WM9712 driver");
  MODULE_AUTHOR("Liam Girdwood");
  MODULE_LICENSE("GPL");
-diff --git a/sound/soc/fsl/pcm030-audio-fabric.c b/sound/soc/fsl/pcm030-audio-fabric.c
-index 83ebfa5..4bd957a 100644
---- a/sound/soc/fsl/pcm030-audio-fabric.c
-+++ b/sound/soc/fsl/pcm030-audio-fabric.c
-@@ -55,8 +55,6 @@ static __init int pcm030_fabric_init(void)
- 	if (!machine_is_compatible("phytec,pcm030"))
- 		return -ENODEV;
- 
--
--	printk("Initializing Phytec audio\n");
- 	card.platform = &mpc5200_audio_dma_platform;
- 	card.name = "pcm030";
- 	card.dai_link = pcm030_fabric_dai;
