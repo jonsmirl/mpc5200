@@ -1,5 +1,5 @@
 Bottom: 1c7138748b5a2fd84cbcb09ead60cf58598f7e41
-Top:    0110b8e12cf2db054de21bb45dda37db98997557
+Top:    bc98e32c7ce9614150acb9f1e6dbefa1762c1634
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:12 -0400
 
@@ -43,10 +43,10 @@ index 7731ef2..14631a1 100644
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..39af12d
+index 0000000..7253303
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -0,0 +1,424 @@
+@@ -0,0 +1,428 @@
 +/*
 + * linux/sound/mpc5200-ac97.c -- AC97 support for the Freescale MPC52xx chip.
 + *
@@ -411,15 +411,19 @@ index 0000000..39af12d
 +	timeout = 0;
 +	while ((in_8(&regs->ipcr_acr.ipcr) & 0x80) != 0) {
 +		udelay(1);
-+		if (timeout++ > 1000)
++		if (timeout++ > 1000) {
++			psc_ac97_warm_reset(&ac97);
 +			goto reset;
++		}
 +	}
 +	/* then wait for the transition to high */
 +	timeout = 0;
 +	while ((in_8(&regs->ipcr_acr.ipcr) & 0x80) == 0) {
 +		udelay(1);
-+		if (timeout++ > 1000)
++		if (timeout++ > 1000) {
++			psc_ac97_warm_reset(&ac97);
 +			goto reset;
++		}
 +	}
 +
 +	out_8(&regs->command, MPC52xx_PSC_TX_ENABLE | MPC52xx_PSC_RX_ENABLE);
