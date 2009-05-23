@@ -145,7 +145,6 @@ static __init int dspeak01_fabric_init(void)
 	if (!machine_is_compatible("digispeaker,dspeak01"))
 		return -ENODEV;
 
-	printk("Initializing Digispeaker audio\n");
 	card.platform = &mpc5200_audio_dma_platform;
 	card.name = "Efika";
 	card.dai_link = dspeak01_fabric_dai;
