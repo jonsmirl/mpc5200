@@ -1,6 +1,6 @@
 Version: 1
-Previous: 348fdd11ae95fb30a6279ad96ce896aad888d0a8
-Head: b8b82bf56b59e7bed0f0551aa7c1a2c35cb70383
+Previous: 20236c6b6187830844b389b378ba4c8a919b1f35
+Head: aab84b5915045a6bbb8a1c0a523486f2fa0c005f
 Applied:
   Makefile: c62bc0748950ed1dda2738173d1f56dca229033f
   digispeak: a2f10b2eacbc447d46a2f4b1f257ff5b17c2c03c
@@ -26,8 +26,8 @@ Applied:
   max9485-i2c: 17e7ef00f9eb9c5765185f7a6f3b98853b513b40
   i2s-cell-clock: 81ba92308c5d916194e8cf83c50d68b9e7fd5612
   dspeak-audio: aab84b5915045a6bbb8a1c0a523486f2fa0c005f
-  phytec: b8b82bf56b59e7bed0f0551aa7c1a2c35cb70383
 Unapplied:
+  phytec: b8b82bf56b59e7bed0f0551aa7c1a2c35cb70383
   mmc-spi: e27cf21ef94be48cb1c631ec9c56569892c8acec
   wm9712-register: 4a317faa7046126ab6f98840ecdbf7029e253bd6
   temp: bfca3dcc91684680117443035d8cbc2c0d893e7c
