@@ -1,5 +1,5 @@
 Bottom: ac212df84a93e35eada28097a484ebaad716e0c7
-Top:    6f2a57741789abd08e95d9db2eb8fc0017cc88c6
+Top:    c251dc6f73a3f0955bd4dcadc910843386ff2c65
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:13 -0400
 
@@ -70,7 +70,7 @@ index 46c007c..d0d74b1 100644
  obj-$(CONFIG_SND_SOC_TLV320AIC3X)	+= snd-soc-tlv320aic3x.o
 diff --git a/sound/soc/codecs/tas5504.c b/sound/soc/codecs/tas5504.c
 new file mode 100644
-index 0000000..87d6f69
+index 0000000..a181d7b
 --- /dev/null
 +++ b/sound/soc/codecs/tas5504.c
 @@ -0,0 +1,868 @@
@@ -405,7 +405,6 @@ index 0000000..87d6f69
 +	.hw_params = tas5504_hw_params,
 +	.digital_mute = tas5504_mute,
 +};
-+
 +
 +struct snd_soc_dai tas5504_dai = {
 +	.name = "tas5504",
@@ -824,10 +823,11 @@ index 0000000..87d6f69
 +	return 0;
 +}
 +
-+static struct snd_soc_codec_device tas5504_soc_codec_dev = {
++struct snd_soc_codec_device tas5504_soc_codec_dev = {
 +	.probe = tas5504_probe,
 +	.remove = tas5504_remove,
 +};
++EXPORT_SYMBOL_GPL(tas5504_soc_codec_dev);
 +
 +int tas5504_display_register(struct snd_soc_codec *codec, char *buffer, unsigned int limit, unsigned int reg)
 +{
@@ -944,10 +944,10 @@ index 0000000..87d6f69
 +MODULE_LICENSE("GPL");
 diff --git a/sound/soc/codecs/tas5504.h b/sound/soc/codecs/tas5504.h
 new file mode 100644
-index 0000000..58c378c
+index 0000000..1ab7156
 --- /dev/null
 +++ b/sound/soc/codecs/tas5504.h
-@@ -0,0 +1,166 @@
+@@ -0,0 +1,168 @@
 +/*
 + * Texas Instruments TAS5504 low power audio CODEC
 + * ALSA SoC CODEC driver
@@ -1114,3 +1114,5 @@ index 0000000..58c378c
 +				SNDRV_PCM_RATE_176400 | SNDRV_PCM_RATE_192000)
 +#define TAS5504_FORMATS SNDRV_PCM_FMTBIT_S32
 +
++extern struct snd_soc_dai tas5504_dai;
++extern struct snd_soc_codec_device tas5504_soc_codec_dev;
