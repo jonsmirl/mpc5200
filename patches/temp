@@ -1,5 +1,5 @@
-Bottom: 87f585843bcea6361bebc83f60f793fb43dd3309
-Top:    df96023162df1130b519a8a99212959e9ccc3967
+Bottom: d9a7583d2672a935bdce518143af96b1ffe6a367
+Top:    d9a7583d2672a935bdce518143af96b1ffe6a367
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:14 -0400
 
@@ -8,57 +8,4 @@ Temporary holding patch
 
 ---
 
-diff --git a/sound/soc/fsl/mpc5200_psc_i2s.h b/sound/soc/fsl/mpc5200_psc_i2s.h
-index 0e0a84e..b935483 100644
---- a/sound/soc/fsl/mpc5200_psc_i2s.h
-+++ b/sound/soc/fsl/mpc5200_psc_i2s.h
-@@ -3,11 +3,13 @@
-  * ALSA SoC Digital Audio Interface (DAI) driver
-  *
-  */
-- 
-+
- #ifndef __SOUND_SOC_FSL_MPC52xx_PSC_I2S_H__
- #define __SOUND_SOC_FSL_MPC52xx_PSC_I2S_H__
- 
- #define MPC52xx_CLK_INTERNAL 0
- #define MPC52xx_CLK_CELLSLAVE 1
- 
-+extern struct snd_soc_dai psc_i2s_dai[];
-+
- #endif /* __SOUND_SOC_FSL_MPC52xx_PSC_I2S_H__ */
-diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
-index bad9d88..cc1e618 100644
---- a/sound/soc/soc-core.c
-+++ b/sound/soc/soc-core.c
-@@ -20,6 +20,8 @@
-  *   o Support TDM on PCM and I2S
-  */
- 
-+#define DEBUG
-+
- #include <linux/module.h>
- #include <linux/moduleparam.h>
- #include <linux/init.h>
-@@ -125,7 +127,7 @@ static int soc_pcm_apply_symmetry(struct snd_pcm_substream *substream)
- 
- 	if (codec_dai->symmetric_rates || cpu_dai->symmetric_rates ||
- 	    machine->symmetric_rates) {
--		dev_dbg(card->dev, "Symmetry forces %dHz rate\n", 
-+		dev_dbg(card->dev, "Symmetry forces %dHz rate\n",
- 			machine->rate);
- 
- 		ret = snd_pcm_hw_constraint_minmax(substream->runtime,
-diff --git a/sound/soc/soc-dapm.c b/sound/soc/soc-dapm.c
-index c1222fa..f3ccbd0 100644
---- a/sound/soc/soc-dapm.c
-+++ b/sound/soc/soc-dapm.c
-@@ -29,6 +29,8 @@
-  *    o Support for reduced codec bias currents.
-  */
- 
-+#define DEBUG
-+
- #include <linux/module.h>
- #include <linux/moduleparam.h>
- #include <linux/init.h>
+

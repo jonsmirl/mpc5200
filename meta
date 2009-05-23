@@ -1,5 +1,5 @@
 Version: 1
-Previous: 370f462484d0b84abaa5731e161b0cd097a2f114
+Previous: 828228a59257aae469b8bfcedabc74d3bdeb1d3d
 Head: c7e461dcbda1618bdfa2457a71906ffceccb1ab1
 Applied:
   Makefile: c62bc0748950ed1dda2738173d1f56dca229033f
@@ -29,6 +29,6 @@ Applied:
   dspeak-audio: 6d5e0dc521925a7c4e78a8d24ab2de6c2035f6ad
   mmc-spi: 199b7505ba9705f73c2a5752df6f9d2c658b7fdd
   wm9712-register: 670d1d9adf897255a14532263e8ec699019bd414
+  temp: c7e461dcbda1618bdfa2457a71906ffceccb1ab1
 Unapplied:
-  temp: 6ec0b828e9da4ad11e556916e820ccd474439b0d
 Hidden:
