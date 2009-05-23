@@ -1,0 +1,31 @@
+Bottom: 5078c33773a9a28bd8e031580adbe013b507ad21
+Top:    17128908a85c005cdc5b6a447af7685393bc3beb
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-23 13:32:30 -0400
+
+Refresh of mpc5200-dma
+
+---
+
+diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
+index 9fbb603..95df860 100644
+--- a/sound/soc/fsl/mpc5200_dma.c
++++ b/sound/soc/fsl/mpc5200_dma.c
+@@ -17,10 +17,6 @@
+ 
+ #include "mpc5200_dma.h"
+ 
+-MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
+-MODULE_DESCRIPTION("Freescale MPC5200 PSC in DMA mode ASoC Driver");
+-MODULE_LICENSE("GPL");
+-
+ /*
+  * Interrupt handlers
+  */
+@@ -634,3 +630,6 @@ static void __exit mpc5200_soc_platform_exit(void)
+ }
+ module_exit(mpc5200_soc_platform_exit);
+ 
++MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
++MODULE_DESCRIPTION("Freescale MPC5200 PSC in DMA mode ASoC Driver");
++MODULE_LICENSE("GPL");
