@@ -1,4 +1,4 @@
-Bottom: 47a04779f150f1a3b2df195082d29fb79e283c52
+Bottom: 87f585843bcea6361bebc83f60f793fb43dd3309
 Top:    df96023162df1130b519a8a99212959e9ccc3967
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:14 -0400
@@ -8,27 +8,6 @@ Temporary holding patch
 
 ---
 
-diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 35dbb18..44761a3 100644
---- a/sound/soc/fsl/mpc5200_psc_i2s.c
-+++ b/sound/soc/fsl/mpc5200_psc_i2s.c
-@@ -190,7 +190,7 @@ static struct snd_soc_dai_ops psc_i2s_dai_ops = {
- 	.set_fmt	= psc_i2s_set_fmt,
- };
- 
--static struct snd_soc_dai psc_i2s_dai[] = {{
-+struct snd_soc_dai psc_i2s_dai[] = {{
- 	.name   = "I2S",
- 	.playback = {
- 		.channels_min = 2,
-@@ -206,6 +206,7 @@ static struct snd_soc_dai psc_i2s_dai[] = {{
- 	},
- 	.ops = &psc_i2s_dai_ops,
- }};
-+EXPORT_SYMBOL_GPL(psc_i2s_dai);
- 
- /* ---------------------------------------------------------------------
-  * OF platform bus binding code:
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.h b/sound/soc/fsl/mpc5200_psc_i2s.h
 index 0e0a84e..b935483 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.h
