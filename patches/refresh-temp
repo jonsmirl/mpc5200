@@ -1,0 +1,22 @@
+Bottom: 96fbef5d0ae498ee418a8acfd8e3832630aa46d1
+Top:    be6d8d953d5e80e30d4d414a640495a1ca951c27
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-22 21:01:12 -0400
+
+Refresh of phytec
+
+---
+
+diff --git a/sound/soc/fsl/pcm030-audio-fabric.c b/sound/soc/fsl/pcm030-audio-fabric.c
+index 83ebfa5..4bd957a 100644
+--- a/sound/soc/fsl/pcm030-audio-fabric.c
++++ b/sound/soc/fsl/pcm030-audio-fabric.c
+@@ -55,8 +55,6 @@ static __init int pcm030_fabric_init(void)
+ 	if (!machine_is_compatible("phytec,pcm030"))
+ 		return -ENODEV;
+ 
+-
+-	printk("Initializing Phytec audio\n");
+ 	card.platform = &mpc5200_audio_dma_platform;
+ 	card.name = "pcm030";
+ 	card.dai_link = pcm030_fabric_dai;
