@@ -1,5 +1,5 @@
 Bottom: 61e6fa246b17716c1c697c447ae3999b999561a6
-Top:    96fbef5d0ae498ee418a8acfd8e3832630aa46d1
+Top:    be6d8d953d5e80e30d4d414a640495a1ca951c27
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:12 -0400
 
@@ -61,10 +61,10 @@ index b12c271..6ce66bc 100644
  
 diff --git a/sound/soc/fsl/pcm030-audio-fabric.c b/sound/soc/fsl/pcm030-audio-fabric.c
 new file mode 100644
-index 0000000..83ebfa5
+index 0000000..4bd957a
 --- /dev/null
 +++ b/sound/soc/fsl/pcm030-audio-fabric.c
-@@ -0,0 +1,96 @@
+@@ -0,0 +1,94 @@
 +/*
 + * Phytec pcm030 driver for the PSC of the Freescale MPC52xx configured as AC97 interface
 + *
@@ -122,8 +122,6 @@ index 0000000..83ebfa5
 +	if (!machine_is_compatible("phytec,pcm030"))
 +		return -ENODEV;
 +
-+
-+	printk("Initializing Phytec audio\n");
 +	card.platform = &mpc5200_audio_dma_platform;
 +	card.name = "pcm030";
 +	card.dai_link = pcm030_fabric_dai;
