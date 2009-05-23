@@ -1,5 +1,5 @@
 Bottom: 61e6fa246b17716c1c697c447ae3999b999561a6
-Top:    be6d8d953d5e80e30d4d414a640495a1ca951c27
+Top:    5c3255738b876e1bbbcc55dfc5544f7d744f5396
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:12 -0400
 
@@ -12,25 +12,6 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
 ---
 
-diff --git a/arch/powerpc/boot/dts/pcm030.dts b/arch/powerpc/boot/dts/pcm030.dts
-index 8958347..001c8ef 100644
---- a/arch/powerpc/boot/dts/pcm030.dts
-+++ b/arch/powerpc/boot/dts/pcm030.dts
-@@ -190,6 +190,14 @@
- 			cell-index = <0>;
- 			reg = <0x2000 0x100>;
- 			interrupts = <2 1 0>;
-+
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			codec@0 {
-+				compatible = "wlf,wm9712";
-+				reg = <0x0>;
-+			};
- 		};
- 
- 		/* PSC2 port is used by CAN1/2 */
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
 index ae62903..dbaeec8 100644
 --- a/sound/soc/fsl/Kconfig
