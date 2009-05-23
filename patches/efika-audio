@@ -1,5 +1,5 @@
-Bottom: a1a2fda701cd9c88f7c28bca41f36da725c2dce5
-Top:    be0e781a529eddb69b39915eac303264879226d4
+Bottom: 7f2cf57240449b39dc20da64cafa680296af82e6
+Top:    631c06b2a2592def3dd3a06633fcdefed67f4ac9
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:49 -0400
 
@@ -13,10 +13,10 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index efc13d1..a16c7d6 100644
+index 3bce952..edd8516 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
-@@ -40,4 +40,12 @@ config SND_SOC_MPC5200_AC97
+@@ -39,4 +39,12 @@ config SND_SOC_MPC5200_AC97
  	help
  	  Say Y here to support the MPC5200 PSCs in AC97 mode.
  
