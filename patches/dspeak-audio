@@ -1,5 +1,5 @@
 Bottom: 7d912f3622abee2107d663d9fbc4fadd1e349ce7
-Top:    2b3c50d0ed0a3cca4a4165e861e8e537a208ae12
+Top:    32f045464ccbc95c66aa8185ff9a46e6829ec2ee
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:13 -0400
 
@@ -26,20 +26,20 @@ index 18a19bf..dbaeec8 100644
 +	  Say Y if you want to add support for sound on Digispeaker DSPEAK01.
 +
 diff --git a/sound/soc/fsl/Makefile b/sound/soc/fsl/Makefile
-index 5806d11..159718b 100644
+index 5806d11..7695a0c 100644
 --- a/sound/soc/fsl/Makefile
 +++ b/sound/soc/fsl/Makefile
 @@ -18,4 +18,5 @@ obj-$(CONFIG_SND_SOC_MPC5200_AC97) += mpc5200_psc_ac97.o
  # MPC5200 Machine Support
  obj-$(CONFIG_SND_MPC52xx_SOC_EFIKA) += efika-audio-fabric.o
  obj-$(CONFIG_SND_MPC52xx_SOC_PCM030) += pcm030-audio-fabric.o
-+obj-$(CONFIG_SND_MPC52xx_SOC_DSPEAK01) += dspeak01_fabric.o
++obj-$(CONFIG_SND_MPC52xx_SOC_DSPEAK01) += dspeak01-audio-fabric.o
  
-diff --git a/sound/soc/fsl/dspeak01_fabric.c b/sound/soc/fsl/dspeak01_fabric.c
+diff --git a/sound/soc/fsl/dspeak01-audio-fabric.c b/sound/soc/fsl/dspeak01-audio-fabric.c
 new file mode 100644
 index 0000000..491100e
 --- /dev/null
-+++ b/sound/soc/fsl/dspeak01_fabric.c
++++ b/sound/soc/fsl/dspeak01-audio-fabric.c
 @@ -0,0 +1,185 @@
 +/*
 + * sound/soc/fsl/dspeak01_fabric.c -- The ALSA glue fabric for Digispeaker dspeak01
