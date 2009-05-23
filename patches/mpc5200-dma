@@ -1,5 +1,5 @@
 Bottom: 56c96e85e1c71bad17c7a9a16822a50bbe91aac2
-Top:    d738997613b736a9cb891ac39409060fe815a05f
+Top:    7d0060518953d50e6c621d3c87a24d6637dd257a
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:48 -0400
 
@@ -25,7 +25,7 @@ index dc79bdf..1918c78 100644
  	select PPC_BESTCOMM_GEN_BD
  	help
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 6850392..9fbb603 100644
+index 6850392..95df860 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -3,23 +3,13 @@
@@ -53,7 +53,18 @@ index 6850392..9fbb603 100644
  
  #include <sysdev/bestcomm/bestcomm.h>
  #include <sysdev/bestcomm/gen_bd.h>
-@@ -50,7 +40,7 @@ static irqreturn_t psc_dma_status_irq(int irq, void *_psc_dma)
+@@ -27,10 +17,6 @@
+ 
+ #include "mpc5200_dma.h"
+ 
+-MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
+-MODULE_DESCRIPTION("Freescale MPC5200 PSC in DMA mode ASoC Driver");
+-MODULE_LICENSE("GPL");
+-
+ /*
+  * Interrupt handlers
+  */
+@@ -50,7 +36,7 @@ static irqreturn_t psc_dma_status_irq(int irq, void *_psc_dma)
  	if (psc_dma->capture.active && (isr & MPC52xx_PSC_IMR_ORERR))
  		psc_dma->stats.overrun_count++;
  
@@ -62,7 +73,7 @@ index 6850392..9fbb603 100644
  
  	return IRQ_HANDLED;
  }
-@@ -81,8 +71,21 @@ static void psc_dma_bcom_enqueue_next_buffer(struct psc_dma_stream *s)
+@@ -81,8 +67,21 @@ static void psc_dma_bcom_enqueue_next_buffer(struct psc_dma_stream *s)
  		s->period_next_pt = s->period_start;
  }
  
@@ -85,7 +96,7 @@ index 6850392..9fbb603 100644
  {
  	struct psc_dma_stream *s = _psc_dma_stream;
  
-@@ -90,12 +93,12 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
+@@ -90,12 +89,12 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
  	 * and enqueue a new one in it's place. */
  	while (bcom_buffer_done(s->bcom_task)) {
  		bcom_retrieve_buffer(s->bcom_task, NULL, NULL);
@@ -100,7 +111,7 @@ index 6850392..9fbb603 100644
  
  	/* If the stream is active, then also inform the PCM middle layer
  	 * of the period finished event. */
-@@ -105,49 +108,31 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
+@@ -105,49 +104,31 @@ static irqreturn_t psc_dma_bcom_irq(int irq, void *_psc_dma_stream)
  	return IRQ_HANDLED;
  }
  
@@ -168,7 +179,7 @@ index 6850392..9fbb603 100644
  {
  	snd_pcm_set_runtime_buffer(substream, NULL);
  	return 0;
-@@ -159,8 +144,7 @@ int psc_dma_hw_free(struct snd_pcm_substream *substream,
+@@ -159,8 +140,7 @@ int psc_dma_hw_free(struct snd_pcm_substream *substream,
   * This function is called by ALSA to start, stop, pause, and resume the DMA
   * transfer of data.
   */
@@ -178,7 +189,7 @@ index 6850392..9fbb603 100644
  {
  	struct snd_soc_pcm_runtime *rtd = substream->private_data;
  	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
-@@ -168,8 +152,8 @@ int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+@@ -168,8 +148,8 @@ int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
  	struct psc_dma_stream *s;
  	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
  	u16 imr;
@@ -188,7 +199,7 @@ index 6850392..9fbb603 100644
  
  	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
  		s = &psc_dma->capture;
-@@ -189,68 +173,44 @@ int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+@@ -189,68 +169,44 @@ int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
  				(s->period_bytes * runtime->periods);
  		s->period_next_pt = s->period_start;
  		s->period_current_pt = s->period_start;
@@ -278,7 +289,7 @@ index 6850392..9fbb603 100644
  
  		break;
  
-@@ -265,44 +225,11 @@ int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+@@ -265,44 +221,11 @@ int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
  		imr |= MPC52xx_PSC_IMR_TXEMP;
  	if (psc_dma->capture.active)
  		imr |= MPC52xx_PSC_IMR_ORERR;
@@ -324,7 +335,7 @@ index 6850392..9fbb603 100644
  
  /* ---------------------------------------------------------------------
   * The PSC DMA 'ASoC platform' driver
-@@ -312,62 +239,78 @@ void psc_dma_shutdown(struct snd_pcm_substream *substream,
+@@ -312,62 +235,78 @@ void psc_dma_shutdown(struct snd_pcm_substream *substream,
   * interaction with the attached codec
   */
  
@@ -413,7 +424,7 @@ index 6850392..9fbb603 100644
  {
  	struct snd_soc_pcm_runtime *rtd = substream->private_data;
  	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
-@@ -384,60 +327,78 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
+@@ -384,60 +323,78 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
  	return bytes_to_frames(substream->runtime, count);
  }
  
@@ -505,7 +516,7 @@ index 6850392..9fbb603 100644
  
  	for (stream = 0; stream < 2; stream++) {
  		substream = pcm->streams[stream].substream;
-@@ -449,10 +410,227 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
+@@ -449,10 +406,230 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
  	}
  }
  
@@ -584,7 +595,7 @@ index 6850392..9fbb603 100644
 +			psc_dma_stat_store);
 +static DEVICE_ATTR(capture_overrun, 0644, psc_dma_stat_show,
 +			psc_dma_stat_store);
-+
+ 
 +
 +int mpc5200_audio_dma_create(struct of_device *op)
 +{
@@ -736,7 +747,10 @@ index 6850392..9fbb603 100644
 +	snd_soc_unregister_platform(&mpc5200_audio_dma_platform);
 +}
 +module_exit(mpc5200_soc_platform_exit);
- 
++
++MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
++MODULE_DESCRIPTION("Freescale MPC5200 PSC in DMA mode ASoC Driver");
++MODULE_LICENSE("GPL");
 diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
 index a33232c..3b2ded9 100644
 --- a/sound/soc/fsl/mpc5200_dma.h
