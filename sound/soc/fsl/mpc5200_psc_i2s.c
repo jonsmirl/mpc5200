@@ -22,10 +22,6 @@
 #include "mpc5200_dma.h"
 #include "mpc5200_psc_i2s.h"
 
-MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
-MODULE_DESCRIPTION("Freescale MPC5200 PSC in I2S mode ASoC Driver");
-MODULE_LICENSE("GPL");
-
 /**
  * PSC_I2S_RATES: sample rates supported by the I2S
  *
@@ -295,4 +291,7 @@ static void __exit psc_i2s_exit(void)
 }
 module_exit(psc_i2s_exit);
 
+MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
+MODULE_DESCRIPTION("Freescale MPC5200 PSC in I2S mode ASoC Driver");
+MODULE_LICENSE("GPL");
 
