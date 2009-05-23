@@ -5,7 +5,7 @@ Date:   2009-05-22 16:52:11 -0400
 
 Codec for STAC9766 used on the Efika
 
-AC97 codec for STAC9766 used on the Efika. Support registration from device trees.
+AC97 codec for STAC9766 used on the Efika.
 Datasheet: http://www.idt.com/products/getDoc.cfm?docID=13134007
 
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
