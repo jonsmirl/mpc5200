@@ -1,0 +1,22 @@
+Bottom: 4c3c86ab8d43cc85363684d195cead6d42fa61d5
+Top:    a375595eab1eb201f3cb853f34c135b730beab82
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-23 12:13:41 -0400
+
+Refresh of stac9766-codec
+
+---
+
+diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
+index 1142cdb..cb07d9b 100644
+--- a/sound/soc/codecs/Kconfig
++++ b/sound/soc/codecs/Kconfig
+@@ -19,7 +19,7 @@ config SND_SOC_ALL_CODECS
+ 	select SND_SOC_CS4270 if I2C
+ 	select SND_SOC_PCM3008
+ 	select SND_SOC_SSM2602 if I2C
+-	select SND_SOC_STAC9766
++	select SND_SOC_STAC9766 if SND_SOC_AC97_BUS
+ 	select SND_SOC_TLV320AIC23 if I2C
+ 	select SND_SOC_TLV320AIC26 if SPI_MASTER
+ 	select SND_SOC_TLV320AIC3X if I2C
