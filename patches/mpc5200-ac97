@@ -1,5 +1,5 @@
 Bottom: e4d1a614a2fd1e21f3fd67b1eb9a8edaaf3b9654
-Top:    e24df9c09c7589ab028c89ddfefd13a5782fb6a5
+Top:    8da6b637a3a9c156706e1c9b72870c62591aa376
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:49 -0400
 
@@ -43,10 +43,10 @@ index 7731ef2..14631a1 100644
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..67a13c2
+index 0000000..fa1bb9a
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -0,0 +1,417 @@
+@@ -0,0 +1,394 @@
 +/*
 + * linux/sound/mpc5200-ac97.c -- AC97 support for the Freescale MPC52xx chip.
 + *
@@ -263,27 +263,6 @@ index 0000000..67a13c2
 +	return 0;
 +}
 +
-+/**
-+ * psc_ac97_set_fmt: set the serial format.
-+ *
-+ * This function is called by the machine driver to tell us what serial
-+ * format to use.
-+ *
-+ * This driver only supports AC97 mode.  Return an error if the format is
-+ * not SND_SOC_DAIFMT_AC97.
-+ *
-+ * @format: one of SND_SOC_DAIFMT_xxx
-+ */
-+static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
-+{
-+	struct psc_dma *psc_dma = cpu_dai->private_data;
-+
-+	dev_dbg(psc_dma->dev, "psc_ac97_set_fmt(cpu_dai=%p, format=%i)\n",
-+				cpu_dai, format);
-+
-+	return (format == SND_SOC_DAIFMT_AC97) ? 0 : -EINVAL;
-+}
-+
 +/* ---------------------------------------------------------------------
 + * ALSA SoC Bindings
 + *
@@ -296,13 +275,11 @@ index 0000000..67a13c2
 + */
 +static struct snd_soc_dai_ops psc_ac97_analog_ops = {
 +	.hw_params	= psc_ac97_hw_analog_params,
-+	.set_fmt	= psc_ac97_set_fmt,
 +	.trigger	= psc_ac97_trigger,
 +};
 +
 +static struct snd_soc_dai_ops psc_ac97_digital_ops = {
 +	.hw_params	= psc_ac97_hw_digital_params,
-+	.set_fmt	= psc_ac97_set_fmt,
 +};
 +
 +struct snd_soc_dai psc_ac97_dai[] = {
