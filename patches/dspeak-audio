@@ -1,5 +1,5 @@
 Bottom: 1eb6d59c8bd093acf43c74eeee64c8872c6e9351
-Top:    2e697e8c7e178227435b9042a0f5b8e8afe5564d
+Top:    43567c0763dae6d2453ce018f8ae82150330f4af
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:13 -0400
 
@@ -37,10 +37,10 @@ index 5806d11..7695a0c 100644
  
 diff --git a/sound/soc/fsl/dspeak01-audio-fabric.c b/sound/soc/fsl/dspeak01-audio-fabric.c
 new file mode 100644
-index 0000000..491100e
+index 0000000..07b44b1
 --- /dev/null
 +++ b/sound/soc/fsl/dspeak01-audio-fabric.c
-@@ -0,0 +1,185 @@
+@@ -0,0 +1,184 @@
 +/*
 + * sound/soc/fsl/dspeak01_fabric.c -- The ALSA glue fabric for Digispeaker dspeak01
 + *
@@ -188,7 +188,6 @@ index 0000000..491100e
 +	if (!machine_is_compatible("digispeaker,dspeak01"))
 +		return -ENODEV;
 +
-+	printk("Initializing Digispeaker audio\n");
 +	card.platform = &mpc5200_audio_dma_platform;
 +	card.name = "Efika";
 +	card.dai_link = dspeak01_fabric_dai;
