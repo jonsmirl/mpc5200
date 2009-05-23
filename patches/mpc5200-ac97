@@ -1,5 +1,5 @@
 Bottom: dba8345b024bfd8b0ad4fd3796cc710429de1ec3
-Top:    8dff888cd972e5767a70996d2c354de716ded296
+Top:    67a35aa727a6a26c6124b50fec75aa06cb05a8a8
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:49 -0400
 
@@ -43,10 +43,10 @@ index 7731ef2..14631a1 100644
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..94570ca
+index 0000000..67a13c2
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -0,0 +1,416 @@
+@@ -0,0 +1,417 @@
 +/*
 + * linux/sound/mpc5200-ac97.c -- AC97 support for the Freescale MPC52xx chip.
 + *
@@ -70,10 +70,6 @@ index 0000000..94570ca
 +
 +#include "mpc5200_dma.h"
 +#include "mpc5200_psc_ac97.h"
-+
-+MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
-+MODULE_DESCRIPTION("mpc5200 AC97 module");
-+MODULE_LICENSE("GPL");
 +
 +#define DRV_NAME "mpc5200-psc-ac97"
 +
@@ -463,6 +459,11 @@ index 0000000..94570ca
 +	of_unregister_platform_driver(&psc_ac97_driver);
 +}
 +module_exit(psc_ac97_exit);
++
++MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
++MODULE_DESCRIPTION("mpc5200 AC97 module");
++MODULE_LICENSE("GPL");
++
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.h b/sound/soc/fsl/mpc5200_psc_ac97.h
 new file mode 100644
 index 0000000..4bc18c3
