@@ -1,4 +1,4 @@
-Bottom: 162c38df204b3a3fa9fbc469712b7b0fb87c031e
+Bottom: 36574688bc94739046ba0389e83096488729d8aa
 Top:    4e34238e3057dbfafd8cb1c6eb8f5ca3a3a174f5
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:14 -0400
@@ -8,41 +8,6 @@ Temporary holding patch
 
 ---
 
-diff --git a/sound/soc/codecs/tas5504.c b/sound/soc/codecs/tas5504.c
-index 87d6f69..a181d7b 100644
---- a/sound/soc/codecs/tas5504.c
-+++ b/sound/soc/codecs/tas5504.c
-@@ -330,7 +330,6 @@ static struct snd_soc_dai_ops tas5504_dai_ops = {
- 	.digital_mute = tas5504_mute,
- };
- 
--
- struct snd_soc_dai tas5504_dai = {
- 	.name = "tas5504",
- 	.playback = {
-@@ -748,10 +747,11 @@ static int tas5504_remove(struct platform_device *pdev)
- 	return 0;
- }
- 
--static struct snd_soc_codec_device tas5504_soc_codec_dev = {
-+struct snd_soc_codec_device tas5504_soc_codec_dev = {
- 	.probe = tas5504_probe,
- 	.remove = tas5504_remove,
- };
-+EXPORT_SYMBOL_GPL(tas5504_soc_codec_dev);
- 
- int tas5504_display_register(struct snd_soc_codec *codec, char *buffer, unsigned int limit, unsigned int reg)
- {
-diff --git a/sound/soc/codecs/tas5504.h b/sound/soc/codecs/tas5504.h
-index 58c378c..1ab7156 100644
---- a/sound/soc/codecs/tas5504.h
-+++ b/sound/soc/codecs/tas5504.h
-@@ -164,3 +164,5 @@
- 				SNDRV_PCM_RATE_176400 | SNDRV_PCM_RATE_192000)
- #define TAS5504_FORMATS SNDRV_PCM_FMTBIT_S32
- 
-+extern struct snd_soc_dai tas5504_dai;
-+extern struct snd_soc_codec_device tas5504_soc_codec_dev;
 diff --git a/sound/soc/fsl/dspeak01_fabric.c b/sound/soc/fsl/dspeak01_fabric.c
 index 8021d6a..491100e 100644
 --- a/sound/soc/fsl/dspeak01_fabric.c
