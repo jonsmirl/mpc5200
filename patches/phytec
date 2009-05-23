@@ -5,7 +5,7 @@ Date:   2009-05-22 16:52:12 -0400
 
 Support for AC97 on Phytec pmc030 base board.
 
-Support for AC97 on Phytec pmc030 base board. This uses the generic fabric driver binding.
+Support for AC97 on Phytec pmc030 base board. A wm9712 AC97 codec is used.
 
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
