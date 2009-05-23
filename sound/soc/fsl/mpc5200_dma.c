@@ -3,28 +3,16 @@
  * ALSA SoC Platform driver
  *
  * Copyright (C) 2008 Secret Lab Technologies Ltd.
+ * Copyright (C) 2009 Jon Smirl, Digispeaker
  */
 
-#include <linux/init.h>
 #include <linux/module.h>
-#include <linux/interrupt.h>
-#include <linux/device.h>
-#include <linux/delay.h>
 #include <linux/of_device.h>
-#include <linux/of_platform.h>
-#include <linux/dma-mapping.h>
 
-#include <sound/core.h>
-#include <sound/pcm.h>
-#include <sound/pcm_params.h>
-#include <sound/initval.h>
 #include <sound/soc.h>
-#include <sound/soc-of-simple.h>
 
 #include <sysdev/bestcomm/bestcomm.h>
 #include <sysdev/bestcomm/gen_bd.h>
-#include <asm/time.h>
-#include <asm/mpc52xx.h>
 #include <asm/mpc52xx_psc.h>
 
 #include "mpc5200_dma.h"
@@ -164,7 +152,6 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 	struct psc_dma_stream *s;
 	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
 	u16 imr;
-	u8 psc_cmd;
 	unsigned long flags;
 	int i;
 
@@ -189,11 +176,15 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 		s->period_size = runtime->period_size;
 		s->active = 1;
 
+		/* track appl_ptr so that we have a better chance of detecting
+		 * end of stream and not over running it.
+		 */
 		s->runtime = runtime;
 		s->appl_ptr = s->runtime->control->appl_ptr - (runtime->period_size * runtime->periods);
 
 		/* Fill up the bestcomm bd queue and enable DMA.
-		 * This will begin filling the PSC's fifo. */
+		 * This will begin filling the PSC's fifo.
+		 */
 		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
 			bcom_gen_bd_rx_reset(s->bcom_task);
 			for (i = 0; i < runtime->periods; i++)
@@ -206,27 +197,8 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 
 		bcom_enable(s->bcom_task);
 
-		/* Due to errata in the dma mode; need to line up enabling
-		 * the transmitter with a transition on the frame sync
-		 * line */
-
 		spin_lock_irqsave(&psc_dma->lock, flags);
-		/* first make sure it is low */
-		while ((in_8(&regs->ipcr_acr.ipcr) & 0x80) != 0)
-			;
-		/* then wait for the transition to high */
-		while ((in_8(&regs->ipcr_acr.ipcr) & 0x80) == 0)
-			;
-		/* Finally, enable the PSC.
-		 * Receiver must always be enabled; even when we only want
-		 * transmit.  (see 15.3.2.3 of MPC5200B User's Guide) */
-		psc_cmd = MPC52xx_PSC_RX_ENABLE;
-		if (substream->pstr->stream == SNDRV_PCM_STREAM_PLAYBACK)
-			psc_cmd |= MPC52xx_PSC_TX_ENABLE;
-		//out_8(&regs->command, psc_cmd);
-
 		out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
-
 		spin_unlock_irqrestore(&psc_dma->lock, flags);
 
 		break;
@@ -299,7 +271,6 @@ static int psc_dma_open(struct snd_pcm_substream *substream)
 		s = &psc_dma->capture;
 	else
 		s = &psc_dma->playback;
-	printk("1\n");
 
 	snd_soc_set_runtime_hwparams(substream, &psc_dma_hardware);
 
@@ -332,13 +303,8 @@ static int psc_dma_close(struct snd_pcm_substream *substream)
 
 		/* Disable all interrupts and reset the PSC */
 		out_be16(&psc_dma->psc_regs->isr_imr.imr, psc_dma->imr);
-		//out_8(&psc_dma->psc_regs->command, 3 << 4); /* reset tx */
-		//out_8(&psc_dma->psc_regs->command, 2 << 4); /* reset rx */
-		//out_8(&psc_dma->psc_regs->command, 1 << 4); /* reset mode */
-		//out_8(&psc_dma->psc_regs->command, 4 << 4); /* reset error */
-
+		out_8(&psc_dma->psc_regs->command, 4 << 4); /* reset error */
 	}
-
 	s->stream = NULL;
 	return 0;
 }
@@ -350,7 +316,6 @@ psc_dma_pointer(struct snd_pcm_substream *substream)
 	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
 	struct psc_dma_stream *s;
 	dma_addr_t count;
-	snd_pcm_uframes_t frames;
 
 	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
 		s = &psc_dma->capture;
@@ -359,8 +324,7 @@ psc_dma_pointer(struct snd_pcm_substream *substream)
 
 	count = s->period_current_pt - s->period_start;
 
-	frames = bytes_to_frames(substream->runtime, count);
-	return frames;
+	return bytes_to_frames(substream->runtime, count);
 }
 
 static int
@@ -421,8 +385,10 @@ static int psc_dma_new(struct snd_card *card, struct snd_soc_dai *dai,
  capture_alloc_err:
 	if (pcm->streams[0].substream)
 		snd_dma_free_pages(&pcm->streams[0].substream->dma_buffer);
+
  playback_alloc_err:
 	dev_err(card->dev, "Cannot allocate buffer(s)\n");
+
 	return -ENOMEM;
 }
 
