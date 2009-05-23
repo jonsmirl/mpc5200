@@ -35,9 +35,9 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 	unsigned int val;
 
 	/* Wait for command send status zero = ready */
-	spin_event_timeout((in_be16(&psc_dma->psc_regs->sr_csr.status) &
+	spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
 				MPC52xx_PSC_SR_CMDSEND), 100, 0, rc);
-	if (rc != 0) {
+	if (rc == 0) {
 		pr_err("timeout on ac97 bus (rdy)\n");
 		return -ENODEV;
 	}
@@ -45,9 +45,9 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 	out_be32(&psc_dma->psc_regs->ac97_cmd, (1<<31) | ((reg & 0x7f) << 24));
 
 	/* Wait for the answer */
-	spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
+	spin_event_timeout((in_be16(&psc_dma->psc_regs->sr_csr.status) &
 				MPC52xx_PSC_SR_DATA_VAL), 100, 0, rc);
-	if (rc != 0) {
+	if (rc == 0) {
 		pr_err("timeout on ac97 read (val) %x\n",
 				in_be16(&psc_dma->psc_regs->sr_csr.status));
 		return -ENODEV;
@@ -69,9 +69,9 @@ static void psc_ac97_write(struct snd_ac97 *ac97,
 	int rc;
 
 	/* Wait for command status zero = ready */
-	spin_event_timeout((in_be16(&psc_dma->psc_regs->sr_csr.status) &
+	spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
 				MPC52xx_PSC_SR_CMDSEND), 100, 0, rc);
-	if (rc != 0) {
+	if (rc == 0) {
 		pr_err("timeout on ac97 bus (write)\n");
 		return;
 	}
@@ -86,7 +86,7 @@ static void psc_ac97_warm_reset(struct snd_ac97 *ac97)
 	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
 
 	out_be32(&regs->sicr, psc_dma->sicr | MPC52xx_PSC_SICR_AWR);
-	spin_event_timeout(1, 3, 0, rc);
+	spin_event_timeout(0, 3, 0, rc);
 	out_be32(&regs->sicr, psc_dma->sicr);
 }
 
@@ -97,9 +97,9 @@ static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
 
 	/* Do a cold reset */
 	out_8(&regs->op1, MPC52xx_PSC_OP_RES);
-	spin_event_timeout(1, 10, 0, rc);
+	spin_event_timeout(0, 10, 0, rc);
 	out_8(&regs->op0, MPC52xx_PSC_OP_RES);
-	spin_event_timeout(1, 50, 0, rc);
+	spin_event_timeout(0, 50, 0, rc);
 	psc_ac97_warm_reset(ac97);
 }
 
