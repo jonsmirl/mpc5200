@@ -206,9 +206,7 @@ static int ac97_digital_prepare(struct snd_pcm_substream *substream,
 	stac9766_ac97_write(codec, AC97_SPDIF, 0x2002);
 
 	vra = stac9766_ac97_read(codec, AC97_EXTENDED_STATUS);
-
 	vra |= 0x5; /* Enable VRA and SPDIF out */
-	printk("var is %x\n", vra);
 
 	stac9766_ac97_write(codec, AC97_EXTENDED_STATUS, vra);
 
@@ -227,7 +225,7 @@ static int ac97_digital_trigger(struct snd_pcm_substream *substream,
 	case SNDRV_PCM_TRIGGER_STOP:
 		vra = stac9766_ac97_read(codec, AC97_EXTENDED_STATUS);
 		vra &= !0x04;
-		//stac9766_ac97_write(codec, AC97_EXTENDED_STATUS, vra);
+		stac9766_ac97_write(codec, AC97_EXTENDED_STATUS, vra);
 		break;
 	}
 	return 0;
@@ -238,11 +236,7 @@ static int stac9766_set_bias_level(struct snd_soc_codec *codec,
 {
 	switch (level) {
 	case SND_SOC_BIAS_ON: /* full On */
-		stac9766_ac97_write(codec, AC97_POWERDOWN, 0x0000);
-		break;
 	case SND_SOC_BIAS_PREPARE: /* partial On */
-		stac9766_ac97_write(codec, AC97_POWERDOWN, 0x0000);
-		break;
 	case SND_SOC_BIAS_STANDBY: /* Off, with power */
 		stac9766_ac97_write(codec, AC97_POWERDOWN, 0x0000);
 		break;
@@ -269,14 +263,21 @@ static int stac9766_codec_resume(struct platform_device *pdev)
 {
 	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
 	struct snd_soc_codec *codec = socdev->card->codec;
-	u16 id;
+	u16 id, reset;
 
+	reset = 0;
 	/* give the codec an AC97 warm reset to start the link */
+reset:
+	if (reset > 5) {
+		printk(KERN_ERR "stac9766 failed to resume");
+		return -EIO;
+	}
 	codec->ac97->bus->ops->warm_reset(codec->ac97);
 	id = soc_ac97_ops.read(codec->ac97, AC97_VENDOR_ID2);
 	if (id != 0x4c13) {
-		printk(KERN_ERR "stac9766 failed to resume");
-		return -EIO;
+		stac9766_reset(codec, 0);
+		reset++;
+		goto reset;
 	}
 	stac9766_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
@@ -309,16 +310,14 @@ struct snd_soc_dai stac9766_dai[] = {
 		.channels_min = 1,
 		.channels_max = 2,
 		.rates = SNDRV_PCM_RATE_8000_48000,
-		.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
-				SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
+		.formats = SND_SOC_STD_AC97_FMTS,
 	},
 	.capture = {
 		.stream_name = "stac9766 analog",
 		.channels_min = 1,
 		.channels_max = 2,
 		.rates = SNDRV_PCM_RATE_8000_48000,
-		.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
-				SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
+		.formats = SND_SOC_STD_AC97_FMTS,
 	},
 	/* alsa ops */
 	.ops = &stac9766_dai_ops_analog,
