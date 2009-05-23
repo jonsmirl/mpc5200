@@ -5,7 +5,7 @@ Date:   2009-05-23 12:06:48 -0400
 
 Add a few more mpc5200 PSC defines
 
-Add a few more mpc5200 PSC defines. More bit fields defines for mpc5200 PSC registers
+Add a few more mpc5200 PSC defines. More bit fields defines for mpc5200 PSC registers. This patch is going in via Grant's tree.
 
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
