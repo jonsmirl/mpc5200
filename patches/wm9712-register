@@ -1,4 +1,4 @@
-Bottom: b9f75e50cbb5fb6b5bff6fa4ad94aa60f1b9f068
+Bottom: 8c24594b57dddb3f0e0383822741a15f77bb79b0
 Top:    36d9f876882b4c1a4eba407c21eefcebdecec2f2
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:14 -0400
@@ -31,18 +31,6 @@ index 1fd4e88..49ad987 100644
  MODULE_DESCRIPTION("ASoC WM9711/WM9712 driver");
  MODULE_AUTHOR("Liam Girdwood");
  MODULE_LICENSE("GPL");
-diff --git a/sound/soc/fsl/dspeak01-audio-fabric.c b/sound/soc/fsl/dspeak01-audio-fabric.c
-index 491100e..07b44b1 100644
---- a/sound/soc/fsl/dspeak01-audio-fabric.c
-+++ b/sound/soc/fsl/dspeak01-audio-fabric.c
-@@ -145,7 +145,6 @@ static __init int dspeak01_fabric_init(void)
- 	if (!machine_is_compatible("digispeaker,dspeak01"))
- 		return -ENODEV;
- 
--	printk("Initializing Digispeaker audio\n");
- 	card.platform = &mpc5200_audio_dma_platform;
- 	card.name = "Efika";
- 	card.dai_link = dspeak01_fabric_dai;
 diff --git a/sound/soc/fsl/efika-audio-fabric.c b/sound/soc/fsl/efika-audio-fabric.c
 index 58121a5..5126a81 100644
 --- a/sound/soc/fsl/efika-audio-fabric.c
