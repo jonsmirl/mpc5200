@@ -214,27 +214,6 @@ static int psc_ac97_trigger(struct snd_pcm_substream *substream, int cmd,
 	return 0;
 }
 
-/**
- * psc_ac97_set_fmt: set the serial format.
- *
- * This function is called by the machine driver to tell us what serial
- * format to use.
- *
- * This driver only supports AC97 mode.  Return an error if the format is
- * not SND_SOC_DAIFMT_AC97.
- *
- * @format: one of SND_SOC_DAIFMT_xxx
- */
-static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
-{
-	struct psc_dma *psc_dma = cpu_dai->private_data;
-
-	dev_dbg(psc_dma->dev, "psc_ac97_set_fmt(cpu_dai=%p, format=%i)\n",
-				cpu_dai, format);
-
-	return (format == SND_SOC_DAIFMT_AC97) ? 0 : -EINVAL;
-}
-
 /* ---------------------------------------------------------------------
  * ALSA SoC Bindings
  *
@@ -247,13 +226,11 @@ static int psc_ac97_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
  */
 static struct snd_soc_dai_ops psc_ac97_analog_ops = {
 	.hw_params	= psc_ac97_hw_analog_params,
-	.set_fmt	= psc_ac97_set_fmt,
 	.trigger	= psc_ac97_trigger,
 };
 
 static struct snd_soc_dai_ops psc_ac97_digital_ops = {
 	.hw_params	= psc_ac97_hw_digital_params,
-	.set_fmt	= psc_ac97_set_fmt,
 };
 
 struct snd_soc_dai psc_ac97_dai[] = {
