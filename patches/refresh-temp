@@ -1,0 +1,30 @@
+Bottom: 9fb240bf97ca546491e05f0a4fd62c1293c139d4
+Top:    714030b8862bf1078f58976ccaf5a7366c9063c7
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-22 20:34:06 -0400
+
+Refresh of mpc5200-dma
+
+---
+
+diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
+index 473d920..0ac6a84 100644
+--- a/sound/soc/fsl/mpc5200_psc_i2s.c
++++ b/sound/soc/fsl/mpc5200_psc_i2s.c
+@@ -142,7 +142,7 @@ static struct snd_soc_dai_ops psc_i2s_dai_ops = {
+ 	.set_fmt	= psc_i2s_set_fmt,
+ };
+ 
+-static struct snd_soc_dai psc_i2s_dai[] = {{
++struct snd_soc_dai psc_i2s_dai[] = {{
+ 	.name   = "I2S",
+ 	.playback = {
+ 		.channels_min = 2,
+@@ -158,6 +158,7 @@ static struct snd_soc_dai psc_i2s_dai[] = {{
+ 	},
+ 	.ops = &psc_i2s_dai_ops,
+ }};
++EXPORT_SYMBOL_GPL(psc_i2s_dai);
+ 
+ /* ---------------------------------------------------------------------
+  * OF platform bus binding code:
