@@ -1,5 +1,5 @@
 Bottom: d9a7583d2672a935bdce518143af96b1ffe6a367
-Top:    d9a7583d2672a935bdce518143af96b1ffe6a367
+Top:    9cc84e0a1cbe424b99b72c9d5a2df1c5e82ceed3
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:14 -0400
 
@@ -8,4 +8,38 @@ Temporary holding patch
 
 ---
 
-
+diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
+index bad9d88..cc1e618 100644
+--- a/sound/soc/soc-core.c
++++ b/sound/soc/soc-core.c
+@@ -20,6 +20,8 @@
+  *   o Support TDM on PCM and I2S
+  */
+ 
++#define DEBUG
++
+ #include <linux/module.h>
+ #include <linux/moduleparam.h>
+ #include <linux/init.h>
+@@ -125,7 +127,7 @@ static int soc_pcm_apply_symmetry(struct snd_pcm_substream *substream)
+ 
+ 	if (codec_dai->symmetric_rates || cpu_dai->symmetric_rates ||
+ 	    machine->symmetric_rates) {
+-		dev_dbg(card->dev, "Symmetry forces %dHz rate\n", 
++		dev_dbg(card->dev, "Symmetry forces %dHz rate\n",
+ 			machine->rate);
+ 
+ 		ret = snd_pcm_hw_constraint_minmax(substream->runtime,
+diff --git a/sound/soc/soc-dapm.c b/sound/soc/soc-dapm.c
+index c1222fa..f3ccbd0 100644
+--- a/sound/soc/soc-dapm.c
++++ b/sound/soc/soc-dapm.c
+@@ -29,6 +29,8 @@
+  *    o Support for reduced codec bias currents.
+  */
+ 
++#define DEBUG
++
+ #include <linux/module.h>
+ #include <linux/moduleparam.h>
+ #include <linux/init.h>
