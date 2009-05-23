@@ -1,5 +1,5 @@
-Bottom: f7559b8a64b582dc05a27055069d038981aadb10
-Top:    ba4e54601e70381d64008ded3843a335f083256c
+Bottom: d28ac3d977bb9da7eee6da3dda86ea81dc8870f7
+Top:    85511c054f4691034c39f15b6a15fc3610a87350
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:50 -0400
 
@@ -27,7 +27,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 23cae97..451c41a 100644
+index 0bf24a3..fd70143 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
 @@ -15,10 +15,13 @@

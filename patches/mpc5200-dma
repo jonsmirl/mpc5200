@@ -1,5 +1,5 @@
 Bottom: 56c96e85e1c71bad17c7a9a16822a50bbe91aac2
-Top:    7d0060518953d50e6c621d3c87a24d6637dd257a
+Top:    9b0835859a73b362a3261168ac6cbf51c0fbe038
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:48 -0400
 
@@ -823,7 +823,7 @@ index a33232c..3b2ded9 100644
  
  #endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 12a7917..23cae97 100644
+index 12a7917..0bf24a3 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
 @@ -5,32 +5,21 @@
@@ -1067,7 +1067,7 @@ index 12a7917..23cae97 100644
  	out_be32(&psc_dma->psc_regs->sicr,
  		 psc_dma->sicr | MPC52xx_PSC_SICR_SIM_CODEC_8);
  
-@@ -321,61 +185,30 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+@@ -321,66 +185,36 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
  	if (!of_get_property(op->node, "codec-handle", NULL))
  		return 0;
  
@@ -1147,7 +1147,13 @@ index 12a7917..23cae97 100644
  }
  
  /* Match table for of_platform binding */
-@@ -411,4 +244,7 @@ static void __exit psc_i2s_exit(void)
+ static struct of_device_id psc_i2s_match[] __devinitdata = {
+ 	{ .compatible = "fsl,mpc5200-psc-i2s", },
++	{ .compatible = "fsl,mpc5200b-psc-i2s", },
+ 	{}
+ };
+ MODULE_DEVICE_TABLE(of, psc_i2s_match);
+@@ -411,4 +245,7 @@ static void __exit psc_i2s_exit(void)
  }
  module_exit(psc_i2s_exit);
  
