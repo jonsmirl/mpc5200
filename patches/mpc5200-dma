@@ -1,5 +1,5 @@
 Bottom: 56c96e85e1c71bad17c7a9a16822a50bbe91aac2
-Top:    dae62562f0260cea80405e57cb55f68d4785db15
+Top:    d738997613b736a9cb891ac39409060fe815a05f
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:48 -0400
 
@@ -809,10 +809,10 @@ index a33232c..3b2ded9 100644
  
  #endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 12a7917..d09f0ec 100644
+index 12a7917..23cae97 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
-@@ -5,26 +5,19 @@
+@@ -5,32 +5,21 @@
   * Copyright (C) 2008 Secret Lab Technologies Ltd.
   */
  
@@ -839,8 +839,14 @@ index 12a7917..d09f0ec 100644
 +#include "mpc5200_psc_i2s.h"
  #include "mpc5200_dma.h"
  
- MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
-@@ -46,8 +39,7 @@ MODULE_LICENSE("GPL");
+-MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
+-MODULE_DESCRIPTION("Freescale MPC5200 PSC in I2S mode ASoC Driver");
+-MODULE_LICENSE("GPL");
+-
+ /**
+  * PSC_I2S_RATES: sample rates supported by the I2S
+  *
+@@ -46,8 +35,7 @@ MODULE_LICENSE("GPL");
   * PSC_I2S_FORMATS: audio formats supported by the PSC I2S mode
   */
  #define PSC_I2S_FORMATS (SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE | \
@@ -850,7 +856,7 @@ index 12a7917..d09f0ec 100644
  
  static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
  				 struct snd_pcm_hw_params *params,
-@@ -82,8 +74,6 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
+@@ -82,8 +70,6 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
  	}
  	out_be32(&psc_dma->psc_regs->sicr, psc_dma->sicr | mode);
  
@@ -859,7 +865,7 @@ index 12a7917..d09f0ec 100644
  	return 0;
  }
  
-@@ -140,16 +130,13 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
+@@ -140,16 +126,13 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
   * psc_i2s_dai_template: template CPU Digital Audio Interface
   */
  static struct snd_soc_dai_ops psc_i2s_dai_ops = {
@@ -878,7 +884,7 @@ index 12a7917..d09f0ec 100644
  	.playback = {
  		.channels_min = 2,
  		.channels_max = 2,
-@@ -163,71 +150,8 @@ static struct snd_soc_dai psc_i2s_dai_template = {
+@@ -163,71 +146,8 @@ static struct snd_soc_dai psc_i2s_dai_template = {
  		.formats = PSC_I2S_FORMATS,
  	},
  	.ops = &psc_i2s_dai_ops,
@@ -952,7 +958,7 @@ index 12a7917..d09f0ec 100644
  
  /* ---------------------------------------------------------------------
   * OF platform bus binding code:
-@@ -237,82 +161,26 @@ static DEVICE_ATTR(capture_overrun, 0644, psc_i2s_stat_show,
+@@ -237,82 +157,26 @@ static DEVICE_ATTR(capture_overrun, 0644, psc_i2s_stat_show,
  static int __devinit psc_i2s_of_probe(struct of_device *op,
  				      const struct of_device_id *match)
  {
@@ -1047,7 +1053,7 @@ index 12a7917..d09f0ec 100644
  	out_be32(&psc_dma->psc_regs->sicr,
  		 psc_dma->sicr | MPC52xx_PSC_SICR_SIM_CODEC_8);
  
-@@ -321,61 +189,30 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+@@ -321,61 +185,30 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
  	if (!of_get_property(op->node, "codec-handle", NULL))
  		return 0;
  
@@ -1127,6 +1133,14 @@ index 12a7917..d09f0ec 100644
  }
  
  /* Match table for of_platform binding */
+@@ -411,4 +244,7 @@ static void __exit psc_i2s_exit(void)
+ }
+ module_exit(psc_i2s_exit);
+ 
++MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
++MODULE_DESCRIPTION("Freescale MPC5200 PSC in I2S mode ASoC Driver");
++MODULE_LICENSE("GPL");
+ 
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.h b/sound/soc/fsl/mpc5200_psc_i2s.h
 new file mode 100644
 index 0000000..ce55e07

@@ -1,5 +1,5 @@
-Bottom: 81eddfbad6f2a2c91cf530ad445ce7151e3273ec
-Top:    d571b36b3901d5273ed83f1529d098f7d3123481
+Bottom: d24c52d19632882299285ca0501d108c073228b3
+Top:    5078c33773a9a28bd8e031580adbe013b507ad21
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:51 -0400
 
@@ -9,7 +9,7 @@ Temporary holding patch
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 566a7c4..b1c98eb 100644
+index 451c41a..2186f4b 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
 @@ -3,6 +3,7 @@
