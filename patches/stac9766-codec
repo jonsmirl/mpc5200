@@ -1,5 +1,5 @@
 Bottom: dae62562f0260cea80405e57cb55f68d4785db15
-Top:    a375595eab1eb201f3cb853f34c135b730beab82
+Top:    21f033fdc8bc9d51821d302752d78002828f79d0
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:48 -0400
 
@@ -57,10 +57,10 @@ index 70c55fa..46c007c 100644
  obj-$(CONFIG_SND_SOC_TLV320AIC3X)	+= snd-soc-tlv320aic3x.o
 diff --git a/sound/soc/codecs/stac9766.c b/sound/soc/codecs/stac9766.c
 new file mode 100644
-index 0000000..31ffee3
+index 0000000..ee2a710
 --- /dev/null
 +++ b/sound/soc/codecs/stac9766.c
-@@ -0,0 +1,471 @@
+@@ -0,0 +1,470 @@
 +/*
 + * stac9766.c  --  ALSA SoC STAC9766 codec support
 + *
@@ -269,9 +269,7 @@ index 0000000..31ffee3
 +	stac9766_ac97_write(codec, AC97_SPDIF, 0x2002);
 +
 +	vra = stac9766_ac97_read(codec, AC97_EXTENDED_STATUS);
-+
 +	vra |= 0x5; /* Enable VRA and SPDIF out */
-+	printk("var is %x\n", vra);
 +
 +	stac9766_ac97_write(codec, AC97_EXTENDED_STATUS, vra);
 +
@@ -290,7 +288,7 @@ index 0000000..31ffee3
 +	case SNDRV_PCM_TRIGGER_STOP:
 +		vra = stac9766_ac97_read(codec, AC97_EXTENDED_STATUS);
 +		vra &= !0x04;
-+		//stac9766_ac97_write(codec, AC97_EXTENDED_STATUS, vra);
++		stac9766_ac97_write(codec, AC97_EXTENDED_STATUS, vra);
 +		break;
 +	}
 +	return 0;
@@ -301,11 +299,7 @@ index 0000000..31ffee3
 +{
 +	switch (level) {
 +	case SND_SOC_BIAS_ON: /* full On */
-+		stac9766_ac97_write(codec, AC97_POWERDOWN, 0x0000);
-+		break;
 +	case SND_SOC_BIAS_PREPARE: /* partial On */
-+		stac9766_ac97_write(codec, AC97_POWERDOWN, 0x0000);
-+		break;
 +	case SND_SOC_BIAS_STANDBY: /* Off, with power */
 +		stac9766_ac97_write(codec, AC97_POWERDOWN, 0x0000);
 +		break;
@@ -332,14 +326,21 @@ index 0000000..31ffee3
 +{
 +	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
 +	struct snd_soc_codec *codec = socdev->card->codec;
-+	u16 id;
++	u16 id, reset;
 +
++	reset = 0;
 +	/* give the codec an AC97 warm reset to start the link */
++reset:
++	if (reset > 5) {
++		printk(KERN_ERR "stac9766 failed to resume");
++		return -EIO;
++	}
 +	codec->ac97->bus->ops->warm_reset(codec->ac97);
 +	id = soc_ac97_ops.read(codec->ac97, AC97_VENDOR_ID2);
 +	if (id != 0x4c13) {
-+		printk(KERN_ERR "stac9766 failed to resume");
-+		return -EIO;
++		stac9766_reset(codec, 0);
++		reset++;
++		goto reset;
 +	}
 +	stac9766_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 +
@@ -372,16 +373,14 @@ index 0000000..31ffee3
 +		.channels_min = 1,
 +		.channels_max = 2,
 +		.rates = SNDRV_PCM_RATE_8000_48000,
-+		.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
-+				SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
++		.formats = SND_SOC_STD_AC97_FMTS,
 +	},
 +	.capture = {
 +		.stream_name = "stac9766 analog",
 +		.channels_min = 1,
 +		.channels_max = 2,
 +		.rates = SNDRV_PCM_RATE_8000_48000,
-+		.formats = SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE |
-+				SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S32_BE,
++		.formats = SND_SOC_STD_AC97_FMTS,
 +	},
 +	/* alsa ops */
 +	.ops = &stac9766_dai_ops_analog,
