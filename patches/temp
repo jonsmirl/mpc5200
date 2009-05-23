@@ -1,5 +1,5 @@
 Bottom: af95e8713e195eb608b51d113d09baf31d6a8eee
-Top:    6f2d4447beff50b60e54a5ddf62f279a7bc7b1ca
+Top:    102a6609f15dc1f613a513f02f356845a87aa6ab
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-22 16:52:14 -0400
 
@@ -8,6 +8,38 @@ Temporary holding patch
 
 ---
 
+diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
+index 7253303..00e832f 100644
+--- a/sound/soc/fsl/mpc5200_psc_ac97.c
++++ b/sound/soc/fsl/mpc5200_psc_ac97.c
+@@ -357,24 +357,21 @@ reset:
+ 	}
+ 
+ 	psc_ac97_cold_reset(&ac97);
++	psc_ac97_warm_reset(&ac97);
+ 
+ 	/* first make sure it is low */
+ 	timeout = 0;
+ 	while ((in_8(&regs->ipcr_acr.ipcr) & 0x80) != 0) {
+ 		udelay(1);
+-		if (timeout++ > 1000) {
+-			psc_ac97_warm_reset(&ac97);
++		if (timeout++ > 1000)
+ 			goto reset;
+-		}
+ 	}
+ 	/* then wait for the transition to high */
+ 	timeout = 0;
+ 	while ((in_8(&regs->ipcr_acr.ipcr) & 0x80) == 0) {
+ 		udelay(1);
+-		if (timeout++ > 1000) {
++		if (timeout++ > 1000)
+ 			psc_ac97_warm_reset(&ac97);
+-			goto reset;
+-		}
+ 	}
+ 
+ 	out_8(&regs->command, MPC52xx_PSC_TX_ENABLE | MPC52xx_PSC_RX_ENABLE);
 diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
 index bad9d88..cc1e618 100644
 --- a/sound/soc/soc-core.c
