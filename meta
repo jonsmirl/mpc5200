@@ -1,5 +1,5 @@
 Version: 1
-Previous: aecf6efc05f3eb60e0a95db71bca51171704ae4b
+Previous: e4bfb5706e9b8d46974c02ad8b4cf70b1e43ae00
 Head: 28f1e958cf05bafd7c3bf6d2051beb19b6e6017a
 Applied:
   Makefile: c62bc0748950ed1dda2738173d1f56dca229033f
@@ -25,8 +25,8 @@ Applied:
   phytec: 44456b94cbc9dd2100e1c88062716e75b8663ad0
   tas5504-codec: d446049d1c0cf2f02b696a4d1f9ef9823dcd2a4b
   max9485-i2c: 2afeb04a8259537e7f1786b80495c8eaec5a605f
+  i2s-cell-clock: 28f1e958cf05bafd7c3bf6d2051beb19b6e6017a
 Unapplied:
-  i2s-cell-clock: bf5c2903a010e7d7a6870e4feb6876bcc17e8286
   dspeak-audio: 38d837575c56c12ea1770934b92be22f1103c7e4
   mmc-spi: 7f9c3266084f7e3589d668c62e78f02761766853
   wm9712-register: 6f1171f085d9126cf867dddfd0fd5de8ef51c22e
