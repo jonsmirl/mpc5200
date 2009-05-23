@@ -17,10 +17,6 @@
 
 #include "mpc5200_dma.h"
 
-MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
-MODULE_DESCRIPTION("Freescale MPC5200 PSC in DMA mode ASoC Driver");
-MODULE_LICENSE("GPL");
-
 /*
  * Interrupt handlers
  */
@@ -634,3 +630,6 @@ static void __exit mpc5200_soc_platform_exit(void)
 }
 module_exit(mpc5200_soc_platform_exit);
 
+MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
+MODULE_DESCRIPTION("Freescale MPC5200 PSC in DMA mode ASoC Driver");
+MODULE_LICENSE("GPL");
