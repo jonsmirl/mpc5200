@@ -1,7 +1,7 @@
-Bottom: 378638d5efbb6dd90483d0a680bb434000e6fefa
-Top:    2597aa25fd55b9de99ea3a57fe165feaa2d1f8c5
+Bottom: 103bc56c9dca65640265ad01d05c7123d84a6005
+Top:    ba8a57aa11620aacae429c73ff70370a3ea2d8ca
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-05-22 16:52:13 -0400
+Date:   2009-05-23 12:06:50 -0400
 
 Enable mmc-spi support
 
