@@ -252,6 +252,7 @@ static struct snd_soc_dai_ops psc_ac97_digital_ops = {
 struct snd_soc_dai psc_ac97_dai[] = {
 {
 	.name   = "AC97",
+	.ac97_control = 1,
 	.playback = {
 		.channels_min   = 1,
 		.channels_max   = 6,
@@ -268,6 +269,7 @@ struct snd_soc_dai psc_ac97_dai[] = {
 },
 {
 	.name   = "SPDIF",
+	.ac97_control = 1,
 	.playback = {
 		.channels_min   = 1,
 		.channels_max   = 2,
@@ -302,7 +304,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 
 	rc = snd_soc_register_dais(psc_ac97_dai, ARRAY_SIZE(psc_ac97_dai));
 	if (rc != 0) {
-		pr_err("Failed to register DAI\n");
+		dev_err(&op->dev, "Failed to register DAI\n");
 		return rc;
 	}
 

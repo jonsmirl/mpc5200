@@ -415,7 +415,7 @@ struct snd_soc_platform mpc5200_audio_dma_platform = {
 EXPORT_SYMBOL_GPL(mpc5200_audio_dma_platform);
 
 /* ---------------------------------------------------------------------
- * Sysfs attributes for debugging
+ * Sysfs attributes for error monitoring
  */
 
 static ssize_t psc_dma_status_show(struct device *dev,
@@ -590,7 +590,8 @@ int mpc5200_audio_dma_create(struct of_device *op)
 	if (rc)
 		dev_info(psc_dma->dev, "error creating sysfs files\n");
 
-	return 0;
+	/* Tell the ASoC OF helpers about it */
+	return snd_soc_register_platform(&mpc5200_audio_dma_platform);
 }
 EXPORT_SYMBOL_GPL(mpc5200_audio_dma_create);
 
@@ -599,6 +600,8 @@ int mpc5200_audio_dma_destroy(struct of_device *op)
 	struct psc_dma *psc_dma = dev_get_drvdata(&op->dev);
 
 	dev_dbg(&op->dev, "mpc5200_audio_dma_destroy()\n");
+
+	snd_soc_unregister_platform(&mpc5200_audio_dma_platform);
 
 	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
 	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
@@ -609,26 +612,12 @@ int mpc5200_audio_dma_destroy(struct of_device *op)
 	free_irq(psc_dma->playback.irq, &psc_dma->playback);
 
 	iounmap(psc_dma->psc_regs);
-	iounmap(psc_dma->fifo_regs);
 	kfree(psc_dma);
 	dev_set_drvdata(&op->dev, NULL);
 
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mpc5200_audio_dma_destroy);
-
-static int __init mpc5200_soc_platform_init(void)
-{
-	/* Tell the ASoC OF helpers about it */
-	return snd_soc_register_platform(&mpc5200_audio_dma_platform);
-}
-module_init(mpc5200_soc_platform_init);
-
-static void __exit mpc5200_soc_platform_exit(void)
-{
-	snd_soc_unregister_platform(&mpc5200_audio_dma_platform);
-}
-module_exit(mpc5200_soc_platform_exit);
 
 MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
 MODULE_DESCRIPTION("Freescale MPC5200 PSC in DMA mode ASoC Driver");
