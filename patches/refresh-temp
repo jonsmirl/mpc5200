@@ -1,0 +1,97 @@
+Bottom: 763adeca75202ee8132318d7e7e0abb9504c79e9
+Top:    0407f0445340fddd64543456fe35632bb222a9e5
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-24 16:03:11 -0400
+
+Refresh of temp
+
+---
+
+diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
+index 95df860..a9ad54d 100644
+--- a/sound/soc/fsl/mpc5200_dma.c
++++ b/sound/soc/fsl/mpc5200_dma.c
+@@ -415,7 +415,7 @@ struct snd_soc_platform mpc5200_audio_dma_platform = {
+ EXPORT_SYMBOL_GPL(mpc5200_audio_dma_platform);
+ 
+ /* ---------------------------------------------------------------------
+- * Sysfs attributes for debugging
++ * Sysfs attributes for error monitoring
+  */
+ 
+ static ssize_t psc_dma_status_show(struct device *dev,
+@@ -590,7 +590,8 @@ int mpc5200_audio_dma_create(struct of_device *op)
+ 	if (rc)
+ 		dev_info(psc_dma->dev, "error creating sysfs files\n");
+ 
+-	return 0;
++	/* Tell the ASoC OF helpers about it */
++	return snd_soc_register_platform(&mpc5200_audio_dma_platform);
+ }
+ EXPORT_SYMBOL_GPL(mpc5200_audio_dma_create);
+ 
+@@ -600,6 +601,8 @@ int mpc5200_audio_dma_destroy(struct of_device *op)
+ 
+ 	dev_dbg(&op->dev, "mpc5200_audio_dma_destroy()\n");
+ 
++	snd_soc_unregister_platform(&mpc5200_audio_dma_platform);
++
+ 	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
+ 	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
+ 
+@@ -609,7 +612,6 @@ int mpc5200_audio_dma_destroy(struct of_device *op)
+ 	free_irq(psc_dma->playback.irq, &psc_dma->playback);
+ 
+ 	iounmap(psc_dma->psc_regs);
+-	iounmap(psc_dma->fifo_regs);
+ 	kfree(psc_dma);
+ 	dev_set_drvdata(&op->dev, NULL);
+ 
+@@ -617,19 +619,6 @@ int mpc5200_audio_dma_destroy(struct of_device *op)
+ }
+ EXPORT_SYMBOL_GPL(mpc5200_audio_dma_destroy);
+ 
+-static int __init mpc5200_soc_platform_init(void)
+-{
+-	/* Tell the ASoC OF helpers about it */
+-	return snd_soc_register_platform(&mpc5200_audio_dma_platform);
+-}
+-module_init(mpc5200_soc_platform_init);
+-
+-static void __exit mpc5200_soc_platform_exit(void)
+-{
+-	snd_soc_unregister_platform(&mpc5200_audio_dma_platform);
+-}
+-module_exit(mpc5200_soc_platform_exit);
+-
+ MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
+ MODULE_DESCRIPTION("Freescale MPC5200 PSC in DMA mode ASoC Driver");
+ MODULE_LICENSE("GPL");
+diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
+index f19c642..a853727 100644
+--- a/sound/soc/fsl/mpc5200_psc_ac97.c
++++ b/sound/soc/fsl/mpc5200_psc_ac97.c
+@@ -252,6 +252,7 @@ static struct snd_soc_dai_ops psc_ac97_digital_ops = {
+ struct snd_soc_dai psc_ac97_dai[] = {
+ {
+ 	.name   = "AC97",
++	.ac97_control = 1,
+ 	.playback = {
+ 		.channels_min   = 1,
+ 		.channels_max   = 6,
+@@ -268,6 +269,7 @@ struct snd_soc_dai psc_ac97_dai[] = {
+ },
+ {
+ 	.name   = "SPDIF",
++	.ac97_control = 1,
+ 	.playback = {
+ 		.channels_min   = 1,
+ 		.channels_max   = 2,
+@@ -302,7 +304,7 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
+ 
+ 	rc = snd_soc_register_dais(psc_ac97_dai, ARRAY_SIZE(psc_ac97_dai));
+ 	if (rc != 0) {
+-		pr_err("Failed to register DAI\n");
++		dev_err(&op->dev, "Failed to register DAI\n");
+ 		return rc;
+ 	}
