@@ -1,5 +1,5 @@
 Bottom: 21d195ee4cd9cffd483436ecbcd46e033f205137
-Top:    602bfecc5d2c7afe8ce569364bbce0ebe5e67ceb
+Top:    8f0ff7804c7ffeafc3dd26656245c2293ce04cda
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:48 -0400
 
@@ -25,7 +25,7 @@ index dc79bdf..1918c78 100644
  	select PPC_BESTCOMM_GEN_BD
  	help
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 6850392..95df860 100644
+index 6850392..a9ad54d 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -3,23 +3,13 @@
@@ -516,7 +516,7 @@ index 6850392..95df860 100644
  
  	for (stream = 0; stream < 2; stream++) {
  		substream = pcm->streams[stream].substream;
-@@ -449,10 +406,230 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
+@@ -449,10 +406,219 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
  	}
  }
  
@@ -533,7 +533,7 @@ index 6850392..95df860 100644
 +EXPORT_SYMBOL_GPL(mpc5200_audio_dma_platform);
 +
 +/* ---------------------------------------------------------------------
-+ * Sysfs attributes for debugging
++ * Sysfs attributes for error monitoring
 + */
 +
 +static ssize_t psc_dma_status_show(struct device *dev,
@@ -595,7 +595,7 @@ index 6850392..95df860 100644
 +			psc_dma_stat_store);
 +static DEVICE_ATTR(capture_overrun, 0644, psc_dma_stat_show,
 +			psc_dma_stat_store);
- 
++
 +
 +int mpc5200_audio_dma_create(struct of_device *op)
 +{
@@ -708,7 +708,8 @@ index 6850392..95df860 100644
 +	if (rc)
 +		dev_info(psc_dma->dev, "error creating sysfs files\n");
 +
-+	return 0;
++	/* Tell the ASoC OF helpers about it */
++	return snd_soc_register_platform(&mpc5200_audio_dma_platform);
 +}
 +EXPORT_SYMBOL_GPL(mpc5200_audio_dma_create);
 +
@@ -718,6 +719,8 @@ index 6850392..95df860 100644
 +
 +	dev_dbg(&op->dev, "mpc5200_audio_dma_destroy()\n");
 +
++	snd_soc_unregister_platform(&mpc5200_audio_dma_platform);
+ 
 +	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
 +	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
 +
@@ -727,26 +730,12 @@ index 6850392..95df860 100644
 +	free_irq(psc_dma->playback.irq, &psc_dma->playback);
 +
 +	iounmap(psc_dma->psc_regs);
-+	iounmap(psc_dma->fifo_regs);
 +	kfree(psc_dma);
 +	dev_set_drvdata(&op->dev, NULL);
 +
 +	return 0;
 +}
 +EXPORT_SYMBOL_GPL(mpc5200_audio_dma_destroy);
-+
-+static int __init mpc5200_soc_platform_init(void)
-+{
-+	/* Tell the ASoC OF helpers about it */
-+	return snd_soc_register_platform(&mpc5200_audio_dma_platform);
-+}
-+module_init(mpc5200_soc_platform_init);
-+
-+static void __exit mpc5200_soc_platform_exit(void)
-+{
-+	snd_soc_unregister_platform(&mpc5200_audio_dma_platform);
-+}
-+module_exit(mpc5200_soc_platform_exit);
 +
 +MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
 +MODULE_DESCRIPTION("Freescale MPC5200 PSC in DMA mode ASoC Driver");
@@ -823,11 +812,14 @@ index a33232c..3b2ded9 100644
  
  #endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 12a7917..0bf24a3 100644
+index 12a7917..acaf181 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
-@@ -5,32 +5,21 @@
+@@ -3,34 +3,22 @@
+  * ALSA SoC Digital Audio Interface (DAI) driver
+  *
   * Copyright (C) 2008 Secret Lab Technologies Ltd.
++ * Copyright (C) 2009 Jon Smirl, Digispeaker
   */
  
 -#include <linux/init.h>
@@ -846,8 +838,8 @@ index 12a7917..0bf24a3 100644
  #include <sound/soc.h>
 -#include <sound/soc-of-simple.h>
  
- #include <sysdev/bestcomm/bestcomm.h>
- #include <sysdev/bestcomm/gen_bd.h>
+-#include <sysdev/bestcomm/bestcomm.h>
+-#include <sysdev/bestcomm/gen_bd.h>
  #include <asm/mpc52xx_psc.h>
  
 +#include "mpc5200_psc_i2s.h"
@@ -860,7 +852,7 @@ index 12a7917..0bf24a3 100644
  /**
   * PSC_I2S_RATES: sample rates supported by the I2S
   *
-@@ -46,8 +35,7 @@ MODULE_LICENSE("GPL");
+@@ -46,8 +34,7 @@ MODULE_LICENSE("GPL");
   * PSC_I2S_FORMATS: audio formats supported by the PSC I2S mode
   */
  #define PSC_I2S_FORMATS (SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_BE | \
@@ -870,7 +862,7 @@ index 12a7917..0bf24a3 100644
  
  static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
  				 struct snd_pcm_hw_params *params,
-@@ -82,8 +70,6 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
+@@ -82,8 +69,6 @@ static int psc_i2s_hw_params(struct snd_pcm_substream *substream,
  	}
  	out_be32(&psc_dma->psc_regs->sicr, psc_dma->sicr | mode);
  
@@ -879,7 +871,7 @@ index 12a7917..0bf24a3 100644
  	return 0;
  }
  
-@@ -140,16 +126,13 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
+@@ -140,16 +125,13 @@ static int psc_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int format)
   * psc_i2s_dai_template: template CPU Digital Audio Interface
   */
  static struct snd_soc_dai_ops psc_i2s_dai_ops = {
@@ -898,7 +890,7 @@ index 12a7917..0bf24a3 100644
  	.playback = {
  		.channels_min = 2,
  		.channels_max = 2,
-@@ -163,71 +146,8 @@ static struct snd_soc_dai psc_i2s_dai_template = {
+@@ -163,71 +145,8 @@ static struct snd_soc_dai psc_i2s_dai_template = {
  		.formats = PSC_I2S_FORMATS,
  	},
  	.ops = &psc_i2s_dai_ops,
@@ -972,7 +964,7 @@ index 12a7917..0bf24a3 100644
  
  /* ---------------------------------------------------------------------
   * OF platform bus binding code:
-@@ -237,82 +157,26 @@ static DEVICE_ATTR(capture_overrun, 0644, psc_i2s_stat_show,
+@@ -237,82 +156,26 @@ static DEVICE_ATTR(capture_overrun, 0644, psc_i2s_stat_show,
  static int __devinit psc_i2s_of_probe(struct of_device *op,
  				      const struct of_device_id *match)
  {
@@ -1067,7 +1059,7 @@ index 12a7917..0bf24a3 100644
  	out_be32(&psc_dma->psc_regs->sicr,
  		 psc_dma->sicr | MPC52xx_PSC_SICR_SIM_CODEC_8);
  
-@@ -321,66 +185,36 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+@@ -321,66 +184,36 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
  	if (!of_get_property(op->node, "codec-handle", NULL))
  		return 0;
  
@@ -1153,7 +1145,7 @@ index 12a7917..0bf24a3 100644
  	{}
  };
  MODULE_DEVICE_TABLE(of, psc_i2s_match);
-@@ -411,4 +245,7 @@ static void __exit psc_i2s_exit(void)
+@@ -411,4 +244,7 @@ static void __exit psc_i2s_exit(void)
  }
  module_exit(psc_i2s_exit);
  
