@@ -1,20 +1,21 @@
 Version: 1
-Previous: 84d5eb1524f0765f3f1e6929cfbf955f71de26e6
-Head: e25a7fcbc4e1acfef9c8d2fd5badd44cd75311a8
+Previous: 9a3b778804f7c38addca29e91d5c946ff5019268
+Head: 40a602a52b54e3b00b5692e37646bac3f7758db3
 Applied:
-  Makefile: a41f56e4f750df46c914b6e80131f8182930d37f
-  digispeak: db4b8ad7d303cb436f0e7fda91e989e9cac40ab0
-  mpc5200-rtc: 7ab7c55c8d9dae209bb3fccabca5c46ddac60d2e
-  g_spi_4: 212ea10a4530e926c349950e0fab7d2a8ff162b4
-  gitignore: a186f47cc5e0f625c3ddf6ebf711608559e9b29d
-  lirc: b88b61408f6a7918ca2b1df312b2c0bfdd5c41a6
-  jds-lirc-base: 92a89513823e265a3afdf6c713353f64d7133565
-  jds-lirc-core: 1e7781b53c861e50761908a0a254e93d616937a3
-  jds-lirc-configfs: 84f3dfe2a0056cdd44169444af27e2f16e2bfb76
-  jds-lirc-gpt: dd892d3e5114b86c1b18ad820e6aa0f0d94b45a7
-  jds-lirc-device-tree: 4c274e30daedee9393768f4f7f7d7681041ba364
-  jds-lirc-mce2: 65f9487875327468f17e1611f4e0d678318da9a1
-  soc-u32-cleanup: e9e9c56249400fd7163c99c901c297e7ee3cc7b4
+  Makefile: bbf38326885bbaac0f2e4075ee3cd2bf9c9639ad
+  digispeak: fdfaab706bd4e83c9034d12644b05d58f66e9c37
+  mpc5200-rtc: 6a0262a6e6cbeef252532f684542effb09f198b5
+  g_spi_4: 394bd80caa90d9e848e9241eac667ee6ff65a09c
+  gitignore: e5bda474006e8cb4e2e5e9e5c207ada49760491d
+  lirc: 0f1381cf0e97189829a737ce3eee509ade7f2243
+  jds-lirc-base: 46dbc9d22cdf71820200f0c2441ed46b00ee365c
+  jds-lirc-core: 55739592f54e49b97c449a0855261e5acd476f91
+  jds-lirc-configfs: 9727e349e9603b4e5305efa8fbb504f6d11becf5
+  jds-lirc-gpt: 785b83c807ad21efa5933f905a586498bd613f7f
+  jds-lirc-device-tree: 1df1ec4fd687eb5b9e3fa6b9466acfebb27ff58d
+  jds-lirc-mce2: d476a9ae95ee092271cdd005a20495bf56d4d023
+  soc-u32-cleanup: 40a602a52b54e3b00b5692e37646bac3f7758db3
+Unapplied:
   i2s-dma-split: 03134cc547152e0278cae0127bdc20f5df0d5ad2
   is2-dma-rename: b0debc5eb8950a9ec4f0f55fc3408242de6dc864
   add-psc-defines: b0d0a619934b8589a8a22bfd183ca8946712b95f
@@ -29,6 +30,5 @@ Applied:
   dspeak-audio: afcbb9e8e8e94962cd5335ae679a2a5c56e65c39
   mmc-spi: 3047209ae4d6f8ebed6d13f5c5dcaa346b2f7283
   temp: e25a7fcbc4e1acfef9c8d2fd5badd44cd75311a8
-Unapplied:
   wm9712-register: 7897dccd54d07c4d16b287c75f1b24089faa1151
 Hidden:
