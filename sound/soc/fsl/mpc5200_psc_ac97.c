@@ -338,11 +338,6 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
 	/* Go */
 	out_8(&regs->command, MPC52xx_PSC_TX_ENABLE | MPC52xx_PSC_RX_ENABLE);
 
-	id1 = psc_ac97_read(&ac97, AC97_VENDOR_ID1);
-	id2 = psc_ac97_read(&ac97, AC97_VENDOR_ID2);
-
-	dev_info(&op->dev, "Codec ID is %04x %04x\n", id1, id2);
-
 	return 0;
 }
 
