@@ -1,5 +1,5 @@
 Version: 1
-Previous: 3f819adfdbb9398fc4746e0cdd0faf608c585c86
+Previous: 458e87d4af800dbcc81027fae4157a3780df1f6d
 Head: 2d8321bf31714db4b490f312f09325587ad5f985
 Applied:
   Makefile: bbf38326885bbaac0f2e4075ee3cd2bf9c9639ad
@@ -17,8 +17,8 @@ Applied:
   soc-u32-cleanup: 40a602a52b54e3b00b5692e37646bac3f7758db3
   add-psc-defines: 7bd917456c51bc351a13285de5256a43a6075dd3
   mpc5200-dma: c2ea0e0009de00afc87cbf201049580c1cdb0787
+  stac9766-codec: 2d8321bf31714db4b490f312f09325587ad5f985
 Unapplied:
-  stac9766-codec: fb1876e52d0d7fa6e41f5cde5f2aab9c1ba7d22e
   mpc5200-ac97: 5d256f1b01ef6665be814965ce8862ab3db4ca1e
   efika-audio: 7642b380f711535ee06b6e470baf687824149144
   phytec: 18a7b1798fd38c1a290bd0620e2af073b74889eb
