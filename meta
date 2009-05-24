@@ -1,29 +1,29 @@
 Version: 1
-Previous: 08379eb5992006959d47e5da2083ab0075ede768
-Head: 4f4e6c8fdd774ef7cc4d9db05e69b291830b7953
+Previous: 40fe3097cf0136f6a1cbb11823ef93133fbba649
+Head: af0d3437c9db0e3eb17ebac42919250405e3a6a6
 Applied:
   Makefile: bbf38326885bbaac0f2e4075ee3cd2bf9c9639ad
   digispeak: fdfaab706bd4e83c9034d12644b05d58f66e9c37
   mpc5200-rtc: 6a0262a6e6cbeef252532f684542effb09f198b5
   gitignore: 77321c9bfa5d574d196420e872cc599df8036fed
   g_spi_4: 4f4e6c8fdd774ef7cc4d9db05e69b291830b7953
+  lirc: 013f39a51ce4236c10a18e7624677ff3feb8a26c
+  jds-lirc-base: 8cf449f60649fa884083623a57104dfa5403e532
+  jds-lirc-core: a00f17dfdc2b62b64a961a91f6a5d81d7a833aa6
+  jds-lirc-configfs: 8299b02144addaa55ac03e54ce33ce02488bddee
+  jds-lirc-gpt: 2081e97cbdacf361f214eb01993e4b1ccb75a0a2
+  jds-lirc-device-tree: 240619edef18c280d169862e66c5eb4ba1b4830e
+  jds-lirc-mce2: 4c05e37d26432db4e3fecde7702c9bd86c1bfe03
+  soc-u32-cleanup: 0b68ef597c33ded9ae98f7e77faf232663bfe2b6
+  mpc5200-dma: 28190a4539016063717240a19cab9f9e14eb2e9d
+  mpc5200-ac97: 16bfb7d0138b122ab67d039ba1c6f24b06170c15
+  efika-audio: a5c3a5f092e6df2a3427f6aa485559ac43f50a99
+  phytec: be3654cfbbf527eaae97562dd0cce52fecc6cf0d
+  tas5504-codec: 2a66fbdc9db19184539db8b9a9d8529286bc8509
+  max9485-i2c: 3ab08a8bcfef2ebaa17eab6372ed54e3ae8304d7
+  i2s-cell-clock: 8c0df3301cf1e625c54954b971fcad4b998f9682
+  dspeak-audio: 4e4a4766f6a15d9a0f9ab8a3a5da70fda1ba4339
+  mmc-spi: dc92e4994bbc4a2dc2cbea31c2f96dbea4f2b2af
+  temp: af0d3437c9db0e3eb17ebac42919250405e3a6a6
 Unapplied:
-  lirc: ee22886391b080bd69469c8ba7bfb1d38fb24e7c
-  jds-lirc-base: 7892c0ff60990c0e3dd5c36b65c6efb972dc34fa
-  jds-lirc-core: 75b155fee430713d3ba91a6b28a335cebcb34293
-  jds-lirc-configfs: aab0c04b3fbfb944831bc902ab5433d03103da5e
-  jds-lirc-gpt: 97a47d3dcc250dbd1f1a20345d63e49478e283bf
-  jds-lirc-device-tree: ce2b8b36aa7afdd6311afc14600489a81db908f1
-  jds-lirc-mce2: cbd45fc726bce91d9b69d336955bd84781bbe8e2
-  soc-u32-cleanup: 60722e8bec3d967d7c6e08278191ee23e36de960
-  mpc5200-dma: 0dd48fc50542a5766c7c105f1d9748b95bd9843c
-  mpc5200-ac97: 5742af94fa2bf3a6ec1dac973076cd1c9a6e576e
-  efika-audio: c7622709fb2a9e3731d8d437db15efea3c3af15c
-  phytec: a470c71763e9f937e9fabe039c628b256bde162d
-  tas5504-codec: 8b1f547926bc75631674c210cf2208a9575a98b9
-  max9485-i2c: 0b6f7c6c0505f8d3270b1581027fd586739ac70d
-  i2s-cell-clock: cebe9cfb64d49c91187ecbc9c67a4f98cef04279
-  dspeak-audio: 08459b067a44c16a5d66f9464e5aab10e565e3eb
-  mmc-spi: 00477b324757bd76786986e739d1966b71281c38
-  temp: b05868389a50a7dd352330f82dac912cf26a2a99
 Hidden:
