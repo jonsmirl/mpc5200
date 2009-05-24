@@ -1,5 +1,5 @@
 Version: 1
-Previous: ecfba50242356ec592e9602839b727f21a4544e2
+Previous: 0b876267ee9ade20813f7ec983f409c05492d4c2
 Head: cd9095cabe3f49adea30a7dccd2f3d3e9e0beff2
 Applied:
   Makefile: bbf38326885bbaac0f2e4075ee3cd2bf9c9639ad
@@ -28,5 +28,4 @@ Applied:
   mmc-spi: bb3cf821aaec9dd90a92729f5097159cb8980af2
   temp: cd9095cabe3f49adea30a7dccd2f3d3e9e0beff2
 Unapplied:
-  wm9712-register: ab0420dcd24f206491ca989e451d047c8c4165dc
 Hidden:
