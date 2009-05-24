@@ -1,6 +1,6 @@
 Version: 1
-Previous: 4ea680ebcc83b7bd6cdd7844352dfc52998f3a1f
-Head: 28190a4539016063717240a19cab9f9e14eb2e9d
+Previous: 6b3b62318dfff3d8c8eac73cd742171898c53c49
+Head: 2b135326a44060811453508bc37c89ed2135eb08
 Applied:
   Makefile: bbf38326885bbaac0f2e4075ee3cd2bf9c9639ad
   digispeak: fdfaab706bd4e83c9034d12644b05d58f66e9c37
@@ -16,6 +16,7 @@ Applied:
   jds-lirc-mce2: 4c05e37d26432db4e3fecde7702c9bd86c1bfe03
   soc-u32-cleanup: 0b68ef597c33ded9ae98f7e77faf232663bfe2b6
   mpc5200-dma: 28190a4539016063717240a19cab9f9e14eb2e9d
+  refresh-temp: 2b135326a44060811453508bc37c89ed2135eb08
 Unapplied:
   mpc5200-ac97: 99dc7df0cc4f543e6db50cd6a2da1f9eb9784ad9
   phytec: 293a88939e813b73d1a36fe7adb775fbb807dc2f
