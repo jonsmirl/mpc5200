@@ -1,6 +1,6 @@
 Version: 1
-Previous: 80f7e616be393143202a86eef001b57ea98d1b64
-Head: 12e524430e39e8395fa56088b2635f221089a637
+Previous: 4794a26a6adbf2d35e902346a08abce9237b7fbe
+Head: 5ea5d3ccc4ff2868b2a08cde46d0b5d792b7c606
 Applied:
   Makefile: bbf38326885bbaac0f2e4075ee3cd2bf9c9639ad
   digispeak: fdfaab706bd4e83c9034d12644b05d58f66e9c37
@@ -16,6 +16,7 @@ Applied:
   jds-lirc-mce2: d476a9ae95ee092271cdd005a20495bf56d4d023
   soc-u32-cleanup: 40a602a52b54e3b00b5692e37646bac3f7758db3
   i2s-dma-split: 12e524430e39e8395fa56088b2635f221089a637
+  refresh-temp: 5ea5d3ccc4ff2868b2a08cde46d0b5d792b7c606
 Unapplied:
   is2-dma-rename: b0debc5eb8950a9ec4f0f55fc3408242de6dc864
   add-psc-defines: b0d0a619934b8589a8a22bfd183ca8946712b95f
