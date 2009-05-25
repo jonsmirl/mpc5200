@@ -77,4 +77,18 @@ int mpc5200_audio_dma_destroy(struct of_device *op);
 
 extern struct snd_soc_platform mpc5200_audio_dma_platform;
 
+/* whack this after Timur's patch is merged in to arch/powerpc/include/asm/delay.h */
+#define spin_event_timeout(condition, timeout, delay, rc)                   \
+{                                                                           \
+       unsigned long __loops = tb_ticks_per_usec * timeout;                \
+       unsigned long __start = get_tbl();                                  \
+       while ((rc = (condition)) && (tb_ticks_since(__start) <= __loops)) \
+               if (delay)                                                  \
+                       udelay(delay);                                      \
+               else                                                        \
+                       cpu_relax();                                        \
+}
+/* whack this after Timur's patch is merged in to arch/powerpc/include/asm/delay.h */
+
+
 #endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
