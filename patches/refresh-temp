@@ -1,0 +1,84 @@
+Bottom: 9e281abbfae47608918aa92e2fa951e6fc047b68
+Top:    e4643937faa42dbe85c345dc5d37aaeb4123ac19
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-24 21:04:51 -0400
+
+Refresh of mpc5200-ac97
+
+---
+
+diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
+index 56dac55..1a31a35 100644
+--- a/sound/soc/fsl/mpc5200_psc_ac97.c
++++ b/sound/soc/fsl/mpc5200_psc_ac97.c
+@@ -37,7 +37,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+ 	/* Wait for it to be ready */
+ 	timeout = 1000;
+ 	while ((--timeout) && (in_be16(&psc_dma->psc_regs->sr_csr.status) &
+-						MPC52xx_PSC_SR_CMDSEND) )
++						MPC52xx_PSC_SR_CMDSEND))
+ 		udelay(10);
+ 
+ 	if (!timeout) {
+@@ -51,17 +51,18 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+ 	/* Wait for the answer */
+ 	timeout = 1000;
+ 	while ((--timeout) && !(in_be16(&psc_dma->psc_regs->sr_csr.status) &
+-						MPC52xx_PSC_SR_DATA_VAL) )
++						MPC52xx_PSC_SR_DATA_VAL))
+ 		udelay(10);
+ 
+ 	if (!timeout) {
+-		pr_err("timeout on ac97 read (val) %x\n", in_be16(&psc_dma->psc_regs->sr_csr.status));
++		pr_err("timeout on ac97 read (val) %x\n",
++								in_be16(&psc_dma->psc_regs->sr_csr.status));
+ 		return 0xffff;
+ 	}
+ 
+ 	/* Get the data */
+ 	val = in_be32(&psc_dma->psc_regs->ac97_data);
+-	if ( ((val>>24) & 0x7f) != reg ) {
++	if (((val>>24) & 0x7f) != reg) {
+ 		pr_err("reg echo error on ac97 read\n");
+ 		return 0xffff;
+ 	}
+@@ -71,7 +72,8 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+ 	return (unsigned short) val;
+ }
+ 
+-static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned short val)
++static void psc_ac97_write(struct snd_ac97 *ac97,
++							unsigned short reg, unsigned short val)
+ {
+ 	int timeout;
+ 
+@@ -80,7 +82,7 @@ static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned s
+ 	/* Wait for it to be ready */
+ 	timeout = 1000;
+ 	while ((--timeout) && (in_be16(&psc_dma->psc_regs->sr_csr.status) &
+-						MPC52xx_PSC_SR_CMDSEND) )
++						MPC52xx_PSC_SR_CMDSEND))
+ 		udelay(10);
+ 
+ 	if (!timeout) {
+@@ -89,7 +91,8 @@ static void psc_ac97_write(struct snd_ac97 *ac97, unsigned short reg, unsigned s
+ 	}
+ 
+ 	/* Write data */
+-	out_be32(&psc_dma->psc_regs->ac97_cmd, ((reg & 0x7f) << 24) | (val << 8));
++	out_be32(&psc_dma->psc_regs->ac97_cmd,
++							((reg & 0x7f) << 24) | (val << 8));
+ 
+ 	spin_unlock(&psc_dma->lock);
+ }
+@@ -119,7 +122,9 @@ static int psc_ac97_cold_reset_check(struct snd_ac97 *ac97)
+ 		out_8(&regs->op0, MPC52xx_PSC_OP_RES);
+ 		udelay(50);
+ 
+-		/* PSC recover from cold reset (cfr user manual, not sure if useful) */
++		/* PSC recover from cold reset
++		 * (cfr user manual, not sure if useful)
++		 */
+ 		out_be32(&regs->sicr, in_be32(&regs->sicr));
+ 
+ 		psc_ac97_warm_reset(ac97);
