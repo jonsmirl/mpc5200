@@ -176,7 +176,8 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
 		 * end of stream and not over running it.
 		 */
 		s->runtime = runtime;
-		s->appl_ptr = s->runtime->control->appl_ptr - (runtime->period_size * runtime->periods);
+		s->appl_ptr = s->runtime->control->appl_ptr -
+				(runtime->period_size * runtime->periods);
 
 		/* Fill up the bestcomm bd queue and enable DMA.
 		 * This will begin filling the PSC's fifo.
@@ -327,9 +328,9 @@ static int
 psc_dma_hw_params(struct snd_pcm_substream *substream,
 			 struct snd_pcm_hw_params *params)
 {
-  	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
+	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 
-  	return 0;
+	return 0;
 }
 
 static struct snd_pcm_ops psc_dma_ops = {
@@ -360,15 +361,15 @@ static int psc_dma_new(struct snd_card *card, struct snd_soc_dai *dai,
 		card->dev->coherent_dma_mask = 0xffffffff;
 
 	if (pcm->streams[0].substream) {
-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
-					&pcm->streams[0].substream->dma_buffer);
+		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev,
+				size, &pcm->streams[0].substream->dma_buffer);
 		if (rc)
 			goto playback_alloc_err;
 	}
 
 	if (pcm->streams[1].substream) {
-		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
-					&pcm->streams[1].substream->dma_buffer);
+		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev,
+				size, &pcm->streams[1].substream->dma_buffer);
 		if (rc)
 			goto capture_alloc_err;
 	}
