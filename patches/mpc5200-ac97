@@ -1,5 +1,5 @@
 Bottom: 8f0ff7804c7ffeafc3dd26656245c2293ce04cda
-Top:    7c2f1f4da51c59f54b245d0936adf2a0ddfbff5c
+Top:    fc9ccb2ed1ef641062cf925c873630b89273765b
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:49 -0400
 
@@ -43,10 +43,10 @@ index 7731ef2..14631a1 100644
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..78c06ac
+index 0000000..480b677
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -0,0 +1,391 @@
+@@ -0,0 +1,392 @@
 +/*
 + * linux/sound/mpc5200-ac97.c -- AC97 support for the Freescale MPC52xx chip.
 + *
@@ -225,7 +225,8 @@ index 0000000..78c06ac
 +		__func__, substream, params_period_size(params),
 +		params_period_bytes(params), params_periods(params),
 +		params_buffer_size(params), params_buffer_bytes(params),
-+		params_channels(params), params_rate(params), params_format(params));
++		params_channels(params), params_rate(params),
++		params_format(params));
 +
 +
 +	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
