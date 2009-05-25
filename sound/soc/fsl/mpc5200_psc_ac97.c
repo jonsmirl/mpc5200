@@ -176,7 +176,8 @@ static int psc_ac97_hw_analog_params(struct snd_pcm_substream *substream,
 		__func__, substream, params_period_size(params),
 		params_period_bytes(params), params_periods(params),
 		params_buffer_size(params), params_buffer_bytes(params),
-		params_channels(params), params_rate(params), params_format(params));
+		params_channels(params), params_rate(params),
+		params_format(params));
 
 
 	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
