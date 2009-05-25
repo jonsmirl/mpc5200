@@ -1,4 +1,4 @@
-Bottom: 977b6532f5d7f76626a504f0f22614b31014d460
+Bottom: 55dc625dac62ff16105201c52f4c523ba11475ac
 Top:    ac8e327816f8b685778645d864fe00000d1de5d0
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-25 17:54:06 -0400
@@ -70,23 +70,6 @@ index f9200a6..fedf037 100644
 +
  #endif /* __KERNEL__ */
  #endif /* _ASM_POWERPC_DELAY_H */
-diff --git a/sound/soc/fsl/efika-audio-fabric.c b/sound/soc/fsl/efika-audio-fabric.c
-index 5afb435..949dc36 100644
---- a/sound/soc/fsl/efika-audio-fabric.c
-+++ b/sound/soc/fsl/efika-audio-fabric.c
-@@ -81,12 +81,7 @@ static __init int efika_fabric_init(void)
- 	return 0;
- }
- 
--static __exit void efika_fabric_exit(void)
--{
--}
--
- module_init(efika_fabric_init);
--module_exit(efika_fabric_exit);
- 
- 
- MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
 index 4e1f1f8..efec33a 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
