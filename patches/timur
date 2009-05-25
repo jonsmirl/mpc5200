@@ -1,0 +1,21 @@
+Bottom: 977b6532f5d7f76626a504f0f22614b31014d460
+Top:    977b6532f5d7f76626a504f0f22614b31014d460
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-25 17:54:06 -0400
+
+The macro spin_event_timeout() takes a condition and timeout value
+(in microseconds) as parameters.  It spins until either the condition is true
+or the timeout expires.  It returns the result of the condition when the loop
+was terminated.
+
+This primary purpose of this macro is to poll on a hardware register until a
+status bit changes.  The timeout ensures that the loop still terminates if the
+bit doesn't change as expected.  This macro makes it easier for driver
+developers to perform this kind of operation properly.
+
+Signed-off-by: Timur Tabi <timur@freescale.com>
+
+
+---
+
+
