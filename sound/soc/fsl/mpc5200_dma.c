@@ -434,7 +434,8 @@ static ssize_t psc_dma_status_show(struct device *dev,
 			in_be16(&psc_dma->fifo_regs->tfstat));
 }
 
-static unsigned long *psc_dma_get_stat_attr(struct psc_dma *psc_dma, const char *name)
+static unsigned long *psc_dma_get_stat_attr(struct psc_dma *psc_dma,
+							const char *name)
 {
 	if (strcmp(name, "playback_underrun") == 0)
 		return &psc_dma->stats.underrun_count;
@@ -540,10 +541,14 @@ int mpc5200_audio_dma_create(struct of_device *op)
 
 	/* Disable all interrupts and reset the PSC */
 	out_be16(&psc_dma->psc_regs->isr_imr.imr, psc_dma->imr);
-	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_RX); /* reset receiver */
-	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_TX); /* reset transmitter */
-	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_ERR_STAT); /* reset error */
-	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_SEL_MODE_REG_1); /* reset mode */
+	 /* reset receiver */
+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_RX);
+	 /* reset transmitter */
+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_TX);
+	 /* reset error */
+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_ERR_STAT);
+	 /* reset mode */
+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_SEL_MODE_REG_1);
 
 	/* Set up mode register;
 	 * First write: RxRdy (FIFO Alarm) generates rx FIFO irq
