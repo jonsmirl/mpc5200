@@ -1,4 +1,4 @@
-Bottom: c3d01e444fc3a74e0b30c9cf11765aeb4c71d097
+Bottom: adc27b1d4a2a1b5784ba226e3cc1fd92af8bf10b
 Top:    ac8e327816f8b685778645d864fe00000d1de5d0
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:51 -0400
@@ -8,23 +8,6 @@ Temporary holding patch
 
 ---
 
-diff --git a/sound/soc/fsl/pcm030-audio-fabric.c b/sound/soc/fsl/pcm030-audio-fabric.c
-index deb59e0..6e4e05e 100644
---- a/sound/soc/fsl/pcm030-audio-fabric.c
-+++ b/sound/soc/fsl/pcm030-audio-fabric.c
-@@ -81,12 +81,7 @@ static __init int pcm030_fabric_init(void)
- 	return 0;
- }
- 
--static __exit void pcm030_fabric_exit(void)
--{
--}
--
- module_init(pcm030_fabric_init);
--module_exit(pcm030_fabric_exit);
- 
- 
- MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
 diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
 index bad9d88..cc1e618 100644
 --- a/sound/soc/soc-core.c

@@ -1,5 +1,5 @@
-Bottom: 5263efb659fba898d8e4f5700f401d679ee7721d
-Top:    c3d01e444fc3a74e0b30c9cf11765aeb4c71d097
+Bottom: abc4de54cccd757486d9d239c615f6aa6667dea9
+Top:    adc27b1d4a2a1b5784ba226e3cc1fd92af8bf10b
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:50 -0400
 
@@ -90,10 +90,10 @@ index 85b0e75..949dc36 100644
  MODULE_LICENSE("GPL");
  
 diff --git a/sound/soc/fsl/pcm030-audio-fabric.c b/sound/soc/fsl/pcm030-audio-fabric.c
-index 2c426d5..deb59e0 100644
+index 8766f7a..6e4e05e 100644
 --- a/sound/soc/fsl/pcm030-audio-fabric.c
 +++ b/sound/soc/fsl/pcm030-audio-fabric.c
-@@ -90,6 +90,6 @@ module_exit(pcm030_fabric_exit);
+@@ -85,6 +85,6 @@ module_init(pcm030_fabric_init);
  
  
  MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
