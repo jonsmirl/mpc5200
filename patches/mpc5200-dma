@@ -1,5 +1,5 @@
 Bottom: 21d195ee4cd9cffd483436ecbcd46e033f205137
-Top:    570672aefc8eead26d1cd12c8a590658f97b71c9
+Top:    bba42269eca7035e1c84c36a55440c4979cea112
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:48 -0400
 
@@ -827,7 +827,7 @@ index a33232c..2000803 100644
  
  #endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
-index 12a7917..acaf181 100644
+index 12a7917..ce8de90 100644
 --- a/sound/soc/fsl/mpc5200_psc_i2s.c
 +++ b/sound/soc/fsl/mpc5200_psc_i2s.c
 @@ -3,34 +3,22 @@
@@ -974,7 +974,7 @@ index 12a7917..acaf181 100644
 -			psc_i2s_stat_store);
 -static DEVICE_ATTR(capture_overrun, 0644, psc_i2s_stat_show,
 -			psc_i2s_stat_store);
-+}};
++} };
 +EXPORT_SYMBOL_GPL(psc_i2s_dai);
  
  /* ---------------------------------------------------------------------
@@ -1074,7 +1074,7 @@ index 12a7917..acaf181 100644
  	out_be32(&psc_dma->psc_regs->sicr,
  		 psc_dma->sicr | MPC52xx_PSC_SICR_SIM_CODEC_8);
  
-@@ -321,66 +184,36 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
+@@ -321,66 +184,37 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
  	if (!of_get_property(op->node, "codec-handle", NULL))
  		return 0;
  
@@ -1127,7 +1127,8 @@ index 12a7917..acaf181 100644
 +	 * transmit.  (see 15.3.2.3 of MPC5200B User's Guide) */
 +
 +	/* Go */
-+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_TX_ENABLE | MPC52xx_PSC_RX_ENABLE);
++	out_8(&psc_dma->psc_regs->command,
++			MPC52xx_PSC_TX_ENABLE | MPC52xx_PSC_RX_ENABLE);
  
  	return 0;
 +
@@ -1160,7 +1161,7 @@ index 12a7917..acaf181 100644
  	{}
  };
  MODULE_DEVICE_TABLE(of, psc_i2s_match);
-@@ -411,4 +244,7 @@ static void __exit psc_i2s_exit(void)
+@@ -411,4 +245,7 @@ static void __exit psc_i2s_exit(void)
  }
  module_exit(psc_i2s_exit);
  
