@@ -192,7 +192,7 @@ struct snd_soc_dai psc_i2s_dai[] = {{
 		.formats = PSC_I2S_FORMATS,
 	},
 	.ops = &psc_i2s_dai_ops,
-}};
+} };
 EXPORT_SYMBOL_GPL(psc_i2s_dai);
 
 /* ---------------------------------------------------------------------
@@ -246,7 +246,8 @@ static int __devinit psc_i2s_of_probe(struct of_device *op,
 	 * transmit.  (see 15.3.2.3 of MPC5200B User's Guide) */
 
 	/* Go */
-	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_TX_ENABLE | MPC52xx_PSC_RX_ENABLE);
+	out_8(&psc_dma->psc_regs->command,
+			MPC52xx_PSC_TX_ENABLE | MPC52xx_PSC_RX_ENABLE);
 
 	return 0;
 
