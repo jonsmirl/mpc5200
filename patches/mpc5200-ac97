@@ -7,6 +7,13 @@ AC97 driver for mpc5200
 
 AC97 driver for mpc5200
 
+I've implemented retries for when the AC97 hardware doesn't reset on
+first try. About 10% of the time both the Efika and pcm030 AC97 codecs
+don't reset on first try and need to be poked multiple times.  Failure
+is indicated by not having the link clock start ticking. Every once in
+a while even five pokes won't get the link started and I have to power
+cycle.
+
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
 
