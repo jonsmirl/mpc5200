@@ -67,8 +67,8 @@ struct psc_dma {
 
 	/* Statistics */
 	struct {
-		int overrun_count;
-		int underrun_count;
+		unsigned long overrun_count;
+		unsigned long underrun_count;
 	} stats;
 };
 

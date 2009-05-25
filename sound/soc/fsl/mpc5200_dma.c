@@ -434,27 +434,27 @@ static ssize_t psc_dma_status_show(struct device *dev,
 			in_be16(&psc_dma->fifo_regs->tfstat));
 }
 
-static int *psc_dma_get_stat_attr(struct psc_dma *psc_dma, const char *name)
+static unsigned long *psc_dma_get_stat_attr(struct psc_dma *psc_dma, const char *name)
 {
 	if (strcmp(name, "playback_underrun") == 0)
 		return &psc_dma->stats.underrun_count;
 	if (strcmp(name, "capture_overrun") == 0)
 		return &psc_dma->stats.overrun_count;
 
-	return NULL;
+	return 0;
 }
 
 static ssize_t psc_dma_stat_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
 	struct psc_dma *psc_dma = dev_get_drvdata(dev);
-	int *attrib;
+	unsigned long *attrib;
 
 	attrib = psc_dma_get_stat_attr(psc_dma, attr->attr.name);
 	if (!attrib)
 		return 0;
 
-	return sprintf(buf, "%i\n", *attrib);
+	return sprintf(buf, "%lu\n", *attrib);
 }
 
 static ssize_t psc_dma_stat_store(struct device *dev,
@@ -463,13 +463,13 @@ static ssize_t psc_dma_stat_store(struct device *dev,
 				  size_t count)
 {
 	struct psc_dma *psc_dma = dev_get_drvdata(dev);
-	int *attrib;
+	unsigned long *attrib;
 
 	attrib = psc_dma_get_stat_attr(psc_dma, attr->attr.name);
 	if (!attrib)
 		return 0;
 
-	*attrib = simple_strtoul(buf, NULL, 0);
+	strict_strtoul(buf, 10, attrib);
 	return count;
 }
 
