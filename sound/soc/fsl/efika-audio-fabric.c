@@ -1,5 +1,6 @@
 /*
- * Efika driver for the PSC of the Freescale MPC52xx configured as AC97 interface
+ * Efika driver for the PSC of the Freescale MPC52xx
+ * configured as AC97 interface
  *
  * Copyright 2008 Jon Smirl, Digispeaker
  * Author: Jon Smirl <jonsmirl@gmail.com>
