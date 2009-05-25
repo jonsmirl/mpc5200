@@ -1,5 +1,5 @@
 Bottom: 9f645418c1018bb77c25c4bf21dea31cff3feeef
-Top:    f56818753863d40003f0da78fadee5294c7bd144
+Top:    9447ceeca50a61971e7c745375b6e45d6b003deb
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:50 -0400
 
@@ -41,10 +41,10 @@ index 14631a1..66d88c8 100644
 +
 diff --git a/sound/soc/fsl/pcm030-audio-fabric.c b/sound/soc/fsl/pcm030-audio-fabric.c
 new file mode 100644
-index 0000000..2c426d5
+index 0000000..8766f7a
 --- /dev/null
 +++ b/sound/soc/fsl/pcm030-audio-fabric.c
-@@ -0,0 +1,95 @@
+@@ -0,0 +1,90 @@
 +/*
 + * Phytec pcm030 driver for the PSC of the Freescale MPC52xx
 + * configured as AC97 interface
@@ -128,12 +128,7 @@ index 0000000..2c426d5
 +	return 0;
 +}
 +
-+static __exit void pcm030_fabric_exit(void)
-+{
-+}
-+
 +module_init(pcm030_fabric_init);
-+module_exit(pcm030_fabric_exit);
 +
 +
 +MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
