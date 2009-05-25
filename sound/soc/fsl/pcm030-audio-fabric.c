@@ -81,12 +81,7 @@ static __init int pcm030_fabric_init(void)
 	return 0;
 }
 
-static __exit void pcm030_fabric_exit(void)
-{
-}
-
 module_init(pcm030_fabric_init);
-module_exit(pcm030_fabric_exit);
 
 
 MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
