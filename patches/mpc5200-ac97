@@ -1,5 +1,5 @@
 Bottom: 8f0ff7804c7ffeafc3dd26656245c2293ce04cda
-Top:    cca46db7cfb1cb9c3c03a7e98d9292881cf450b2
+Top:    7c2f1f4da51c59f54b245d0936adf2a0ddfbff5c
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:49 -0400
 
@@ -43,7 +43,7 @@ index 7731ef2..14631a1 100644
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..1a31a35
+index 0000000..78c06ac
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
 @@ -0,0 +1,391 @@
@@ -105,7 +105,7 @@ index 0000000..1a31a35
 +
 +	if (!timeout) {
 +		pr_err("timeout on ac97 read (val) %x\n",
-+								in_be16(&psc_dma->psc_regs->sr_csr.status));
++				in_be16(&psc_dma->psc_regs->sr_csr.status));
 +		return 0xffff;
 +	}
 +
@@ -122,7 +122,7 @@ index 0000000..1a31a35
 +}
 +
 +static void psc_ac97_write(struct snd_ac97 *ac97,
-+							unsigned short reg, unsigned short val)
++				unsigned short reg, unsigned short val)
 +{
 +	int timeout;
 +
@@ -141,7 +141,7 @@ index 0000000..1a31a35
 +
 +	/* Write data */
 +	out_be32(&psc_dma->psc_regs->ac97_cmd,
-+							((reg & 0x7f) << 24) | (val << 8));
++			((reg & 0x7f) << 24) | (val << 8));
 +
 +	spin_unlock(&psc_dma->lock);
 +}
@@ -332,7 +332,7 @@ index 0000000..1a31a35
 +		.formats = SNDRV_PCM_FMTBIT_IEC958_SUBFRAME_BE,
 +	},
 +	.ops = &psc_ac97_digital_ops,
-+}};
++} };
 +EXPORT_SYMBOL_GPL(psc_ac97_dai);
 +
 +
