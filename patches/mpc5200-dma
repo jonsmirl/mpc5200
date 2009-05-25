@@ -5,7 +5,7 @@ Date:   2009-05-23 12:06:48 -0400
 
 Main rewite of the mpc5200 audio DMA code
 
-Rewrite the mpc5200 audio DMA code to support both I2S and AC97. Make it more robust.
+Rewrite the mpc5200 audio DMA code to support both I2S and AC97.
 
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
