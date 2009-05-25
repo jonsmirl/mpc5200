@@ -1,0 +1,519 @@
+Bottom: 55dc625dac62ff16105201c52f4c523ba11475ac
+Top:    ac8e327816f8b685778645d864fe00000d1de5d0
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-25 17:57:20 -0400
+
+Refresh of temp
+
+---
+
+diff --git a/arch/powerpc/include/asm/delay.h b/arch/powerpc/include/asm/delay.h
+index f9200a6..fedf037 100644
+--- a/arch/powerpc/include/asm/delay.h
++++ b/arch/powerpc/include/asm/delay.h
+@@ -2,8 +2,11 @@
+ #define _ASM_POWERPC_DELAY_H
+ #ifdef __KERNEL__
+ 
++#include <asm/time.h>
++
+ /*
+  * Copyright 1996, Paul Mackerras.
++ * Copyright (C) 2009 Freescale Semiconductor, Inc. All rights reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of the GNU General Public License
+@@ -30,5 +33,35 @@ extern void udelay(unsigned long usecs);
+ #define mdelay(n)	udelay((n) * 1000)
+ #endif
+ 
++/**
++ * spin_event_timeout - spin until a condition gets true or a timeout elapses
++ * @condition: a C expression to evalate
++ * @timeout: timeout, in microseconds
++ * @delay: the number of microseconds to delay between eache evaluation of
++ *         @condition
++ * @rc: the last value of the condition
++ *
++ * The process spins until the condition evaluates to true (non-zero) or the
++ * timeout elapses.  Upon exit, @rc contains the value of the condition. This
++ * allows you to test the condition without incurring any side effects.
++ *
++ * This primary purpose of this macro is to poll on a hardware register
++ * until a status bit changes.  The timeout ensures that the loop still
++ * terminates even if the bit never changes.  The delay is for devices that
++ * need a delay in between successive reads.
++ *
++ * gcc will optimize out the if-statement if @delay is a constant.
++ */
++#define spin_event_timeout(condition, timeout, delay, rc)                   \
++{                                                                           \
++	unsigned long __loops = tb_ticks_per_usec * timeout;                \
++	unsigned long __start = get_tbl();                                  \
++	while ((rc = (condition)) && (tb_ticks_since(__start) <= __loops)) \
++		if (delay)                                                  \
++			udelay(delay);                                      \
++		else	                                                    \
++			cpu_relax();                                        \
++}
++
+ #endif /* __KERNEL__ */
+ #endif /* _ASM_POWERPC_DELAY_H */
+diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
+index 4e1f1f8..efec33a 100644
+--- a/sound/soc/fsl/mpc5200_dma.c
++++ b/sound/soc/fsl/mpc5200_dma.c
+@@ -85,6 +85,7 @@ static irqreturn_t psc_dma_bcom_irq_tx(int irq, void *_psc_dma_stream)
+ {
+ 	struct psc_dma_stream *s = _psc_dma_stream;
+ 
++	spin_lock(&s->psc_dma->lock);
+ 	/* For each finished period, dequeue the completed period buffer
+ 	 * and enqueue a new one in it's place. */
+ 	while (bcom_buffer_done(s->bcom_task)) {
+@@ -95,6 +96,7 @@ static irqreturn_t psc_dma_bcom_irq_tx(int irq, void *_psc_dma_stream)
+ 			s->period_current_pt = s->period_start;
+ 	}
+ 	psc_dma_bcom_enqueue_tx(s);
++	spin_unlock(&s->psc_dma->lock);
+ 
+ 	/* If the stream is active, then also inform the PCM middle layer
+ 	 * of the period finished event. */
+@@ -108,6 +110,7 @@ static irqreturn_t psc_dma_bcom_irq_rx(int irq, void *_psc_dma_stream)
+ {
+ 	struct psc_dma_stream *s = _psc_dma_stream;
+ 
++	spin_lock(&s->psc_dma->lock);
+ 	/* For each finished period, dequeue the completed period buffer
+ 	 * and enqueue a new one in it's place. */
+ 	while (bcom_buffer_done(s->bcom_task)) {
+@@ -119,6 +122,7 @@ static irqreturn_t psc_dma_bcom_irq_rx(int irq, void *_psc_dma_stream)
+ 
+ 		psc_dma_bcom_enqueue_next_buffer(s);
+ 	}
++	spin_unlock(&s->psc_dma->lock);
+ 
+ 	/* If the stream is active, then also inform the PCM middle layer
+ 	 * of the period finished event. */
+@@ -182,6 +186,8 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
+ 		/* Fill up the bestcomm bd queue and enable DMA.
+ 		 * This will begin filling the PSC's fifo.
+ 		 */
++		spin_lock_irqsave(&psc_dma->lock, flags);
++
+ 		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE) {
+ 			bcom_gen_bd_rx_reset(s->bcom_task);
+ 			for (i = 0; i < runtime->periods; i++)
+@@ -193,21 +199,22 @@ static int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd)
+ 		}
+ 
+ 		bcom_enable(s->bcom_task);
++		spin_unlock_irqrestore(&psc_dma->lock, flags);
+ 
+-		spin_lock_irqsave(&psc_dma->lock, flags);
+ 		out_8(&regs->command, MPC52xx_PSC_RST_ERR_STAT);
+-		spin_unlock_irqrestore(&psc_dma->lock, flags);
+ 
+ 		break;
+ 
+ 	case SNDRV_PCM_TRIGGER_STOP:
+ 		s->active = 0;
+ 
++		spin_lock_irqsave(&psc_dma->lock, flags);
+ 		bcom_disable(s->bcom_task);
+ 		if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
+ 			bcom_gen_bd_rx_reset(s->bcom_task);
+ 		else
+ 			bcom_gen_bd_tx_reset(s->bcom_task);
++		spin_unlock_irqrestore(&psc_dma->lock, flags);
+ 
+ 		break;
+ 
+@@ -415,72 +422,6 @@ struct snd_soc_platform mpc5200_audio_dma_platform = {
+ };
+ EXPORT_SYMBOL_GPL(mpc5200_audio_dma_platform);
+ 
+-/* ---------------------------------------------------------------------
+- * Sysfs attributes for error monitoring
+- */
+-
+-static ssize_t psc_dma_status_show(struct device *dev,
+-			   struct device_attribute *attr, char *buf)
+-{
+-	struct psc_dma *psc_dma = dev_get_drvdata(dev);
+-
+-	return sprintf(buf, "status=%.4x sicr=%.8x rfnum=%i rfstat=0x%.4x "
+-			"tfnum=%i tfstat=0x%.4x\n",
+-			in_be16(&psc_dma->psc_regs->sr_csr.status),
+-			in_be32(&psc_dma->psc_regs->sicr),
+-			in_be16(&psc_dma->fifo_regs->rfnum) & 0x1ff,
+-			in_be16(&psc_dma->fifo_regs->rfstat),
+-			in_be16(&psc_dma->fifo_regs->tfnum) & 0x1ff,
+-			in_be16(&psc_dma->fifo_regs->tfstat));
+-}
+-
+-static unsigned long *psc_dma_get_stat_attr(struct psc_dma *psc_dma,
+-							const char *name)
+-{
+-	if (strcmp(name, "playback_underrun") == 0)
+-		return &psc_dma->stats.underrun_count;
+-	if (strcmp(name, "capture_overrun") == 0)
+-		return &psc_dma->stats.overrun_count;
+-
+-	return 0;
+-}
+-
+-static ssize_t psc_dma_stat_show(struct device *dev,
+-				 struct device_attribute *attr, char *buf)
+-{
+-	struct psc_dma *psc_dma = dev_get_drvdata(dev);
+-	unsigned long *attrib;
+-
+-	attrib = psc_dma_get_stat_attr(psc_dma, attr->attr.name);
+-	if (!attrib)
+-		return 0;
+-
+-	return sprintf(buf, "%lu\n", *attrib);
+-}
+-
+-static ssize_t psc_dma_stat_store(struct device *dev,
+-				  struct device_attribute *attr,
+-				  const char *buf,
+-				  size_t count)
+-{
+-	struct psc_dma *psc_dma = dev_get_drvdata(dev);
+-	unsigned long *attrib;
+-
+-	attrib = psc_dma_get_stat_attr(psc_dma, attr->attr.name);
+-	if (!attrib)
+-		return 0;
+-
+-	strict_strtoul(buf, 10, attrib);
+-	return count;
+-}
+-
+-static DEVICE_ATTR(status, 0644, psc_dma_status_show, NULL);
+-static DEVICE_ATTR(playback_underrun, 0644, psc_dma_stat_show,
+-			psc_dma_stat_store);
+-static DEVICE_ATTR(capture_overrun, 0644, psc_dma_stat_show,
+-			psc_dma_stat_store);
+-
+-
+ int mpc5200_audio_dma_create(struct of_device *op)
+ {
+ 	phys_addr_t fifo;
+@@ -589,13 +530,6 @@ int mpc5200_audio_dma_create(struct of_device *op)
+ 	/* Save what we've done so it can be found again later */
+ 	dev_set_drvdata(&op->dev, psc_dma);
+ 
+-	/* Register the SYSFS files */
+-	rc = device_create_file(psc_dma->dev, &dev_attr_status);
+-	rc |= device_create_file(psc_dma->dev, &dev_attr_capture_overrun);
+-	rc |= device_create_file(psc_dma->dev, &dev_attr_playback_underrun);
+-	if (rc)
+-		dev_info(psc_dma->dev, "error creating sysfs files\n");
+-
+ 	/* Tell the ASoC OF helpers about it */
+ 	return snd_soc_register_platform(&mpc5200_audio_dma_platform);
+ }
+diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
+index 2000803..7414c6f 100644
+--- a/sound/soc/fsl/mpc5200_dma.h
++++ b/sound/soc/fsl/mpc5200_dma.h
+@@ -77,4 +77,18 @@ int mpc5200_audio_dma_destroy(struct of_device *op);
+ 
+ extern struct snd_soc_platform mpc5200_audio_dma_platform;
+ 
++/* whack this after Timur's patch is merged in to arch/powerpc/include/asm/delay.h */
++#define spin_event_timeout(condition, timeout, delay, rc)                   \
++{                                                                           \
++       unsigned long __loops = tb_ticks_per_usec * timeout;                \
++       unsigned long __start = get_tbl();                                  \
++       while ((rc = (condition)) && (tb_ticks_since(__start) <= __loops)) \
++               if (delay)                                                  \
++                       udelay(delay);                                      \
++               else                                                        \
++                       cpu_relax();                                        \
++}
++/* whack this after Timur's patch is merged in to arch/powerpc/include/asm/delay.h */
++
++
+ #endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
+diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
+index 480b677..3e6838c 100644
+--- a/sound/soc/fsl/mpc5200_psc_ac97.c
++++ b/sound/soc/fsl/mpc5200_psc_ac97.c
+@@ -17,6 +17,8 @@
+ #include <sound/pcm_params.h>
+ #include <sound/soc.h>
+ 
++#include <asm/time.h>
++#include <asm/delay.h>
+ #include <asm/mpc52xx_psc.h>
+ 
+ #include "mpc5200_dma.h"
+@@ -29,131 +31,76 @@ static struct psc_dma *psc_dma;
+ 
+ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+ {
+-	int timeout;
++	int rc;
+ 	unsigned int val;
+ 
+-	spin_lock(&psc_dma->lock);
+-
+-	/* Wait for it to be ready */
+-	timeout = 1000;
+-	while ((--timeout) && (in_be16(&psc_dma->psc_regs->sr_csr.status) &
+-						MPC52xx_PSC_SR_CMDSEND))
+-		udelay(10);
+-
+-	if (!timeout) {
++	/* Wait for command send status zero = ready */
++	spin_event_timeout((in_be16(&psc_dma->psc_regs->sr_csr.status) &
++				MPC52xx_PSC_SR_CMDSEND), 100, 0, rc);
++	if (rc != 0) {
+ 		pr_err("timeout on ac97 bus (rdy)\n");
+-		return 0xffff;
++		return -ENODEV;
+ 	}
+-
+-	/* Do the read */
++	/* Send the read */
+ 	out_be32(&psc_dma->psc_regs->ac97_cmd, (1<<31) | ((reg & 0x7f) << 24));
+ 
+ 	/* Wait for the answer */
+-	timeout = 1000;
+-	while ((--timeout) && !(in_be16(&psc_dma->psc_regs->sr_csr.status) &
+-						MPC52xx_PSC_SR_DATA_VAL))
+-		udelay(10);
+-
+-	if (!timeout) {
++	spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
++				MPC52xx_PSC_SR_DATA_VAL), 100, 0, rc);
++	if (rc != 0) {
+ 		pr_err("timeout on ac97 read (val) %x\n",
+ 				in_be16(&psc_dma->psc_regs->sr_csr.status));
+-		return 0xffff;
++		return -ENODEV;
+ 	}
+-
+ 	/* Get the data */
+ 	val = in_be32(&psc_dma->psc_regs->ac97_data);
+-	if (((val>>24) & 0x7f) != reg) {
++	if (((val >> 24) & 0x7f) != reg) {
+ 		pr_err("reg echo error on ac97 read\n");
+-		return 0xffff;
++		return -ENODEV;
+ 	}
+ 	val = (val >> 8) & 0xffff;
+ 
+-	spin_unlock(&psc_dma->lock);
+ 	return (unsigned short) val;
+ }
+ 
+ static void psc_ac97_write(struct snd_ac97 *ac97,
+ 				unsigned short reg, unsigned short val)
+ {
+-	int timeout;
+-
+-	spin_lock(&psc_dma->lock);
++	int rc;
+ 
+-	/* Wait for it to be ready */
+-	timeout = 1000;
+-	while ((--timeout) && (in_be16(&psc_dma->psc_regs->sr_csr.status) &
+-						MPC52xx_PSC_SR_CMDSEND))
+-		udelay(10);
+-
+-	if (!timeout) {
+-		pr_err("timeout on ac97 write\n");
++	/* Wait for command status zero = ready */
++	spin_event_timeout((in_be16(&psc_dma->psc_regs->sr_csr.status) &
++				MPC52xx_PSC_SR_CMDSEND), 100, 0, rc);
++	if (rc != 0) {
++		pr_err("timeout on ac97 bus (write)\n");
+ 		return;
+ 	}
+-
+ 	/* Write data */
+ 	out_be32(&psc_dma->psc_regs->ac97_cmd,
+ 			((reg & 0x7f) << 24) | (val << 8));
+-
+-	spin_unlock(&psc_dma->lock);
+ }
+ 
+ static void psc_ac97_warm_reset(struct snd_ac97 *ac97)
+ {
++	int rc;
+ 	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
+ 
+ 	out_be32(&regs->sicr, psc_dma->sicr | MPC52xx_PSC_SICR_AWR);
+-	udelay(3);
++	spin_event_timeout(1, 3, 0, rc);
+ 	out_be32(&regs->sicr, psc_dma->sicr);
+ }
+ 
+-static int psc_ac97_cold_reset_check(struct snd_ac97 *ac97)
+-{
+-	int max_reset, timeout;
+-	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
+-
+-	/* AC97 clock is generated by the codec.
+-	 * Ensure that it starts ticking after codec reset.
+-	 */
+-	for (max_reset = 0; max_reset < 5; max_reset++) {
+-
+-		/* Do a cold reset */
+-		out_8(&regs->op1, MPC52xx_PSC_OP_RES);
+-		udelay(10);
+-		out_8(&regs->op0, MPC52xx_PSC_OP_RES);
+-		udelay(50);
+-
+-		/* PSC recover from cold reset
+-		 * (cfr user manual, not sure if useful)
+-		 */
+-		out_be32(&regs->sicr, in_be32(&regs->sicr));
+-
+-		psc_ac97_warm_reset(ac97);
+-
+-		/* first make sure AC97 clock is low */
+-		for (timeout = 0; ((in_8(&regs->ipcr_acr.ipcr) & 0x80) != 0) &&
+-				(timeout < 100); timeout++)
+-			udelay(10);
+-		if (timeout == 100)
+-			continue;
+-
+-		/* then wait for the transition to high */
+-		for (timeout = 0; ((in_8(&regs->ipcr_acr.ipcr) & 0x80) == 0) &&
+-				(timeout < 100); timeout++)
+-			udelay(10);
+-		if (timeout == 100)
+-			continue;
+-
+-		break;
+-	}
+-	if (max_reset == 5)
+-		return -ENODEV;
+-	return 0;
+-}
+-
+ static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
+ {
+-	psc_ac97_cold_reset_check(ac97);
++	int rc;
++	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
+ 
++	/* Do a cold reset */
++	out_8(&regs->op1, MPC52xx_PSC_OP_RES);
++	spin_event_timeout(1, 10, 0, rc);
++	out_8(&regs->op0, MPC52xx_PSC_OP_RES);
++	spin_event_timeout(1, 50, 0, rc);
++	psc_ac97_warm_reset(ac97);
+ }
+ 
+ struct snd_ac97_bus_ops soc_ac97_ops = {
+@@ -191,10 +138,7 @@ static int psc_ac97_hw_analog_params(struct snd_pcm_substream *substream,
+ 		else
+ 			psc_dma->slots |= 0x03000000;
+ 	}
+-
+-	spin_lock(&psc_dma->lock);
+ 	out_be32(&psc_dma->psc_regs->ac97_slots, psc_dma->slots);
+-	spin_unlock(&psc_dma->lock);
+ 
+ 	return 0;
+ }
+@@ -205,12 +149,10 @@ static int psc_ac97_hw_digital_params(struct snd_pcm_substream *substream,
+ {
+ 	struct psc_dma *psc_dma = cpu_dai->private_data;
+ 
+-	spin_lock(&psc_dma->lock);
+ 	if (params_channels(params) == 1)
+ 		out_be32(&psc_dma->psc_regs->ac97_slots, 0x01000000);
+ 	else
+ 		out_be32(&psc_dma->psc_regs->ac97_slots, 0x03000000);
+-	spin_unlock(&psc_dma->lock);
+ 
+ 	return 0;
+ }
+@@ -228,14 +170,23 @@ static int psc_ac97_trigger(struct snd_pcm_substream *substream, int cmd,
+ 		else
+ 			psc_dma->slots &= 0x0000FFFF;
+ 
+-		spin_lock(&psc_dma->lock);
+ 		out_be32(&psc_dma->psc_regs->ac97_slots, psc_dma->slots);
+-		spin_unlock(&psc_dma->lock);
+ 		break;
+ 	}
+ 	return 0;
+ }
+ 
++static int psc_ac97_probe(struct platform_device *pdev,
++					struct snd_soc_dai *cpu_dai)
++{
++	struct psc_dma *psc_dma = cpu_dai->private_data;
++	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
++
++	/* Go */
++	out_8(&regs->command, MPC52xx_PSC_TX_ENABLE | MPC52xx_PSC_RX_ENABLE);
++	return 0;
++}
++
+ /* ---------------------------------------------------------------------
+  * ALSA SoC Bindings
+  *
+@@ -259,6 +210,7 @@ struct snd_soc_dai psc_ac97_dai[] = {
+ {
+ 	.name   = "AC97",
+ 	.ac97_control = 1,
++	.probe	= psc_ac97_probe,
+ 	.playback = {
+ 		.channels_min   = 1,
+ 		.channels_max   = 6,
+@@ -297,7 +249,7 @@ EXPORT_SYMBOL_GPL(psc_ac97_dai);
+ static int __devinit psc_ac97_of_probe(struct of_device *op,
+ 				      const struct of_device_id *match)
+ {
+-	int rc, i, id1, id2;
++	int rc, i;
+ 	struct snd_ac97 ac97;
+ 	struct mpc52xx_psc __iomem *regs;
+ 
+@@ -331,19 +283,6 @@ static int __devinit psc_ac97_of_probe(struct of_device *op,
+ 	/* No slots active */
+ 	out_be32(&regs->ac97_slots, 0x00000000);
+ 
+-	/* AC97 clock is generated by the codec.
+-	 * Ensure that it starts ticking after codec reset.
+-	 */
+-	rc = psc_ac97_cold_reset_check(&ac97);
+-	if (rc != 0) {
+-		dev_err(&op->dev, "AC97 codec failed to reset\n");
+-		mpc5200_audio_dma_destroy(op);
+-		return rc;
+-	}
+-
+-	/* Go */
+-	out_8(&regs->command, MPC52xx_PSC_TX_ENABLE | MPC52xx_PSC_RX_ENABLE);
+-
+ 	return 0;
+ }
+ 
+diff --git a/sound/soc/fsl/pcm030-audio-fabric.c b/sound/soc/fsl/pcm030-audio-fabric.c
+index deb59e0..6e4e05e 100644
+--- a/sound/soc/fsl/pcm030-audio-fabric.c
++++ b/sound/soc/fsl/pcm030-audio-fabric.c
+@@ -81,12 +81,7 @@ static __init int pcm030_fabric_init(void)
+ 	return 0;
+ }
+ 
+-static __exit void pcm030_fabric_exit(void)
+-{
+-}
+-
+ module_init(pcm030_fabric_init);
+-module_exit(pcm030_fabric_exit);
+ 
+ 
+ MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
