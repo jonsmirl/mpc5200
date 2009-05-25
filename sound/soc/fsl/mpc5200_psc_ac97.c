@@ -56,7 +56,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 
 	if (!timeout) {
 		pr_err("timeout on ac97 read (val) %x\n",
-								in_be16(&psc_dma->psc_regs->sr_csr.status));
+				in_be16(&psc_dma->psc_regs->sr_csr.status));
 		return 0xffff;
 	}
 
@@ -73,7 +73,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 }
 
 static void psc_ac97_write(struct snd_ac97 *ac97,
-							unsigned short reg, unsigned short val)
+				unsigned short reg, unsigned short val)
 {
 	int timeout;
 
@@ -92,7 +92,7 @@ static void psc_ac97_write(struct snd_ac97 *ac97,
 
 	/* Write data */
 	out_be32(&psc_dma->psc_regs->ac97_cmd,
-							((reg & 0x7f) << 24) | (val << 8));
+			((reg & 0x7f) << 24) | (val << 8));
 
 	spin_unlock(&psc_dma->lock);
 }
@@ -283,7 +283,7 @@ struct snd_soc_dai psc_ac97_dai[] = {
 		.formats = SNDRV_PCM_FMTBIT_IEC958_SUBFRAME_BE,
 	},
 	.ops = &psc_ac97_digital_ops,
-}};
+} };
 EXPORT_SYMBOL_GPL(psc_ac97_dai);
 
 
