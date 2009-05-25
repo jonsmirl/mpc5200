@@ -1,5 +1,5 @@
 Bottom: 21d195ee4cd9cffd483436ecbcd46e033f205137
-Top:    8f0ff7804c7ffeafc3dd26656245c2293ce04cda
+Top:    3ea67777882d3b4e291d3d9a4beb024811f02846
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:48 -0400
 
@@ -25,7 +25,7 @@ index dc79bdf..1918c78 100644
  	select PPC_BESTCOMM_GEN_BD
  	help
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 6850392..a9ad54d 100644
+index 6850392..f6a9152 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -3,23 +3,13 @@
@@ -199,7 +199,7 @@ index 6850392..a9ad54d 100644
  
  	if (substream->pstr->stream == SNDRV_PCM_STREAM_CAPTURE)
  		s = &psc_dma->capture;
-@@ -189,68 +169,44 @@ int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+@@ -189,68 +169,45 @@ int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
  				(s->period_bytes * runtime->periods);
  		s->period_next_pt = s->period_start;
  		s->period_current_pt = s->period_start;
@@ -211,7 +211,8 @@ index 6850392..a9ad54d 100644
 +		 * end of stream and not over running it.
 +		 */
 +		s->runtime = runtime;
-+		s->appl_ptr = s->runtime->control->appl_ptr - (runtime->period_size * runtime->periods);
++		s->appl_ptr = s->runtime->control->appl_ptr -
++				(runtime->period_size * runtime->periods);
 +
 +		/* Fill up the bestcomm bd queue and enable DMA.
 +		 * This will begin filling the PSC's fifo.
@@ -289,7 +290,7 @@ index 6850392..a9ad54d 100644
  
  		break;
  
-@@ -265,44 +221,11 @@ int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
+@@ -265,44 +222,11 @@ int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
  		imr |= MPC52xx_PSC_IMR_TXEMP;
  	if (psc_dma->capture.active)
  		imr |= MPC52xx_PSC_IMR_ORERR;
@@ -335,7 +336,7 @@ index 6850392..a9ad54d 100644
  
  /* ---------------------------------------------------------------------
   * The PSC DMA 'ASoC platform' driver
-@@ -312,62 +235,78 @@ void psc_dma_shutdown(struct snd_pcm_substream *substream,
+@@ -312,62 +236,78 @@ void psc_dma_shutdown(struct snd_pcm_substream *substream,
   * interaction with the attached codec
   */
  
@@ -424,7 +425,7 @@ index 6850392..a9ad54d 100644
  {
  	struct snd_soc_pcm_runtime *rtd = substream->private_data;
  	struct psc_dma *psc_dma = rtd->dai->cpu_dai->private_data;
-@@ -384,60 +323,78 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
+@@ -384,60 +324,78 @@ psc_dma_pcm_pointer(struct snd_pcm_substream *substream)
  	return bytes_to_frames(substream->runtime, count);
  }
  
@@ -435,9 +436,9 @@ index 6850392..a9ad54d 100644
 +psc_dma_hw_params(struct snd_pcm_substream *substream,
 +			 struct snd_pcm_hw_params *params)
 +{
-+  	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
++	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 +
-+  	return 0;
++	return 0;
 +}
 +
 +static struct snd_pcm_ops psc_dma_ops = {
@@ -475,16 +476,18 @@ index 6850392..a9ad54d 100644
  
  	if (pcm->streams[0].substream) {
 -		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
-+		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
- 					&pcm->streams[0].substream->dma_buffer);
+-					&pcm->streams[0].substream->dma_buffer);
++		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev,
++				size, &pcm->streams[0].substream->dma_buffer);
  		if (rc)
  			goto playback_alloc_err;
  	}
  
  	if (pcm->streams[1].substream) {
 -		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->dev, size,
-+		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev, size,
- 					&pcm->streams[1].substream->dma_buffer);
+-					&pcm->streams[1].substream->dma_buffer);
++		rc = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, pcm->card->dev,
++				size, &pcm->streams[1].substream->dma_buffer);
  		if (rc)
  			goto capture_alloc_err;
  	}
@@ -516,7 +519,7 @@ index 6850392..a9ad54d 100644
  
  	for (stream = 0; stream < 2; stream++) {
  		substream = pcm->streams[stream].substream;
-@@ -449,10 +406,219 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
+@@ -449,10 +407,219 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
  	}
  }
  
@@ -566,7 +569,7 @@ index 6850392..a9ad54d 100644
 +{
 +	struct psc_dma *psc_dma = dev_get_drvdata(dev);
 +	int *attrib;
-+
+ 
 +	attrib = psc_dma_get_stat_attr(psc_dma, attr->attr.name);
 +	if (!attrib)
 +		return 0;
@@ -720,7 +723,7 @@ index 6850392..a9ad54d 100644
 +	dev_dbg(&op->dev, "mpc5200_audio_dma_destroy()\n");
 +
 +	snd_soc_unregister_platform(&mpc5200_audio_dma_platform);
- 
++
 +	bcom_gen_bd_rx_release(psc_dma->capture.bcom_task);
 +	bcom_gen_bd_tx_release(psc_dma->playback.bcom_task);
 +
