@@ -1,5 +1,5 @@
 Bottom: 2f87e1b0c3ce875bbdedec6b1440684ea18f857d
-Top:    a41af65b75262bd2050f073ce0c00d5a38b25df3
+Top:    6e1443faa81de440f01a53be6c8ad1ff680231ff
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:49 -0400
 
@@ -40,12 +40,13 @@ index 66d88c8..a83a739 100644
  
 diff --git a/sound/soc/fsl/efika-audio-fabric.c b/sound/soc/fsl/efika-audio-fabric.c
 new file mode 100644
-index 0000000..5126a81
+index 0000000..4b7ed2b
 --- /dev/null
 +++ b/sound/soc/fsl/efika-audio-fabric.c
-@@ -0,0 +1,94 @@
+@@ -0,0 +1,95 @@
 +/*
-+ * Efika driver for the PSC of the Freescale MPC52xx configured as AC97 interface
++ * Efika driver for the PSC of the Freescale MPC52xx
++ * configured as AC97 interface
 + *
 + * Copyright 2008 Jon Smirl, Digispeaker
 + * Author: Jon Smirl <jonsmirl@gmail.com>
