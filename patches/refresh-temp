@@ -1,0 +1,26 @@
+Bottom: 6e1443faa81de440f01a53be6c8ad1ff680231ff
+Top:    5ef84dc7e02c4efa5ef471141b7a85924b0c94f4
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-25 17:56:02 -0400
+
+Refresh of efika-audio
+
+---
+
+diff --git a/sound/soc/fsl/efika-audio-fabric.c b/sound/soc/fsl/efika-audio-fabric.c
+index 4b7ed2b..85b0e75 100644
+--- a/sound/soc/fsl/efika-audio-fabric.c
++++ b/sound/soc/fsl/efika-audio-fabric.c
+@@ -81,12 +81,7 @@ static __init int efika_fabric_init(void)
+ 	return 0;
+ }
+ 
+-static __exit void efika_fabric_exit(void)
+-{
+-}
+-
+ module_init(efika_fabric_init);
+-module_exit(efika_fabric_exit);
+ 
+ 
+ MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
