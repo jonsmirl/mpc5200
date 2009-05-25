@@ -81,12 +81,7 @@ static __init int efika_fabric_init(void)
 	return 0;
 }
 
-static __exit void efika_fabric_exit(void)
-{
-}
-
 module_init(efika_fabric_init);
-module_exit(efika_fabric_exit);
 
 
 MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
