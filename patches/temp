@@ -1,4 +1,4 @@
-Bottom: d45c6a5c8acec6a01cdaf242eaef00c14fa2f8bb
+Bottom: 8030370b9c334380ef8ba7ff4c12a1733a2d6d00
 Top:    ac8e327816f8b685778645d864fe00000d1de5d0
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:51 -0400
@@ -8,58 +8,6 @@ Temporary holding patch
 
 ---
 
-diff --git a/arch/powerpc/include/asm/delay.h b/arch/powerpc/include/asm/delay.h
-index f9200a6..fedf037 100644
---- a/arch/powerpc/include/asm/delay.h
-+++ b/arch/powerpc/include/asm/delay.h
-@@ -2,8 +2,11 @@
- #define _ASM_POWERPC_DELAY_H
- #ifdef __KERNEL__
- 
-+#include <asm/time.h>
-+
- /*
-  * Copyright 1996, Paul Mackerras.
-+ * Copyright (C) 2009 Freescale Semiconductor, Inc. All rights reserved.
-  *
-  * This program is free software; you can redistribute it and/or
-  * modify it under the terms of the GNU General Public License
-@@ -30,5 +33,35 @@ extern void udelay(unsigned long usecs);
- #define mdelay(n)	udelay((n) * 1000)
- #endif
- 
-+/**
-+ * spin_event_timeout - spin until a condition gets true or a timeout elapses
-+ * @condition: a C expression to evalate
-+ * @timeout: timeout, in microseconds
-+ * @delay: the number of microseconds to delay between eache evaluation of
-+ *         @condition
-+ * @rc: the last value of the condition
-+ *
-+ * The process spins until the condition evaluates to true (non-zero) or the
-+ * timeout elapses.  Upon exit, @rc contains the value of the condition. This
-+ * allows you to test the condition without incurring any side effects.
-+ *
-+ * This primary purpose of this macro is to poll on a hardware register
-+ * until a status bit changes.  The timeout ensures that the loop still
-+ * terminates even if the bit never changes.  The delay is for devices that
-+ * need a delay in between successive reads.
-+ *
-+ * gcc will optimize out the if-statement if @delay is a constant.
-+ */
-+#define spin_event_timeout(condition, timeout, delay, rc)                   \
-+{                                                                           \
-+	unsigned long __loops = tb_ticks_per_usec * timeout;                \
-+	unsigned long __start = get_tbl();                                  \
-+	while ((rc = (condition)) && (tb_ticks_since(__start) <= __loops)) \
-+		if (delay)                                                  \
-+			udelay(delay);                                      \
-+		else	                                                    \
-+			cpu_relax();                                        \
-+}
-+
- #endif /* __KERNEL__ */
- #endif /* _ASM_POWERPC_DELAY_H */
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
 index 4e1f1f8..efec33a 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
