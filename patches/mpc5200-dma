@@ -1,5 +1,5 @@
 Bottom: 21d195ee4cd9cffd483436ecbcd46e033f205137
-Top:    3ba8fc772131bc7b340b40d29b891479e9a042f2
+Top:    570672aefc8eead26d1cd12c8a590658f97b71c9
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:48 -0400
 
@@ -25,7 +25,7 @@ index dc79bdf..1918c78 100644
  	select PPC_BESTCOMM_GEN_BD
  	help
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 6850392..56dbb15 100644
+index 6850392..4e1f1f8 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -3,23 +3,13 @@
@@ -519,7 +519,7 @@ index 6850392..56dbb15 100644
  
  	for (stream = 0; stream < 2; stream++) {
  		substream = pcm->streams[stream].substream;
-@@ -449,10 +407,219 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
+@@ -449,10 +407,224 @@ static void psc_dma_pcm_free(struct snd_pcm *pcm)
  	}
  }
  
@@ -554,13 +554,14 @@ index 6850392..56dbb15 100644
 +			in_be16(&psc_dma->fifo_regs->tfstat));
 +}
 +
-+static unsigned long *psc_dma_get_stat_attr(struct psc_dma *psc_dma, const char *name)
++static unsigned long *psc_dma_get_stat_attr(struct psc_dma *psc_dma,
++							const char *name)
 +{
 +	if (strcmp(name, "playback_underrun") == 0)
 +		return &psc_dma->stats.underrun_count;
 +	if (strcmp(name, "capture_overrun") == 0)
 +		return &psc_dma->stats.overrun_count;
- 
++
 +	return 0;
 +}
 +
@@ -576,7 +577,7 @@ index 6850392..56dbb15 100644
 +
 +	return sprintf(buf, "%lu\n", *attrib);
 +}
-+
+ 
 +static ssize_t psc_dma_stat_store(struct device *dev,
 +				  struct device_attribute *attr,
 +				  const char *buf,
@@ -660,10 +661,14 @@ index 6850392..56dbb15 100644
 +
 +	/* Disable all interrupts and reset the PSC */
 +	out_be16(&psc_dma->psc_regs->isr_imr.imr, psc_dma->imr);
-+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_RX); /* reset receiver */
-+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_TX); /* reset transmitter */
-+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_ERR_STAT); /* reset error */
-+	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_SEL_MODE_REG_1); /* reset mode */
++	 /* reset receiver */
++	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_RX);
++	 /* reset transmitter */
++	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_TX);
++	 /* reset error */
++	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_RST_ERR_STAT);
++	 /* reset mode */
++	out_8(&psc_dma->psc_regs->command, MPC52xx_PSC_SEL_MODE_REG_1);
 +
 +	/* Set up mode register;
 +	 * First write: RxRdy (FIFO Alarm) generates rx FIFO irq
