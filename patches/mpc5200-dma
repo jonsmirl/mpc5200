@@ -1,5 +1,5 @@
 Bottom: 21d195ee4cd9cffd483436ecbcd46e033f205137
-Top:    3ea67777882d3b4e291d3d9a4beb024811f02846
+Top:    3ba8fc772131bc7b340b40d29b891479e9a042f2
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:48 -0400
 
@@ -25,7 +25,7 @@ index dc79bdf..1918c78 100644
  	select PPC_BESTCOMM_GEN_BD
  	help
 diff --git a/sound/soc/fsl/mpc5200_dma.c b/sound/soc/fsl/mpc5200_dma.c
-index 6850392..f6a9152 100644
+index 6850392..56dbb15 100644
 --- a/sound/soc/fsl/mpc5200_dma.c
 +++ b/sound/soc/fsl/mpc5200_dma.c
 @@ -3,23 +3,13 @@
@@ -554,27 +554,27 @@ index 6850392..f6a9152 100644
 +			in_be16(&psc_dma->fifo_regs->tfstat));
 +}
 +
-+static int *psc_dma_get_stat_attr(struct psc_dma *psc_dma, const char *name)
++static unsigned long *psc_dma_get_stat_attr(struct psc_dma *psc_dma, const char *name)
 +{
 +	if (strcmp(name, "playback_underrun") == 0)
 +		return &psc_dma->stats.underrun_count;
 +	if (strcmp(name, "capture_overrun") == 0)
 +		return &psc_dma->stats.overrun_count;
-+
-+	return NULL;
+ 
++	return 0;
 +}
 +
 +static ssize_t psc_dma_stat_show(struct device *dev,
 +				 struct device_attribute *attr, char *buf)
 +{
 +	struct psc_dma *psc_dma = dev_get_drvdata(dev);
-+	int *attrib;
- 
++	unsigned long *attrib;
++
 +	attrib = psc_dma_get_stat_attr(psc_dma, attr->attr.name);
 +	if (!attrib)
 +		return 0;
 +
-+	return sprintf(buf, "%i\n", *attrib);
++	return sprintf(buf, "%lu\n", *attrib);
 +}
 +
 +static ssize_t psc_dma_stat_store(struct device *dev,
@@ -583,13 +583,13 @@ index 6850392..f6a9152 100644
 +				  size_t count)
 +{
 +	struct psc_dma *psc_dma = dev_get_drvdata(dev);
-+	int *attrib;
++	unsigned long *attrib;
 +
 +	attrib = psc_dma_get_stat_attr(psc_dma, attr->attr.name);
 +	if (!attrib)
 +		return 0;
 +
-+	*attrib = simple_strtoul(buf, NULL, 0);
++	strict_strtoul(buf, 10, attrib);
 +	return count;
 +}
 +
@@ -744,7 +744,7 @@ index 6850392..f6a9152 100644
 +MODULE_DESCRIPTION("Freescale MPC5200 PSC in DMA mode ASoC Driver");
 +MODULE_LICENSE("GPL");
 diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
-index a33232c..3b2ded9 100644
+index a33232c..2000803 100644
 --- a/sound/soc/fsl/mpc5200_dma.h
 +++ b/sound/soc/fsl/mpc5200_dma.h
 @@ -5,8 +5,10 @@
@@ -791,7 +791,14 @@ index a33232c..3b2ded9 100644
  
  	/* per-stream data */
  	struct psc_dma_stream playback;
-@@ -63,19 +72,9 @@ struct psc_dma {
+@@ -58,24 +67,14 @@ struct psc_dma {
+ 
+ 	/* Statistics */
+ 	struct {
+-		int overrun_count;
+-		int underrun_count;
++		unsigned long overrun_count;
++		unsigned long underrun_count;
  	} stats;
  };
  
