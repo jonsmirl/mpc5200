@@ -85,6 +85,6 @@ module_init(pcm030_fabric_init);
 
 
 MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
-MODULE_DESCRIPTION(DRV_NAME ": mpc5200 pcm030 fabric driver");
+MODULE_DESCRIPTION("mpc5200 pcm030 fabric driver");
 MODULE_LICENSE("GPL");
 
