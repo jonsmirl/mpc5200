@@ -1,5 +1,5 @@
 Bottom: b04a83995a1cf16866d159fa883be26bdfbc54ad
-Top:    152589b28a155ce91a86fb6313b8d21d488eff76
+Top:    a689f0b83cb55d0addada09b6bd6a3bba6efd6a5
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:48 -0400
 
@@ -685,7 +685,7 @@ index 6850392..efec33a 100644
 +MODULE_DESCRIPTION("Freescale MPC5200 PSC in DMA mode ASoC Driver");
 +MODULE_LICENSE("GPL");
 diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
-index a33232c..7414c6f 100644
+index a33232c..2000803 100644
 --- a/sound/soc/fsl/mpc5200_dma.h
 +++ b/sound/soc/fsl/mpc5200_dma.h
 @@ -5,8 +5,10 @@
@@ -732,7 +732,7 @@ index a33232c..7414c6f 100644
  
  	/* per-stream data */
  	struct psc_dma_stream playback;
-@@ -58,24 +67,28 @@ struct psc_dma {
+@@ -58,24 +67,14 @@ struct psc_dma {
  
  	/* Statistics */
  	struct {
@@ -754,24 +754,12 @@ index a33232c..7414c6f 100644
 -
 -void psc_dma_shutdown(struct snd_pcm_substream *substream,
 -			     struct snd_soc_dai *dai);
-+extern struct snd_soc_platform mpc5200_audio_dma_platform;
- 
+-
 -int psc_dma_trigger(struct snd_pcm_substream *substream, int cmd,
 -			   struct snd_soc_dai *dai);
-+/* whack this after Timur's patch is merged in to arch/powerpc/include/asm/delay.h */
-+#define spin_event_timeout(condition, timeout, delay, rc)                   \
-+{                                                                           \
-+       unsigned long __loops = tb_ticks_per_usec * timeout;                \
-+       unsigned long __start = get_tbl();                                  \
-+       while ((rc = (condition)) && (tb_ticks_since(__start) <= __loops)) \
-+               if (delay)                                                  \
-+                       udelay(delay);                                      \
-+               else                                                        \
-+                       cpu_relax();                                        \
-+}
-+/* whack this after Timur's patch is merged in to arch/powerpc/include/asm/delay.h */
- 
+-
 -extern struct snd_soc_platform psc_dma_pcm_soc_platform;
++extern struct snd_soc_platform mpc5200_audio_dma_platform;
  
  #endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
 diff --git a/sound/soc/fsl/mpc5200_psc_i2s.c b/sound/soc/fsl/mpc5200_psc_i2s.c
