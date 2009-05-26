@@ -1,6 +1,6 @@
 Version: 1
-Previous: d662afcb71ea10bdb89c9fe31b126cf050ff219e
-Head: f343e0d52f9770aa118bf2a6ef94fd737355c639
+Previous: ce20588c698650123af23e5cc4053964230f2e57
+Head: 11d2e808bc141ca441e0dc15925b5710bc8ad064
 Applied:
   Makefile: bbf38326885bbaac0f2e4075ee3cd2bf9c9639ad
   digispeak: fdfaab706bd4e83c9034d12644b05d58f66e9c37
@@ -17,6 +17,7 @@ Applied:
   soc-u32-cleanup: 0b68ef597c33ded9ae98f7e77faf232663bfe2b6
   timur: 031709892721a1e187c3d79e588fbbdf2d3e2a25
   mpc5200-dma: 11d2e808bc141ca441e0dc15925b5710bc8ad064
+Unapplied:
   mpc5200-ac97: 9bb2aa59e911cec02978297b16929058f2ba5cbe
   phytec: 687907a2bbb49d5a862a0b85ae94cde0e718b7b7
   efika-audio: 08308fcabe3e18864adc30ce555a040b8d348977
@@ -26,5 +27,4 @@ Applied:
   dspeak-audio: 5012e756be489e104080f6b99029f639521f6de7
   mmc-spi: afe7f47bfe8a6b9d2991226d8c5560f4c1c88a58
   temp: f343e0d52f9770aa118bf2a6ef94fd737355c639
-Unapplied:
 Hidden:
