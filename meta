@@ -1,6 +1,6 @@
 Version: 1
-Previous: 6737daf3cde75b107ae3f7b1cef1c43c3496b644
-Head: 54dc0d81f17c625886a53384f5d6c9015f921bcd
+Previous: 0a3e5101213139940393cb8521e68731a78b2592
+Head: 031709892721a1e187c3d79e588fbbdf2d3e2a25
 Applied:
   Makefile: bbf38326885bbaac0f2e4075ee3cd2bf9c9639ad
   digispeak: fdfaab706bd4e83c9034d12644b05d58f66e9c37
@@ -15,7 +15,7 @@ Applied:
   jds-lirc-device-tree: 240619edef18c280d169862e66c5eb4ba1b4830e
   jds-lirc-mce2: 4c05e37d26432db4e3fecde7702c9bd86c1bfe03
   soc-u32-cleanup: 0b68ef597c33ded9ae98f7e77faf232663bfe2b6
-  timur: 54dc0d81f17c625886a53384f5d6c9015f921bcd
+  timur: 031709892721a1e187c3d79e588fbbdf2d3e2a25
 Unapplied:
   mpc5200-dma: 90103241ff3f5a0c73c161d3b6755ddef84bdba2
   mpc5200-ac97: fa0963c7d05687a04903af07fa82fbd49e66d057

@@ -3,6 +3,8 @@ Top:    b04a83995a1cf16866d159fa883be26bdfbc54ad
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-25 17:54:06 -0400
 
+powerpc: introduce macro spin_event_timeout()
+
 The macro spin_event_timeout() takes a condition and timeout value
 (in microseconds) as parameters.  It spins until either the condition is true
 or the timeout expires.  It returns the result of the condition when the loop
