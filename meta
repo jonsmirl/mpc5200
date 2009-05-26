@@ -1,6 +1,6 @@
 Version: 1
-Previous: 2427cd2e64995455aed2696475ddea006ebad14b
-Head: ddf4f15bdd6543254a27d781bc7b6d869b0b1177
+Previous: 3b6d7bf849288e507d6148e2d4ba29e0fe1064d4
+Head: 04570f560d035c9c1c00d0a378e0b90f95fb9200
 Applied:
   Makefile: bbf38326885bbaac0f2e4075ee3cd2bf9c9639ad
   digispeak: fdfaab706bd4e83c9034d12644b05d58f66e9c37
@@ -16,6 +16,7 @@ Applied:
   jds-lirc-mce2: 4c05e37d26432db4e3fecde7702c9bd86c1bfe03
   soc-u32-cleanup: 0b68ef597c33ded9ae98f7e77faf232663bfe2b6
   timur: 04570f560d035c9c1c00d0a378e0b90f95fb9200
+Unapplied:
   mpc5200-dma: 90103241ff3f5a0c73c161d3b6755ddef84bdba2
   mpc5200-ac97: fa0963c7d05687a04903af07fa82fbd49e66d057
   phytec: 73e581d435941787c36047dde496af4c652ec728
@@ -26,5 +27,4 @@ Applied:
   dspeak-audio: 34bb74483ef35dd32158cc3813b0c620406064e9
   mmc-spi: 35189323d24d8a4f8887f140b80af52dc449ca22
   temp: ddf4f15bdd6543254a27d781bc7b6d869b0b1177
-Unapplied:
 Hidden:
