@@ -1,5 +1,5 @@
 Bottom: adc27b1d4a2a1b5784ba226e3cc1fd92af8bf10b
-Top:    ac8e327816f8b685778645d864fe00000d1de5d0
+Top:    bc86a460886b269af3c734d339098a5882be72cb
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:51 -0400
 
@@ -8,6 +8,103 @@ Temporary holding patch
 
 ---
 
+diff --git a/arch/powerpc/include/asm/delay.h b/arch/powerpc/include/asm/delay.h
+index fedf037..af4a270 100644
+--- a/arch/powerpc/include/asm/delay.h
++++ b/arch/powerpc/include/asm/delay.h
+@@ -56,7 +56,7 @@ extern void udelay(unsigned long usecs);
+ {                                                                           \
+ 	unsigned long __loops = tb_ticks_per_usec * timeout;                \
+ 	unsigned long __start = get_tbl();                                  \
+-	while ((rc = (condition)) && (tb_ticks_since(__start) <= __loops)) \
++	while (!(rc = (condition)) && (tb_ticks_since(__start) <= __loops)) \
+ 		if (delay)                                                  \
+ 			udelay(delay);                                      \
+ 		else	                                                    \
+diff --git a/sound/soc/fsl/mpc5200_dma.h b/sound/soc/fsl/mpc5200_dma.h
+index 7414c6f..2000803 100644
+--- a/sound/soc/fsl/mpc5200_dma.h
++++ b/sound/soc/fsl/mpc5200_dma.h
+@@ -77,18 +77,4 @@ int mpc5200_audio_dma_destroy(struct of_device *op);
+ 
+ extern struct snd_soc_platform mpc5200_audio_dma_platform;
+ 
+-/* whack this after Timur's patch is merged in to arch/powerpc/include/asm/delay.h */
+-#define spin_event_timeout(condition, timeout, delay, rc)                   \
+-{                                                                           \
+-       unsigned long __loops = tb_ticks_per_usec * timeout;                \
+-       unsigned long __start = get_tbl();                                  \
+-       while ((rc = (condition)) && (tb_ticks_since(__start) <= __loops)) \
+-               if (delay)                                                  \
+-                       udelay(delay);                                      \
+-               else                                                        \
+-                       cpu_relax();                                        \
+-}
+-/* whack this after Timur's patch is merged in to arch/powerpc/include/asm/delay.h */
+-
+-
+ #endif /* __SOUND_SOC_FSL_MPC5200_DMA_H__ */
+diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
+index 3e6838c..9f2df15 100644
+--- a/sound/soc/fsl/mpc5200_psc_ac97.c
++++ b/sound/soc/fsl/mpc5200_psc_ac97.c
+@@ -35,9 +35,9 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+ 	unsigned int val;
+ 
+ 	/* Wait for command send status zero = ready */
+-	spin_event_timeout((in_be16(&psc_dma->psc_regs->sr_csr.status) &
++	spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
+ 				MPC52xx_PSC_SR_CMDSEND), 100, 0, rc);
+-	if (rc != 0) {
++	if (rc == 0) {
+ 		pr_err("timeout on ac97 bus (rdy)\n");
+ 		return -ENODEV;
+ 	}
+@@ -45,9 +45,9 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+ 	out_be32(&psc_dma->psc_regs->ac97_cmd, (1<<31) | ((reg & 0x7f) << 24));
+ 
+ 	/* Wait for the answer */
+-	spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
++	spin_event_timeout((in_be16(&psc_dma->psc_regs->sr_csr.status) &
+ 				MPC52xx_PSC_SR_DATA_VAL), 100, 0, rc);
+-	if (rc != 0) {
++	if (rc == 0) {
+ 		pr_err("timeout on ac97 read (val) %x\n",
+ 				in_be16(&psc_dma->psc_regs->sr_csr.status));
+ 		return -ENODEV;
+@@ -69,9 +69,9 @@ static void psc_ac97_write(struct snd_ac97 *ac97,
+ 	int rc;
+ 
+ 	/* Wait for command status zero = ready */
+-	spin_event_timeout((in_be16(&psc_dma->psc_regs->sr_csr.status) &
++	spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
+ 				MPC52xx_PSC_SR_CMDSEND), 100, 0, rc);
+-	if (rc != 0) {
++	if (rc == 0) {
+ 		pr_err("timeout on ac97 bus (write)\n");
+ 		return;
+ 	}
+@@ -86,7 +86,7 @@ static void psc_ac97_warm_reset(struct snd_ac97 *ac97)
+ 	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
+ 
+ 	out_be32(&regs->sicr, psc_dma->sicr | MPC52xx_PSC_SICR_AWR);
+-	spin_event_timeout(1, 3, 0, rc);
++	spin_event_timeout(0, 3, 0, rc);
+ 	out_be32(&regs->sicr, psc_dma->sicr);
+ }
+ 
+@@ -97,9 +97,9 @@ static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
+ 
+ 	/* Do a cold reset */
+ 	out_8(&regs->op1, MPC52xx_PSC_OP_RES);
+-	spin_event_timeout(1, 10, 0, rc);
++	spin_event_timeout(0, 10, 0, rc);
+ 	out_8(&regs->op0, MPC52xx_PSC_OP_RES);
+-	spin_event_timeout(1, 50, 0, rc);
++	spin_event_timeout(0, 50, 0, rc);
+ 	psc_ac97_warm_reset(ac97);
+ }
+ 
 diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
 index bad9d88..cc1e618 100644
 --- a/sound/soc/soc-core.c
