@@ -1,5 +1,5 @@
 Bottom: 21d195ee4cd9cffd483436ecbcd46e033f205137
-Top:    8fe131c13ce75a229391a5c4c669d0971d22187b
+Top:    b04a83995a1cf16866d159fa883be26bdfbc54ad
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-25 17:54:06 -0400
 
@@ -19,7 +19,7 @@ Signed-off-by: Timur Tabi <timur@freescale.com>
 ---
 
 diff --git a/arch/powerpc/include/asm/delay.h b/arch/powerpc/include/asm/delay.h
-index f9200a6..fedf037 100644
+index f9200a6..af4a270 100644
 --- a/arch/powerpc/include/asm/delay.h
 +++ b/arch/powerpc/include/asm/delay.h
 @@ -2,8 +2,11 @@
@@ -61,7 +61,7 @@ index f9200a6..fedf037 100644
 +{                                                                           \
 +	unsigned long __loops = tb_ticks_per_usec * timeout;                \
 +	unsigned long __start = get_tbl();                                  \
-+	while ((rc = (condition)) && (tb_ticks_since(__start) <= __loops)) \
++	while (!(rc = (condition)) && (tb_ticks_since(__start) <= __loops)) \
 +		if (delay)                                                  \
 +			udelay(delay);                                      \
 +		else	                                                    \
