@@ -1,0 +1,22 @@
+Bottom: 8fe131c13ce75a229391a5c4c669d0971d22187b
+Top:    b04a83995a1cf16866d159fa883be26bdfbc54ad
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-05-26 08:28:01 -0400
+
+Refresh of timur
+
+---
+
+diff --git a/arch/powerpc/include/asm/delay.h b/arch/powerpc/include/asm/delay.h
+index fedf037..af4a270 100644
+--- a/arch/powerpc/include/asm/delay.h
++++ b/arch/powerpc/include/asm/delay.h
+@@ -56,7 +56,7 @@ extern void udelay(unsigned long usecs);
+ {                                                                           \
+ 	unsigned long __loops = tb_ticks_per_usec * timeout;                \
+ 	unsigned long __start = get_tbl();                                  \
+-	while ((rc = (condition)) && (tb_ticks_since(__start) <= __loops)) \
++	while (!(rc = (condition)) && (tb_ticks_since(__start) <= __loops)) \
+ 		if (delay)                                                  \
+ 			udelay(delay);                                      \
+ 		else	                                                    \
