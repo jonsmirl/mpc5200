@@ -1,5 +1,5 @@
 Bottom: a689f0b83cb55d0addada09b6bd6a3bba6efd6a5
-Top:    501ffb64ad1b5a0e2d22d04ba2e66e21da87f6e4
+Top:    ea76add14efe3669681f29fdc0e04b6c7c7f5c84
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-23 12:06:49 -0400
 
@@ -50,7 +50,7 @@ index 7731ef2..14631a1 100644
  
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
 new file mode 100644
-index 0000000..3e6838c
+index 0000000..9f2df15
 --- /dev/null
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
 @@ -0,0 +1,331 @@
@@ -91,9 +91,9 @@ index 0000000..3e6838c
 +	unsigned int val;
 +
 +	/* Wait for command send status zero = ready */
-+	spin_event_timeout((in_be16(&psc_dma->psc_regs->sr_csr.status) &
++	spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
 +				MPC52xx_PSC_SR_CMDSEND), 100, 0, rc);
-+	if (rc != 0) {
++	if (rc == 0) {
 +		pr_err("timeout on ac97 bus (rdy)\n");
 +		return -ENODEV;
 +	}
@@ -101,9 +101,9 @@ index 0000000..3e6838c
 +	out_be32(&psc_dma->psc_regs->ac97_cmd, (1<<31) | ((reg & 0x7f) << 24));
 +
 +	/* Wait for the answer */
-+	spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
++	spin_event_timeout((in_be16(&psc_dma->psc_regs->sr_csr.status) &
 +				MPC52xx_PSC_SR_DATA_VAL), 100, 0, rc);
-+	if (rc != 0) {
++	if (rc == 0) {
 +		pr_err("timeout on ac97 read (val) %x\n",
 +				in_be16(&psc_dma->psc_regs->sr_csr.status));
 +		return -ENODEV;
@@ -125,9 +125,9 @@ index 0000000..3e6838c
 +	int rc;
 +
 +	/* Wait for command status zero = ready */
-+	spin_event_timeout((in_be16(&psc_dma->psc_regs->sr_csr.status) &
++	spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
 +				MPC52xx_PSC_SR_CMDSEND), 100, 0, rc);
-+	if (rc != 0) {
++	if (rc == 0) {
 +		pr_err("timeout on ac97 bus (write)\n");
 +		return;
 +	}
@@ -142,7 +142,7 @@ index 0000000..3e6838c
 +	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
 +
 +	out_be32(&regs->sicr, psc_dma->sicr | MPC52xx_PSC_SICR_AWR);
-+	spin_event_timeout(1, 3, 0, rc);
++	spin_event_timeout(0, 3, 0, rc);
 +	out_be32(&regs->sicr, psc_dma->sicr);
 +}
 +
@@ -153,9 +153,9 @@ index 0000000..3e6838c
 +
 +	/* Do a cold reset */
 +	out_8(&regs->op1, MPC52xx_PSC_OP_RES);
-+	spin_event_timeout(1, 10, 0, rc);
++	spin_event_timeout(0, 10, 0, rc);
 +	out_8(&regs->op0, MPC52xx_PSC_OP_RES);
-+	spin_event_timeout(1, 50, 0, rc);
++	spin_event_timeout(0, 50, 0, rc);
 +	psc_ac97_warm_reset(ac97);
 +}
 +
