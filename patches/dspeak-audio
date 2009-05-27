@@ -1,5 +1,5 @@
-Bottom: 25a5096047a1a0cbcb529c8cccc0cca2f56de1ca
-Top:    fb864822bc26006ebfd4293c58cd16eec7d64868
+Bottom: acd169d7d778d9635024a62b6c935eb27eada634
+Top:    668b7d58fcdfaefa8fe18482abaa533ca8eae8c8
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-26 10:08:36 -0400
 
@@ -12,10 +12,10 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index 63ab663..d0c63c5 100644
+index 5dbebf8..edf2171 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
-@@ -64,3 +64,12 @@ config SND_MPC52xx_SOC_EFIKA
+@@ -56,3 +56,12 @@ config SND_MPC52xx_SOC_EFIKA
  	help
  	  Say Y if you want to add support for sound on the Efika.
  
