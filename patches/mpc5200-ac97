@@ -1,5 +1,5 @@
 Bottom: 904d042fd82bae6c0ac71acf45b7c1bc7f12582a
-Top:    6912178c78207fdf77c91682a0f89502c26b4dde
+Top:    414971aedb20bd7096f2cbcdad58b7f299ec23d6
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-26 20:07:07 -0400
 
@@ -15,7 +15,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
-index 9f2df15..4342b51 100644
+index 9f2df15..794a247 100644
 --- a/sound/soc/fsl/mpc5200_psc_ac97.c
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
 @@ -31,13 +31,13 @@ static struct psc_dma *psc_dma;
@@ -30,7 +30,7 @@ index 9f2df15..4342b51 100644
 -	spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
 -				MPC52xx_PSC_SR_CMDSEND), 100, 0, rc);
 -	if (rc == 0) {
-+	status= spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
++	status = spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
 +				MPC52xx_PSC_SR_CMDSEND), 100, 0);
 +	if (status == 0) {
  		pr_err("timeout on ac97 bus (rdy)\n");
@@ -90,6 +90,6 @@ index 9f2df15..4342b51 100644
 +	udelay(10);
  	out_8(&regs->op0, MPC52xx_PSC_OP_RES);
 -	spin_event_timeout(0, 50, 0, rc);
-+	udelat(50);
++	udelay(50);
  	psc_ac97_warm_reset(ac97);
  }
