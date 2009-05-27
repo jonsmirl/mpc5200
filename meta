@@ -1,6 +1,6 @@
 Version: 1
-Previous: 50c1992612d4851268188607bbe2102e457fd1c6
-Head: e10c4cb9eb17fdd5a6596b52f280fd9a66d3e001
+Previous: ee830610bc9d7d5ec410788bbb5b32c920d05094
+Head: 36ebde5e5b3af5674d0f4cf0680ac84ae9244830
 Applied:
   Makefile: 98556791e1e8fb47430ce866dd5adb00915a46dd
   digispeak: 4f3fc572e92089ea7e42f26dc8bf0a5e81ef8ac2
@@ -18,6 +18,7 @@ Applied:
   timur: 690b872b68f903771ef2e83c3fddd2d093f6a87b
   mpc5200-dma: c711ecf1a3878c689da814503f00c7dc5f23fa8b
   mpc5200-ac97: e10c4cb9eb17fdd5a6596b52f280fd9a66d3e001
+  refresh-temp: 36ebde5e5b3af5674d0f4cf0680ac84ae9244830
 Unapplied:
   phytec: ebd3efdc247c893fb8ff9890beacd7db43807c51
   efika-audio: 220b0329bb09e2a9c1da7a2aa85c3559331b4fc8
