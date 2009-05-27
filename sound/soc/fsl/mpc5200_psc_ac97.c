@@ -35,7 +35,7 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
 	unsigned int val;
 
 	/* Wait for command send status zero = ready */
-	status= spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
+	status = spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
 				MPC52xx_PSC_SR_CMDSEND), 100, 0);
 	if (status == 0) {
 		pr_err("timeout on ac97 bus (rdy)\n");
@@ -97,7 +97,7 @@ static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
 	out_8(&regs->op1, MPC52xx_PSC_OP_RES);
 	udelay(10);
 	out_8(&regs->op0, MPC52xx_PSC_OP_RES);
-	udelat(50);
+	udelay(50);
 	psc_ac97_warm_reset(ac97);
 }
 
