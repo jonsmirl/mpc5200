@@ -1,6 +1,6 @@
 Version: 1
-Previous: 67c441121493551de2d9265139b76a599d50446c
-Head: 5f94a5479db660c6f8cf2dcea243ef4fc414e3f3
+Previous: 14f14b0a9e2c020f30a893e19c630b96bcaf6aac
+Head: b5777cc13cc2accbe779430af499ed3c38645c61
 Applied:
   Makefile: 98556791e1e8fb47430ce866dd5adb00915a46dd
   digispeak: 4f3fc572e92089ea7e42f26dc8bf0a5e81ef8ac2
@@ -19,8 +19,8 @@ Applied:
   mpc5200-dma: c711ecf1a3878c689da814503f00c7dc5f23fa8b
   mpc5200-ac97: 75c32bddaa8d5249d92fc1ebacb65d6c4ae694f4
   phytec: 5f94a5479db660c6f8cf2dcea243ef4fc414e3f3
+  efika-audio: b5777cc13cc2accbe779430af499ed3c38645c61
 Unapplied:
-  efika-audio: 79e1b8869a418ef3b68df693070bfb1d371a41c4
   tas5504-codec: 25ac2bc728ac0d2c4a6e064c5b1300d489cd801f
   max9485-i2c: e059a2c2725ebb4881a1eed682a66dd75360b695
   i2s-cell-clock: 7900d301733ace36740786337eddbe5663d684dd

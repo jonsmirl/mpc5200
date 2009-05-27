@@ -1,5 +1,5 @@
-Bottom: 0ea2eb09bf7e310bce4e0eb93260f44654b44080
-Top:    5f6b1fec960e21c04d87f19422c1756f926aaa0b
+Bottom: 33da41fc5dc0b0329a542d61940533c72e94a41c
+Top:    369e2294c0801ce6163a5a874fb6f944c32ae391
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-26 10:08:35 -0400
 
@@ -13,12 +13,12 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index 79579ae..f571c6e 100644
+index 5dbebf8..63ab663 100644
 --- a/sound/soc/fsl/Kconfig
 +++ b/sound/soc/fsl/Kconfig
-@@ -47,3 +47,11 @@ config SND_MPC52xx_SOC_PCM030
+@@ -56,3 +56,11 @@ config SND_MPC52xx_SOC_EFIKA
  	help
- 	  Say Y if you want to add support for sound on the Phytec pcm030 baseboard.
+ 	  Say Y if you want to add support for sound on the Efika.
  
 +config SND_MPC52xx_SOC_EFIKA
 +	tristate "SoC AC97 Audio support for bbplan Efika and STAC9766"
@@ -28,12 +28,3 @@ index 79579ae..f571c6e 100644
 +	help
 +	  Say Y if you want to add support for sound on the Efika.
 +
-diff --git a/sound/soc/fsl/Makefile b/sound/soc/fsl/Makefile
-index 66d88c8..a83a739 100644
---- a/sound/soc/fsl/Makefile
-+++ b/sound/soc/fsl/Makefile
-@@ -17,4 +17,5 @@ obj-$(CONFIG_SND_SOC_MPC5200_AC97) += mpc5200_psc_ac97.o
- 
- # MPC5200 Machine Support
- obj-$(CONFIG_SND_MPC52xx_SOC_PCM030) += pcm030-audio-fabric.o
-+obj-$(CONFIG_SND_MPC52xx_SOC_EFIKA) += efika-audio-fabric.o
