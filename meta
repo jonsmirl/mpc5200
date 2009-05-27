@@ -1,9 +1,9 @@
 Version: 1
-Previous: 9c415c4f2c3fed2e8add12ab5c1b393b1a1d1a0f
-Head: 0c0e09e21a9e7bc6ca54e06ef3d497255ca26383
+Previous: 293b21a567638b86c1ac8467823dbe7db8721c6a
+Head: 98556791e1e8fb47430ce866dd5adb00915a46dd
 Applied:
-Unapplied:
   Makefile: 98556791e1e8fb47430ce866dd5adb00915a46dd
+Unapplied:
   digispeak: 4f3fc572e92089ea7e42f26dc8bf0a5e81ef8ac2
   mpc5200-rtc: a3afd402d0a02726fce22129b0f133ca0ddfd099
   gitignore: 20b777e4091dcd4d22323378989b74743af68705
