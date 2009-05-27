@@ -1,5 +1,5 @@
 Bottom: 904d042fd82bae6c0ac71acf45b7c1bc7f12582a
-Top:    33da41fc5dc0b0329a542d61940533c72e94a41c
+Top:    6912178c78207fdf77c91682a0f89502c26b4dde
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-26 20:07:07 -0400
 
@@ -14,7 +14,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
-index 9f2df15..bab80ac 100644
+index 9f2df15..4342b51 100644
 --- a/sound/soc/fsl/mpc5200_psc_ac97.c
 +++ b/sound/soc/fsl/mpc5200_psc_ac97.c
 @@ -31,13 +31,13 @@ static struct psc_dma *psc_dma;
@@ -74,7 +74,7 @@ index 9f2df15..bab80ac 100644
  
  	out_be32(&regs->sicr, psc_dma->sicr | MPC52xx_PSC_SICR_AWR);
 -	spin_event_timeout(0, 3, 0, rc);
-+	spin_event_timeout(0, 3, 0);
++	udelay(3);
  	out_be32(&regs->sicr, psc_dma->sicr);
  }
  
@@ -86,9 +86,9 @@ index 9f2df15..bab80ac 100644
  	/* Do a cold reset */
  	out_8(&regs->op1, MPC52xx_PSC_OP_RES);
 -	spin_event_timeout(0, 10, 0, rc);
-+	spin_event_timeout(0, 10, 0);
++	udelay(10);
  	out_8(&regs->op0, MPC52xx_PSC_OP_RES);
 -	spin_event_timeout(0, 50, 0, rc);
-+	spin_event_timeout(0, 50, 0);
++	udelat(50);
  	psc_ac97_warm_reset(ac97);
  }
