@@ -7,6 +7,7 @@ Modify mpc5200 AC97 driver to use V9 of spin_event_timeout()
 
 The function signature for spin_event_timeout() has changed in version V9.
 Adjust the mpc5200 AC97 driver to use the new function.
+v2 - switch back to udelay() for fixed timeouts.
 
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
