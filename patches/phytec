@@ -1,5 +1,5 @@
-Bottom: d95b2483a4dd408d175ad069c14219d1180cdfb8
-Top:    0ea2eb09bf7e310bce4e0eb93260f44654b44080
+Bottom: 33da41fc5dc0b0329a542d61940533c72e94a41c
+Top:    33da41fc5dc0b0329a542d61940533c72e94a41c
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-26 10:08:35 -0400
 
@@ -12,30 +12,4 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
 ---
 
-diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index 3bce952..79579ae 100644
---- a/sound/soc/fsl/Kconfig
-+++ b/sound/soc/fsl/Kconfig
-@@ -39,4 +39,11 @@ config SND_SOC_MPC5200_AC97
- 	help
- 	  Say Y here to support the MPC5200 PSCs in AC97 mode.
- 
-+config SND_MPC52xx_SOC_PCM030
-+	tristate "SoC AC97 Audio support for Phytec pcm030 and WM9712"
-+	depends on PPC_MPC5200_SIMPLE
-+	select SND_SOC_MPC5200_AC97
-+	select SND_SOC_WM9712
-+	help
-+	  Say Y if you want to add support for sound on the Phytec pcm030 baseboard.
- 
-diff --git a/sound/soc/fsl/Makefile b/sound/soc/fsl/Makefile
-index 14631a1..66d88c8 100644
---- a/sound/soc/fsl/Makefile
-+++ b/sound/soc/fsl/Makefile
-@@ -15,3 +15,6 @@ obj-$(CONFIG_SND_MPC52xx_DMA) += mpc5200_dma.o
- obj-$(CONFIG_SND_SOC_MPC5200_I2S) += mpc5200_psc_i2s.o
- obj-$(CONFIG_SND_SOC_MPC5200_AC97) += mpc5200_psc_ac97.o
- 
-+# MPC5200 Machine Support
-+obj-$(CONFIG_SND_MPC52xx_SOC_PCM030) += pcm030-audio-fabric.o
-+
+
