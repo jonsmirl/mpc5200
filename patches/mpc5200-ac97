@@ -1,5 +1,5 @@
 Bottom: 904d042fd82bae6c0ac71acf45b7c1bc7f12582a
-Top:    904d042fd82bae6c0ac71acf45b7c1bc7f12582a
+Top:    d95b2483a4dd408d175ad069c14219d1180cdfb8
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-26 20:07:07 -0400
 
@@ -19,4 +19,119 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
 ---
 
-
+diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
+index 5dbebf8..3bce952 100644
+--- a/sound/soc/fsl/Kconfig
++++ b/sound/soc/fsl/Kconfig
+@@ -39,20 +39,4 @@ config SND_SOC_MPC5200_AC97
+ 	help
+ 	  Say Y here to support the MPC5200 PSCs in AC97 mode.
+ 
+-config SND_MPC52xx_SOC_PCM030
+-	tristate "SoC AC97 Audio support for Phytec pcm030 and WM9712"
+-	depends on PPC_MPC5200_SIMPLE && BROKEN
+-	select SND_SOC_MPC5200_AC97
+-	select SND_SOC_WM9712
+-	help
+-	  Say Y if you want to add support for sound on the Phytec pcm030
+-	  baseboard.
+-
+-config SND_MPC52xx_SOC_EFIKA
+-	tristate "SoC AC97 Audio support for bbplan Efika and STAC9766"
+-	depends on PPC_EFIKA && BROKEN
+-	select SND_SOC_MPC5200_AC97
+-	select SND_SOC_STAC9766
+-	help
+-	  Say Y if you want to add support for sound on the Efika.
+ 
+diff --git a/sound/soc/fsl/Makefile b/sound/soc/fsl/Makefile
+index a83a739..14631a1 100644
+--- a/sound/soc/fsl/Makefile
++++ b/sound/soc/fsl/Makefile
+@@ -15,7 +15,3 @@ obj-$(CONFIG_SND_MPC52xx_DMA) += mpc5200_dma.o
+ obj-$(CONFIG_SND_SOC_MPC5200_I2S) += mpc5200_psc_i2s.o
+ obj-$(CONFIG_SND_SOC_MPC5200_AC97) += mpc5200_psc_ac97.o
+ 
+-# MPC5200 Machine Support
+-obj-$(CONFIG_SND_MPC52xx_SOC_PCM030) += pcm030-audio-fabric.o
+-obj-$(CONFIG_SND_MPC52xx_SOC_EFIKA) += efika-audio-fabric.o
+-
+diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
+index 9f2df15..bab80ac 100644
+--- a/sound/soc/fsl/mpc5200_psc_ac97.c
++++ b/sound/soc/fsl/mpc5200_psc_ac97.c
+@@ -31,13 +31,13 @@ static struct psc_dma *psc_dma;
+ 
+ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+ {
+-	int rc;
++	int status;
+ 	unsigned int val;
+ 
+ 	/* Wait for command send status zero = ready */
+-	spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
+-				MPC52xx_PSC_SR_CMDSEND), 100, 0, rc);
+-	if (rc == 0) {
++	status= spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
++				MPC52xx_PSC_SR_CMDSEND), 100, 0);
++	if (status == 0) {
+ 		pr_err("timeout on ac97 bus (rdy)\n");
+ 		return -ENODEV;
+ 	}
+@@ -45,9 +45,9 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+ 	out_be32(&psc_dma->psc_regs->ac97_cmd, (1<<31) | ((reg & 0x7f) << 24));
+ 
+ 	/* Wait for the answer */
+-	spin_event_timeout((in_be16(&psc_dma->psc_regs->sr_csr.status) &
+-				MPC52xx_PSC_SR_DATA_VAL), 100, 0, rc);
+-	if (rc == 0) {
++	status = spin_event_timeout((in_be16(&psc_dma->psc_regs->sr_csr.status) &
++				MPC52xx_PSC_SR_DATA_VAL), 100, 0);
++	if (status == 0) {
+ 		pr_err("timeout on ac97 read (val) %x\n",
+ 				in_be16(&psc_dma->psc_regs->sr_csr.status));
+ 		return -ENODEV;
+@@ -66,12 +66,12 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
+ static void psc_ac97_write(struct snd_ac97 *ac97,
+ 				unsigned short reg, unsigned short val)
+ {
+-	int rc;
++	int status;
+ 
+ 	/* Wait for command status zero = ready */
+-	spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
+-				MPC52xx_PSC_SR_CMDSEND), 100, 0, rc);
+-	if (rc == 0) {
++	status = spin_event_timeout(!(in_be16(&psc_dma->psc_regs->sr_csr.status) &
++				MPC52xx_PSC_SR_CMDSEND), 100, 0);
++	if (status == 0) {
+ 		pr_err("timeout on ac97 bus (write)\n");
+ 		return;
+ 	}
+@@ -82,24 +82,22 @@ static void psc_ac97_write(struct snd_ac97 *ac97,
+ 
+ static void psc_ac97_warm_reset(struct snd_ac97 *ac97)
+ {
+-	int rc;
+ 	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
+ 
+ 	out_be32(&regs->sicr, psc_dma->sicr | MPC52xx_PSC_SICR_AWR);
+-	spin_event_timeout(0, 3, 0, rc);
++	spin_event_timeout(0, 3, 0);
+ 	out_be32(&regs->sicr, psc_dma->sicr);
+ }
+ 
+ static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
+ {
+-	int rc;
+ 	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
+ 
+ 	/* Do a cold reset */
+ 	out_8(&regs->op1, MPC52xx_PSC_OP_RES);
+-	spin_event_timeout(0, 10, 0, rc);
++	spin_event_timeout(0, 10, 0);
+ 	out_8(&regs->op0, MPC52xx_PSC_OP_RES);
+-	spin_event_timeout(0, 50, 0, rc);
++	spin_event_timeout(0, 50, 0);
+ 	psc_ac97_warm_reset(ac97);
+ }
