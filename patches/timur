@@ -1,7 +1,7 @@
-Bottom: 4ebd2765e4ee8243e6aefaa31bdb6015886da9e9
-Top:    20d6a472eb2913512e5953c03f08e57827f863a3
+Bottom: 4f2d918315ac2a6d14849c40acc459e1fce61e9a
+Top:    904d042fd82bae6c0ac71acf45b7c1bc7f12582a
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-05-26 10:08:35 -0400
+Date:   2009-05-26 20:07:06 -0400
 
 powerpc: introduce macro spin_event_timeout()
 

@@ -1,22 +1,23 @@
 Version: 1
-Previous: 26cda74144dae09302b709e125a1922278b5d24b
-Head: 80971424ef63e16c4ebd5d3b216d9c02f75d4ebc
+Previous: 5f62c76c9b7bb6528e748398fc5a8fb07f67db82
+Head: c711ecf1a3878c689da814503f00c7dc5f23fa8b
 Applied:
-  Makefile: 1112241f922793610bc0e9d7503b5a87ac30fe40
-  digispeak: 6ec903850aa0927f1cf91b7a9d1afea0f1fe1cc4
-  mpc5200-rtc: fddd32cfb4e20110648196f6c3135e1010b4ae3a
-  gitignore: 778b73d678e1005df4f26129e928adcad9b8dfa9
-  g_spi_4: 7fe1c0bdaf8c777bdbb2f40d939c169d8549917c
-  lirc: 308b56fa819b4688a09456c2cd4936778d5e456e
-  jds-lirc-base: 733be89d0fa17ff4e8d87fec21da7e6552f88575
-  jds-lirc-core: fa74aa42ee35abaa2b4eb9f2492a18631cca705f
-  jds-lirc-configfs: 22f24bd3f481876fe723949f093f8390be3e5379
-  jds-lirc-gpt: a430aa9994ba842f10c9528382245bb15981c37f
-  jds-lirc-device-tree: 787f5bb984c56a86552cb91212d77eb93d4f8beb
-  jds-lirc-mce2: a56ceb974f65365a7d2123f29fc81773483d86b0
-  soc-u32-cleanup: 8c1bd63b361af270a77b7ad3922ee5fad0e613d8
-  timur: d28e9b25a29033ae15fce57e7653786fd78f2e8c
-  mpc5200-dma: 2a911f0b0d33b632a6f925b7e2a3c467ac691d4a
+  Makefile: 98556791e1e8fb47430ce866dd5adb00915a46dd
+  digispeak: 4f3fc572e92089ea7e42f26dc8bf0a5e81ef8ac2
+  mpc5200-rtc: a3afd402d0a02726fce22129b0f133ca0ddfd099
+  gitignore: 20b777e4091dcd4d22323378989b74743af68705
+  g_spi_4: 0237840e29655a36d844541fafb864343a434f05
+  lirc: ec437f0f9d6a67af02c97426621edfbb0b8df6e9
+  jds-lirc-base: ad1cd4dcf181a0b9724120c0ca58a246198ec44e
+  jds-lirc-core: bda56a7ac0292a763747314464eb9f3647f395b3
+  jds-lirc-configfs: ab7a56a9328df99e96aaea3805cb4a4c04971d31
+  jds-lirc-gpt: d0fde291a6a8a7890a11c76172ca02c462671d75
+  jds-lirc-device-tree: 004884826b747887b55d23b173f6a20f1660d0f8
+  jds-lirc-mce2: 8d869e7632320a23697f92dd6c7f63d37e7dd320
+  soc-u32-cleanup: 75d01d5381cfdbd03b9fcb16e55382411d070743
+  timur: 690b872b68f903771ef2e83c3fddd2d093f6a87b
+  mpc5200-dma: c711ecf1a3878c689da814503f00c7dc5f23fa8b
+Unapplied:
   mpc5200-ac97: 9b0ecbebe5f8184cb0fafe3d764500f494a1e5af
   phytec: ebd3efdc247c893fb8ff9890beacd7db43807c51
   efika-audio: 220b0329bb09e2a9c1da7a2aa85c3559331b4fc8
@@ -26,5 +27,4 @@ Applied:
   dspeak-audio: 5476bdef768eff6505d8ae6904f210d2e87057a1
   mmc-spi: c5f3fd5d1b2fa12c3437b6dc005ccdc4f878506a
   temp: 80971424ef63e16c4ebd5d3b216d9c02f75d4ebc
-Unapplied:
 Hidden:
