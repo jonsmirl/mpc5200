@@ -1,7 +1,8 @@
 Version: 1
-Previous: 877d4f8502a9ef5d506fcc293f92025e0b203e30
-Head: 9a2bf42f5f09b8e29bce47e80977901aaf537e86
+Previous: 9c415c4f2c3fed2e8add12ab5c1b393b1a1d1a0f
+Head: 0c0e09e21a9e7bc6ca54e06ef3d497255ca26383
 Applied:
+Unapplied:
   Makefile: 98556791e1e8fb47430ce866dd5adb00915a46dd
   digispeak: 4f3fc572e92089ea7e42f26dc8bf0a5e81ef8ac2
   mpc5200-rtc: a3afd402d0a02726fce22129b0f133ca0ddfd099
@@ -24,5 +25,4 @@ Applied:
   dspeak-audio: f71bb5df1cf820657290c99a0590bf596c601e79
   mmc-spi: b9a604826ebac61e056f5ec4770c90beaea87ecb
   temp: 9a2bf42f5f09b8e29bce47e80977901aaf537e86
-Unapplied:
 Hidden:
