@@ -1,6 +1,6 @@
 Version: 1
-Previous: f8776349e6518c162c75f377fd7762b8bba24466
-Head: ec1e19459ce2fdc3c59280b9c9e65cb7b55b7bfc
+Previous: 877d4f8502a9ef5d506fcc293f92025e0b203e30
+Head: 9a2bf42f5f09b8e29bce47e80977901aaf537e86
 Applied:
   Makefile: 98556791e1e8fb47430ce866dd5adb00915a46dd
   digispeak: 4f3fc572e92089ea7e42f26dc8bf0a5e81ef8ac2
@@ -18,13 +18,11 @@ Applied:
   timur: 690b872b68f903771ef2e83c3fddd2d093f6a87b
   mpc5200-dma: c711ecf1a3878c689da814503f00c7dc5f23fa8b
   mpc5200-ac97: ae3132a6b98913f0b6c642993fd277aa6444e16c
-  phytec: 1416a110d71409e4704dea4da45ef253b9cdc710
-  efika-audio: ebc42f6150c4e5db49dee1b88f461c52a1a70341
-  tas5504-codec: 9fda3cb2beb9aebf0374551efe423751c804e21a
-  max9485-i2c: 9386f7dc23e23f6396fdee824b30525809dcde56
-  i2s-cell-clock: ff46f794606ba183c4cc2cfa2949b394fcf640bd
-  dspeak-audio: 05b8e02c789c1aef45f97a31df4b1b5c40a5f78c
-  mmc-spi: 1e594457a9fbc78bd9b1b1c1c0cc4f67ab74e81c
-  temp: ec1e19459ce2fdc3c59280b9c9e65cb7b55b7bfc
+  tas5504-codec: c0960517fa0379fbaa4e5bb8aef1358e186a0491
+  max9485-i2c: 0a29330a8dff40357e1c65abc3ad1a9bfdffc578
+  i2s-cell-clock: e0d71d78c8de803817b4ffcab2f4956abbdf841c
+  dspeak-audio: f71bb5df1cf820657290c99a0590bf596c601e79
+  mmc-spi: b9a604826ebac61e056f5ec4770c90beaea87ecb
+  temp: 9a2bf42f5f09b8e29bce47e80977901aaf537e86
 Unapplied:
 Hidden:
