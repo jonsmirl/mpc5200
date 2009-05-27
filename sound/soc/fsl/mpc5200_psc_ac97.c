@@ -85,7 +85,7 @@ static void psc_ac97_warm_reset(struct snd_ac97 *ac97)
 	struct mpc52xx_psc __iomem *regs = psc_dma->psc_regs;
 
 	out_be32(&regs->sicr, psc_dma->sicr | MPC52xx_PSC_SICR_AWR);
-	spin_event_timeout(0, 3, 0);
+	udelay(3);
 	out_be32(&regs->sicr, psc_dma->sicr);
 }
 
@@ -95,9 +95,9 @@ static void psc_ac97_cold_reset(struct snd_ac97 *ac97)
 
 	/* Do a cold reset */
 	out_8(&regs->op1, MPC52xx_PSC_OP_RES);
-	spin_event_timeout(0, 10, 0);
+	udelay(10);
 	out_8(&regs->op0, MPC52xx_PSC_OP_RES);
-	spin_event_timeout(0, 50, 0);
+	udelat(50);
 	psc_ac97_warm_reset(ac97);
 }
 
