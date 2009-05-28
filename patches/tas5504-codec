@@ -1,7 +1,7 @@
-Bottom: 414971aedb20bd7096f2cbcdad58b7f299ec23d6
-Top:    0fefec67428b7f4d5cc2e75595392f690e5246c7
+Bottom: 9b3295229633d0d0ef4d24c39e1ea9c86e07fa8d
+Top:    f10b20f36fdc480c938375e5cdc59c9d2ade0de7
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-05-26 10:08:35 -0400
+Date:   2009-05-28 18:04:48 -0400
 
 jds audio driver
 
@@ -27,18 +27,18 @@ jds audio driver
 ---
 
 diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
-index cb07d9b..6c4ac0a 100644
+index bbc97fd..d295be3 100644
 --- a/sound/soc/codecs/Kconfig
 +++ b/sound/soc/codecs/Kconfig
-@@ -20,6 +20,7 @@ config SND_SOC_ALL_CODECS
- 	select SND_SOC_PCM3008
+@@ -21,6 +21,7 @@ config SND_SOC_ALL_CODECS
+ 	select SND_SOC_SPDIF
  	select SND_SOC_SSM2602 if I2C
  	select SND_SOC_STAC9766 if SND_SOC_AC97_BUS
 +	select SND_SOC_TAS5504 if I2C
  	select SND_SOC_TLV320AIC23 if I2C
  	select SND_SOC_TLV320AIC26 if SPI_MASTER
  	select SND_SOC_TLV320AIC3X if I2C
-@@ -97,6 +98,9 @@ config SND_SOC_SSM2602
+@@ -101,6 +102,9 @@ config SND_SOC_SSM2602
  config SND_SOC_STAC9766
  	tristate
  
@@ -49,10 +49,10 @@ index cb07d9b..6c4ac0a 100644
  	tristate
  
 diff --git a/sound/soc/codecs/Makefile b/sound/soc/codecs/Makefile
-index 46c007c..d0d74b1 100644
+index 8b75305..6eba477 100644
 --- a/sound/soc/codecs/Makefile
 +++ b/sound/soc/codecs/Makefile
-@@ -9,6 +9,7 @@ snd-soc-pcm3008-objs := pcm3008.o
+@@ -10,6 +10,7 @@ snd-soc-spdif-objs := spdif_transciever.o
  snd-soc-ssm2602-objs := ssm2602.o
  snd-soc-stac9766-objs := stac9766.o
  snd-soc-tlv320aic23-objs := tlv320aic23.o
@@ -60,8 +60,8 @@ index 46c007c..d0d74b1 100644
  snd-soc-tlv320aic26-objs := tlv320aic26.o
  snd-soc-tlv320aic3x-objs := tlv320aic3x.o
  snd-soc-twl4030-objs := twl4030.o
-@@ -44,6 +45,7 @@ obj-$(CONFIG_SND_SOC_L3)	+= snd-soc-l3.o
- obj-$(CONFIG_SND_SOC_PCM3008)	+= snd-soc-pcm3008.o
+@@ -46,6 +47,7 @@ obj-$(CONFIG_SND_SOC_PCM3008)	+= snd-soc-pcm3008.o
+ obj-$(CONFIG_SND_SOC_SPDIF)	+= snd-soc-spdif.o
  obj-$(CONFIG_SND_SOC_SSM2602)	+= snd-soc-ssm2602.o
  obj-$(CONFIG_SND_SOC_STAC9766)	+= snd-soc-stac9766.o
 +obj-$(CONFIG_SND_SOC_TAS5504)	+= snd-soc-tas5504.o

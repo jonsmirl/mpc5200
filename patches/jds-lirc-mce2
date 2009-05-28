@@ -1,7 +1,7 @@
-Bottom: b0430a56f2df6eaf33c9a5addc7f2fab9d775ce9
-Top:    b91be069b5402d979150742639031c60d464b881
+Bottom: 54e0ea2548cf7c7c550b698d70fa0c1dfe2685e8
+Top:    353ab036b3f8e0c279f8055948ff56c99e2378b4
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-05-26 20:07:05 -0400
+Date:   2009-05-28 18:04:46 -0400
 
 Microsoft mceusb2 driver for in-kernel IR subsystem
 USB device commonly found on Microsoft Media Center boxes.

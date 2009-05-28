@@ -1,27 +1,27 @@
 Version: 1
-Previous: f629fbfd66739094a59303e7c76c97e87034768d
-Head: ea77ce6b1a2a40dbc4a9b4a5146cfc2b376732b2
+Previous: 8eaa7d06da52af57d869eab47e9b0e96b1582bc8
+Head: 2a81f90f31eb9d16754c877def05415e0bd2fe66
 Applied:
-  Makefile: 98556791e1e8fb47430ce866dd5adb00915a46dd
-  gitignore: aa9ea3252aabcb7d82547c1949824cb4340095f0
-  digispeak: 98f03226cede18b9da3eb1e576b21ef5947cab30
-  mpc5200-rtc: d30992f58b8ab3aaae9c2a2ac3afc77257c5667a
-  g_spi_4: 8b209ff28bfbb04b4e11b0a6eb33033e3103d0be
-  lirc: 25ac64e1e8ebb3537b3339bc2a8fa33cf5ba41b0
-  jds-lirc-base: 1c80256b2dd86e411761588ea9ba6da4572c4d55
-  jds-lirc-core: 8305cf8dc51e4416656c622dd0ab2a7d866c038b
-  jds-lirc-configfs: c1432fff0404ea39f5f501f9d80e4a84911dca1f
-  jds-lirc-gpt: ec6c617e569e72762ff43d6a88c16ccbadef078c
-  jds-lirc-device-tree: f7c73ab67c5f8aee603613afaa5a2473fe8f3fbc
-  jds-lirc-mce2: f74abddc81d3a255da8bff41eeea0992ce4a0ef6
-  soc-u32-cleanup: 25a975a710d95c966c2a67cee1439b152ec85cc9
-  timur: 595b20ce4ad9f01cccf4eac14cd8c3fe2cad7432
-  mpc5200-ac97: 7e2f12fba8851ad4389f46ba985a05c8bd1a9657
-  tas5504-codec: 64fedc914ce72103fddc8195e2fca42456f542e2
-  max9485-i2c: 19c527a156d3acf44da81d1e166d816944d947e4
-  i2s-cell-clock: 741d977f33bfc9e7465f12df2e59575c52432804
-  dspeak-audio: a3fe365344a012b1996464f4c9bef16bf2cc9b25
-  mmc-spi: a32a1501ebdda467c3a5e68b45539327d6867680
-  temp: ea77ce6b1a2a40dbc4a9b4a5146cfc2b376732b2
+  Makefile: 5c9dca556ef8848443a0e10f47f19cdfd03daad9
+  gitignore: e8241ad291195107b39c3c66ebe8947b96214ec2
+  digispeak: 831107a6bea06d7949aa3a67c928d10d6ac503c2
+  mpc5200-rtc: 1a06518f3d7f1d0d462a785c480800d594de407e
+  g_spi_4: dd3b192d717da070b5e1ad115267ecd295d9d5db
+  lirc: 07235eb4638f0b4f1cbc134b076f198e535a419d
+  jds-lirc-base: 0482598d3d7b633890b504fdce69db2269129389
+  jds-lirc-core: ff4214c598e0d7ff8b9cf3c9746b2a79d204df73
+  jds-lirc-configfs: e8b3ad8efa3f4c0df390d77d930d07746f945959
+  jds-lirc-gpt: 5494e520527a8800d57ad9b8237dc26040cfefb9
+  jds-lirc-device-tree: 9e3484409e6c102ef707840541ef1a232cba4f1a
+  jds-lirc-mce2: 6b60164b8d89885cdcc337a524c1f157f00e9e28
+  soc-u32-cleanup: da03b56ce5c1d34210725eeb86a1c2b3dc1e3fb8
+  timur: 2ec1b66b8716b6ad2da77aea486e7d11def6c8b4
+  mpc5200-ac97: f466bc8efd6a81a6eec13bc1d69b8c9db6ab45de
+  tas5504-codec: d2e6edef89215869773101cd9f32239ef6307ba2
+  max9485-i2c: 696856668b651f468b9f293005bc461ef30c5f2c
+  i2s-cell-clock: 2817fc562fe5aea856578923937ba3a755f4ab0c
+  dspeak-audio: 73413f084ce5f8bd369948dbe1b66a908094e679
+  mmc-spi: cd4617748305eeafb07e29a7cd8701a6d8f23531
+  temp: 2a81f90f31eb9d16754c877def05415e0bd2fe66
 Unapplied:
 Hidden:
