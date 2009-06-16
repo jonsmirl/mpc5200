@@ -1,26 +1,26 @@
 Version: 1
-Previous: 2a8c6972d9d07392ce7b60be105ad843a7ffb87b
-Head: 73cf0234aa8b414d7f5c9f033807428bc6b69d20
+Previous: 47ce94c5d782df1dc0ee2fb7c567e367f5b38a08
+Head: f9e7124fb84970b63df35db35a4f56366c9ffa7e
 Applied:
   Makefile: 73cf0234aa8b414d7f5c9f033807428bc6b69d20
+  gitignore: 00d6d75f4095524503cf96f9258e1cd4b6c76790
+  digispeak: c1ecff7f2743aeeca2804621e2a72f899c9c6436
+  mpc5200-rtc: 0c1c469fab4cfce7001493cb3409e453f4325f4d
+  g_spi_4: 7f83907786d66eefef2b13f36cb444ab8e42b4fe
+  lirc: 68a673c195f9770f70f5c9bce1ad1b718659cdf3
+  jds-lirc-base: abedb6e965d933bc90cbd839b73e724b2267c51e
+  jds-lirc-core: 33217a7da3110e30c55f40c285687f0fbeaf1094
+  jds-lirc-configfs: c3b247e88a2a1d7892abdacdd2849978270c2308
+  jds-lirc-gpt: 82945cdf81e0d5e362eb85ebd8069cb54a294b8b
+  jds-lirc-device-tree: dc8ad51f048d4f19c0576584eb754ff90b1bfec7
+  jds-lirc-mce2: 046172977a6e8cbeaffb10985a7cabb18c11afe8
+  soc-u32-cleanup: e9b39be54600bccf14207d8dd1fa2d89573db5db
+  timur: 9c6cfeaabc35628b4e34b987dcb2f800518414ce
+  tas5504-codec: 6b11f118702a70a7a2b805c5617d125fe13b2f51
+  max9485-i2c: 67c494cfbffb1c46a9b9b43a107a42be1f172ffa
+  i2s-cell-clock: f7123e124d437f1126348694241ccdc3d740a0ca
+  dspeak-audio: ca457cea657b0850a4173b060bd0e41a559945a7
+  mmc-spi: 8e26be3bfaf47d23f75136da76c9d14226ca1ce9
+  temp: f9e7124fb84970b63df35db35a4f56366c9ffa7e
 Unapplied:
-  gitignore: e8241ad291195107b39c3c66ebe8947b96214ec2
-  digispeak: 831107a6bea06d7949aa3a67c928d10d6ac503c2
-  mpc5200-rtc: 1a06518f3d7f1d0d462a785c480800d594de407e
-  g_spi_4: dd3b192d717da070b5e1ad115267ecd295d9d5db
-  lirc: 07235eb4638f0b4f1cbc134b076f198e535a419d
-  jds-lirc-base: 0482598d3d7b633890b504fdce69db2269129389
-  jds-lirc-core: ff4214c598e0d7ff8b9cf3c9746b2a79d204df73
-  jds-lirc-configfs: e8b3ad8efa3f4c0df390d77d930d07746f945959
-  jds-lirc-gpt: 5494e520527a8800d57ad9b8237dc26040cfefb9
-  jds-lirc-device-tree: 9e3484409e6c102ef707840541ef1a232cba4f1a
-  jds-lirc-mce2: 6b60164b8d89885cdcc337a524c1f157f00e9e28
-  soc-u32-cleanup: da03b56ce5c1d34210725eeb86a1c2b3dc1e3fb8
-  timur: 2ec1b66b8716b6ad2da77aea486e7d11def6c8b4
-  tas5504-codec: e1ce88f837640999d389f1bf83cf6b2d3a968b6d
-  max9485-i2c: ecd294d648a25a4d5dbb04b312899cf6d7e8a0cf
-  i2s-cell-clock: 8d1d3099814d2029f8fe88706e1b06cc7a0ac3a8
-  dspeak-audio: 7ffafb52887f280e315111cffa4248cb16ad9ebc
-  mmc-spi: fd47416fd0ff586f3a3acb86a17da0c71e5afed3
-  temp: f25176dda1df0292e14d549a8cbf0cc731298e5e
 Hidden:

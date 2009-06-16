@@ -1,5 +1,5 @@
-Bottom: 2bc89334da94e5b84739f152a15fde18c0086a74
-Top:    7d15f6808ff0d0c7e9f0ed933bcde855d420f5ca
+Bottom: a7ebf2d02862134a9f2cbec50831859af2d076a7
+Top:    256102ae78379d7ddb7ae3893017941cb68a2d0d
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-28 18:04:43 -0400
 
@@ -43,7 +43,7 @@ index 52e049c..e356523 100644
  
  
 diff --git a/drivers/rtc/Kconfig b/drivers/rtc/Kconfig
-index 4e9851f..ab49d37 100644
+index 277d35d..d333863 100644
 --- a/drivers/rtc/Kconfig
 +++ b/drivers/rtc/Kconfig
 @@ -750,4 +750,14 @@ config RTC_DRV_PS3

@@ -1,5 +1,5 @@
-Bottom: f10b20f36fdc480c938375e5cdc59c9d2ade0de7
-Top:    2021e0fe6e97b86cdeb653e58bc82ad02f95fe2a
+Bottom: 822dc4dadc3b8bf654632d8ea81e4a16e5681211
+Top:    4543345f1deb92e07cd2843a82694b334969e597
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-28 18:04:49 -0400
 
@@ -17,7 +17,7 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 ---
 
 diff --git a/drivers/misc/Kconfig b/drivers/misc/Kconfig
-index 6d1ac18..b41256d 100644
+index 68ab39d..58ae337 100644
 --- a/drivers/misc/Kconfig
 +++ b/drivers/misc/Kconfig
 @@ -150,6 +150,15 @@ config ATMEL_SSC
@@ -37,7 +37,7 @@ index 6d1ac18..b41256d 100644
  	tristate "Enclosure Services"
  	default n
 diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
-index 7871f05..9b9f52b 100644
+index 36f733c..ff727d0 100644
 --- a/drivers/misc/Makefile
 +++ b/drivers/misc/Makefile
 @@ -13,6 +13,8 @@ obj-$(CONFIG_TIFM_CORE)       	+= tifm_core.o

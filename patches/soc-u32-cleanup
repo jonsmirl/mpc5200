@@ -1,5 +1,5 @@
-Bottom: 353ab036b3f8e0c279f8055948ff56c99e2378b4
-Top:    6d1dfb033cb2e374e58a122a2eb94482abfc7afa
+Bottom: 121160fbd7eef4dae313659ea8b2bdbfa3539035
+Top:    e8bff335ffbf1fb720f9502e83f9f13eb7be913b
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-05-28 18:04:46 -0400
 
@@ -71,10 +71,10 @@ index cf6111d..0477e99 100644
  	unsigned int mask;
  	const char **texts;
 diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
-index 4aa8e2d..bad9d88 100644
+index 3f44150..016958e 100644
 --- a/sound/soc/soc-core.c
 +++ b/sound/soc/soc-core.c
-@@ -1257,11 +1257,11 @@ EXPORT_SYMBOL_GPL(snd_soc_free_ac97_codec);
+@@ -1263,11 +1263,11 @@ EXPORT_SYMBOL_GPL(snd_soc_free_ac97_codec);
   *
   * Returns 1 for change else 0.
   */
@@ -89,7 +89,7 @@ index 4aa8e2d..bad9d88 100644
  
  	mutex_lock(&io_mutex);
  	old = snd_soc_read(codec, reg);
-@@ -1287,11 +1287,11 @@ EXPORT_SYMBOL_GPL(snd_soc_update_bits);
+@@ -1293,11 +1293,11 @@ EXPORT_SYMBOL_GPL(snd_soc_update_bits);
   *
   * Returns 1 for change else 0.
   */
@@ -104,7 +104,7 @@ index 4aa8e2d..bad9d88 100644
  
  	mutex_lock(&io_mutex);
  	old = snd_soc_read(codec, reg);
-@@ -1577,7 +1577,7 @@ int snd_soc_get_enum_double(struct snd_kcontrol *kcontrol,
+@@ -1583,7 +1583,7 @@ int snd_soc_get_enum_double(struct snd_kcontrol *kcontrol,
  {
  	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
  	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
@@ -113,7 +113,7 @@ index 4aa8e2d..bad9d88 100644
  
  	for (bitmask = 1; bitmask < e->max; bitmask <<= 1)
  		;
-@@ -1606,8 +1606,7 @@ int snd_soc_put_enum_double(struct snd_kcontrol *kcontrol,
+@@ -1612,8 +1612,7 @@ int snd_soc_put_enum_double(struct snd_kcontrol *kcontrol,
  {
  	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
  	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
@@ -123,7 +123,7 @@ index 4aa8e2d..bad9d88 100644
  
  	for (bitmask = 1; bitmask < e->max; bitmask <<= 1)
  		;
-@@ -1949,7 +1948,7 @@ int snd_soc_put_volsw_2r(struct snd_kcontrol *kcontrol,
+@@ -1955,7 +1954,7 @@ int snd_soc_put_volsw_2r(struct snd_kcontrol *kcontrol,
  	unsigned int mask = (1 << fls(max)) - 1;
  	unsigned int invert = mc->invert;
  	int err;
@@ -132,7 +132,7 @@ index 4aa8e2d..bad9d88 100644
  
  	val_mask = mask << shift;
  	val = (ucontrol->value.integer.value[0] & mask);
-@@ -2014,12 +2013,12 @@ int snd_soc_get_volsw_s8(struct snd_kcontrol *kcontrol,
+@@ -2020,12 +2019,12 @@ int snd_soc_get_volsw_s8(struct snd_kcontrol *kcontrol,
  	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
  	unsigned int reg = mc->reg;
  	int min = mc->min;
@@ -148,7 +148,7 @@ index 4aa8e2d..bad9d88 100644
  	return 0;
  }
  EXPORT_SYMBOL_GPL(snd_soc_get_volsw_s8);
-@@ -2041,10 +2040,10 @@ int snd_soc_put_volsw_s8(struct snd_kcontrol *kcontrol,
+@@ -2047,10 +2046,10 @@ int snd_soc_put_volsw_s8(struct snd_kcontrol *kcontrol,
  	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
  	unsigned int reg = mc->reg;
  	int min = mc->min;
@@ -163,7 +163,7 @@ index 4aa8e2d..bad9d88 100644
  	return snd_soc_update_bits(codec, reg, 0xffff, val);
  }
 diff --git a/sound/soc/soc-dapm.c b/sound/soc/soc-dapm.c
-index 39a63f9..c1222fa 100644
+index 21c6907..da98317 100644
 --- a/sound/soc/soc-dapm.c
 +++ b/sound/soc/soc-dapm.c
 @@ -164,7 +164,7 @@ static void dapm_set_path_status(struct snd_soc_dapm_widget *w,

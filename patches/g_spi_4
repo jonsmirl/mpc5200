@@ -1,5 +1,5 @@
-Bottom: 7d15f6808ff0d0c7e9f0ed933bcde855d420f5ca
-Top:    2b7bdff2067f522e10b798cdc112d328455471b3
+Bottom: 256102ae78379d7ddb7ae3893017941cb68a2d0d
+Top:    2a125bfd4e3c115cdbffed8fb525bb655e0153af
 Author: Grant Likely <grant.likely@secretlab.ca>
 Date:   2009-05-28 18:04:44 -0400
 
@@ -27,7 +27,7 @@ Signed-off-by: Grant Likely <grant.likely@secretlab.ca>
 ---
 
 diff --git a/drivers/spi/Kconfig b/drivers/spi/Kconfig
-index 83a185d..1994bcd 100644
+index e8aae22..20bf6f1 100644
 --- a/drivers/spi/Kconfig
 +++ b/drivers/spi/Kconfig
 @@ -132,6 +132,14 @@ config SPI_LM70_LLP
@@ -46,12 +46,12 @@ index 83a185d..1994bcd 100644
  	tristate "Freescale MPC52xx PSC SPI controller"
  	depends on PPC_MPC52xx && EXPERIMENTAL
 diff --git a/drivers/spi/Makefile b/drivers/spi/Makefile
-index 5d04519..8de32c7 100644
+index ecfadb1..7b1de88 100644
 --- a/drivers/spi/Makefile
 +++ b/drivers/spi/Makefile
-@@ -24,6 +24,7 @@ obj-$(CONFIG_SPI_OMAP_UWIRE)		+= omap_uwire.o
- obj-$(CONFIG_SPI_OMAP24XX)		+= omap2_mcspi.o
+@@ -25,6 +25,7 @@ obj-$(CONFIG_SPI_OMAP24XX)		+= omap2_mcspi.o
  obj-$(CONFIG_SPI_ORION)			+= orion_spi.o
+ obj-$(CONFIG_SPI_PL022)			+= amba-pl022.o
  obj-$(CONFIG_SPI_MPC52xx_PSC)		+= mpc52xx_psc_spi.o
 +obj-$(CONFIG_SPI_MPC52xx)		+= mpc52xx_spi.o
  obj-$(CONFIG_SPI_MPC83xx)		+= spi_mpc83xx.o
