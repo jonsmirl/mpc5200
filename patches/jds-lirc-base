@@ -1,7 +1,7 @@
-Bottom: 76cd62a0104386ee183c8404fe55e3a51021778e
-Top:    40bba7f98ec72ce6f961db57b8ea6b726e2fa938
+Bottom: 011dc9d14c1f2798df526034113849e06a44c560
+Top:    3b1e043ebf0c98010bfa9b2f147e0e7af0fa1355
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-05-28 18:04:44 -0400
+Date:   2009-06-17 10:56:25 -0400
 
 Minimal changes to the core input system
 
@@ -32,7 +32,7 @@ Jon Smirl
 ---
 
 diff --git a/drivers/input/input.c b/drivers/input/input.c
-index 5d445f4..1732f1e 100644
+index 7c237e6..a531cf5 100644
 --- a/drivers/input/input.c
 +++ b/drivers/input/input.c
 @@ -274,6 +274,10 @@ static void input_handle_event(struct input_dev *dev,
@@ -97,7 +97,7 @@ index 5d445f4..1732f1e 100644
  
  	INPUT_ADD_HOTPLUG_MODALIAS_VAR(dev);
  
-@@ -1365,6 +1378,10 @@ void input_set_capability(struct input_dev *dev, unsigned int type, unsigned int
+@@ -1371,6 +1384,10 @@ void input_set_capability(struct input_dev *dev, unsigned int type, unsigned int
  		__set_bit(code, dev->ffbit);
  		break;
  

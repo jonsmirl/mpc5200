@@ -1,7 +1,7 @@
-Bottom: 40bba7f98ec72ce6f961db57b8ea6b726e2fa938
-Top:    048ed51a1874f9cbedb9fcc1007c476c52642e9d
+Bottom: 3b1e043ebf0c98010bfa9b2f147e0e7af0fa1355
+Top:    3546a8faae22716efa69d461faf9fd1e5993d916
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-05-28 18:04:45 -0400
+Date:   2009-06-17 10:56:26 -0400
 
 Core IR module
 
@@ -43,7 +43,7 @@ index 99e2b5e..fec8972 100644
  obj-$(CONFIG_INPUT_APMPOWER)	+= apm-power.o
  
 diff --git a/drivers/input/input.c b/drivers/input/input.c
-index 1732f1e..b63b819 100644
+index a531cf5..2843b84 100644
 --- a/drivers/input/input.c
 +++ b/drivers/input/input.c
 @@ -23,6 +23,8 @@

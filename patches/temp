@@ -1,7 +1,7 @@
-Bottom: 55db9fb2f68f689b0614a0b3dce5d4473c6665f0
-Top:    24567b8b83776740b532f60e6a972dc3db9f1d75
+Bottom: ae3a016eb8020ad5f6840e41bdb30c94161fb00c
+Top:    5184a78744c0dfe4c03e75e433629017d8ccc47b
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-05-28 18:04:50 -0400
+Date:   2009-06-17 10:56:31 -0400
 
 Temporary holding patch
 
@@ -31,7 +31,7 @@ index edf2171..15580b9 100644
  	select SND_SOC_STAC9766
  	help
 diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
-index 016958e..d24b8c7 100644
+index a48fa19..653c7ba 100644
 --- a/sound/soc/soc-core.c
 +++ b/sound/soc/soc-core.c
 @@ -20,6 +20,8 @@
