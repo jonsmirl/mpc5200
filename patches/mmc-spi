@@ -1,5 +1,5 @@
 Bottom: f50a32a3859db50efff057636544a085d48256f0
-Top:    ecfe44412c8003e3f9bf307cf107499cd7de95f1
+Top:    db94d0771a7b2cf311e186519d2bb0e6a9b941cd
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-06-18 09:57:37 -0400
 
@@ -76,27 +76,3 @@ index 68c77a9..fe0658a 100644
 +	return mpc52xx_psc_spi_do_probe(op, (u32)regaddr64, (u32)size64,
  					irq_of_parse_and_map(op->node, 0), id);
  }
- 
-diff --git a/sound/soc/fsl/efika-audio-fabric.c b/sound/soc/fsl/efika-audio-fabric.c
-index 85b0e75..949dc36 100644
---- a/sound/soc/fsl/efika-audio-fabric.c
-+++ b/sound/soc/fsl/efika-audio-fabric.c
-@@ -85,6 +85,6 @@ module_init(efika_fabric_init);
- 
- 
- MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
--MODULE_DESCRIPTION(DRV_NAME ": mpc5200 Efika fabric driver");
-+MODULE_DESCRIPTION("mpc5200 Efika fabric driver");
- MODULE_LICENSE("GPL");
- 
-diff --git a/sound/soc/fsl/pcm030-audio-fabric.c b/sound/soc/fsl/pcm030-audio-fabric.c
-index 8766f7a..6e4e05e 100644
---- a/sound/soc/fsl/pcm030-audio-fabric.c
-+++ b/sound/soc/fsl/pcm030-audio-fabric.c
-@@ -85,6 +85,6 @@ module_init(pcm030_fabric_init);
- 
- 
- MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
--MODULE_DESCRIPTION(DRV_NAME ": mpc5200 pcm030 fabric driver");
-+MODULE_DESCRIPTION("mpc5200 pcm030 fabric driver");
- MODULE_LICENSE("GPL");
