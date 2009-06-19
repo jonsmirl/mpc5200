@@ -1,7 +1,7 @@
-Bottom: 93f69acf494012b5bf494f7d1556fd041cbe696d
-Top:    a5ae67be12f6e84bc865be55c49a5e1db2314003
+Bottom: 7512d66500a0bc5d40fc31751d50e097e1069ee4
+Top:    1ae56b2b65c17abf1c456dea22437a728c193bcd
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-06-18 09:57:31 -0400
+Date:   2009-06-19 10:52:26 -0400
 
 RTC driver for MPC5200
 
@@ -43,10 +43,10 @@ index 52e049c..e356523 100644
  
  
 diff --git a/drivers/rtc/Kconfig b/drivers/rtc/Kconfig
-index 277d35d..d333863 100644
+index 81adbdb..b119813 100644
 --- a/drivers/rtc/Kconfig
 +++ b/drivers/rtc/Kconfig
-@@ -750,4 +750,14 @@ config RTC_DRV_PS3
+@@ -759,4 +759,14 @@ config RTC_DRV_PS3
  	  This driver can also be built as a module. If so, the module
  	  will be called rtc-ps3.
  
@@ -62,7 +62,7 @@ index 277d35d..d333863 100644
 +
  endif # RTC_CLASS
 diff --git a/drivers/rtc/Makefile b/drivers/rtc/Makefile
-index 6c0639a..1f5f0ef 100644
+index 3c0f2b2..366ed34 100644
 --- a/drivers/rtc/Makefile
 +++ b/drivers/rtc/Makefile
 @@ -51,6 +51,7 @@ obj-$(CONFIG_RTC_DRV_STARFIRE)	+= rtc-starfire.o
