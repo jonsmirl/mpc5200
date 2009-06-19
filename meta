@@ -1,6 +1,6 @@
 Version: 1
-Previous: b56a3debf62ede8a82c78a33c6631704b0f84ff1
-Head: 647f430a1d218480b9695b9ae8975e8cceee40eb
+Previous: de78dd9d6bd24b6922fee7e85d72e6b996dfb6ac
+Head: 6e975a9702b3bb0c07d60f63c63dd448d67dce80
 Applied:
   Makefile: 30bdd9f19a19fc309de9fc3bd6fb08768439dd5f
   gitignore: e1d4b14d97bda44c4d9844ae44a4b57d78643cec
@@ -21,6 +21,6 @@ Applied:
   i2s-cell-clock: 97227613f228753f305d1ed93ca359fa87a78074
   dspeak-audio: 5caff8f2883be39074b9fbc8173344fdb34c5053
   mmc-spi: 647f430a1d218480b9695b9ae8975e8cceee40eb
+  temp: 6e975a9702b3bb0c07d60f63c63dd448d67dce80
 Unapplied:
-  temp: 96a51f92ba822dde588dc7eb1d49aba2dcb21139
 Hidden:
