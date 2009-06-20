@@ -1,6 +1,6 @@
 Version: 1
-Previous: 6c18c63fd931b7bbe109f5bac8c2178419a4220c
-Head: dceccd988941b9c75bf9d4dc2f9fdc07ffc1e9de
+Previous: d986638ac3c6e3e78275191e5636581cdb7c91cf
+Head: 50c4fbb5173e05f41433bcb8cc3f8352dc5f0d9b
 Applied:
   Makefile: c03891954b8c4134693ab515c9fa509c868c1ff8
   gitignore: e333f24aead69b2f6636d07e4d60b8c9aa585471
@@ -15,8 +15,8 @@ Applied:
   jds-lirc-device-tree: b72e11695aaf7f9bf1e2fa66258511b9b3a95dce
   jds-lirc-mce2: 3cb5bb3778811292a30cb52687acf145b4f863ff
   soc-u32-cleanup: 50c4fbb5173e05f41433bcb8cc3f8352dc5f0d9b
-  timur: dceccd988941b9c75bf9d4dc2f9fdc07ffc1e9de
 Unapplied:
+  timur: dceccd988941b9c75bf9d4dc2f9fdc07ffc1e9de
   tas5504-codec: 6ab0bc0173025ddc7701e13ff363631bd7b78686
   max9485-i2c: f82cf3b2eed1c36112c753d0ee86867618b63d7d
   i2s-cell-clock: 97227613f228753f305d1ed93ca359fa87a78074
