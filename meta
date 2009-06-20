@@ -1,6 +1,6 @@
 Version: 1
-Previous: d986638ac3c6e3e78275191e5636581cdb7c91cf
-Head: 50c4fbb5173e05f41433bcb8cc3f8352dc5f0d9b
+Previous: 7b017cd50df89788b86ef316ab20dff832c49c5d
+Head: ec48c4dcbb567fee8fe9185e2c7f8db66304f999
 Applied:
   Makefile: c03891954b8c4134693ab515c9fa509c868c1ff8
   gitignore: e333f24aead69b2f6636d07e4d60b8c9aa585471
@@ -15,12 +15,12 @@ Applied:
   jds-lirc-device-tree: b72e11695aaf7f9bf1e2fa66258511b9b3a95dce
   jds-lirc-mce2: 3cb5bb3778811292a30cb52687acf145b4f863ff
   soc-u32-cleanup: 50c4fbb5173e05f41433bcb8cc3f8352dc5f0d9b
+  tas5504-codec: ffc6af2be27212f42ce92930fe5d1232bd4fd02a
+  max9485-i2c: 6f51f9efff202f6f56b02c0a5d6b1a97ecaf0712
+  i2s-cell-clock: 1fc8b14b7b7ff669763f43dbc65c6e3964252e03
+  dspeak-audio: dd8eddb42c356f9096102681dc8ff8e367cd6680
+  mmc-spi: 2f5d2eb8a5cb3131b7eca5da001bc68a1791ce2b
+  temp: ec48c4dcbb567fee8fe9185e2c7f8db66304f999
 Unapplied:
   timur: dceccd988941b9c75bf9d4dc2f9fdc07ffc1e9de
-  tas5504-codec: 6ab0bc0173025ddc7701e13ff363631bd7b78686
-  max9485-i2c: f82cf3b2eed1c36112c753d0ee86867618b63d7d
-  i2s-cell-clock: 97227613f228753f305d1ed93ca359fa87a78074
-  dspeak-audio: 5caff8f2883be39074b9fbc8173344fdb34c5053
-  mmc-spi: 647f430a1d218480b9695b9ae8975e8cceee40eb
-  temp: 6e975a9702b3bb0c07d60f63c63dd448d67dce80
 Hidden:
