@@ -1,26 +1,26 @@
 Version: 1
-Previous: 314669742637dd628cc654ccd987280a4bcfb12d
-Head: 351721fa8ba6062e690aedb2a48f6709dd57da68
+Previous: 3b8c625da0043bdc3ac7b0bc33c17db6b3ebc2a2
+Head: 0f3188c0c7c2635bf09cd2fcebeb438df1cc7161
 Applied:
   Makefile: c03891954b8c4134693ab515c9fa509c868c1ff8
   gitignore: e333f24aead69b2f6636d07e4d60b8c9aa585471
   digispeak: facac32a853d84775d0227c642ee128bbd07ad41
   mpc5200-rtc: ccfe2e7a79a369919924067dc67ee8762a4aa62f
-  g_spi_4: 8bc12b29a4428fcc5bb27a81746a7c80e42ea548
-  lirc: c432c45d32d255e19899bc6084681fdbbb1ceedb
-  jds-lirc-base: 0cde9c1b26401400c7ae10b7336c93c0f6e6e49c
-  jds-lirc-core: 80da90064a9f823b43eb3e2eb652459860584d08
-  jds-lirc-configfs: d9ddfa1bfb967caa8ca04f84551ac40829858c5a
-  jds-lirc-gpt: d1c7d159620318fd5fd2f206d01c98755c757b63
-  jds-lirc-device-tree: b72e11695aaf7f9bf1e2fa66258511b9b3a95dce
-  jds-lirc-mce2: 3cb5bb3778811292a30cb52687acf145b4f863ff
-  soc-u32-cleanup: 50c4fbb5173e05f41433bcb8cc3f8352dc5f0d9b
-  tas5504-codec: ffc6af2be27212f42ce92930fe5d1232bd4fd02a
-  max9485-i2c: 6f51f9efff202f6f56b02c0a5d6b1a97ecaf0712
-  i2s-cell-clock: 1fc8b14b7b7ff669763f43dbc65c6e3964252e03
-  dspeak-audio: dd8eddb42c356f9096102681dc8ff8e367cd6680
-  mmc-spi: 351721fa8ba6062e690aedb2a48f6709dd57da68
+  lirc: 306bbc45fe3992e8c5aab7d1c9437459111234f2
+  jds-lirc-base: 1d9db6c8cf5f0c16e523db39a473b2a91d8f6a11
+  jds-lirc-core: ecc371b25bae702925afe5c7d11fecb521c4a1d6
+  jds-lirc-configfs: b283f77e4bef3d34fbb99de37d1713e1715c9840
+  jds-lirc-gpt: 865cc1076e2ef66cdbfed9d49024ef43a58f0e0f
+  jds-lirc-device-tree: f8b292c6583775ac7cb2cd72ca335c6105a052bd
+  jds-lirc-mce2: 4eb2fea69691087914c6994fe9b526a9b3ddf550
+  soc-u32-cleanup: b9f1c3649181b1b690e6ae2ccd9eef78aaa0dc3f
+  tas5504-codec: fc811699b86331816a621fae11f2e1bdd8025faa
+  max9485-i2c: 1ca8df57d2c6e64f9fcd9ed4d7bbbcc9e8f8175d
+  i2s-cell-clock: f613a63aa0f329ac311a1e44ff22790271e831bc
+  dspeak-audio: 8fbde3cf95485f55d458acabd3e3daad2c67b235
+  mmc-spi: 0f3188c0c7c2635bf09cd2fcebeb438df1cc7161
 Unapplied:
+  g_spi_4: 8bc12b29a4428fcc5bb27a81746a7c80e42ea548
   temp: 3762ddf8abde341e63a9dae5bfd625b71dd8084b
   timur: dceccd988941b9c75bf9d4dc2f9fdc07ffc1e9de
 Hidden:
