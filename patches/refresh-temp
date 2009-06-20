@@ -1,0 +1,22 @@
+Bottom: bd3a489d08144438bdbf21b16e3b114c7f5a5d98
+Top:    3eaaef386f208392b846e2199cf3878c83ab4dda
+Author: Jon Smirl <jonsmirl@gmail.com>
+Date:   2009-06-20 11:32:55 -0400
+
+Refresh of mmc-spi
+
+---
+
+diff --git a/drivers/spi/mpc52xx_psc_spi.c b/drivers/spi/mpc52xx_psc_spi.c
+index d45f973..d2a04d6 100644
+--- a/drivers/spi/mpc52xx_psc_spi.c
++++ b/drivers/spi/mpc52xx_psc_spi.c
+@@ -380,7 +380,7 @@ static int __init mpc52xx_psc_spi_do_probe(struct of_device *op, u32 regaddr,
+ 
+ 	mps->irq = irq;
+ 	if (pdata == NULL) {
+-		dev_warn(dev, "probe called without platform data, no "
++		dev_warn(&op->dev, "probe called without platform data, no "
+ 				"cs_control function will be called\n");
+ 		mps->cs_control = NULL;
+ 		mps->sysclk = 0;
