@@ -1,5 +1,5 @@
 Bottom: f738f0ed8fbd30a473e8e1e60fc899adb808e4dc
-Top:    bd3a489d08144438bdbf21b16e3b114c7f5a5d98
+Top:    3eaaef386f208392b846e2199cf3878c83ab4dda
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-06-19 10:52:33 -0400
 
@@ -9,7 +9,7 @@ Enable mmc-spi support
 ---
 
 diff --git a/drivers/spi/mpc52xx_psc_spi.c b/drivers/spi/mpc52xx_psc_spi.c
-index 1b74d5c..d45f973 100644
+index 1b74d5c..d2a04d6 100644
 --- a/drivers/spi/mpc52xx_psc_spi.c
 +++ b/drivers/spi/mpc52xx_psc_spi.c
 @@ -23,6 +23,7 @@
@@ -44,6 +44,15 @@ index 1b74d5c..d45f973 100644
  	mps = spi_master_get_devdata(master);
  
  	/* the spi->mode bits understood by this driver: */
+@@ -379,7 +380,7 @@ static int __init mpc52xx_psc_spi_do_probe(struct device *dev, u32 regaddr,
+ 
+ 	mps->irq = irq;
+ 	if (pdata == NULL) {
+-		dev_warn(dev, "probe called without platform data, no "
++		dev_warn(&op->dev, "probe called without platform data, no "
+ 				"cs_control function will be called\n");
+ 		mps->cs_control = NULL;
+ 		mps->sysclk = 0;
 @@ -397,7 +398,7 @@ static int __init mpc52xx_psc_spi_do_probe(struct device *dev, u32 regaddr,
  
  	mps->psc = ioremap(regaddr, size);
