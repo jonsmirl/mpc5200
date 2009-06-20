@@ -380,7 +380,7 @@ static int __init mpc52xx_psc_spi_do_probe(struct of_device *op, u32 regaddr,
 
 	mps->irq = irq;
 	if (pdata == NULL) {
-		dev_warn(dev, "probe called without platform data, no "
+		dev_warn(&op->dev, "probe called without platform data, no "
 				"cs_control function will be called\n");
 		mps->cs_control = NULL;
 		mps->sysclk = 0;
