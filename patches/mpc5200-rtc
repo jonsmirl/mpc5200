@@ -1,7 +1,7 @@
-Bottom: 7512d66500a0bc5d40fc31751d50e097e1069ee4
-Top:    1ae56b2b65c17abf1c456dea22437a728c193bcd
+Bottom: e58c745d3cfafc725daf4718ec813158bb4c903b
+Top:    aeeb4adef75a49c088b43f4dded750bfa06df58c
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-06-19 10:52:26 -0400
+Date:   2009-06-20 11:27:09 -0400
 
 RTC driver for MPC5200
 
@@ -19,10 +19,10 @@ RTC driver for MPC5200
 ---
 
 diff --git a/arch/powerpc/include/asm/mpc52xx.h b/arch/powerpc/include/asm/mpc52xx.h
-index 52e049c..e356523 100644
+index 1b4f697..cadd398 100644
 --- a/arch/powerpc/include/asm/mpc52xx.h
 +++ b/arch/powerpc/include/asm/mpc52xx.h
-@@ -258,6 +258,19 @@ struct mpc52xx_intr {
+@@ -259,6 +259,19 @@ struct mpc52xx_intr {
  	u32 per_error;		/* INTR + 0x38 */
  };
  

@@ -1,11 +1,12 @@
 Version: 1
-Previous: de78dd9d6bd24b6922fee7e85d72e6b996dfb6ac
-Head: 6e975a9702b3bb0c07d60f63c63dd448d67dce80
+Previous: 50fbe1e5069fb957709314852d85f376058b9895
+Head: ccfe2e7a79a369919924067dc67ee8762a4aa62f
 Applied:
-  Makefile: 30bdd9f19a19fc309de9fc3bd6fb08768439dd5f
-  gitignore: e1d4b14d97bda44c4d9844ae44a4b57d78643cec
-  digispeak: c626c6e8a83445ed22840a396fe5b5307c3a3549
-  mpc5200-rtc: 9fd4af6bb13e07c54a8584e49a83ba24c4fc066d
+  Makefile: c03891954b8c4134693ab515c9fa509c868c1ff8
+  gitignore: e333f24aead69b2f6636d07e4d60b8c9aa585471
+  digispeak: facac32a853d84775d0227c642ee128bbd07ad41
+  mpc5200-rtc: ccfe2e7a79a369919924067dc67ee8762a4aa62f
+Unapplied:
   g_spi_4: e6d754c3246c3af2fd19f2b8c46e23584f422e9a
   lirc: 0164239319cd28c88eef4428549ae04f8cc80819
   jds-lirc-base: 2c0e3e1dbdfc18bf010c9dcb7aec496084df43f6
@@ -22,5 +23,4 @@ Applied:
   dspeak-audio: 5caff8f2883be39074b9fbc8173344fdb34c5053
   mmc-spi: 647f430a1d218480b9695b9ae8975e8cceee40eb
   temp: 6e975a9702b3bb0c07d60f63c63dd448d67dce80
-Unapplied:
 Hidden:
