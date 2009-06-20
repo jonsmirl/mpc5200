@@ -1,21 +1,21 @@
 Version: 1
-Previous: 3d3eee7e5eeab564853a9f974cc0467b1a0b042c
-Head: 8bc12b29a4428fcc5bb27a81746a7c80e42ea548
+Previous: 90db1749757845e2665ae828493f5bd52d498c93
+Head: dceccd988941b9c75bf9d4dc2f9fdc07ffc1e9de
 Applied:
   Makefile: c03891954b8c4134693ab515c9fa509c868c1ff8
   gitignore: e333f24aead69b2f6636d07e4d60b8c9aa585471
   digispeak: facac32a853d84775d0227c642ee128bbd07ad41
   mpc5200-rtc: ccfe2e7a79a369919924067dc67ee8762a4aa62f
   g_spi_4: 8bc12b29a4428fcc5bb27a81746a7c80e42ea548
+  lirc: c432c45d32d255e19899bc6084681fdbbb1ceedb
+  jds-lirc-base: 0cde9c1b26401400c7ae10b7336c93c0f6e6e49c
+  jds-lirc-core: 80da90064a9f823b43eb3e2eb652459860584d08
+  jds-lirc-configfs: d9ddfa1bfb967caa8ca04f84551ac40829858c5a
+  jds-lirc-gpt: d1c7d159620318fd5fd2f206d01c98755c757b63
+  jds-lirc-device-tree: b72e11695aaf7f9bf1e2fa66258511b9b3a95dce
+  jds-lirc-mce2: 3cb5bb3778811292a30cb52687acf145b4f863ff
+  soc-u32-cleanup: 50c4fbb5173e05f41433bcb8cc3f8352dc5f0d9b
 Unapplied:
-  lirc: 0164239319cd28c88eef4428549ae04f8cc80819
-  jds-lirc-base: 2c0e3e1dbdfc18bf010c9dcb7aec496084df43f6
-  jds-lirc-core: 0c47bd334b2c4ccdd8f434d0f3510848966ce9bf
-  jds-lirc-configfs: 35d2c149b78c79b62daa81ebd1c9f129bc270eca
-  jds-lirc-gpt: 5a1de52a08a02995d73a8083b3ea555032136b75
-  jds-lirc-device-tree: 17d891fcd807580c95e9648cd31599c5c74080a3
-  jds-lirc-mce2: 8dcdcc59b749b6c9887e7fdbd210248fb34becee
-  soc-u32-cleanup: c6a034da2792c1eb2aa180525f6db7df0573454e
   timur: e86a296fd7d7a16f2f5b2e07a5a098a97b587322
   tas5504-codec: 6ab0bc0173025ddc7701e13ff363631bd7b78686
   max9485-i2c: f82cf3b2eed1c36112c753d0ee86867618b63d7d
