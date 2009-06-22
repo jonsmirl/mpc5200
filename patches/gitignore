@@ -3,7 +3,7 @@ Top:    114ef1444a8be989ecbd6dd992886545a06d34f2
 Author: Jon Smirl <jonsmirl@gmail.com>
 Date:   2009-06-21 21:19:27 -0400
 
-add some ignores
+Have git ignore generated files from dtc compile
 
 
 ---
