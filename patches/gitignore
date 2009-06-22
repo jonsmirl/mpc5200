@@ -5,6 +5,8 @@ Date:   2009-06-21 21:19:27 -0400
 
 Have git ignore generated files from dtc compile
 
+Have git ignore generated files from dtc compile
+
 Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
 
