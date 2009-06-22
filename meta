@@ -1,5 +1,5 @@
 Version: 1
-Previous: 147fbf3e6caf7a07b9ae3c1b7271527f5102caf9
+Previous: 52c199344e22c8cda7192430d07af075f0f8cf7d
 Head: 27ad735d15ec3ce0a256b9eea86bd8c44447e520
 Applied:
   Makefile: fc0f17f08d5dbdd4bf6165d0ba030e486dcc17e5
@@ -22,5 +22,4 @@ Applied:
   temp: 27ad735d15ec3ce0a256b9eea86bd8c44447e520
 Unapplied:
   g_spi_4: 8bc12b29a4428fcc5bb27a81746a7c80e42ea548
-  timur: dceccd988941b9c75bf9d4dc2f9fdc07ffc1e9de
 Hidden:
