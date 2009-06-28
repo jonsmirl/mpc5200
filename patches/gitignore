@@ -1,7 +1,7 @@
-Bottom: f943a9cae95a3d88e4421df1d92bac97b4fbb5c4
-Top:    06451e2a96ce373403c28d4d55e3666f931ed7fe
+Bottom: 90e3a73e6c3818cfad609d24cac9894480214cca
+Top:    90e3a73e6c3818cfad609d24cac9894480214cca
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-06-25 18:13:43 -0400
+Date:   2009-06-28 14:03:04 -0400
 
 Have git ignore generated files from dtc compile
 
@@ -12,32 +12,4 @@ Signed-off-by: Jon Smirl <jonsmirl@gmail.com>
 
 ---
 
-diff --git a/arch/powerpc/boot/.gitignore b/arch/powerpc/boot/.gitignore
-index d57aa5c..dab1b41 100644
---- a/arch/powerpc/boot/.gitignore
-+++ b/arch/powerpc/boot/.gitignore
-@@ -37,3 +37,13 @@ zImage.pseries
- zconf.h
- zlib.h
- zutil.h
-+fdt.c
-+fdt.h
-+fdt_ro.c
-+fdt_rw.c
-+fdt_strerror.c
-+fdt_sw.c
-+fdt_wip.c
-+libfdt.h
-+libfdt_internal.h
-+
-diff --git a/scripts/dtc/.gitignore b/scripts/dtc/.gitignore
-new file mode 100644
-index 0000000..095acb4
---- /dev/null
-+++ b/scripts/dtc/.gitignore
-@@ -0,0 +1,5 @@
-+dtc
-+dtc-lexer.lex.c
-+dtc-parser.tab.c
-+dtc-parser.tab.h
-+
+

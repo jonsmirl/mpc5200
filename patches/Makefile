@@ -1,7 +1,7 @@
-Bottom: 181aeeba4025c84ef1883fdc64a3b28ca99ce94c
-Top:    42dbd1a6757c5e941fca565fd89bd578494f24f8
+Bottom: 4f9549b54325e8ee4f631ea8ba1817db2abf22a7
+Top:    e6127f3821850b235a1e0921e58806981a9eee32
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-06-25 18:13:35 -0400
+Date:   2009-06-28 14:02:56 -0400
 
 Makefile
 
@@ -24,7 +24,7 @@ index d1216fe..ca295ec 100644
    KBUILD_VERBOSE = $(V)
  endif
 diff --git a/arch/powerpc/boot/.gitignore b/arch/powerpc/boot/.gitignore
-index 2f50acd..d57aa5c 100644
+index 3d80c3e..dab1b41 100644
 --- a/arch/powerpc/boot/.gitignore
 +++ b/arch/powerpc/boot/.gitignore
 @@ -22,6 +22,7 @@ uImage
