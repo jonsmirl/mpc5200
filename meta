@@ -1,6 +1,6 @@
 Version: 1
-Previous: 818efd4bd15f0d2db8d9e1fe0c25bf39a3dd4e14
-Head: fd3f7e376093143ce031f168fe67a183c3a45449
+Previous: f257bfb5d362188256077b3fd88547ce8ee4d1ba
+Head: 26c2f8c674ec98007494f6843dba04baac021310
 Applied:
   Makefile: ed9374e271023ac3917d1efb62144aa2e197aa16
   digispeak: d22dbd6c9d130df87948ebfcc414c5cf5f8f5352
@@ -19,7 +19,6 @@ Applied:
   dspeak-audio: 5d34db533c2f4c5a60378ce9461074b7628860a0
   mmc-spi: f0bdfd7a8502dfef046bf491c74e30204eee826a
   temp: 26c2f8c674ec98007494f6843dba04baac021310
-  gitignore: fd3f7e376093143ce031f168fe67a183c3a45449
 Unapplied:
   g_spi_4: 8bc12b29a4428fcc5bb27a81746a7c80e42ea548
 Hidden:
