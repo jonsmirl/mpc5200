@@ -17,5 +17,11 @@ config IR_GPT
 	default m
 	help
 	  Driver for GPT-based IR receiver found on Digispeaker
+	  
+config IR_MCEUSB2
+	tristate "Microsoft Media Center Ed. Receiver, v2"
+	default m
+	help
+	  Driver for the Microsoft Media Center Ed. Receiver, v2
 
 endif
