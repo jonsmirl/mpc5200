@@ -1,6 +1,6 @@
 Version: 1
-Previous: 7dcacfdd80e5629143ad91143145934546efd70a
-Head: 897b7f5dab35a9db61e9e133689af03e13370ddb
+Previous: 1f532c3f5ecd5b01d23d232c4b2031f647ba6759
+Head: 216e59129e0e5f30d7e7d279855fb5ab2ccceef0
 Applied:
   Makefile: 79257855e3d30451be11089a9e9791aef4a34d72
   digispeak: a8fc49d0309d1b726e70802b66fa58133013c6dd
@@ -19,6 +19,7 @@ Applied:
   dspeak-audio: 9dcf4e26a5829343be6796a7139abb7052463570
   mmc-spi: 17a80ffa853087c4e9a689c8d5cc8538f3e4a2ed
   temp: 897b7f5dab35a9db61e9e133689af03e13370ddb
+  grant1: 216e59129e0e5f30d7e7d279855fb5ab2ccceef0
 Unapplied:
   g_spi_4: 8bc12b29a4428fcc5bb27a81746a7c80e42ea548
 Hidden:
