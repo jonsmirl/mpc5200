@@ -1,35 +1,13 @@
-Bottom: c4146cc5f5ef60cb3fc9bfec8463a521df3259c2
-Top:    b5f5dd22b91bed375eb36f18bb85ef5ecfbecc33
+Bottom: b0e360d860f2245d519d5d31c90c8e8fa52d4fef
+Top:    4097201cd3b8cf5e6c4604e8b6478c969db7b302
 Author: Jon Smirl <jonsmirl@gmail.com>
-Date:   2009-07-02 14:04:11 -0400
+Date:   2009-07-05 09:16:06 -0400
 
 Temporary holding patch
 
 
 ---
 
-diff --git a/sound/soc/fsl/Kconfig b/sound/soc/fsl/Kconfig
-index edf2171..15580b9 100644
---- a/sound/soc/fsl/Kconfig
-+++ b/sound/soc/fsl/Kconfig
-@@ -41,7 +41,7 @@ config SND_SOC_MPC5200_AC97
- 
- config SND_MPC52xx_SOC_PCM030
- 	tristate "SoC AC97 Audio support for Phytec pcm030 and WM9712"
--	depends on PPC_MPC5200_SIMPLE && BROKEN
-+	depends on PPC_MPC5200_SIMPLE
- 	select SND_SOC_MPC5200_AC97
- 	select SND_SOC_WM9712
- 	help
-@@ -50,7 +50,7 @@ config SND_MPC52xx_SOC_PCM030
- 
- config SND_MPC52xx_SOC_EFIKA
- 	tristate "SoC AC97 Audio support for bbplan Efika and STAC9766"
--	depends on PPC_EFIKA && BROKEN
-+	depends on PPC_EFIKA
- 	select SND_SOC_MPC5200_AC97
- 	select SND_SOC_STAC9766
- 	help
 diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
 index a48fa19..653c7ba 100644
 --- a/sound/soc/soc-core.c
