@@ -1,7 +1,7 @@
-Bottom: 4097201cd3b8cf5e6c4604e8b6478c969db7b302
-Top:    4f746bd1a04a0738f2b15dbb8ddfcb76ee83deea
+Bottom: 6c6bad31335f50e5d64fb7c4110cd5840be1d479
+Top:    6c6bad31335f50e5d64fb7c4110cd5840be1d479
 Author: Grant Likely <grant.likely@secretlab.ca>
-Date:   2009-07-05 09:16:07 -0400
+Date:   2009-07-11 11:54:50 -0400
 
 ASoC: Fix mpc5200-psc-ac97 to ensure the data ready bit is cleared
 
@@ -15,17 +15,4 @@ Signed-off-by: Grant Likely <grant.likely@secretlab.ca>
 
 ---
 
-diff --git a/sound/soc/fsl/mpc5200_psc_ac97.c b/sound/soc/fsl/mpc5200_psc_ac97.c
-index 794a247..9b8503f 100644
---- a/sound/soc/fsl/mpc5200_psc_ac97.c
-+++ b/sound/soc/fsl/mpc5200_psc_ac97.c
-@@ -41,6 +41,10 @@ static unsigned short psc_ac97_read(struct snd_ac97 *ac97, unsigned short reg)
- 		pr_err("timeout on ac97 bus (rdy)\n");
- 		return -ENODEV;
- 	}
-+
-+	/* Force clear the data valid bit */
-+	in_be32(&psc_dma->psc_regs->ac97_data);
-+
- 	/* Send the read */
- 	out_be32(&psc_dma->psc_regs->ac97_cmd, (1<<31) | ((reg & 0x7f) << 24));
+

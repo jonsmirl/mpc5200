@@ -1,26 +1,26 @@
 Version: 1
-Previous: 07464cec5c7cec5302af9cd7475257f44c740d84
-Head: 3c6b6d0aaae31e3f44dff3baae265c411d3b0add
+Previous: 283c8d1ab20d3dd0312dffdabcbdefc3b2cb5747
+Head: d4dcc245fd15d033653ddde3ce542b86b84f9a9d
 Applied:
-  Makefile: 1fd3b61c268c62db523975b038da950f201e8f06
-  digispeak: d81775adb326a37034bb577b7ba148067e861acb
-  mpc5200-rtc: 2dc190477883acfd09689e2ed2604f99d052c003
-  lirc: f40a787befc814cf5350c2d7d764e680021d6bd5
-  jds-lirc-base: c01cb456485f425e66c76132f2ca77bb42d3f611
-  jds-lirc-core: f4292fac9a1b60313cf4ea98daa8b0c40e2d8acf
-  jds-lirc-configfs: 8f947ca07b5c1b5ef6b2eb88c7585c7819b56634
-  jds-lirc-gpt: 5b323a7e4c88d5eb0b98b11765a1a53a65f73509
-  jds-lirc-device-tree: 29d482c0d2244b45d21cb7914cc9dc9d157401f8
-  jds-lirc-mce2: 4117fa8e45553f97c33e82e25038954efce2333e
-  soc-u32-cleanup: 3e143afb227aa3ed254b3e4c61d88132fe4dc249
-  tas5504-codec: 744a4ae272d9623573345e5002ca56301f3c5ba7
-  max9485-i2c: 7f2063197f95c78c833bb95b005eb16596dc96e4
-  i2s-cell-clock: 0a81215c5d0a91a8859b70dfec4ea20d38ab5ebd
-  dspeak-audio: a4b2908c881bc3bb06e1395d6c5d1fd22883c014
-  mmc-spi: f9b17542d8d6675cee9de9e5f48113150af92bd6
-  temp: ae7a7100d2c5e75628ec934281ce9296373a5469
-  grant2: a50badbc5e5b6cb6af716ac05a7395e30ebd7509
-  grant1: 3c6b6d0aaae31e3f44dff3baae265c411d3b0add
+  Makefile: 148ee57875f4ae93fc705320fb26f39ea2ba8cb4
+  digispeak: 671a230d5e95aaad32517cb608289ac57a1ee8f2
+  mpc5200-rtc: c17a10fdf8c392c5da7ccc82cbb29136e36d8500
+  lirc: 3256dd20918e446171eabe140f0d479cb6242875
+  jds-lirc-base: cf1afbe6e43a787127bf186ef0df989cb2a94707
+  jds-lirc-core: 61ae1a066856184f0593969d3c1cedff9a782a3a
+  jds-lirc-configfs: bea2ac019f5ca4e72e66b764c884186886a2d0af
+  jds-lirc-gpt: 06cc1fc3f2cbc5b1c64bc8478db0f66a08582e51
+  jds-lirc-device-tree: 0cb9501ebbea679f68d97b8e59bad131dde17c77
+  jds-lirc-mce2: 90f41da056ca1717cf7de74b7a853fb21b1b6fa1
+  soc-u32-cleanup: a74b8ce46f5175f21dfc7d8fda0a6a8f8e27482d
+  tas5504-codec: 9f4a379d9c4e3b32a1127bcb3428b308b4f974ab
+  max9485-i2c: e037f338b9a57a7154eea9ba03dc28d58256db03
+  i2s-cell-clock: ca598c55e470d2fa7661333a97687bc6d6b0ce76
+  dspeak-audio: 5a7683f1381f620a87fc4a98f998ec18d2beeac5
+  mmc-spi: 60796f65613d59cdb8f30b19a2d1c3a9f19b1987
+  temp: d707200625ae497d9ff190b26832866c8479c7df
+  grant2: 773436c0acf93cadf71bd26544651d6e0c6e4b71
+  grant1: d4dcc245fd15d033653ddde3ce542b86b84f9a9d
 Unapplied:
   g_spi_4: 8bc12b29a4428fcc5bb27a81746a7c80e42ea548
 Hidden:
