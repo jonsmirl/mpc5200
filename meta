@@ -1,24 +1,24 @@
 Version: 1
-Previous: 044609fee44969c67c9c9c48bec63d13479f2b6c
-Head: 61157d8eccd2960fe060615bb0cf68e1abdc20c3
+Previous: 9693f24278c9d4288e6015bbfc01ee803d09eadc
+Head: 99db0ae3198d5d7036d58c6c1a75c8f847aaeb3a
 Applied:
-  Makefile: 86c02e9b871f707ff699d76f6baa3118e73a4c0a
-  digispeak: e233a4c11f39c9912679a8f3eba5f2f4f2f1e6b8
-  mpc5200-rtc: 7706076a95440f76fdc514d2d21158ce7a003ae0
-  lirc: ebabc5c1eb51c2323bd66472878b8af41d76ddc0
-  jds-lirc-base: d7abe02decfd1e08d22a3fb725ed3cbe8a9c7854
-  jds-lirc-core: 0c0dbb8b2eb99e2479de47b604b112e35e0f49ef
-  jds-lirc-configfs: ed8646497760a57d809b82e2d9bb49bb0a1601f5
-  jds-lirc-gpt: 27628e25f9c07e7f8802c3b22e4f4919d5096ed8
-  jds-lirc-device-tree: 061260537294ade545e28f263bb82f35432c80ac
-  jds-lirc-mce2: 010e355d2fa628151e2dac82d00fe3b1186f04c1
-  soc-u32-cleanup: 581b38f9aa93eedaa317e831ae16b63382a20612
-  tas5504-codec: b37e7c17bc269c954a151887b761ea52ad42c0c1
-  max9485-i2c: d9afb75f6b85bc28fda2318479212c7f70b75ad8
-  i2s-cell-clock: 3e6aee69ac52b8390d50e91ebfaf6fd47e9f1fd1
-  dspeak-audio: b08089cb3add5e76bea08ea4fa8f1b2fa2d36da5
-  mmc-spi: 142617364ebdddfe0be4ebe0b9da20280b739c19
-  temp: 61157d8eccd2960fe060615bb0cf68e1abdc20c3
+  Makefile: 5b346ee1063326d12e53ca500667bc3d78dbb3c0
+  digispeak: d03499a109040023b2d3aff7cadfa0f3d57dbec9
+  mpc5200-rtc: 64580cd4e2c0c1eaae5855d8a6a73a49f8e285cd
+  lirc: 31d23f64c4c1547c26a928811d7e75780ed2dff7
+  jds-lirc-base: 6b66b0b176897cc12d594c30e7098e0d7c43153d
+  jds-lirc-core: a831bc3fa8901cf6a52e7d8b5681c6657f3c4ec6
+  jds-lirc-configfs: b6c541e3bc3d7220b107a735319aad38de29f9b5
+  jds-lirc-gpt: 8989298e0d16872abaf2e8e1b9a24beb1e5ecb28
+  jds-lirc-device-tree: eed297eea4b9aa36232813105216110f6cee5535
+  jds-lirc-mce2: 70635a1344e895cec795d9ae80e1af2b09ff17f7
+  soc-u32-cleanup: 35b1748b4ecd0ff75e2c526363082030fac8195a
+  tas5504-codec: 19f7badbc401f973c162f8592e73452b1a79d25e
+  max9485-i2c: 63fb468cb9bb87aa8739c9540023f3fc5fc2288d
+  i2s-cell-clock: 46cc38ea26c5cdb287696b2437e7d5060ca44f82
+  dspeak-audio: c5b63048c35645675a16f15f231fe412029dd66d
+  mmc-spi: 25d8d8d0037808be66b7b0ac902dcadd416bf1a5
+  temp: 99db0ae3198d5d7036d58c6c1a75c8f847aaeb3a
 Unapplied:
   g_spi_4: 8bc12b29a4428fcc5bb27a81746a7c80e42ea548
 Hidden:
