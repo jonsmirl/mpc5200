@@ -23,6 +23,7 @@
 #include <linux/delay.h>
 #include <linux/spi/spi.h>
 #include <linux/fsl_devices.h>
+#include <linux/of_spi.h>
 
 #include <asm/mpc52xx.h>
 #include <asm/mpc52xx_psc.h>
@@ -359,19 +360,19 @@ static irqreturn_t mpc52xx_psc_spi_isr(int irq, void *dev_id)
 }
 
 /* bus_num is used only for the case dev->platform_data == NULL */
-static int __init mpc52xx_psc_spi_do_probe(struct device *dev, u32 regaddr,
+static int __init mpc52xx_psc_spi_do_probe(struct of_device *op, u32 regaddr,
 				u32 size, unsigned int irq, s16 bus_num)
 {
-	struct fsl_spi_platform_data *pdata = dev->platform_data;
+	struct fsl_spi_platform_data *pdata = op->dev.platform_data;
 	struct mpc52xx_psc_spi *mps;
 	struct spi_master *master;
 	int ret;
 
-	master = spi_alloc_master(dev, sizeof *mps);
+	master = spi_alloc_master(&op->dev, sizeof *mps);
 	if (master == NULL)
 		return -ENOMEM;
 
-	dev_set_drvdata(dev, master);
+	dev_set_drvdata(&op->dev, master);
 	mps = spi_master_get_devdata(master);
 
 	/* the spi->mode bits understood by this driver: */
@@ -379,7 +380,7 @@ static int __init mpc52xx_psc_spi_do_probe(struct device *dev, u32 regaddr,
 
 	mps->irq = irq;
 	if (pdata == NULL) {
-		dev_warn(dev, "probe called without platform data, no "
+		dev_warn(&op->dev, "probe called without platform data, no "
 				"cs_control function will be called\n");
 		mps->cs_control = NULL;
 		mps->sysclk = 0;
@@ -397,7 +398,7 @@ static int __init mpc52xx_psc_spi_do_probe(struct device *dev, u32 regaddr,
 
 	mps->psc = ioremap(regaddr, size);
 	if (!mps->psc) {
-		dev_err(dev, "could not ioremap I/O port range\n");
+		dev_err(&op->dev, "could not ioremap I/O port range\n");
 		ret = -EFAULT;
 		goto free_master;
 	}
@@ -428,6 +429,8 @@ static int __init mpc52xx_psc_spi_do_probe(struct device *dev, u32 regaddr,
 	ret = spi_register_master(master);
 	if (ret < 0)
 		goto unreg_master;
+
+	of_register_spi_devices(master, op->node);
 
 	return ret;
 
@@ -485,7 +488,7 @@ static int __init mpc52xx_psc_spi_of_probe(struct of_device *op,
 		id = *psc_nump + 1;
 	}
 
-	return mpc52xx_psc_spi_do_probe(&op->dev, (u32)regaddr64, (u32)size64,
+	return mpc52xx_psc_spi_do_probe(op, (u32)regaddr64, (u32)size64,
 					irq_of_parse_and_map(op->node, 0), id);
 }
 
