@@ -1535,6 +1535,8 @@ struct iwl_priv {
 	bool disable_ht40;
 #endif /* CONFIG_IWLWIFI_DEBUGFS */
 
+	u32 connector_log;
+
 	struct work_struct txpower_work;
 	u32 disable_sens_cal;
 	u32 disable_chain_noise_cal;

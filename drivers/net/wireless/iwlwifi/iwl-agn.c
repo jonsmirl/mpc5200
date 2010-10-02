@@ -59,6 +59,7 @@
 #include "iwl-sta.h"
 #include "iwl-agn-calib.h"
 #include "iwl-agn.h"
+#include "iwl-connector.h"
 
 
 /******************************************************************************
@@ -2887,6 +2888,8 @@ static void iwl_alive_start(struct iwl_priv *priv)
 
 	iwl_leds_init(priv);
 
+	iwl_connector_set_priv(priv);
+
 	IWL_DEBUG_INFO(priv, "ALIVE processing complete.\n");
 	set_bit(STATUS_READY, &priv->status);
 	wake_up_interruptible(&priv->wait_command_queue);
@@ -4148,6 +4151,9 @@ static int iwl_init_drv(struct iwl_priv *priv)
 	priv->missed_beacon_threshold = IWL_MISSED_BEACON_THRESHOLD_DEF;
 	priv->_agn.agg_tids_count = 0;
 
+	/* Dan's parameters */
+	priv->connector_log = priv->cfg->mod_params->connector_log;
+
 	/* initialize force reset */
 	priv->force_reset[IWL_RF_RESET].reset_duration =
 		IWL_DELAY_NEXT_FORCE_RF_RESET;
@@ -4854,15 +4860,24 @@ static int __init iwl_init(void)
 		return ret;
 	}
 
+	ret = iwlagn_register_connector();
+	if (ret) {
+		printk(KERN_ERR DRV_NAME "Unable to initialize connector\n");
+		goto error_register_rate;
+	}
+
 	ret = pci_register_driver(&iwl_driver);
 	if (ret) {
 		pr_err("Unable to initialize PCI module\n");
-		goto error_register;
+		goto error_register_connector;
 	}
 
 	return ret;
 
-error_register:
+error_register_connector:
+	iwlagn_unregister_connector();
+
+error_register_rate:
 	iwlagn_rate_control_unregister();
 	return ret;
 }
@@ -4870,6 +4885,7 @@ error_register:
 static void __exit iwl_exit(void)
 {
 	pci_unregister_driver(&iwl_driver);
+	iwlagn_unregister_connector();
 	iwlagn_rate_control_unregister();
 }
 
@@ -4883,6 +4899,10 @@ module_param_named(debug, iwl_debug_level, uint, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(debug, "debug output mask");
 #endif
 
+module_param_named(connector_log, iwlagn_mod_params.connector_log, int,
+		S_IRUGO);
+MODULE_PARM_DESC(connector_log,
+		 "set connector log mask (default 0 [nothing])");
 module_param_named(swcrypto50, iwlagn_mod_params.sw_crypto, bool, S_IRUGO);
 MODULE_PARM_DESC(swcrypto50,
 		 "using crypto in software (default 0 [hardware]) (deprecated)");

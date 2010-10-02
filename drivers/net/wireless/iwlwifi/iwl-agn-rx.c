@@ -40,6 +40,7 @@
 #include "iwl-helpers.h"
 #include "iwl-agn-hw.h"
 #include "iwl-agn.h"
+#include "iwl-connector.h"
 
 void iwl_rx_missed_beacon_notif(struct iwl_priv *priv,
 				struct iwl_rx_mem_buffer *rxb)
@@ -99,9 +100,12 @@ static void iwl_rx_calc_noise(struct iwl_priv *priv)
 	}
 
 	/* Average among active antennas */
-	if (num_active_rx)
+	if (num_active_rx) {
 		last_rx_noise = (total_silence / num_active_rx) - 107;
-	else
+		if (priv->connector_log & IWL_CONN_NOISE_MSK)
+			connector_send_msg((void *)&last_rx_noise,
+					sizeof(last_rx_noise), IWL_CONN_NOISE);
+	} else
 		last_rx_noise = IWL_NOISE_MEAS_NOT_AVAILABLE;
 
 	IWL_DEBUG_CALIB(priv, "inband silence a %u, b %u, c %u, dBm %d\n",

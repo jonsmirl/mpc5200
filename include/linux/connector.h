@@ -1,9 +1,9 @@
 /*
  * 	connector.h
- * 
+ *
  * 2004-2005 Copyright (c) Evgeniy Polyakov <johnpol@2ka.mipt.ru>
  * All rights reserved.
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -42,8 +42,10 @@
 #define CN_VAL_DM_USERSPACE_LOG		0x1
 #define CN_IDX_DRBD			0x8
 #define CN_VAL_DRBD			0x1
+#define CN_IDX_IWLAGN			0xff
+#define CN_VAL_IWLAGN			0x1
 
-#define CN_NETLINK_USERS		8
+#define CN_NETLINK_USERS		255
 
 /*
  * Maximum connector's message size.
@@ -51,8 +53,8 @@
 #define CONNECTOR_MAX_MSG_SIZE		16384
 
 /*
- * idx and val are unique identifiers which 
- * are used for message routing and 
+ * idx and val are unique identifiers which
+ * are used for message routing and
  * must be registered in connector.h for in-kernel usage.
  */
 
