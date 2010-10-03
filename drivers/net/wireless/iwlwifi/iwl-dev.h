@@ -1536,6 +1536,11 @@ struct iwl_priv {
 #endif /* CONFIG_IWLWIFI_DEBUGFS */
 
 	u32 connector_log;
+	int last_rx_noise;
+	s8 last_rx_noiseA;
+	s8 last_rx_noiseB;
+	s8 last_rx_noiseC;
+	bool bf_enabled;
 
 	struct work_struct txpower_work;
 	u32 disable_sens_cal;

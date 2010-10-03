@@ -358,6 +358,32 @@ static int iwlagn_set_pan_params(struct iwl_priv *priv)
 	return ret;
 }
 
+static int iwl5000_send_dsp_debug(struct iwl_priv *priv)
+{
+	u32 count = 1;
+	size_t len = sizeof(struct iwl5000_dsp_debug) +
+		((count + 1) & ~1) * sizeof(u16);
+	struct iwl5000_dsp_debug *dsp_debug = kmalloc(len, GFP_ATOMIC);
+	u16 *mib_indices;
+	int ret;
+
+	if (!dsp_debug)
+		return -ENOMEM;
+
+	mib_indices = (u16 *) dsp_debug->mib_indices;
+
+	dsp_debug->mib_cnt = count;
+	dsp_debug->flags = DSP_DEBUG_OFDM_MSK;
+	dsp_debug->stat_id = 0;
+	dsp_debug->reserved = 0;
+	mib_indices[0] = OFDM_RX_ANT_OUT;
+
+	ret = iwl_send_cmd_pdu(priv, DSP_DEBUG_CMD, len, dsp_debug);
+	kfree(dsp_debug);
+
+	return ret;
+}
+
 struct iwl_hcmd_ops iwlagn_hcmd = {
 	.rxon_assoc = iwlagn_send_rxon_assoc,
 	.commit_rxon = iwlagn_commit_rxon,
@@ -365,6 +391,7 @@ struct iwl_hcmd_ops iwlagn_hcmd = {
 	.set_tx_ant = iwlagn_send_tx_ant_config,
 	.send_bt_config = iwl_send_bt_config,
 	.set_pan_params = iwlagn_set_pan_params,
+	.dsp_debug = iwl5000_send_dsp_debug,
 };
 
 struct iwl_hcmd_ops iwlagn_bt_hcmd = {

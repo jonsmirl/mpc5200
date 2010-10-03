@@ -39,6 +39,7 @@
 #include "iwl-agn-hw.h"
 #include "iwl-agn.h"
 #include "iwl-sta.h"
+#include "iwl-connector.h"
 
 static inline u32 iwlagn_get_scd_ssn(struct iwlagn_tx_resp *tx_resp)
 {
@@ -381,6 +382,83 @@ void iwl_check_abort_status(struct iwl_priv *priv,
 	}
 }
 
+static void iwlagn_bfee_notif(struct iwl_priv *priv,
+				struct iwl_rx_mem_buffer *rxb)
+{
+	/*
+	 * Just print a notification that there was a notification passed up
+	 * from SVD
+	 */
+	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	struct iwl_bfee_notif *bfee_notif =
+		(struct iwl_bfee_notif *) &pkt->u.bfee_notif;
+	u8 Nrx, Ntx;
+	u16 len = le16_to_cpu(bfee_notif->len);
+	struct iwl_rx_phy_res *phy;
+	u32 *non_cfg_buf, *cfg_buf;
+	static u16 bfee_count;
+
+	if (priv->_agn.last_phy_res_valid) {
+		phy = &priv->_agn.last_phy_res;
+		non_cfg_buf = (u32 *)phy->non_cfg_phy_buf;
+		bfee_notif->rssiA =
+			(non_cfg_buf[IWLAGN_RX_RES_RSSI_AB_IDX] &
+			 IWLAGN_OFDM_RSSI_INBAND_A_BITMSK) >>
+			IWLAGN_OFDM_RSSI_A_BIT_POS;
+		bfee_notif->rssiB =
+			(non_cfg_buf[IWLAGN_RX_RES_RSSI_AB_IDX] &
+			 IWLAGN_OFDM_RSSI_INBAND_B_BITMSK) >>
+			IWLAGN_OFDM_RSSI_B_BIT_POS;
+		bfee_notif->rssiC =
+			(non_cfg_buf[IWLAGN_RX_RES_RSSI_C_IDX] &
+			 IWLAGN_OFDM_RSSI_INBAND_C_BITMSK) >>
+			IWLAGN_OFDM_RSSI_C_BIT_POS;
+		bfee_notif->noise = priv->last_rx_noise;
+		bfee_notif->noiseA = priv->last_rx_noiseA;
+		bfee_notif->noiseB = priv->last_rx_noiseB;
+		bfee_notif->noiseC = priv->last_rx_noiseC;
+		bfee_notif->agc =
+			(non_cfg_buf[IWLAGN_RX_RES_AGC_IDX] &
+			 IWLAGN_OFDM_AGC_MSK) >> IWLAGN_OFDM_AGC_BIT_POS;
+		if (phy->cfg_phy_cnt > 0) {
+			cfg_buf = (u32 *)phy->cfg_phy_buf;
+			bfee_notif->antenna_sel = cfg_buf[0];
+		}
+		/* Everything but antennas is in bottom 14 bits */
+		bfee_notif->fake_rate_n_flags =
+			cpu_to_le16(__le32_to_cpu(phy->rate_n_flags) & 0x3fff);
+		IWL_WARN(priv, "rssis: %u %u %u noise: %d agc: %u "
+				"antenna_sel: %02x fake_rate_n_flags=0x%x\n",
+				bfee_notif->rssiA, bfee_notif->rssiB,
+				bfee_notif->rssiC, bfee_notif->noise,
+				bfee_notif->agc, bfee_notif->antenna_sel,
+				bfee_notif->fake_rate_n_flags);
+
+		/* Increment counter */
+		bfee_count++;
+		bfee_notif->bfee_count = bfee_count;
+	}
+
+	/* Log the bytes to a file */
+	if (priv->connector_log & IWL_CONN_BFEE_NOTIF_MSK)
+		connector_send_msg((void *)bfee_notif,
+			len + sizeof(struct iwl_bfee_notif),
+			IWL_CONN_BFEE_NOTIF);
+
+	/* Now print out that we got a notification, and the size of it */
+	Nrx = bfee_notif->Nrx;
+	Ntx = bfee_notif->Ntx;
+	/*
+	 * Each subcarrier uses Ntx * Nrx * 2 * 8 bits for matrix
+	 * (2 signed 8-bit I/Q vals) plus 3 bits for SNR. I think the hardware
+	 * always gives 0 for these 3 bits. See 802.11n spec section 7.3.1.28.
+	 */
+	IWL_DEBUG_RX(priv, "BFEE NOTIFICATION, Nrx=%u Ntx=%u "
+			"len=%u calc_len=%u\n",
+			Nrx, Ntx, len, (30*(3+2*Nrx*Ntx*8)+7)/8);
+}
+
+
 static void iwlagn_rx_reply_tx(struct iwl_priv *priv,
 				struct iwl_rx_mem_buffer *rxb)
 {
@@ -476,6 +554,8 @@ void iwlagn_rx_handler_setup(struct iwl_priv *priv)
 					iwlagn_rx_calib_result;
 	priv->rx_handlers[CALIBRATION_COMPLETE_NOTIFICATION] =
 					iwlagn_rx_calib_complete;
+	priv->rx_handlers[REPLY_BFEE_NOTIFICATION] =
+					iwlagn_bfee_notif;
 	priv->rx_handlers[REPLY_TX] = iwlagn_rx_reply_tx;
 }
 

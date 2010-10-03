@@ -117,6 +117,12 @@ int iwlagn_commit_rxon(struct iwl_priv *priv, struct iwl_rxon_context *ctx)
 	/* always get timestamp with Rx frame */
 	ctx->staging.flags |= RXON_FLG_TSF2HOST_MSK;
 
+	/* Enable beamforming */
+	if (priv->bf_enabled)
+		ctx->staging.flags |= RXON_FLG_BF_ENABLE_MSK;
+	else
+		ctx->staging.flags &= ~RXON_FLG_BF_ENABLE_MSK;
+
 	ret = iwl_check_rxon_cmd(priv, ctx);
 	if (ret) {
 		IWL_ERR(priv, "Invalid RXON configuration.  Not committing.\n");
@@ -251,6 +257,9 @@ int iwlagn_commit_rxon(struct iwl_priv *priv, struct iwl_rxon_context *ctx)
 		IWL_ERR(priv, "Error sending TX power (%d)\n", ret);
 		return ret;
 	}
+
+	if (priv->cfg->ops->hcmd->dsp_debug)
+		iwl_send_dsp_debug(priv);
 
 	return 0;
 }
@@ -1071,6 +1080,7 @@ void iwl_rx_handle(struct iwl_priv *priv)
 			(pkt->hdr.cmd != REPLY_RX_MPDU_CMD) &&
 			(pkt->hdr.cmd != REPLY_COMPRESSED_BA) &&
 			(pkt->hdr.cmd != STATISTICS_NOTIFICATION) &&
+			(pkt->hdr.cmd != REPLY_BFEE_NOTIFICATION) &&
 			(pkt->hdr.cmd != REPLY_TX);
 
 		/* Based on type of command response or notification,
@@ -1696,12 +1706,60 @@ static ssize_t store_tx_power(struct device *d,
 
 static DEVICE_ATTR(tx_power, S_IWUSR | S_IRUGO, show_tx_power, store_tx_power);
 
+/*
+ * Show and change whether beamforming is enabled
+ */
+static ssize_t show_bf_flag(struct device *d,
+			    struct device_attribute *attr, char *buf)
+{
+	struct iwl_priv *priv = dev_get_drvdata(d);
+
+	return sprintf(buf, "%d\n", priv->bf_enabled);
+}
+
+static ssize_t store_bf_flag(struct device *d,
+			     struct device_attribute *attr,
+			     const char *buf, size_t count)
+{
+	struct iwl_priv *priv = dev_get_drvdata(d);
+	int ret;
+	unsigned long bf_flag;
+
+	ret = strict_strtoul(buf, 0, &bf_flag);
+	if (ret)
+		return ret;
+
+	/* Turn from nonzero/zero into 1/0 */
+	bf_flag = !!bf_flag;
+
+	mutex_lock(&priv->mutex);
+	if (priv->bf_enabled != bf_flag) {
+		priv->bf_enabled = bf_flag;
+		/* Cancel any currently running scans... */
+		if (iwl_scan_cancel_timeout(priv, 100))
+			IWL_WARN(priv, "Could not cancel scan. Could not store"
+				 " RXON_FLG_BF_ENABLE\n");
+		else {
+			IWL_DEBUG_INFO(priv, "Committing bf_flag = %lu\n",
+					bf_flag);
+			iwlcore_commit_rxon(priv,
+					&priv->contexts[IWL_RXON_CTX_BSS]);
+		}
+	}
+	mutex_unlock(&priv->mutex);
+
+	return count;
+}
+
+static DEVICE_ATTR(bf_flag, S_IWUSR | S_IRUGO, show_bf_flag, store_bf_flag);
+
 static struct attribute *iwl_sysfs_entries[] = {
 	&dev_attr_temperature.attr,
 	&dev_attr_tx_power.attr,
 #ifdef CONFIG_IWLWIFI_DEBUG
 	&dev_attr_debug_level.attr,
 #endif
+	&dev_attr_bf_flag.attr,
 	NULL
 };
 
@@ -4153,6 +4211,7 @@ static int iwl_init_drv(struct iwl_priv *priv)
 
 	/* Dan's parameters */
 	priv->connector_log = priv->cfg->mod_params->connector_log;
+	priv->bf_enabled = 1;	/* Enabled */
 
 	/* initialize force reset */
 	priv->force_reset[IWL_RF_RESET].reset_duration =

@@ -107,6 +107,10 @@ static void iwl_rx_calc_noise(struct iwl_priv *priv)
 					sizeof(last_rx_noise), IWL_CONN_NOISE);
 	} else
 		last_rx_noise = IWL_NOISE_MEAS_NOT_AVAILABLE;
+	priv->last_rx_noise = last_rx_noise;
+	priv->last_rx_noiseA = bcn_silence_a;
+	priv->last_rx_noiseB = bcn_silence_b;
+	priv->last_rx_noiseC = bcn_silence_c;
 
 	IWL_DEBUG_CALIB(priv, "inband silence a %u, b %u, c %u, dBm %d\n",
 			bcn_silence_a, bcn_silence_b, bcn_silence_c,

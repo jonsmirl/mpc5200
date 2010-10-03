@@ -169,6 +169,10 @@ enum {
 	REPLY_CT_KILL_CONFIG_CMD = 0xa4,
 	SENSITIVITY_CMD = 0xa8,
 	REPLY_PHY_CALIBRATION_CMD = 0xb0,
+
+	/* Beamforming */
+	REPLY_BFEE_NOTIFICATION = 0xbb,
+
 	REPLY_RX_PHY_CMD = 0xc0,
 	REPLY_RX_MPDU_CMD = 0xc1,
 	REPLY_RX = 0xc3,
@@ -189,6 +193,9 @@ enum {
 	REPLY_WIPAN_WEPKEY = 0xb8,	/* use REPLY_WEPKEY structure */
 	REPLY_WIPAN_P2P_CHANNEL_SWITCH = 0xb9,
 	REPLY_WIPAN_NOA_NOTIFICATION = 0xbc,
+
+	/* Gets metadata for Beamforming */
+	DSP_DEBUG_CMD = 0xf1,
 
 	REPLY_MAX = 0xff
 };
@@ -684,6 +691,10 @@ enum {
 #define RXON_FLG_CHANNEL_MODE_LEGACY	cpu_to_le32(CHANNEL_MODE_LEGACY << RXON_FLG_CHANNEL_MODE_POS)
 #define RXON_FLG_CHANNEL_MODE_PURE_40	cpu_to_le32(CHANNEL_MODE_PURE_40 << RXON_FLG_CHANNEL_MODE_POS)
 #define RXON_FLG_CHANNEL_MODE_MIXED	cpu_to_le32(CHANNEL_MODE_MIXED << RXON_FLG_CHANNEL_MODE_POS)
+
+/* Beamforming */
+#define RXON_FLG_BF_ENABLE_POS			(29)
+#define RXON_FLG_BF_ENABLE_MSK			cpu_to_le32(0x1<<29)
 
 /* CTS to self (if spec allows) flag */
 #define RXON_FLG_SELF_CTS_EN			cpu_to_le32(0x1<<30)
@@ -1420,7 +1431,7 @@ struct iwlagn_non_cfg_phy {
  */
 struct iwl_rx_phy_res {
 	u8 non_cfg_phy_cnt;     /* non configurable DSP phy data byte count */
-	u8 cfg_phy_cnt;		/* configurable DSP phy data byte count */
+	u8 cfg_phy_cnt;		/* configurable DSP phy data element count */
 	u8 stat_id;		/* configurable DSP phy data set ID */
 	u8 reserved1;
 	__le64 timestamp;	/* TSF at on air rise */
@@ -1431,6 +1442,7 @@ struct iwl_rx_phy_res {
 	__le32 rate_n_flags;	/* RATE_MCS_* */
 	__le16 byte_count;	/* frame's byte-count */
 	__le16 frame_time;	/* frame's time on the air */
+	u8 cfg_phy_buf[0];	/* The values requested via DSP_DEBUG */
 } __packed;
 
 struct iwl_rx_mpdu_res_start {
@@ -4307,6 +4319,54 @@ struct iwl_bt_coex_prot_env_cmd {
 } __attribute__((packed));
 
 /******************************************************************************
+ * (14)
+ * Beamforming commands
+ *
+ *****************************************************************************/
+
+/*
+ * REPLY_BFEE_NOTIFICATION = 0xbb
+ *
+ */
+struct iwl_bfee_notif {
+	u8 reserved;
+	s8 noiseA, noiseB, noiseC;
+	u16 bfee_count;
+	u16 reserved1;
+	u8 Nrx, Ntx;
+	u8 rssiA, rssiB, rssiC;
+	s8 noise;
+	u8 agc, antenna_sel;
+	__le16 len;
+	__le16 fake_rate_n_flags;
+	u8 payload[0];
+} __attribute__ ((packed));
+
+/******************************************************************************
+ * (15)
+ * DSP debug interface
+ *
+ *****************************************************************************/
+
+/* DSP debugging */
+#define DSP_DEBUG_CCK_MSK		(0x1)
+#define DSP_DEBUG_OFDM_MSK		(0x0)
+/* MIB values */
+#define OFDM_RX_ANT_OUT			0x4302
+
+/*
+ * DSP_DEBUG_CMD = 0xf1
+ *
+ */
+struct iwl5000_dsp_debug {
+	u8 mib_cnt;
+	u8 flags;
+	u8 stat_id;
+	u8 reserved;
+	u16 mib_indices[0];
+} __attribute__ ((packed));
+
+/******************************************************************************
  * (13)
  * Union of all expected notifications/responses:
  *
@@ -4346,6 +4406,8 @@ struct iwl_rx_packet {
 		struct iwl_coex_medium_notification coex_medium_notif;
 		struct iwl_coex_event_resp coex_event;
 		struct iwl_bt_coex_profile_notif bt_coex_profile_notif;
+		struct iwl_bfee_notif bfee_notif;
+		struct iwl5000_dsp_debug dsp_debug;
 		__le32 status;
 		u8 raw[0];
 	} u;

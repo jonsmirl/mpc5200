@@ -89,6 +89,7 @@ struct iwl_cmd;
 
 struct iwl_hcmd_ops {
 	int (*rxon_assoc)(struct iwl_priv *priv, struct iwl_rxon_context *ctx);
+	int (*dsp_debug)(struct iwl_priv *priv);
 	int (*commit_rxon)(struct iwl_priv *priv, struct iwl_rxon_context *ctx);
 	void (*set_rxon_chain)(struct iwl_priv *priv,
 			       struct iwl_rxon_context *ctx);
@@ -719,6 +720,10 @@ static inline int iwl_send_rxon_assoc(struct iwl_priv *priv,
 				      struct iwl_rxon_context *ctx)
 {
 	return priv->cfg->ops->hcmd->rxon_assoc(priv, ctx);
+}
+static inline int iwl_send_dsp_debug(struct iwl_priv *priv)
+{
+	return priv->cfg->ops->hcmd->dsp_debug(priv);
 }
 static inline int iwlcore_commit_rxon(struct iwl_priv *priv,
 				      struct iwl_rxon_context *ctx)
