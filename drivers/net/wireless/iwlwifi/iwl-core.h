@@ -741,6 +741,14 @@ static inline const struct ieee80211_supported_band *iwl_get_hw_mode(
 	return priv->hw->wiphy->bands[band];
 }
 
+extern const u8 iwl_monitor_addr[ETH_ALEN];
+static inline bool is_monitor_ether_addr(const u8 *addr)
+{
+	if (WARN_ON(addr == NULL))
+		return 0;
+	return !memcmp(addr, iwl_monitor_addr, ETH_ALEN);
+}
+
 extern bool bt_coex_active;
 extern bool bt_siso_mode;
 

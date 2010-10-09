@@ -240,6 +240,8 @@ u8 iwl_prep_station(struct iwl_priv *priv, struct iwl_rxon_context *ctx,
 		sta_id = ctx->ap_sta_id;
 	else if (is_broadcast_ether_addr(addr))
 		sta_id = ctx->bcast_sta_id;
+	else if (is_monitor_ether_addr(addr))
+		sta_id = IWLAGN_MONITOR_ID;
 	else
 		for (i = IWL_STA_ID; i < priv->hw_params.max_stations; i++) {
 			if (!compare_ether_addr(priv->stations[i].sta.sta.addr,

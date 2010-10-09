@@ -565,6 +565,31 @@ int iwlagn_alloc_bcast_station(struct iwl_priv *priv,
 	priv->stations[sta_id].lq = link_cmd;
 	spin_unlock_irqrestore(&priv->sta_lock, flags);
 
+	/* Above: bcast. Below: monitor */
+	spin_lock_irqsave(&priv->sta_lock, flags);
+	sta_id = iwl_prep_station(priv, ctx, iwl_monitor_addr, false, NULL);
+	if (sta_id == IWL_INVALID_STATION) {
+		IWL_ERR(priv, "Unable to prepare monitor station\n");
+		spin_unlock_irqrestore(&priv->sta_lock, flags);
+
+		return -EINVAL;
+	}
+
+	priv->stations[sta_id].used |= IWL_STA_DRIVER_ACTIVE;
+	priv->stations[sta_id].used |= IWL_STA_BCAST;
+	spin_unlock_irqrestore(&priv->sta_lock, flags);
+
+	link_cmd = iwl_sta_alloc_lq(priv, sta_id);
+	if (!link_cmd) {
+		IWL_ERR(priv,
+			"Unable to initialize rate scaling for monitor station.\n");
+		return -ENOMEM;
+	}
+
+	spin_lock_irqsave(&priv->sta_lock, flags);
+	priv->stations[sta_id].lq = link_cmd;
+	spin_unlock_irqrestore(&priv->sta_lock, flags);
+
 	return 0;
 }
 
@@ -592,6 +617,22 @@ static int iwl_update_bcast_station(struct iwl_priv *priv,
 		kfree(priv->stations[sta_id].lq);
 	else
 		IWL_DEBUG_INFO(priv, "Bcast station rate scaling has not been initialized yet.\n");
+	priv->stations[sta_id].lq = link_cmd;
+	spin_unlock_irqrestore(&priv->sta_lock, flags);
+
+	sta_id = IWLAGN_MONITOR_ID;
+
+	link_cmd = iwl_sta_alloc_lq(priv, sta_id);
+	if (!link_cmd) {
+		IWL_ERR(priv, "Unable to initialize rate scaling for monitor station.\n");
+		return -ENOMEM;
+	}
+
+	spin_lock_irqsave(&priv->sta_lock, flags);
+	if (priv->stations[sta_id].lq)
+		kfree(priv->stations[sta_id].lq);
+	else
+		IWL_DEBUG_INFO(priv, "monitor station rate scaling has not been initialized yet.\n");
 	priv->stations[sta_id].lq = link_cmd;
 	spin_unlock_irqrestore(&priv->sta_lock, flags);
 

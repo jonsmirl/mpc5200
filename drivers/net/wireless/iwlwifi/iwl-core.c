@@ -74,6 +74,8 @@ EXPORT_SYMBOL(iwl_debug_level);
 
 const u8 iwl_bcast_addr[ETH_ALEN] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 EXPORT_SYMBOL(iwl_bcast_addr);
+const u8 iwl_monitor_addr[ETH_ALEN] = { 0x00, 0x16, 0xEA, 0x12, 0x34, 0x56 };
+EXPORT_SYMBOL(iwl_monitor_addr);
 
 
 /* This function both allocates and initializes hw and priv. */
