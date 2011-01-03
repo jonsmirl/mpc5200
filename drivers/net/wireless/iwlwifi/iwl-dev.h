@@ -48,6 +48,7 @@
 #include "iwl-power.h"
 #include "iwl-agn-rs.h"
 #include "iwl-agn-tt.h"
+#include "iwl-commands.h"
 
 struct iwl_tx_queue;
 
@@ -1435,6 +1436,7 @@ struct iwl_priv {
 			u8 agg_tids_count;
 
 			struct iwl_rx_phy_res last_phy_res;
+			u8 last_cfg_phy_buf[IWLAGN_MAX_CFG_PHY_CNT*sizeof(u32)];
 			bool last_phy_res_valid;
 
 			struct completion firmware_loading_complete;

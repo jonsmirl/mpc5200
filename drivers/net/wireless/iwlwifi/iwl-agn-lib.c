@@ -421,7 +421,7 @@ static void iwlagn_bfee_notif(struct iwl_priv *priv,
 			(non_cfg_buf[IWLAGN_RX_RES_AGC_IDX] &
 			 IWLAGN_OFDM_AGC_MSK) >> IWLAGN_OFDM_AGC_BIT_POS;
 		if (phy->cfg_phy_cnt > 0) {
-			cfg_buf = (u32 *)phy->cfg_phy_buf;
+			cfg_buf = (u32 *)&priv->_agn.last_cfg_phy_buf;
 			bfee_notif->antenna_sel = cfg_buf[0];
 		}
 		/* Everything but antennas is in bottom 14 bits */
@@ -1188,11 +1188,11 @@ void iwlagn_rx_reply_rx(struct iwl_priv *priv,
 	if (pkt->hdr.cmd == REPLY_RX) {
 		phy_res = (struct iwl_rx_phy_res *)pkt->u.raw;
 		header = (struct ieee80211_hdr *)(pkt->u.raw + sizeof(*phy_res)
-				+ phy_res->cfg_phy_cnt);
+				+ phy_res->cfg_phy_cnt * sizeof(u32));
 
 		len = le16_to_cpu(phy_res->byte_count);
 		rx_pkt_status = *(__le32 *)(pkt->u.raw + sizeof(*phy_res) +
-				phy_res->cfg_phy_cnt + len);
+				phy_res->cfg_phy_cnt * sizeof(u32) + len);
 		ampdu_status = le32_to_cpu(rx_pkt_status);
 	} else {
 		if (!priv->_agn.last_phy_res_valid) {
@@ -1208,8 +1208,9 @@ void iwlagn_rx_reply_rx(struct iwl_priv *priv,
 				le32_to_cpu(rx_pkt_status));
 	}
 
-	if ((unlikely(phy_res->cfg_phy_cnt > 20))) {
-		IWL_DEBUG_DROP(priv, "dsp size out of range [0,20]: %d/n",
+	if ((unlikely(phy_res->cfg_phy_cnt > IWLAGN_MAX_CFG_PHY_CNT))) {
+		IWL_DEBUG_DROP(priv, "dsp size out of range [0,%d]: %d/n",
+				IWLAGN_MAX_CFG_PHY_CNT,
 				phy_res->cfg_phy_cnt);
 		return;
 	}
@@ -1286,9 +1287,11 @@ void iwlagn_rx_reply_rx_phy(struct iwl_priv *priv,
 			    struct iwl_rx_mem_buffer *rxb)
 {
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	struct iwl_rx_phy_res *rx_phy_res = (struct iwl_rx_phy_res *)pkt->u.raw;
 	priv->_agn.last_phy_res_valid = true;
-	memcpy(&priv->_agn.last_phy_res, pkt->u.raw,
-	       sizeof(struct iwl_rx_phy_res));
+	memcpy(&priv->_agn.last_phy_res, rx_phy_res, sizeof(*rx_phy_res));
+	memcpy(&priv->_agn.last_cfg_phy_buf, rx_phy_res->cfg_phy_buf,
+			rx_phy_res->cfg_phy_cnt * sizeof(u32));
 }
 
 static int iwl_get_single_channel_for_scan(struct iwl_priv *priv,

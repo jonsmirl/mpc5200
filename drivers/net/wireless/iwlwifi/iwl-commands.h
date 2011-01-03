@@ -1419,6 +1419,7 @@ struct iwl4965_rx_non_cfg_phy {
 #define IWLAGN_OFDM_RSSI_INBAND_C_BITMSK 0x00ff
 #define IWLAGN_OFDM_RSSI_ALLBAND_C_BITMSK 0xff00
 #define IWLAGN_OFDM_RSSI_C_BIT_POS 0
+#define IWLAGN_MAX_CFG_PHY_CNT 20
 
 struct iwlagn_non_cfg_phy {
 	__le32 non_cfg_phy[IWLAGN_RX_RES_PHY_CNT];  /* up to 8 phy entries */
