@@ -11,7 +11,7 @@ more information:
    http://ccr.sigcomm.org/online/?q=node/719
 
 This includes the 802.11n Channel State Information (CSI) Measurement Tool we
-used have used in our SIGCOMM, GLOBECOM and CCR papers:
+have used in our SIGCOMM, GLOBECOM and CCR papers:
 
    Daniel Halperin, Wenjun Hu, Anmol Sheth, and David Wetherall. "Predictable
    802.11 Packet Delivery from Wireless Channel Measurements." ACM SIGCOMM,
