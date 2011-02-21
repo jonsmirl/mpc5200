@@ -1,5 +1,6 @@
 #!/bin/bash
 VERS=`cat include/config/kernel.release`
+rm -rf /tmp/kernel-dist-$VERS && \
 mkdir -p /tmp/kernel-dist-$VERS && \
 cp -rf usr/include /tmp/kernel-dist-$VERS/ && \
 cp /boot/*$VERS /tmp/kernel-dist-$VERS/ && \
