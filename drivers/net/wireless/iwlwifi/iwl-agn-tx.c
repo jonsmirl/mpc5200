@@ -413,14 +413,21 @@ static void iwlagn_tx_cmd_build_rate(struct iwl_priv *priv,
 		rts_retry_limit = data_retry_limit;
 	tx_cmd->rts_retry_limit = rts_retry_limit;
 
-	/* DATA packets will use the uCode station table for rate/antenna
-	 * selection */
+	/*
+	 * DATA packets will use the uCode station table for rate/antenna
+	 * selection.
+	 * ...
+	 * But handle some special experimental cases first
+	 */
 	if (ieee80211_is_data(fc) && priv->rotate_rates) {
 		tx_cmd->tx_flags &= ~TX_CMD_FLG_STA_RATE_MSK;
 		tx_cmd->rate_n_flags =
 			priv->rotate_rate_array[priv->last_rotate_rate];
 		priv->last_rotate_rate = (priv->last_rotate_rate + 1) %
 			priv->rotate_rate_total;
+		/* No retries in this mode */
+		tx_cmd->data_retry_limit = 0;
+		tx_cmd->rts_retry_limit = 0;
 		return;
 	} else if (ieee80211_is_data(fc)) {
 		tx_cmd->initial_rate_index = 0;
