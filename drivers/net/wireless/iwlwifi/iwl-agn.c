@@ -1753,6 +1753,67 @@ static ssize_t store_bf_flag(struct device *d,
 
 static DEVICE_ATTR(bf_flag, S_IWUSR | S_IRUGO, show_bf_flag, store_bf_flag);
 
+/*
+ * Show/store the receive chain mask
+ */
+static ssize_t store_rx_chains_msk(struct device *d,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct iwl_priv *priv = dev_get_drvdata(d);
+	struct iwl_rxon_context *ctx;
+	unsigned long rx_chains_msk;
+	int ret;
+
+	if (test_bit(STATUS_EXIT_PENDING, &priv->status))
+		return -EBUSY;
+
+	/* dont send host command if rf-kill is on */
+	if (!iwl_is_ready_rf(priv))
+		return -EBUSY;
+
+	ret = strict_strtoul(buf, 0, &rx_chains_msk);
+	if (ret) {
+		IWL_ERR(priv, "Invalid parameter for rx_chains_msk.");
+		return ret;
+	}
+
+	if ((rx_chains_msk & ANT_ABC) != rx_chains_msk) {
+		IWL_ERR(priv, "Invalid rx ant mask %lu\n", rx_chains_msk);
+		return -EINVAL;
+	}
+	IWL_INFO(priv, "Committing rx_chains_msk = 0x%lx\n", rx_chains_msk);
+
+	mutex_lock(&priv->mutex);
+	/* Update chains and number of chains */
+	priv->hw_params.valid_rx_ant = rx_chains_msk;
+	priv->hw_params.rx_chains_num = num_of_ant(rx_chains_msk);
+
+	/* The following is useful for checking_valid_rates */
+	priv->chain_noise_data.active_chains = rx_chains_msk;
+
+	for_each_context(priv, ctx) {
+		if (priv->cfg->ops->hcmd->set_rxon_chain)
+			priv->cfg->ops->hcmd->set_rxon_chain(priv, ctx);
+		iwlcore_commit_rxon(priv, ctx);
+	}
+	mutex_unlock(&priv->mutex);
+
+	return count;
+}
+
+static ssize_t show_rx_chains_msk(struct device *d,
+		struct device_attribute *attr, char *buf)
+{
+	struct iwl_priv *priv = dev_get_drvdata(d);
+	return sprintf(buf, "rx_chains_msk: %d antennas, mask 0x%x\n",
+			priv->hw_params.rx_chains_num,
+			priv->hw_params.valid_rx_ant);
+}
+
+static DEVICE_ATTR(rx_chains_msk, S_IWUSR | S_IRUSR, show_rx_chains_msk,
+		store_rx_chains_msk);
+
+
 static struct attribute *iwl_sysfs_entries[] = {
 	&dev_attr_temperature.attr,
 	&dev_attr_tx_power.attr,
@@ -1760,6 +1821,7 @@ static struct attribute *iwl_sysfs_entries[] = {
 	&dev_attr_debug_level.attr,
 #endif
 	&dev_attr_bf_flag.attr,
+	&dev_attr_rx_chains_msk.attr,
 	NULL
 };
 
