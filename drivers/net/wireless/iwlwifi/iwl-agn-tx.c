@@ -575,6 +575,8 @@ int iwlagn_tx_skb(struct iwl_priv *priv, struct sk_buff *skb)
 			       hdr->addr1);
 		goto drop_unlock;
 	}
+	if (sta == NULL && is_monitor_ether_addr(hdr->addr1))
+		sta_id = IWLAGN_MONITOR_ID;
 
 	IWL_DEBUG_TX(priv, "station Id %d\n", sta_id);
 
@@ -687,7 +689,13 @@ int iwlagn_tx_skb(struct iwl_priv *priv, struct sk_buff *skb)
 	iwlagn_tx_cmd_build_basic(priv, skb, tx_cmd, info, hdr, sta_id);
 	iwl_dbg_log_tx_data_frame(priv, len, hdr);
 
-	iwlagn_tx_cmd_build_rate(priv, tx_cmd, info, fc);
+	/* If packet is to the monitor address, use the monitor rate */
+	if ((IWLAGN_MONITOR_ID == sta_id) &&
+			(priv->monitor_tx_rate != 0)) {
+		tx_cmd->tx_flags &= ~TX_CMD_FLG_STA_RATE_MSK;
+		tx_cmd->rate_n_flags = cpu_to_le32(priv->monitor_tx_rate);
+	} else
+		iwlagn_tx_cmd_build_rate(priv, tx_cmd, info, fc);
 
 	iwl_update_stats(priv, true, fc, len);
 	/*

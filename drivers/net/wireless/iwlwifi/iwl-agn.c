@@ -1941,6 +1941,35 @@ static DEVICE_ATTR(rotate_rates, S_IWUSR | S_IRUGO, show_rotate_rates,
 		store_rotate_rates);
 
 
+/*
+ * Show/store the current monitor tx rate_n_flags.
+ */
+static ssize_t show_monitor_tx_rate(struct device *d,
+				struct device_attribute *attr, char *buf)
+{
+	struct iwl_priv *priv = dev_get_drvdata(d);
+	return sprintf(buf, "0x%x\n", priv->monitor_tx_rate);
+}
+
+static ssize_t store_monitor_tx_rate(struct device *d,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	struct iwl_priv *priv = dev_get_drvdata(d);
+	int ret;
+	unsigned long val;
+
+	ret = strict_strtoul(buf, 0, &val);
+	if (ret)
+		return ret;
+
+	priv->monitor_tx_rate = val;
+	return count;
+}
+
+static DEVICE_ATTR(monitor_tx_rate, S_IWUSR | S_IRUGO, show_monitor_tx_rate,
+		store_monitor_tx_rate);
+
 static struct attribute *iwl_sysfs_entries[] = {
 	&dev_attr_temperature.attr,
 	&dev_attr_tx_power.attr,
@@ -1950,6 +1979,7 @@ static struct attribute *iwl_sysfs_entries[] = {
 	&dev_attr_bf_flag.attr,
 	&dev_attr_rx_chains_msk.attr,
 	&dev_attr_rotate_rates.attr,
+	&dev_attr_monitor_tx_rate.attr,
 	NULL
 };
 
@@ -4401,7 +4431,12 @@ static int iwl_init_drv(struct iwl_priv *priv)
 
 	/* Dan's parameters */
 	priv->connector_log = priv->cfg->mod_params->connector_log;
-	priv->bf_enabled = 1;	/* Enabled */
+	priv->bf_enabled = 1;		/* Enabled */
+	priv->rotate_rates = 0;		/* Disabled */
+	priv->last_rotate_rate = 0;	/* Disabled */
+	priv->rotate_rate_total = 0;	/* Disabled */
+	priv->rotate_rate_array = NULL;	/* Disabled */
+	priv->monitor_tx_rate = 0;	/* Disabled */
 
 	/* initialize force reset */
 	priv->force_reset[IWL_RF_RESET].reset_duration =
@@ -4607,10 +4642,6 @@ static int iwl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	priv->contexts[IWL_RXON_CTX_PAN].ap_devtype = RXON_DEV_TYPE_CP;
 	priv->contexts[IWL_RXON_CTX_PAN].station_devtype = RXON_DEV_TYPE_2STA;
 	priv->contexts[IWL_RXON_CTX_PAN].unused_devtype = RXON_DEV_TYPE_P2P;
-	priv->rotate_rates = 0;		/* Disabled */
-	priv->last_rotate_rate = 0;	/* Disabled */
-	priv->rotate_rate_total = 0;	/* Disabled */
-	priv->rotate_rate_array = NULL;	/* Disabled */
 
 	BUILD_BUG_ON(NUM_IWL_RXON_CTX != 2);
 
