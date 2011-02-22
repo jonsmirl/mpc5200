@@ -415,7 +415,14 @@ static void iwlagn_tx_cmd_build_rate(struct iwl_priv *priv,
 
 	/* DATA packets will use the uCode station table for rate/antenna
 	 * selection */
-	if (ieee80211_is_data(fc)) {
+	if (ieee80211_is_data(fc) && priv->rotate_rates) {
+		tx_cmd->tx_flags &= ~TX_CMD_FLG_STA_RATE_MSK;
+		tx_cmd->rate_n_flags =
+			priv->rotate_rate_array[priv->last_rotate_rate];
+		priv->last_rotate_rate = (priv->last_rotate_rate + 1) %
+			priv->rotate_rate_total;
+		return;
+	} else if (ieee80211_is_data(fc)) {
 		tx_cmd->initial_rate_index = 0;
 		tx_cmd->tx_flags |= TX_CMD_FLG_STA_RATE_MSK;
 		return;

@@ -1813,6 +1813,133 @@ static ssize_t show_rx_chains_msk(struct device *d,
 static DEVICE_ATTR(rx_chains_msk, S_IWUSR | S_IRUSR, show_rx_chains_msk,
 		store_rx_chains_msk);
 
+ /*
+ * Show/store the rotate_rates flag.
+ */
+static ssize_t show_rotate_rates(struct device *d,
+				struct device_attribute *attr, char *buf)
+{
+	struct iwl_priv *priv = dev_get_drvdata(d);
+	return sprintf(buf, "%u\n", priv->rotate_rates);
+}
+
+static ssize_t store_rotate_rates(struct device *d,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	struct iwl_priv *priv = dev_get_drvdata(d);
+	int ret;
+	unsigned long val;
+	u32 num_rates;
+	u32 cur_rate;
+	u32 tmp, i, start_rate;
+
+	ret = strict_strtoul(buf, 0, &val);
+	if (ret)
+		return ret;
+
+	/* Dan: new rotate_rates scheme using flags */
+	if (priv->rotate_rates) {
+		kfree(priv->rotate_rate_array);
+		priv->rotate_rate_array = NULL;
+		priv->last_rotate_rate = 0;
+		priv->rotate_rate_total = 0;
+		priv->rotate_rates = 0;
+	}
+
+	if (val == 0)
+		return count;
+
+	/* Parse val to determine number of configs */
+	num_rates = 0;
+	if (val & ROTATE_SISO) /* SISO */
+		num_rates++;
+	if (val & ROTATE_MIMO2) /* MIMO2 */
+		num_rates++;
+	if (val & ROTATE_MIMO3) /* MIMO3 */
+		num_rates++;
+	if (val & ROTATE_TX_SEL) /* TX SEL */ {
+		if (val & ROTATE_SISO) num_rates += 2;
+		if (val & ROTATE_MIMO2) num_rates += 2;
+	}
+	if (val & ROTATE_HT40) /* HT40 */
+		num_rates *= 2;
+	if (val & ROTATE_SGI) /* SGI */
+		num_rates *= 2;
+	if (val & ROTATE_SKIP) /* SKIP short rates */ {
+		num_rates *= 6;
+		start_rate = 2;
+	} else {
+		num_rates *= 8;
+		start_rate = 0;
+	}
+
+	/* Shouldn't be true but may as well make sure */
+	if (num_rates == 0)
+		return -EINVAL;
+
+	/* Now set up rotate_rate_array */
+	priv->rotate_rate_array = kmalloc(num_rates * sizeof(u32),
+			GFP_KERNEL);
+	if (!priv->rotate_rate_array)
+		return -ENOMEM;
+	priv->rotate_rates = 1;
+	priv->last_rotate_rate = 0;
+	priv->rotate_rate_total = num_rates;
+
+	cur_rate = 0;
+	if (val & ROTATE_SISO) /* SISO rates */
+		for (i = start_rate; i < 8; ++i, ++cur_rate)
+			priv->rotate_rate_array[cur_rate] = 0x4100 + i;
+	if (val & ROTATE_MIMO2) /* MIMO2 rates */
+		for (i = start_rate; i < 8; ++i, ++cur_rate)
+			priv->rotate_rate_array[cur_rate] = 0xc108 + i;
+	if (val & ROTATE_MIMO3) /* MIMO3 rates */
+		for (i = start_rate; i < 8; ++i, ++cur_rate)
+			priv->rotate_rate_array[cur_rate] = 0x1c110 + i;
+	if ((val & ROTATE_TX_SEL) && (val & ROTATE_SISO)) {
+		/* TX SEL SISO rates */
+		for (i = start_rate; i < 8; ++i, ++cur_rate)
+			priv->rotate_rate_array[cur_rate] = 0x8100 + i;
+		for (i = start_rate; i < 8; ++i, ++cur_rate)
+			priv->rotate_rate_array[cur_rate] = 0x10100 + i;
+	}
+	if ((val & ROTATE_TX_SEL) && (val & ROTATE_MIMO2)) {
+		/* TX SEL MIMO2 rates */
+		for (i = start_rate; i < 8; ++i, ++cur_rate)
+			priv->rotate_rate_array[cur_rate] = 0x14108 + i;
+		for (i = start_rate; i < 8; ++i, ++cur_rate)
+			priv->rotate_rate_array[cur_rate] = 0x18108 + i;
+	}
+	if (val & ROTATE_HT40) { /* HT40 rates */
+		tmp = cur_rate;
+		for (i = start_rate; i < tmp; ++i, ++cur_rate)
+			priv->rotate_rate_array[cur_rate] =
+				priv->rotate_rate_array[i] | RATE_MCS_HT40_MSK;
+	}
+	if (val & ROTATE_SGI) { /* SGI rates */
+		tmp = cur_rate;
+		for (i = start_rate; i < tmp; ++i, ++cur_rate)
+			priv->rotate_rate_array[cur_rate] =
+				priv->rotate_rate_array[i] | RATE_MCS_SGI_MSK;
+	}
+
+	printk("Set up %u rotate_rates:%s%s%s%s%s%s%s.\n",
+			priv->rotate_rate_total,
+			(val & ROTATE_SISO) ? " SISO" : "",
+			(val & ROTATE_MIMO2) ? " MIMO2" : "",
+			(val & ROTATE_MIMO3) ? " MIMO3" : "",
+			(val & ROTATE_TX_SEL) ? " TX_SEL" : "",
+			(val & ROTATE_HT40) ? " HT40" : "",
+			(val & ROTATE_SGI) ? " SGI" : "",
+			(val & ROTATE_SKIP) ? " SKIP" : "");
+
+	return count;
+}
+
+static DEVICE_ATTR(rotate_rates, S_IWUSR | S_IRUGO, show_rotate_rates,
+		store_rotate_rates);
+
 
 static struct attribute *iwl_sysfs_entries[] = {
 	&dev_attr_temperature.attr,
@@ -1822,6 +1949,7 @@ static struct attribute *iwl_sysfs_entries[] = {
 #endif
 	&dev_attr_bf_flag.attr,
 	&dev_attr_rx_chains_msk.attr,
+	&dev_attr_rotate_rates.attr,
 	NULL
 };
 
@@ -4479,6 +4607,10 @@ static int iwl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	priv->contexts[IWL_RXON_CTX_PAN].ap_devtype = RXON_DEV_TYPE_CP;
 	priv->contexts[IWL_RXON_CTX_PAN].station_devtype = RXON_DEV_TYPE_2STA;
 	priv->contexts[IWL_RXON_CTX_PAN].unused_devtype = RXON_DEV_TYPE_P2P;
+	priv->rotate_rates = 0;		/* Disabled */
+	priv->last_rotate_rate = 0;	/* Disabled */
+	priv->rotate_rate_total = 0;	/* Disabled */
+	priv->rotate_rate_array = NULL;	/* Disabled */
 
 	BUILD_BUG_ON(NUM_IWL_RXON_CTX != 2);
 

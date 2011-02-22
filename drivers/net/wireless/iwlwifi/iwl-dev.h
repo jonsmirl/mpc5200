@@ -1544,6 +1544,12 @@ struct iwl_priv {
 	s8 last_rx_noiseC;
 	bool bf_enabled;
 
+	/* Setup for rotating rates */
+	u32 rotate_rates;
+	u32 last_rotate_rate;
+	u32 rotate_rate_total;
+	u32 *rotate_rate_array;
+
 	struct work_struct txpower_work;
 	u32 disable_sens_cal;
 	u32 disable_chain_noise_cal;

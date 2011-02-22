@@ -4368,6 +4368,15 @@ struct iwl5000_dsp_debug {
 	u16 mib_indices[0];
 } __attribute__ ((packed));
 
+/* For rotate rates */
+#define ROTATE_SISO	1
+#define ROTATE_MIMO2	2
+#define ROTATE_MIMO3	4
+#define ROTATE_TX_SEL	8
+#define ROTATE_HT40	16
+#define ROTATE_SGI	32
+#define ROTATE_SKIP	64
+
 /******************************************************************************
  * (13)
  * Union of all expected notifications/responses:
