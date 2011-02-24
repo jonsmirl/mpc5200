@@ -2,7 +2,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2008 Intel Corporation. All rights reserved.
+ * Copyright(c) 2008-2011 Intel Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -22,8 +22,11 @@
  * in the file called LICENSE.GPL.
  *
  * Contact Information:
- * Tomas Winkler <tomas.winkler@intel.com>
- * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+ * Daniel Halperin <dhalperi@cs.washington.edu>
+ * University of Washington CSE, 185 Stevens Way AC101, Seattle, WA 98195-2350
+ * Anmol Sheth <anmol.n.sheth@intel.com>
+ * Intel Labs Seattle, 1100 NE 45th St, Seattle, WA 98105
+ *
  *****************************************************************************/
 
 #include "iwl-connector.h"
