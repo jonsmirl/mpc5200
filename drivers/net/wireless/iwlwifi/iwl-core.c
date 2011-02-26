@@ -1461,6 +1461,7 @@ static void iwl_ht_conf(struct iwl_priv *priv,
 	struct ieee80211_sta *sta;
 	struct ieee80211_bss_conf *bss_conf = &vif->bss_conf;
 	struct iwl_rxon_context *ctx = iwl_rxon_ctx_from_vif(vif);
+	struct ieee80211_sta_ht_cap *ht_cap;
 
 	IWL_DEBUG_MAC80211(priv, "enter:\n");
 
@@ -1478,21 +1479,7 @@ static void iwl_ht_conf(struct iwl_priv *priv,
 	case NL80211_IFTYPE_STATION:
 		rcu_read_lock();
 		sta = ieee80211_find_sta(vif, bss_conf->bssid);
-		if (sta) {
-			struct ieee80211_sta_ht_cap *ht_cap = &sta->ht_cap;
-			int maxstreams;
-
-			maxstreams = (ht_cap->mcs.tx_params &
-				      IEEE80211_HT_MCS_TX_MAX_STREAMS_MASK)
-					>> IEEE80211_HT_MCS_TX_MAX_STREAMS_SHIFT;
-			maxstreams += 1;
-
-			if ((ht_cap->mcs.rx_mask[1] == 0) &&
-			    (ht_cap->mcs.rx_mask[2] == 0))
-				ht_conf->single_chain_sufficient = true;
-			if (maxstreams <= 1)
-				ht_conf->single_chain_sufficient = true;
-		} else {
+		if (!sta) {
 			/*
 			 * If at all, this can only happen through a race
 			 * when the AP disconnects us while we're still
@@ -1500,6 +1487,40 @@ static void iwl_ht_conf(struct iwl_priv *priv,
 			 * will soon tell us about that.
 			 */
 			ht_conf->single_chain_sufficient = true;
+			rcu_read_unlock();
+			break;
+		}
+
+		ht_cap = &sta->ht_cap;
+
+		/*
+		 * I the peer advertises no support for receiving 2 and 3
+		 * stream MCS rates, it can't be transmitting them either.
+		 */
+		if ((ht_cap->mcs.rx_mask[1] == 0) &&
+		    (ht_cap->mcs.rx_mask[2] == 0)) {
+			ht_conf->single_chain_sufficient = true;
+		} else if (!(ht_cap->mcs.tx_params &
+					IEEE80211_HT_MCS_TX_DEFINED)) {
+			/* If it can't TX MCS at all ... */
+			ht_conf->single_chain_sufficient = true;
+		} else if (ht_cap->mcs.tx_params &
+					IEEE80211_HT_MCS_TX_RX_DIFF) {
+			int maxstreams;
+
+			/*
+			 * But if it can receive them, it still might not
+			 * be able to transmit them, which is what we need
+			 * to check here -- so check the number of streams
+			 * it advertises for TX (if different than Rx).
+			 */
+			maxstreams = (ht_cap->mcs.tx_params &
+			      IEEE80211_HT_MCS_TX_MAX_STREAMS_MASK);
+			maxstreams >>= IEEE80211_HT_MCS_TX_MAX_STREAMS_SHIFT;
+			maxstreams += 1;
+
+			if (maxstreams <= 1)
+				ht_conf->single_chain_sufficient = true;
 		}
 		rcu_read_unlock();
 		break;
