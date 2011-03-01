@@ -638,7 +638,11 @@ static u32 map_regdom_flags(u32 rd_flags)
 		channel_flags |= IEEE80211_CHAN_NO_IBSS;
 	if (rd_flags & NL80211_RRF_DFS)
 		channel_flags |= IEEE80211_CHAN_RADAR;
-	return channel_flags;
+	/*
+	 * Dan: Disable this regulatory check.
+	 * return channel_flags;
+	 */
+	return 0;
 }
 
 static int freq_reg_info_regd(struct wiphy *wiphy,
@@ -810,7 +814,11 @@ static void handle_channel(struct wiphy *wiphy,
 			  desired_bw_khz,
 			  &reg_rule);
 
-	if (r) {
+	/*
+	 * Dan: disable this regulatory check
+	 * if (r) {
+	 */
+	if (false && r) {
 		/*
 		 * We will disable all channels that do not match our
 		 * recieved regulatory rule unless the hint is coming

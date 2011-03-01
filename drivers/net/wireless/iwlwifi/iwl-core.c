@@ -235,14 +235,19 @@ int iwlcore_init_geos(struct iwl_priv *priv)
 		geo_ch->hw_value = ch->channel;
 
 		if (is_channel_valid(ch)) {
-			if (!(ch->flags & EEPROM_CHANNEL_IBSS))
-				geo_ch->flags |= IEEE80211_CHAN_NO_IBSS;
-
-			if (!(ch->flags & EEPROM_CHANNEL_ACTIVE))
-				geo_ch->flags |= IEEE80211_CHAN_PASSIVE_SCAN;
-
-			if (ch->flags & EEPROM_CHANNEL_RADAR)
-				geo_ch->flags |= IEEE80211_CHAN_RADAR;
+			/*
+			 * Dan: disable these regulatory settings from the
+			 * EEPROM.
+			 *
+			 * if (!(ch->flags & EEPROM_CHANNEL_IBSS))
+			 * 	geo_ch->flags |= IEEE80211_CHAN_NO_IBSS;
+			 *
+			 * if (!(ch->flags & EEPROM_CHANNEL_ACTIVE))
+			 * 	geo_ch->flags |= IEEE80211_CHAN_PASSIVE_SCAN;
+			 *
+			 * if (ch->flags & EEPROM_CHANNEL_RADAR)
+			 * 	geo_ch->flags |= IEEE80211_CHAN_RADAR;
+			 */
 
 			geo_ch->flags |= ch->ht40_extension_channel;
 
