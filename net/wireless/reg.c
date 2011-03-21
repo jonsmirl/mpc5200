@@ -810,11 +810,7 @@ static void handle_channel(struct wiphy *wiphy,
 			  desired_bw_khz,
 			  &reg_rule);
 
-	/*
-	 * Dan: disable this regulatory check
-	 * if (r) {
-	 */
-	if (false && r) {
+	if (r) {
 		/*
 		 * We will disable all channels that do not match our
 		 * recieved regulatory rule unless the hint is coming
