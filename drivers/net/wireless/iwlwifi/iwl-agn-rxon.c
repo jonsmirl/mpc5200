@@ -465,7 +465,7 @@ int iwlagn_mac_config(struct ieee80211_hw *hw, u32 changed)
 		if (!memcmp(&ctx->staging, &ctx->active, sizeof(ctx->staging)))
 			continue;
 		iwlagn_commit_rxon(priv, ctx);
-		if (ht_changed[ctx->ctxid])
+		if (ht_changed[ctx->ctxid] && iwl_is_associated_ctx(ctx))
 			iwlagn_update_qos(priv, ctx);
 	}
  out:
