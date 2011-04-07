@@ -1002,12 +1002,11 @@ extern bool pcie_ports_auto;
 #endif
 
 #ifndef CONFIG_PCIEASPM
-static inline int pcie_aspm_enabled(void)
-{
-	return 0;
-}
+static inline int pcie_aspm_enabled(void) { return 0; }
+static inline bool pcie_aspm_support_enabled(void) { return false; }
 #else
 extern int pcie_aspm_enabled(void);
+extern bool pcie_aspm_support_enabled(void);
 #endif
 
 #ifdef CONFIG_PCIEAER
@@ -1187,6 +1186,11 @@ static inline void pci_restore_state(struct pci_dev *dev)
 { }
 
 static inline int pci_set_power_state(struct pci_dev *dev, pci_power_t state)
+{
+	return 0;
+}
+
+static inline int pci_wake_from_d3(struct pci_dev *dev, bool enable)
 {
 	return 0;
 }

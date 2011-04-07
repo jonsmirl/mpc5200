@@ -152,7 +152,7 @@ static int parse_source(struct sym_entry *syme)
 	/*
 	 * We can't annotate with just /proc/kallsyms
 	 */
-	if (map->dso->origin == DSO__ORIG_KERNEL) {
+	if (map->dso->symtab_type == SYMTAB__KALLSYMS) {
 		pr_err("Can't annotate %s: No vmlinux file was found in the "
 		       "path\n", sym->name);
 		sleep(1);
@@ -515,24 +515,27 @@ static void handle_keypress(struct perf_session *session, int c)
 			break;
 		case 'E':
 			if (top.evlist->nr_entries > 1) {
+				/* Select 0 as the default event: */
+				int counter = 0;
+
 				fprintf(stderr, "\nAvailable events:");
 
 				list_for_each_entry(top.sym_evsel, &top.evlist->entries, node)
 					fprintf(stderr, "\n\t%d %s", top.sym_evsel->idx, event_name(top.sym_evsel));
 
-				prompt_integer(&top.sym_counter, "Enter details event counter");
+				prompt_integer(&counter, "Enter details event counter");
 
-				if (top.sym_counter >= top.evlist->nr_entries) {
+				if (counter >= top.evlist->nr_entries) {
 					top.sym_evsel = list_entry(top.evlist->entries.next, struct perf_evsel, node);
-					top.sym_counter = 0;
 					fprintf(stderr, "Sorry, no such event, using %s.\n", event_name(top.sym_evsel));
 					sleep(1);
 					break;
 				}
 				list_for_each_entry(top.sym_evsel, &top.evlist->entries, node)
-					if (top.sym_evsel->idx == top.sym_counter)
+					if (top.sym_evsel->idx == counter)
 						break;
-			} else top.sym_counter = 0;
+			} else
+				top.sym_evsel = list_entry(top.evlist->entries.next, struct perf_evsel, node);
 			break;
 		case 'f':
 			prompt_integer(&top.count_filter, "Enter display event count filter");
@@ -675,7 +678,7 @@ static int symbol_filter(struct map *map, struct symbol *sym)
 
 	for (i = 0; skip_symbols[i]; i++) {
 		if (!strcmp(skip_symbols[i], name)) {
-			syme->skip = 1;
+			sym->ignore = true;
 			break;
 		}
 	}
@@ -768,7 +771,7 @@ static void perf_event__process_sample(const union perf_event *event,
 			struct symbol *sym = sym_entry__symbol(top.sym_filter_entry);
 
 			pr_err("Can't annotate %s", sym->name);
-			if (top.sym_filter_entry->map->dso->origin == DSO__ORIG_KERNEL) {
+			if (top.sym_filter_entry->map->dso->symtab_type == SYMTAB__KALLSYMS) {
 				pr_err(": No vmlinux file was found in the path:\n");
 				machine__fprintf_vmlinux_path(machine, stderr);
 			} else
@@ -778,10 +781,9 @@ static void perf_event__process_sample(const union perf_event *event,
 	}
 
 	syme = symbol__priv(al.sym);
-	if (!syme->skip) {
+	if (!al.sym->ignore) {
 		struct perf_evsel *evsel;
 
-		syme->origin = origin;
 		evsel = perf_evlist__id2evsel(top.evlist, sample->id);
 		assert(evsel != NULL);
 		syme->count[evsel->idx]++;
@@ -848,10 +850,10 @@ try_again:
 				     top.evlist->threads, group, inherit) < 0) {
 			int err = errno;
 
-			if (err == EPERM || err == EACCES)
-				die("Permission error - are you root?\n"
-					"\t Consider tweaking"
-					" /proc/sys/kernel/perf_event_paranoid.\n");
+			if (err == EPERM || err == EACCES) {
+				ui__warning_paranoid();
+				goto out_err;
+			}
 			/*
 			 * If it's cycles then fall back to hrtimer
 			 * based cpu-clock-tick sw counter, which
@@ -859,25 +861,41 @@ try_again:
 			 */
 			if (attr->type == PERF_TYPE_HARDWARE &&
 			    attr->config == PERF_COUNT_HW_CPU_CYCLES) {
-
 				if (verbose)
-					warning(" ... trying to fall back to cpu-clock-ticks\n");
+					ui__warning("Cycles event not supported,\n"
+						    "trying to fall back to cpu-clock-ticks\n");
 
 				attr->type = PERF_TYPE_SOFTWARE;
 				attr->config = PERF_COUNT_SW_CPU_CLOCK;
 				goto try_again;
 			}
-			printf("\n");
-			error("sys_perf_event_open() syscall returned with %d "
-			      "(%s).  /bin/dmesg may provide additional information.\n",
-			      err, strerror(err));
-			die("No CONFIG_PERF_EVENTS=y kernel support configured?\n");
-			exit(-1);
+
+			if (err == ENOENT) {
+				ui__warning("The %s event is not supported.\n",
+					    event_name(counter));
+				goto out_err;
+			}
+
+			ui__warning("The sys_perf_event_open() syscall "
+				    "returned with %d (%s).  /bin/dmesg "
+				    "may provide additional information.\n"
+				    "No CONFIG_PERF_EVENTS=y kernel support "
+				    "configured?\n", err, strerror(err));
+			goto out_err;
 		}
 	}
 
-	if (perf_evlist__mmap(evlist, mmap_pages, false) < 0)
-		die("failed to mmap with %d (%s)\n", errno, strerror(errno));
+	if (perf_evlist__mmap(evlist, mmap_pages, false) < 0) {
+		ui__warning("Failed to mmap with %d (%s)\n",
+			    errno, strerror(errno));
+		goto out_err;
+	}
+
+	return;
+
+out_err:
+	exit_browser(0);
+	exit(0);
 }
 
 static int __cmd_top(void)
