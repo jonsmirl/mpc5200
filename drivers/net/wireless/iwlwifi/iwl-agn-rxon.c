@@ -398,12 +398,12 @@ int iwlagn_commit_rxon(struct iwl_priv *priv, struct iwl_rxon_context *ctx)
 	if (ret)
 		return ret;
 
-	if (new_assoc)
-		return iwlagn_rxon_connect(priv, ctx);
-
 	/* DSP debug command makes sure we get antenna selection information */
 	if (priv->cfg->ops->hcmd->dsp_debug)
 		iwl_send_dsp_debug(priv);
+
+	if (new_assoc)
+		return iwlagn_rxon_connect(priv, ctx);
 
 	return 0;
 }
