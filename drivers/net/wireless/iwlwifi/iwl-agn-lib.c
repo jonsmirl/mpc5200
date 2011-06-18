@@ -410,6 +410,8 @@ static void iwlagn_bfee_notif(struct iwl_priv *priv,
 	if (priv->_agn.last_phy_res_valid) {
 		phy = &priv->_agn.last_phy_res;
 		non_cfg_buf = (u32 *)phy->non_cfg_phy_buf;
+		bfee_notif->timestamp_low =
+			cpu_to_le32(__le64_to_cpu(phy->timestamp));
 		bfee_notif->rssiA =
 			(non_cfg_buf[IWLAGN_RX_RES_RSSI_AB_IDX] &
 			 IWLAGN_OFDM_RSSI_INBAND_A_BITMSK) >>
@@ -423,9 +425,6 @@ static void iwlagn_bfee_notif(struct iwl_priv *priv,
 			 IWLAGN_OFDM_RSSI_INBAND_C_BITMSK) >>
 			IWLAGN_OFDM_RSSI_C_BIT_POS;
 		bfee_notif->noise = priv->last_rx_noise;
-		bfee_notif->noiseA = priv->last_rx_noiseA;
-		bfee_notif->noiseB = priv->last_rx_noiseB;
-		bfee_notif->noiseC = priv->last_rx_noiseC;
 		bfee_notif->agc =
 			(non_cfg_buf[IWLAGN_RX_RES_AGC_IDX] &
 			 IWLAGN_OFDM_AGC_MSK) >> IWLAGN_OFDM_AGC_BIT_POS;
@@ -445,7 +444,7 @@ static void iwlagn_bfee_notif(struct iwl_priv *priv,
 
 		/* Increment counter */
 		bfee_count++;
-		bfee_notif->bfee_count = bfee_count;
+		bfee_notif->bfee_count = cpu_to_le16(bfee_count);
 	}
 
 	/* Log the bytes to a file */

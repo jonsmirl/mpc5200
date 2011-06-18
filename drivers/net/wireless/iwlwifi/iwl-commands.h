@@ -3781,10 +3781,9 @@ struct iwl_bt_coex_prot_env_cmd {
  *
  */
 struct iwl_bfee_notif {
-	u8 reserved;
-	s8 noiseA, noiseB, noiseC;
-	u16 bfee_count;
-	u16 reserved1;
+	__le32 timestamp_low;
+	__le16 bfee_count;
+	__le16 reserved1;
 	u8 Nrx, Ntx;
 	u8 rssiA, rssiB, rssiC;
 	s8 noise;
