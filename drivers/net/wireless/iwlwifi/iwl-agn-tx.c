@@ -439,8 +439,8 @@ static void iwlagn_tx_cmd_build_rate(struct iwl_priv *priv,
 	 */
 	if (ieee80211_is_data(fc) && priv->rotate_rates) {
 		tx_cmd->tx_flags &= ~TX_CMD_FLG_STA_RATE_MSK;
-		tx_cmd->rate_n_flags =
-			priv->rotate_rate_array[priv->last_rotate_rate];
+		tx_cmd->rate_n_flags = cpu_to_le32(
+			priv->rotate_rate_array[priv->last_rotate_rate]);
 		priv->last_rotate_rate = (priv->last_rotate_rate + 1) %
 			priv->rotate_rate_total;
 		/* No retries in this mode */
