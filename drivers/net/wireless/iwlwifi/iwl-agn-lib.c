@@ -436,7 +436,7 @@ static void iwlagn_bfee_notif(struct iwl_priv *priv,
 		/* Everything but antennas is in bottom 14 bits */
 		bfee_notif->fake_rate_n_flags =
 			cpu_to_le16(__le32_to_cpu(phy->rate_n_flags) & 0x3fff);
-		IWL_WARN(priv, "rssis: %u %u %u noise: %d agc: %u "
+		IWL_INFO(priv, "rssis: %u %u %u noise: %d agc: %u "
 				"antenna_sel: %02x fake_rate_n_flags=0x%x\n",
 				bfee_notif->rssiA, bfee_notif->rssiB,
 				bfee_notif->rssiC, bfee_notif->noise,
