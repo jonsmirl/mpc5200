@@ -43,10 +43,10 @@
 #define CN_IDX_DRBD			0x8
 #define CN_VAL_DRBD			0x1
 #define CN_KVP_IDX			0x9	/* HyperV KVP */
-#define CN_IDX_IWLAGN			0xff
+#define CN_IDX_IWLAGN			0xfe
 #define CN_VAL_IWLAGN			0x1
 
-#define CN_NETLINK_USERS		255
+#define CN_NETLINK_USERS		255	/* Highest index + 1 */
 
 /*
  * Maximum connector's message size.
