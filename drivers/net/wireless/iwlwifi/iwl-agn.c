@@ -2714,14 +2714,12 @@ static int iwl_mac_setup_register(struct iwl_priv *priv,
 
 	hw->max_tx_aggregation_subframes = LINK_QUAL_AGG_FRAME_LIMIT_DEF;
 
-#if 0
 	hw->flags |= IEEE80211_HW_SUPPORTS_PS |
 		     IEEE80211_HW_SUPPORTS_DYNAMIC_PS;
 
 	if (priv->cfg->sku & IWL_SKU_N)
 		hw->flags |= IEEE80211_HW_SUPPORTS_DYNAMIC_SMPS |
 			     IEEE80211_HW_SUPPORTS_STATIC_SMPS;
-#endif
 
 	if (capa->flags & IWL_UCODE_TLV_FLAGS_MFP)
 		hw->flags |= IEEE80211_HW_MFP_CAPABLE;
