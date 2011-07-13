@@ -332,6 +332,8 @@ static void iwl_power_fill_sleep_cmd(struct iwl_priv *priv,
 
 static int iwl_set_power(struct iwl_priv *priv, struct iwl_powertable_cmd *cmd)
 {
+	int ret;
+
 	IWL_DEBUG_POWER(priv, "Sending power/sleep command\n");
 	IWL_DEBUG_POWER(priv, "Flags value = 0x%08X\n", cmd->flags);
 	IWL_DEBUG_POWER(priv, "Tx timeout = %u\n", le32_to_cpu(cmd->tx_data_timeout));
@@ -343,8 +345,10 @@ static int iwl_set_power(struct iwl_priv *priv, struct iwl_powertable_cmd *cmd)
 			le32_to_cpu(cmd->sleep_interval[3]),
 			le32_to_cpu(cmd->sleep_interval[4]));
 
-	return iwl_send_cmd_pdu(priv, POWER_TABLE_CMD,
+	ret = iwl_send_cmd_pdu(priv, POWER_TABLE_CMD,
 				sizeof(struct iwl_powertable_cmd), cmd);
+	msleep(1);
+	return ret;
 }
 
 static void iwl_power_build_cmd(struct iwl_priv *priv,
