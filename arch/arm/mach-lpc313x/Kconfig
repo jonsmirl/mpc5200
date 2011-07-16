@@ -1,0 +1,37 @@
+menu "LPC313x Implementations"
+	depends on ARCH_LPC313X
+
+choice
+	prompt "LPC313x Platform type"
+	default MACH_EA313X
+
+config MACH_EA313X
+	bool "ea313x board"
+	help
+	  Say Y here if you are using the Embedded Artist's EA313x board
+
+config MACH_EA3152
+	bool "ea3152 board"
+	select LPC3152_AD
+	help
+	  Say Y here if you are using Embedded Artist's EA3152 board
+	  
+config MACH_VAL3153
+	bool "val3153 board"
+	help
+	  Say Y here if you are using the NXP val3153 board
+
+config MACH_VAL3154
+	bool "val3154 board"
+	select LPC3152_AD
+	help
+	  Say Y here if you are using the NXP val3154 board
+	  
+endchoice
+
+config LPC3152_AD
+	bool
+
+source "kernel/Kconfig.hz"
+
+endmenu
