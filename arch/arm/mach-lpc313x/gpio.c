@@ -74,7 +74,7 @@ int lpc313x_gpio_direction_output(unsigned gpio, int value)
 EXPORT_SYMBOL(lpc313x_gpio_direction_output);
 
 
-
+#ifndef CONFIG_GPIOLIB
 int gpio_is_valid(unsigned gpio)
 {
 	int ret = 1;
@@ -131,5 +131,5 @@ int gpio_is_valid(unsigned gpio)
 }
 
 EXPORT_SYMBOL(gpio_is_valid);
-
+#endif
 

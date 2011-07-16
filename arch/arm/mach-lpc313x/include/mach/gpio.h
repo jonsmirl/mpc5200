@@ -24,6 +24,8 @@
 
 #include <mach/hardware.h>
 
+#define ARCH_NR_GPIOS 1024
+
 #define GPIO_PORT_MASK  0x0FE0
 #define GPIO_PIN_MASK   0x001F
 
@@ -140,8 +142,8 @@
 #define GPIO_UART_RXD         (IOCONF_UART | 0)
 #define GPIO_UART_TXD         (IOCONF_UART | 1)
                 
-                
-                
+extern int lpc313x_gpio_direction_output(unsigned gpio, int value);
+
 static inline int lpc313x_gpio_direction_input(unsigned gpio)
 {
 	unsigned long flags;
@@ -198,6 +200,16 @@ static inline void lpc313x_gpio_set_value(unsigned gpio, int value)
 }
 
 
+#ifdef CONFIG_GPIOLIB
+#define gpio_get_value	lpc313x_gpio_get_value
+#define gpio_set_value	lpc313x_gpio_set_value
+#define gpio_cansleep	__gpio_cansleep
+#define gpio_to_irq	__gpio_to_irq
+
+#include <asm-generic/gpio.h>
+
+#else
+               
 /*-------------------------------------------------------------------------*/
 
 /* Wrappers for "new style" GPIO calls. These calls LPC313x specific versions
@@ -236,6 +248,7 @@ static inline void gpio_free( unsigned gpio)
 	lpc313x_gpio_ip_driven(gpio);
 }
 int gpio_is_valid(unsigned pin);
+#endif
 
 
 #endif /*_LPC313X_GPIO_H*/

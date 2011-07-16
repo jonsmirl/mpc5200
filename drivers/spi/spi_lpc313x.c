@@ -25,6 +25,8 @@
  * power management.
  */
 
+#define DEBUG
+
 #include <linux/init.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -680,7 +682,7 @@ static int lpc313x_spi_transfer(struct spi_device *spi, struct spi_message *m)
 {
 	struct spi_master *master = spi->master;
 	struct lpc313xspi *spidat = spi_master_get_devdata(master);
-	//struct device *controller = spi->master->dev.parent;
+	struct device *controller = spi->master->dev.parent;
 	struct spi_transfer *t;
 	unsigned long flags;
 
@@ -701,10 +703,10 @@ static int lpc313x_spi_transfer(struct spi_device *spi, struct spi_message *m)
 			return -EINVAL;
 		}
 
-		/*dev_dbg(controller,
+		dev_dbg(controller,
 			"  xfer %p: len %u tx %p/%08x rx %p/%08x DMAmapped=%d\n",
 			t, t->len, t->tx_buf, t->tx_dma,
-			t->rx_buf, t->rx_dma, m->is_dma_mapped); */   //***MOD-
+			t->rx_buf, t->rx_dma, m->is_dma_mapped);
 	}
 
 	spin_lock_irqsave(&spidat->lock, flags);

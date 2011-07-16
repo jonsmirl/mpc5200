@@ -137,7 +137,10 @@
 # define IRQ_DM9000_ETH_INT   IRQ_BOARD_START	/* Ethernet chip */
 # define IRQ_SDMMC_CD         (IRQ_BOARD_START + 1)	/* SD card detect */
 # define IRQ_EA_VBUS_OVRC     (IRQ_BOARD_START + 2)	/* Over current indicator */
-# define NR_IRQ_BOARD         3
+# define IRQ_PENDOWN	      (IRQ_BOARD_START + 3)	/* Pendown from touch screen */
+# define IRQ_MC13224_RDY      (IRQ_BOARD_START + 4)	/* mc13224 ready to receive data */
+# define IRQ_MC13224_ATTN     (IRQ_BOARD_START + 5)	/* mc13224 wants attention */
+# define NR_IRQ_BOARD         6
 
 /* now define board irq to event pin map */
 #define BOARD_IRQ_EVENT_MAP	{ \
@@ -145,6 +148,9 @@
 	{IRQ_DM9000_ETH_INT, EVT_mNAND_RYBN3, EVT_ACTIVE_HIGH}, \
 	{IRQ_SDMMC_CD, EVT_mI2STX_BCK0, EVT_ACTIVE_LOW}, \
 	{IRQ_EA_VBUS_OVRC, EVT_I2SRX_WS0, EVT_ACTIVE_LOW}, \
+	{IRQ_PENDOWN, EVT_GPIO4, EVT_ACTIVE_HIGH}, \
+	{IRQ_MC13224_RDY, EVT_GPIO3, EVT_ACTIVE_HIGH}, \
+	{IRQ_MC13224_ATTN, EVT_I2SRX_BCK0, EVT_ACTIVE_HIGH}, \
 	}
 /* Following defines group the board IRQs into 4 IRQ_EVNTR groups.
    IRQ_EVT_ROUTERx IRQ is generated when event in the corresponding 
@@ -155,7 +161,7 @@
 #define IRQ_EVTR2_START        IRQ_SDMMC_CD
 #define IRQ_EVTR2_END          IRQ_SDMMC_CD
 #define IRQ_EVTR3_START        IRQ_EA_VBUS_OVRC
-#define IRQ_EVTR3_END          IRQ_EA_VBUS_OVRC
+#define IRQ_EVTR3_END          IRQ_MC13224_ATTN
 
 #elif defined (CONFIG_MACH_VAL3154)
 # define IRQ_SDMMC_CD	 IRQ_BOARD_START 	/* SD card detect */

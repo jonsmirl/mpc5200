@@ -25,6 +25,8 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/dm9000.h>
+#include <linux/spi/ads7846.h>
+#include <linux/spi/mc13224.h>
 #include <linux/i2c.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
@@ -59,7 +61,7 @@ static irqreturn_t ea313x_mci_detect_interrupt(int irq, void *data)
 	struct lpc313x_mci_irq_data	*pdata = data;
 
 	/* select the opposite level senstivity */
-	int level = mci_get_cd(0)?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH;
+	int level = mci_get_cd(0) ? IRQ_TYPE_LEVEL_LOW : IRQ_TYPE_LEVEL_HIGH;
 
 	set_irq_type(pdata->irq, level);
 
@@ -73,12 +75,14 @@ static int mci_init(u32 slot_id, irq_handler_t irqhdlr, void *data)
 	int level;
 
 	/* enable power to the slot */
+	gpio_request(GPIO_MI2STX_DATA0, "mmc power");
 	gpio_set_value(GPIO_MI2STX_DATA0, 0);
 	/* set cd pins as GPIO pins */
+	gpio_request(GPIO_MI2STX_BCK0, "mmc card detect");
 	gpio_direction_input(GPIO_MI2STX_BCK0);
 
 	/* select the opposite level senstivity */
-	level = mci_get_cd(0)?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH;
+	level = mci_get_cd(0) ? IRQ_TYPE_LEVEL_LOW : IRQ_TYPE_LEVEL_HIGH;
 	/* set card detect irq info */
 	irq_data.data = data;
 	irq_data.irq_hdlr = irqhdlr;
@@ -157,6 +161,43 @@ static struct platform_device	lpc313x_mci_device = {
 	},
 	.resource	= lpc313x_mci_resources,
 };
+
+#if defined (CONFIG_FB_SSD1289)
+static struct resource ssd1289_resource[] = {
+	[0] = {
+		.start = EXT_SRAM0_PHYS + 0x00000 + 0x0000,
+		.end   = EXT_SRAM0_PHYS + 0x00000 + 0xffff,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = EXT_SRAM0_PHYS + 0x10000 + 0x0000,
+		.end   = EXT_SRAM0_PHYS + 0x10000 + 0xffff,
+		.flags = IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device ssd1289_device = {
+	.name          = "ssd1289",
+	.id            = 0,
+	.num_resources = ARRAY_SIZE(ssd1289_resource),
+	.resource      = ssd1289_resource,
+};
+
+static void __init ea_add_device_ssd1289(void)
+{
+	MPMC_STCONFIG0 = 0x81;
+	MPMC_STWTWEN0  = 0;
+	MPMC_STWTOEN0  = 0;
+	MPMC_STWTRD0   = 31;
+	MPMC_STWTPG0   = 0;
+	MPMC_STWTWR0   = 3;
+	MPMC_STWTTURN0 = 0;
+
+	platform_device_register(&ssd1289_device);
+}
+#else
+static void __init ea_add_device_ssd1289(void) {}
+#endif /* CONFIG_SSD1289 */
 
 /*
  * DM9000 ethernet device
@@ -248,6 +289,9 @@ static void __init ea_add_device_dm9000(void)
 	SYS_MPMC_WTD_DEL1 = _BIT(5) | 4;
 
 	/* Configure Interrupt pin as input, no pull-up */
+	if (gpio_request(GPIO_MNAND_RYBN3, "dm9000 interrupt"))
+		return;
+
 	gpio_direction_input(GPIO_MNAND_RYBN3);
 
 	platform_device_register(&dm9000_device);
@@ -350,13 +394,24 @@ static struct resource lpc313x_spi_resources[] = {
 	},
 };
 
-static void spi_set_cs_state(int cs_num, int state)
+static void spi_set_cs0_state(int cs_num, int state)
 {
-	/* Only CS0 is supported, so no checks are needed */
 	(void) cs_num;
-
-	/* Set GPO state for CS0 */
 	lpc313x_gpio_set_value(GPIO_SPI_CS_OUT0, state);
+}
+
+static void spi_set_cs1_state(int cs_num, int state)
+{
+	(void) cs_num;
+printk("cs1 state %d\n", state);
+	lpc313x_gpio_set_value(GPIO_MUART_CTS_N, state);
+}
+
+static void spi_set_cs2_state(int cs_num, int state)
+{
+printk("cs2 state %d\n", state);
+	(void) cs_num;
+	lpc313x_gpio_set_value(GPIO_MUART_RTS_N, state);
 }
 
 struct lpc313x_spics_cfg lpc313x_stdspics_cfg[] =
@@ -366,7 +421,19 @@ struct lpc313x_spics_cfg lpc313x_stdspics_cfg[] =
 	{
 		.spi_spo	= 0, /* Low clock between transfers */
 		.spi_sph	= 0, /* Data capture on first clock edge (high edge with spi_spo=0) */
-		.spi_cs_set	= spi_set_cs_state,
+		.spi_cs_set	= spi_set_cs0_state,
+	},
+	[1] =
+	{
+		.spi_spo	= 0, /* Low clock between transfers */
+		.spi_sph	= 0, /* Data capture on first clock edge (high edge with spi_spo=0) */
+		.spi_cs_set	= spi_set_cs1_state,
+	},
+	[2] =
+	{
+		.spi_spo	= 0, /* Low clock between transfers */
+		.spi_sph	= 1, /* Data capture on first clock edge (high edge with spi_spo=0) */
+		.spi_cs_set	= spi_set_cs2_state,
 	},
 };
 
@@ -389,20 +456,76 @@ static struct platform_device lpc313x_spi_device = {
 	.resource	= lpc313x_spi_resources,
 };
 
+/* spi_board_info.controller_data for SPI slave devices,
+ * copied to spi_device.platform_data ... mostly for dma tuning
+ */
+struct lpc313x_spi_chip {
+	u8 tx_threshold;
+	u8 rx_threshold;
+	u8 dma_burst_size;
+	u32 timeout;
+	u8 enable_loopback;
+	int gpio_cs;
+	void (*cs_control)(u32 command);
+};
+
+static struct ads7846_platform_data ea313x_ads7846_info = {
+	.model			= 7846,
+	.vref_delay_usecs	= 100,
+	.x_plate_ohms		= 419,
+	.y_plate_ohms		= 486,
+	.gpio_pendown		= GPIO_GPIO4,
+};
+
+static struct lpc313x_spi_chip ea313x_ads7846_chip = {
+	.gpio_cs	= GPIO_MUART_CTS_N,
+};
+
+static struct mc13224_platform_data ea313x_mc13224_info = {
+	.gpio_ready 	= GPIO_GPIO3,
+	.gpio_cs 	= GPIO_MUART_RTS_N,
+	.gpio_attention = GPIO_I2SRX_BCK0,
+	.irq_ready 	= IRQ_MC13224_RDY,
+	.irq_attention 	= IRQ_MC13224_ATTN,
+};
+
+static struct lpc313x_spi_chip ea313x_mc13224_chip = {
+	.gpio_cs	= GPIO_MUART_RTS_N,
+};
+
+
 /* If both SPIDEV and MTD data flash are enabled with the same chip select, only 1 will work */
 #if defined(CONFIG_SPI_SPIDEV)
 /* SPIDEV driver registration */
 static int __init lpc313x_spidev_register(void)
 {
-	struct spi_board_info info =
+	struct spi_board_info info[] = {
 	{
 		.modalias = "spidev",
 		.max_speed_hz = 1000000,
 		.bus_num = 0,
 		.chip_select = 0,
-	};
+	}, {
+		.modalias	= "ads7846",
+		.max_speed_hz	= 1200000,
+		.bus_num	= 0,
+		.chip_select	= 1,
+		.platform_data	= &ea313x_ads7846_info,
+		.controller_data= &ea313x_ads7846_chip,
+		.irq		= IRQ_PENDOWN,
+	}, {
+		.modalias	= "mc13224",
+		.max_speed_hz	= 100000,
+		.bus_num	= 0,
+		.chip_select	= 2,
+		.platform_data  = &ea313x_mc13224_info,
+		.controller_data= &ea313x_mc13224_chip,
+		.irq		= IRQ_MC13224_ATTN,
+	}};
+	gpio_request(GPIO_MUART_CTS_N, "touchscreen CS");
+	gpio_direction_output(GPIO_MUART_CTS_N, 1);
 
-	return spi_register_board_info(&info, 1);
+	return spi_register_board_info(info, 3);
 }
 arch_initcall(lpc313x_spidev_register);
 #endif
@@ -489,6 +612,8 @@ static void __init ea313x_init(void)
 	/* add DM9000 device */
 	ea_add_device_dm9000();
 	
+	ea_add_device_ssd1289();
+
 	i2c_register_board_info(0, ea313x_i2c_devices,
 		ARRAY_SIZE(ea313x_i2c_devices));
 

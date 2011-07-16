@@ -5,6 +5,7 @@
 # Object file lists.
 
 obj-y			+= irq.o time.o cgu.o generic.o i2c.o gpio.o dma.o usb.o wdt.o
+obj-$(CONFIG_GPIOLIB) += gpiolib.o
 
 
 # Specific board support

@@ -973,6 +973,23 @@ config ENC28J60_WRITEVERIFY
 	  Enable the verify after the buffer write useful for debugging purpose.
 	  If unsure, say N.
 
+config MC13224
+	tristate "MC13224 support"
+	depends on EXPERIMENTAL && SPI && NET_ETHERNET
+	select CRC32
+	---help---
+	  Support for the Freescale MC13224 802.15.4 chip.
+
+	  To compile this driver as a module, choose M here. The module will be
+	  called mc13224.
+
+config MC13224_WRITEVERIFY
+	bool "Enable write verify"
+	depends on MC13224
+	---help---
+	  Enable the verify after the buffer write useful for debugging purpose.
+	  If unsure, say N.
+
 config ETHOC
 	tristate "OpenCores 10/100 Mbps Ethernet MAC support"
 	depends on NET_ETHERNET && HAS_IOMEM && HAS_DMA
