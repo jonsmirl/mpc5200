@@ -501,7 +501,7 @@ static void __devexit iwl_pci_remove(struct pci_dev *pdev)
 	iwl_pci_down(bus_specific);
 }
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 
 static int iwl_pci_suspend(struct device *device)
 {
