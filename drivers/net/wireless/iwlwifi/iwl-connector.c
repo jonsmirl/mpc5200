@@ -175,7 +175,7 @@ int iwlagn_register_connector(void)
 	spin_lock_init(&connector_lock);
 	INIT_WORK(&connector_work_s, connector_work);
 
-	printk(KERN_INFO "iwlwifi: connector callback registered\n");
+	printk(KERN_INFO "iwlagn: connector callback registered\n");
 	return 0;
 }
 EXPORT_SYMBOL(iwlagn_register_connector);
@@ -192,7 +192,7 @@ void iwlagn_unregister_connector(void)
 
 	/* Deregister connector */
 	cn_del_callback(&connector_id);
-	printk(KERN_INFO "iwlwifi: connector callback deregistered\n");
+	printk(KERN_INFO "iwlagn: connector callback deregistered\n");
 }
 EXPORT_SYMBOL(iwlagn_unregister_connector);
 void iwl_connector_set_priv(struct iwl_priv *p)
