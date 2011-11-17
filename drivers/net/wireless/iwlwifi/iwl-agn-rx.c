@@ -957,6 +957,9 @@ static int iwlagn_rx_reply_rx(struct iwl_priv *priv,
 		rx_pkt_status = *(__le32 *)(pkt->u.raw + sizeof(*phy_res) +
 				phy_res->cfg_phy_cnt * sizeof(u32) + len);
 		ampdu_status = le32_to_cpu(rx_pkt_status);
+		if (priv->connector_log & IWL_CONN_RX_MPDU_MSK)
+			connector_send_msg((void *)header, len,
+					IWL_CONN_RX_MPDU);
 	} else {
 		if (!priv->last_phy_res_valid) {
 			IWL_ERR(priv, "MPDU frame without cached PHY data\n");
@@ -969,6 +972,9 @@ static int iwlagn_rx_reply_rx(struct iwl_priv *priv,
 		rx_pkt_status = *(__le32 *)(pkt->u.raw + sizeof(*amsdu) + len);
 		ampdu_status = iwlagn_translate_rx_status(priv,
 						le32_to_cpu(rx_pkt_status));
+		if (priv->connector_log & IWL_CONN_RX_MPDU_MSK)
+			connector_send_msg((void *)header, len,
+					IWL_CONN_RX_MPDU);
 	}
 
 	if ((unlikely(phy_res->cfg_phy_cnt > IWLAGN_MAX_CFG_PHY_CNT))) {
