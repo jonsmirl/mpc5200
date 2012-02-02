@@ -30,6 +30,7 @@
  *****************************************************************************/
 
 #include "iwl-connector.h"
+#include <linux/export.h>
 
 /**
  * This struct is required for the connector interface to be set up.
