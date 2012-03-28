@@ -87,7 +87,7 @@ static void connector_enqueue_msg(struct cn_msg *m)
 	spin_unlock_irqrestore(&connector_lock, flags);
 
 	/* Schedule tasklet */
-	queue_work(priv->shrd->workqueue, &connector_work_s);
+	queue_work(priv->workqueue, &connector_work_s);
 }
 
 /**
