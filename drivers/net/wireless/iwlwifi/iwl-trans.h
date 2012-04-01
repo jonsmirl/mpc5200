@@ -274,7 +274,7 @@ static inline struct page *rxb_steal_page(struct iwl_rx_cmd_buffer *r)
 	return p;
 }
 
-#define MAX_NO_RECLAIM_CMDS	6
+#define MAX_NO_RECLAIM_CMDS	7
 
 /**
  * struct iwl_trans_config - transport configuration
