@@ -42,7 +42,6 @@
 #include <linux/connector.h>
 #include "iwl-dev.h"
 #include "iwl-commands.h"
-#include "iwl-core.h"
 
 extern struct cb_id connector_id;
 extern char *connector_name;
