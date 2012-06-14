@@ -346,6 +346,9 @@ struct radeon_bo {
 	/* Constant after initialization */
 	struct radeon_device		*rdev;
 	struct drm_gem_object		gem_base;
+
+	struct ttm_bo_kmap_obj dma_buf_vmap;
+	int vmapping_count;
 };
 #define gem_to_radeon_bo(gobj) container_of((gobj), struct radeon_bo, gem_base)
 
@@ -848,7 +851,6 @@ struct radeon_cs_parser {
 	s32			priority;
 };
 
-extern int radeon_cs_update_pages(struct radeon_cs_parser *p, int pg_idx);
 extern int radeon_cs_finish_pages(struct radeon_cs_parser *p);
 extern u32 radeon_get_ib_value(struct radeon_cs_parser *p, int idx);
 
@@ -1372,9 +1374,9 @@ struct cayman_asic {
 
 struct si_asic {
 	unsigned max_shader_engines;
-	unsigned max_pipes_per_simd;
 	unsigned max_tile_pipes;
-	unsigned max_simds_per_se;
+	unsigned max_cu_per_sh;
+	unsigned max_sh_per_se;
 	unsigned max_backends_per_se;
 	unsigned max_texture_channel_caches;
 	unsigned max_gprs;
@@ -1385,7 +1387,6 @@ struct si_asic {
 	unsigned sc_hiz_tile_fifo_size;
 	unsigned sc_earlyz_tile_fifo_size;
 
-	unsigned num_shader_engines;
 	unsigned num_tile_pipes;
 	unsigned num_backends_per_se;
 	unsigned backend_disable_mask_per_asic;
@@ -1846,6 +1847,11 @@ extern struct radeon_hdmi_acr r600_hdmi_acr(uint32_t clock);
 extern void r600_hdmi_enable(struct drm_encoder *encoder);
 extern void r600_hdmi_disable(struct drm_encoder *encoder);
 extern void r600_hdmi_setmode(struct drm_encoder *encoder, struct drm_display_mode *mode);
+extern u32 r6xx_remap_render_backend(struct radeon_device *rdev,
+				     u32 tiling_pipe_num,
+				     u32 max_rb_num,
+				     u32 total_max_rb_num,
+				     u32 enabled_rb_mask);
 
 /*
  * evergreen functions used by radeon_encoder.c
