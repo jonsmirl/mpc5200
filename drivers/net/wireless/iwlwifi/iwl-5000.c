@@ -36,7 +36,7 @@
 #define IWL5150_UCODE_API_MAX 2
 
 /* Oldest version we won't warn about */
-#define IWL5000_UCODE_API_OK 5
+#define IWL5000_UCODE_API_OK 2
 #define IWL5150_UCODE_API_OK 2
 
 /* Lowest firmware API version supported */

@@ -782,6 +782,12 @@ static void iwl_ucode_callback(const struct firmware *ucode_raw, void *context)
 	api_ver = IWL_UCODE_API(drv->fw.ucode_ver);
 
 	/*
+	 * Dan -- disable firmware version checks. Instead, verify
+	 * that the firmware has the size expected for the hacked firmware
+	 */
+	(void)api_min; /* Dan -- remove warning */
+#if 0
+	/*
 	 * api_ver should match the api version forming part of the
 	 * firmware filename ... but we don't check for that and only rely
 	 * on the API version read from firmware header from here on forward
@@ -808,6 +814,12 @@ static void iwl_ucode_callback(const struct firmware *ucode_raw, void *context)
 			IWL_ERR(drv, "New firmware can be obtained from "
 				      "http://www.intellinuxwireless.org/.\n");
 		}
+	}
+#endif
+
+	if (ucode_raw->size != 336252) {
+		IWL_ERR(drv,
+			"Firmware size does not match iwlwifi-5000-2.ucode.sigcomm2010. The UW 802.11n CSI Tool will not work.");
 	}
 
 	IWL_INFO(drv, "loaded firmware version %s", drv->fw.fw_version);
