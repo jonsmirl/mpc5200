@@ -50,6 +50,9 @@ void connector_send_msg(const u8 *data, const u32 size, const u8 code);
 void iwl_connector_set_priv(struct iwl_priv *p);
 void connector_tasklet(unsigned long trash);
 
+#define CN_IDX_IWLAGN	(CN_NETLINK_USERS + 0xf)
+#define CN_VAL_IWLAGN	0x1
+
 #define IWL_CONN_BFEE_NOTIF	REPLY_BFEE_NOTIFICATION		/* 0xbb */
 #define IWL_CONN_RX_PHY		REPLY_RX_PHY_CMD		/* 0xc0 */
 #define IWL_CONN_RX_MPDU	REPLY_RX_MPDU_CMD		/* 0xc1 */
