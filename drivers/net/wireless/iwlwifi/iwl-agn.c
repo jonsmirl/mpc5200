@@ -1367,6 +1367,7 @@ int iwl_init_drv(struct iwl_priv *priv)
 	priv->rotate_rate_total = 0;	/* Disabled */
 	priv->rotate_rate_array = NULL;	/* Disabled */
 	priv->monitor_tx_rate = 0;	/* Disabled */
+	priv->bcast_tx_rate = 0;	/* Disabled */
 
 	priv->ucode_owner = IWL_OWNERSHIP_DRIVER;
 

@@ -412,11 +412,17 @@ int iwlagn_tx_skb(struct iwl_priv *priv, struct sk_buff *skb)
 	/* TODO need this for burst mode later on */
 	iwlagn_tx_cmd_build_basic(priv, skb, tx_cmd, info, hdr, sta_id);
 
-	/* If packet is to the monitor address, use the monitor rate */
+	/* If packet is to the monitor address, use the monitor rate; or
+	 * if packet is to the broadcast address, use the broadcast rate
+	 */
 	if ((IWLAGN_MONITOR_ID == sta_id) &&
 			(priv->monitor_tx_rate != 0)) {
 		tx_cmd->tx_flags &= ~TX_CMD_FLG_STA_RATE_MSK;
 		tx_cmd->rate_n_flags = cpu_to_le32(priv->monitor_tx_rate);
+	} else if ((ctx->bcast_sta_id == sta_id) &&
+			(priv->bcast_tx_rate != 0)) {
+		tx_cmd->tx_flags &= ~TX_CMD_FLG_STA_RATE_MSK;
+		tx_cmd->rate_n_flags = cpu_to_le32(priv->bcast_tx_rate);
 	} else
 		iwlagn_tx_cmd_build_rate(priv, tx_cmd, info, fc);
 

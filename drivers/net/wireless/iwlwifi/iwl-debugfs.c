@@ -2628,6 +2628,45 @@ static ssize_t iwl_dbgfs_monitor_tx_rate_write(struct file *file,
 }
 DEBUGFS_READ_WRITE_FILE_OPS(monitor_tx_rate);
 
+static ssize_t iwl_dbgfs_bcast_tx_rate_read(struct file *file,
+					  char __user *user_buf,
+					  size_t count, loff_t *ppos)
+{
+	struct iwl_priv *priv = file->private_data;
+	char buf[11];
+	int len;
+
+	len = scnprintf(buf, sizeof(buf), "0x%x", priv->bcast_tx_rate);
+
+	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
+}
+
+static ssize_t iwl_dbgfs_bcast_tx_rate_write(struct file *file,
+					   const char __user *user_buf,
+					   size_t count, loff_t *ppos)
+{
+	struct iwl_priv *priv = file->private_data;
+	char buf[11];
+	unsigned long val;
+	int ret;
+
+	if (count > sizeof(buf))
+		return -EINVAL;
+
+	memset(buf, 0, sizeof(buf));
+	if (copy_from_user(buf, user_buf, count))
+		return -EFAULT;
+
+	ret = strict_strtoul(buf, 0, &val);
+	if (ret)
+		return ret;
+
+	priv->bcast_tx_rate = val;
+
+	return count;
+}
+DEBUGFS_READ_WRITE_FILE_OPS(bcast_tx_rate);
+
 /*
  * Create the debugfs files and directories
  *
@@ -2695,6 +2734,7 @@ int iwl_dbgfs_register(struct iwl_priv *priv, const char *name)
 	DEBUGFS_ADD_FILE(rx_chains_msk, dir_debug, S_IRUSR | S_IWUSR);
 	DEBUGFS_ADD_FILE(rotate_rates, dir_debug, S_IRUSR | S_IWUSR);
 	DEBUGFS_ADD_FILE(monitor_tx_rate, dir_debug, S_IRUSR | S_IWUSR);
+	DEBUGFS_ADD_FILE(bcast_tx_rate, dir_debug, S_IRUSR | S_IWUSR);
 
 	/* Calibrations disabled/enabled status*/
 	DEBUGFS_ADD_FILE(calib_disabled, dir_rf, S_IWUSR | S_IRUSR);

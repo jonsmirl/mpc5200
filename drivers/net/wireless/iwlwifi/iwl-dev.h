@@ -972,6 +972,7 @@ struct iwl_priv {
 	s8 last_rx_noiseC;
 	bool bf_enabled;
 	u32 monitor_tx_rate;
+	u32 bcast_tx_rate;
 
 	/* Setup for rotating rates */
 	u32 rotate_rates;
